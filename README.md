@@ -64,8 +64,8 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 #### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [xa-sd-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | From dev to prod via role assumption with S3 access |
 
 
@@ -85,17 +85,11 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 ### Environment Modules
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
-| [dev](./modules/environments/dev/README.md) | dev | dev | Development environment resources |
-| [prod](./modules/environments/prod/README.md) | prod | prod | Production environment resources |
-| [operations](./modules/environments/operations/README.md) | operations | operations | Operations environment resources |
-
-### Testing Framework
-
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
-| [tests/](./tests/README.md) | N/A | N/A | Automated testing framework for all modules |
+| Module | Description |
+|--------|-------------|
+| [dev](./modules/environments/dev/README.md) | Development environment resources |
+| [prod](./modules/environments/prod/README.md) | Production environment resources |
+| [operations](./modules/environments/operations/README.md) | Operations environment resources |
 
 
 ## Quick Start (Going to turn this into a script)
