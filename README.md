@@ -18,12 +18,85 @@ And many more.
 
 ## Background
 
-Who has access to my most sensiive S3 bucket? Is it 5% of my organization or 80%?
-These are important questions to ask. In fact, you can ask the same question in another way: **If an attacker compromises one of my employees, what is the likelyhood they will be able to get to my most sensitve S3 bucket?**
+Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%?
+These are important questions to ask. In fact, you can ask the same question in another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?**
 
 There are tools that will help you find AWS privilege escalation paths, but most of them do this at the account level. **But what about cross-account privilege escalation paths?** Are you sure you are finding all of them before they are exploited? 
 
 Deploy Pathfinder Labs, and put your skills, and your tooling, to the test! 
+
+## Access Path Modules
+
+| Key  | Description           |
+|------|-----------------------|
+| xa   | Cross-Account         |
+| ia   | Intra-Account         | 
+| pe   | Privilege Escalation  | 
+| sd   | Sensitive Data Access |
+| misc | Miscellaneous         |
+
+#### Cross-Account Privilege Escalation
+
+| Module | Description |
+|--------|-------------|
+| [xa-pe-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | Cross-account PassRole privilege escalation to Lambda admin |
+| [xa-pe-002](./modules/paths/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | Multi-hop cross-account privilege escalation using login profiles |
+| [xa-pe-003](./modules/paths/x-account-from-operations-to-prod-simple-role-assumption/README.md) | From operations to prod via role assumption |
+
+#### Intra-Account Privilege Escalation - Attacking other principals
+
+| Module | Description |
+|--------|-------------|
+| [ia-pe-001](./modules/paths/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | PutRolePolicy privilege escalation to admin access |
+| [ia-pe-002](./modules/paths/prod_role_with_multiple_privesc_paths/README.md) | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
+| [ia-pe-003](./modules/paths/prod_simple_explicit_role_assumption_chain/README.md) | 3-hop role assumption chain in prod environment |
+| [ia-pe-004](./modules/paths/dev__user_has_createAccessKey_to_admin/README.md) | User privilege escalation via CreateAccessKey on admin user |
+
+
+#### Intra-Account Privilege Escalation - Self-escalation
+
+| Module | Description |
+|--------|-------------|
+| [ia-pe-005](./modules/paths/prod_self_privesc_putRolePolicy/README.md) | Self-privilege escalation via PutRolePolicy on own role |
+| [ia-pe-006](./modules/paths/prod_self_privesc_attachRolePolicy/README.md) | Self-privilege escalation via AttachRolePolicy on own role |
+| [ia-pe-007](./modules/paths/prod_self_privesc_createPolicyVersion/README.md) | Self-privilege escalation via CreatePolicyVersion on own policy |
+
+
+#### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
+
+| Module | Description |
+|--------|-------------|
+| [xa-sd-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | From dev to prod via role assumption with S3 access |
+
+
+#### Intra-Account Accessing S3 Bucket through lateral movement without full admin access
+
+| Module | Description |
+|--------|-------------|
+| [ia-sd-002](./modules/paths/prod_role_has_access_to_bucket_through_resource_policy/README.md) | S3 bucket access through resource policy bypassing IAM restrictions |
+| [is-sd-003](./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
+
+
+#### Misc
+
+| Module | Description |
+|--------|-------------|
+| [dev_lambda_admin](./modules/paths/dev_lambda_admin/README.md) | Lambda admin access patterns in dev environment |
+
+### Environment Modules
+
+| Module | Description |
+|--------|-------------|
+| [dev](./modules/environments/dev/README.md) | Development environment resources |
+| [prod](./modules/environments/prod/README.md) | Production environment resources |
+| [operations](./modules/environments/operations/README.md) | Operations environment resources |
+
+### Testing Framework
+
+| Module | Description |
+|--------|-------------|
+| [tests/](./tests/README.md) | Automated testing framework for all modules |
+
 
 ## Quick Start (Going to turn this into a script)
 
@@ -45,62 +118,7 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 * **Step 7:** Deploy Pathfinder Labs
 * **Step 8:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
 
-### Access Path Modules
 
-#### Cross-Account Privilege Escalation
-
-| Module | Description |
-|--------|-------------|
-| [x-account-from-dev-to-prod-role-assumption-s3-access](./modules/paths/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | From dev to prod via role assumption with S3 access |
-| [x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin](./modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | Cross-account PassRole privilege escalation to Lambda admin |
-| [x-account-from-dev-to-prod-multi-hop-privesc-both-sides](./modules/paths/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | Multi-hop cross-account privilege escalation using login profiles |
-| [x-account-from-operations-to-prod-simple-role-assumption](./modules/paths/x-account-from-operations-to-prod-simple-role-assumption/README.md) | From operations to prod via role assumption |
-
-#### Intra-Account Privilege Escalation - Attacking other principals
-
-| Module | Description |
-|--------|-------------|
-| [prod_role_has_putrolepolicy_on_non_admin_role](./modules/paths/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | PutRolePolicy privilege escalation to admin access |
-| [prod_role_with_multiple_privesc_paths](./modules/paths/prod_role_with_multiple_privesc_paths/README.md) | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
-| [prod_simple_explicit_role_assumption_chain](./modules/paths/prod_simple_explicit_role_assumption_chain/README.md) | 3-hop role assumption chain in prod environment |
-| [dev__user_has_createAccessKey_to_admin](./modules/paths/dev__user_has_createAccessKey_to_admin/README.md) | User privilege escalation via CreateAccessKey on admin user |
-
-
-#### Intra-Account Privilege Escalation - Self-escalation
-
-| Module | Description |
-|--------|-------------|
-| [prod_self_privesc_putRolePolicy](./modules/paths/prod_self_privesc_putRolePolicy/README.md) | Self-privilege escalation via PutRolePolicy on own role |
-| [prod_self_privesc_attachRolePolicy](./modules/paths/prod_self_privesc_attachRolePolicy/README.md) | Self-privilege escalation via AttachRolePolicy on own role |
-| [prod_self_privesc_createPolicyVersion](./modules/paths/prod_self_privesc_createPolicyVersion/README.md) | Self-privilege escalation via CreatePolicyVersion on own policy |
-
-
-#### Accessing S3 Bucket through lateral movement without full admin access
-
-| Module | Description |
-|--------|-------------|
-| [prod_role_has_access_to_bucket_through_resource_policy](./modules/paths/prod_role_has_access_to_bucket_through_resource_policy/README.md) | S3 bucket access through resource policy bypassing IAM restrictions |
-| [prod_role_has_exclusive_access_to_bucket_through_resource_policy](./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
-
-#### Misc
-
-| Module | Description |
-|--------|-------------|
-| [dev_lambda_admin](./modules/paths/dev_lambda_admin/README.md) | Lambda admin access patterns in dev environment |
-
-### Environment Modules
-
-| Module | Description |
-|--------|-------------|
-| [dev](./modules/environments/dev/README.md) | Development environment resources |
-| [prod](./modules/environments/prod/README.md) | Production environment resources |
-| [operations](./modules/environments/operations/README.md) | Operations environment resources |
-
-### Testing Framework
-
-| Module | Description |
-|--------|-------------|
-| [tests/](./tests/README.md) | Automated testing framework for all modules |
 
 ## Resource Naming Convention
 
