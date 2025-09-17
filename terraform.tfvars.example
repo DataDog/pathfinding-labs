@@ -1,0 +1,24 @@
+# Example terraform.tfvars file for Pathfinder-labs
+# Copy this file to terraform.tfvars and modify the values as needed
+#
+# Note: All resources will be created with a random 6-character suffix
+# to prevent conflicts when multiple people deploy this repository.
+# S3 bucket names will follow the pattern: pl-{resource-type}-{account-id}-{random-suffix}
+
+aws_region  = "us-west-2"
+
+# AWS Account Configuration
+dev_account_aws_profile = "pl-dev.AWSAdministratorAccess"
+dev_account_id = "123456789012"
+
+operations_account_aws_profile = "pl-ops.AWSAdministratorAccess"
+operations_account_id = "123456789012"
+
+prod_account_aws_profile = "pl-prod.AWSAdministratorAccess"
+prod_account_id = "123456789012"
+
+# GitHub Repository Configuration (Optional)
+# If you want to enable GitHub OIDC integration, provide your repository name
+# Format: "owner/repository-name"
+# Example: github_repo = "myorg/my-infrastructure-repo"
+

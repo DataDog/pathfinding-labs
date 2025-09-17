@@ -1,0 +1,38 @@
+{
+  "timestamp": "20250909_203637",
+  "summary": {
+    "total_cleanups": 4,
+    "successful": 4,
+    "partial": 0,
+    "failed": 0
+  },
+  "cleanups": [
+    {
+      "module": "prod_self_privesc_putRolePolicy",
+      "result": "SUCCESS",
+      "details": "Cleanup completed successfully",
+      "execution_time": "7s"
+    }
+,
+    {
+      "module": "prod_self_privesc_attachRolePolicy",
+      "result": "SUCCESS",
+      "details": "Cleanup completed successfully",
+      "execution_time": "9s"
+    }
+,
+    {
+      "module": "prod_self_privesc_createPolicyVersion",
+      "result": "SUCCESS",
+      "details": "Cleanup completed successfully",
+      "execution_time": "8s"
+    }
+,
+    {
+      "module": "prod_role_with_multiple_privesc_paths",
+      "result": "SUCCESS",
+      "details": "Cleanup completed successfully",
+      "execution_time": "51s"
+    }
+  ]
+}

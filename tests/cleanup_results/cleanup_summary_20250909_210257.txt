@@ -1,0 +1,19 @@
+Pathfinder-labs Cleanup Results Summary
+======================================
+Timestamp: 20250909_210257
+
+Overall Results:
+  Total Cleanups: 4
+  Successful: 4
+  Partial: 0
+  Failed: 0
+  Success Rate: 100%
+
+Individual Cleanup Results:
+---------------------------
+✓ prod_self_privesc_putRolePolicy (8s) - Cleanup completed successfully
+✓ prod_self_privesc_attachRolePolicy (10s) - Cleanup completed successfully
+✓ prod_self_privesc_createPolicyVersion (10s) - Cleanup completed successfully
+✓ prod_role_with_multiple_privesc_paths (51s) - Cleanup completed successfully
+
+Detailed logs for failed/partial cleanups are available in: cleanup_results/
