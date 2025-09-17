@@ -37,16 +37,16 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 #### Cross-Account Privilege Escalation
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [xa-pe-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | Cross-account PassRole privilege escalation to Lambda admin |
 | [xa-pe-002](./modules/paths/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | Multi-hop cross-account privilege escalation using login profiles |
 | [xa-pe-003](./modules/paths/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | From operations to prod via role assumption |
 
 #### Intra-Account Privilege Escalation - Attacking other principals
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [ia-pe-001](./modules/paths/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | prod | prod | PutRolePolicy privilege escalation to admin access |
 | [ia-pe-002](./modules/paths/prod_role_with_multiple_privesc_paths/README.md) | prod | prod | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
 | [ia-pe-003](./modules/paths/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | 3-hop role assumption chain in prod environment |
@@ -55,8 +55,8 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 #### Intra-Account Privilege Escalation - Self-escalation
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [ia-pe-005](./modules/paths/prod_self_privesc_putRolePolicy/README.md) | prod | prod | Self-privilege escalation via PutRolePolicy on own role |
 | [ia-pe-006](./modules/paths/prod_self_privesc_attachRolePolicy/README.md) | prod | prod | Self-privilege escalation via AttachRolePolicy on own role |
 | [ia-pe-007](./modules/paths/prod_self_privesc_createPolicyVersion/README.md) | prod | prod | Self-privilege escalation via CreatePolicyVersion on own policy |
@@ -71,16 +71,16 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 #### Intra-Account Accessing S3 Bucket through lateral movement without full admin access
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [ia-sd-002](./modules/paths/prod_role_has_access_to_bucket_through_resource_policy/README.md) | prod | prod | S3 bucket access through resource policy bypassing IAM restrictions |
 | [ia-sd-003](./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
 
 
 #### Misc
 
-| Module | Source | Destination | Description |
-|--------|--------|-------------|-------------|
+| Module | Start | End | Description |
+|--------|-------|-----|-------------|
 | [misc-001](./modules/paths/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
 
 ### Environment Modules
