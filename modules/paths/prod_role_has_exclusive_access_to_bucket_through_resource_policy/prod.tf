@@ -8,6 +8,23 @@ terraform {
   }
 }
 
+# Get the current caller identity for the prod account
+data "aws_caller_identity" "prod_terraform_user" {
+  provider = aws.prod
+}
+
+# Extract role name from the caller identity ARN
+locals {
+  # Extract role name from ARN like: arn:aws:sts::ACCOUNT:assumed-role/ROLE-NAME/session
+  role_name = split("/", split(":", data.aws_caller_identity.prod_terraform_user.arn)[5])[1]
+}
+
+# Get the full IAM role details
+data "aws_iam_role" "terraform_role" {
+  provider = aws.prod
+  name     = local.role_name
+}
+
 # Role that can be assumed by the prod starting user
 resource "aws_iam_role" "exclusive_bucket_access_role" {
   provider = aws.prod
@@ -59,26 +76,7 @@ resource "aws_s3_bucket" "exclusive_sensitive_bucket" {
   bucket   = "pl-exclusive-sensitive-data-${var.prod_account_id}-${var.resource_suffix}"
 }
 
-# S3 bucket versioning
-resource "aws_s3_bucket_versioning" "exclusive_sensitive_bucket" {
-  provider = aws.prod
-  bucket   = aws_s3_bucket.exclusive_sensitive_bucket.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
 
-# S3 bucket server-side encryption
-resource "aws_s3_bucket_server_side_encryption_configuration" "exclusive_sensitive_bucket" {
-  provider = aws.prod
-  bucket   = aws_s3_bucket.exclusive_sensitive_bucket.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
 
 # S3 bucket public access block
 resource "aws_s3_bucket_public_access_block" "exclusive_sensitive_bucket" {
@@ -95,6 +93,11 @@ resource "aws_s3_bucket_public_access_block" "exclusive_sensitive_bucket" {
 resource "aws_s3_bucket_policy" "exclusive_sensitive_bucket_policy" {
   provider = aws.prod
   bucket   = aws_s3_bucket.exclusive_sensitive_bucket.id
+
+  depends_on = [
+    aws_iam_role.exclusive_bucket_access_role,
+    aws_s3_bucket.exclusive_sensitive_bucket
+  ]
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -132,7 +135,10 @@ resource "aws_s3_bucket_policy" "exclusive_sensitive_bucket_policy" {
         ]
         Condition = {
           StringNotEquals = {
-            "aws:PrincipalArn" = aws_iam_role.exclusive_bucket_access_role.arn
+            "aws:PrincipalArn" = [
+              aws_iam_role.exclusive_bucket_access_role.arn,
+              data.aws_iam_role.terraform_role.arn
+            ]
           }
         }
       }
