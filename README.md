@@ -77,7 +77,7 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 | [ia-sd-003](./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
 
 
-#### Misc
+#### Vulnerable Cloud Resources
 
 | Module | Start | End | Description |
 |--------|-------|-----|-------------|
