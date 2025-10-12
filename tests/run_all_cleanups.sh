@@ -46,21 +46,21 @@ declare -A cleanup_execution_times
 
 # Cleanup modules configuration (only modules with cleanup_attack.sh scripts)
 declare -a cleanup_modules=(
-    "prod_self_privesc_putRolePolicy"
-    "prod_self_privesc_attachRolePolicy" 
-    "prod_self_privesc_createPolicyVersion"
-    "prod_role_with_multiple_privesc_paths"
-    "dev__user_has_createAccessKey_to_admin"
-    "x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
-    "x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
-    "prod_role_has_access_to_bucket_through_resource_policy"
-    "prod_role_has_exclusive_access_to_bucket_through_resource_policy"
+    "to-admin/prod/prod_self_privesc_putRolePolicy"
+    "to-admin/prod/prod_self_privesc_attachRolePolicy" 
+    "to-admin/prod/prod_self_privesc_createPolicyVersion"
+    "to-admin/prod/prod_role_with_multiple_privesc_paths"
+    "to-admin/dev/dev__user_has_createAccessKey_to_admin"
+    "to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
+    "to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
+    "to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy"
+    "to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy"
 )
 
 # Function to run a single cleanup
 run_cleanup() {
     local module_name="$1"
-    local module_path="../modules/$module_name"
+    local module_path="../modules/paths/$module_name"
     local cleanup_script="$module_path/cleanup_attack.sh"
     
     echo -e "${YELLOW}Running cleanup: $module_name${NC}"

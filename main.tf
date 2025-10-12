@@ -70,7 +70,7 @@ module "prod_resources" {
 }
 
 module "x_account_from_operations_to_prod_simple_role_assumption" {
-  source = "./modules/paths/x-account-from-operations-to-prod-simple-role-assumption"  
+  source = "./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption"  
   providers = {
     aws.prod = aws.prod
     aws.operations = aws.operations
@@ -82,7 +82,7 @@ module "x_account_from_operations_to_prod_simple_role_assumption" {
 }
 
 module "x_account_from_dev_to_prod_role_assumption_s3_access" {
-  source = "./modules/paths/x-account-from-dev-to-prod-role-assumption-s3-access"
+  source = "./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access"
   providers = {
     aws.prod = aws.prod
     aws.dev = aws.dev
@@ -94,7 +94,7 @@ module "x_account_from_dev_to_prod_role_assumption_s3_access" {
 }
 
 module "dev_lambda_admin" {
-  source = "./modules/paths/dev_lambda_admin"
+  source = "./modules/paths/to-admin/dev/dev_lambda_admin"
   providers = {
     aws.dev = aws.dev
   }
@@ -105,7 +105,7 @@ module "dev_lambda_admin" {
 }
 
 module "prod_simple_explicit_role_assumption_chain" {
-  source = "./modules/paths/prod_simple_explicit_role_assumption_chain"
+  source = "./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain"
   providers = {
     aws.prod = aws.prod
   }
@@ -115,7 +115,7 @@ module "prod_simple_explicit_role_assumption_chain" {
 }
 
 module "prod_role_has_putrolepolicy_on_non_admin_role" {
-  source = "./modules/paths/prod_role_has_putrolepolicy_on_non_admin_role"
+  source = "./modules/paths/to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role"
   providers = {
     aws.prod = aws.prod
   }
@@ -124,7 +124,7 @@ module "prod_role_has_putrolepolicy_on_non_admin_role" {
 }
 
 module "prod_self_privesc_putRolePolicy" {
-  source = "./modules/paths/prod_self_privesc_putRolePolicy"
+  source = "./modules/paths/to-admin/prod/prod_self_privesc_putRolePolicy"
   providers = {
     aws.prod = aws.prod
   }
@@ -135,7 +135,7 @@ module "prod_self_privesc_putRolePolicy" {
 }
 
 module "prod_self_privesc_attachRolePolicy" {
-  source = "./modules/paths/prod_self_privesc_attachRolePolicy"
+  source = "./modules/paths/to-admin/prod/prod_self_privesc_attachRolePolicy"
   providers = {
     aws.prod = aws.prod
   }
@@ -146,7 +146,7 @@ module "prod_self_privesc_attachRolePolicy" {
 }
 
 module "prod_self_privesc_createPolicyVersion" {
-  source = "./modules/paths/prod_self_privesc_createPolicyVersion"
+  source = "./modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion"
   providers = {
     aws.prod = aws.prod
   }
@@ -157,7 +157,7 @@ module "prod_self_privesc_createPolicyVersion" {
 }
 
 module "prod_role_with_multiple_privesc_paths" {
-  source = "./modules/paths/prod_role_with_multiple_privesc_paths"
+  source = "./modules/paths/to-admin/prod/prod_role_with_multiple_privesc_paths"
   providers = {
     aws.prod = aws.prod
   }
@@ -168,7 +168,7 @@ module "prod_role_with_multiple_privesc_paths" {
 }
 
 module "dev__user_has_createAccessKey_to_admin" {
-  source = "./modules/paths/dev__user_has_createAccessKey_to_admin"
+  source = "./modules/paths/to-admin/dev/dev__user_has_createAccessKey_to_admin"
   providers = {
     aws.dev = aws.dev
   }
@@ -179,7 +179,7 @@ module "dev__user_has_createAccessKey_to_admin" {
 }
 
 module "x_account_from_dev_to_prod_role_assumption_passrole_to_lambda_admin" {
-  source = "./modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
+  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
   providers = {
     aws.dev = aws.dev
     aws.prod = aws.prod
@@ -191,7 +191,7 @@ module "x_account_from_dev_to_prod_role_assumption_passrole_to_lambda_admin" {
 }
 
 module "x_account_from_dev_to_prod_multi_hop_privesc_both_sides" {
-  source = "./modules/paths/x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
+  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
   providers = {
     aws.dev = aws.dev
     aws.prod = aws.prod
@@ -203,7 +203,7 @@ module "x_account_from_dev_to_prod_multi_hop_privesc_both_sides" {
 }
 
 module "prod_role_has_access_to_bucket_through_resource_policy" {
-  source = "./modules/paths/prod_role_has_access_to_bucket_through_resource_policy"
+  source = "./modules/paths/to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy"
   providers = {
     aws.prod = aws.prod
   }
@@ -214,8 +214,20 @@ module "prod_role_has_access_to_bucket_through_resource_policy" {
 }
 
 module "prod_role_has_exclusive_access_to_bucket_through_resource_policy" {
-  source = "./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy"
+  source = "./modules/paths/to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy"
   providers = {
+    aws.prod = aws.prod
+  }
+  dev_account_id         = var.dev_account_id
+  prod_account_id        = var.prod_account_id
+  operations_account_id  = var.operations_account_id
+  resource_suffix        = random_string.resource_suffix.result
+}
+
+module "x_account_from_dev_to_prod_invoke_and_update_on_prod_lambda" {
+  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda"
+  providers = {
+    aws.dev = aws.dev
     aws.prod = aws.prod
   }
   dev_account_id         = var.dev_account_id

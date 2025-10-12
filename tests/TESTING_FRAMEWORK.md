@@ -53,13 +53,13 @@ cd tests
 ```
 
 **Available modules:**
-- `prod_self_privesc_putRolePolicy`
-- `prod_self_privesc_attachRolePolicy`
-- `prod_self_privesc_createPolicyVersion`
-- `prod_role_with_multiple_privesc_paths`
-- `prod_simple_explicit_role_assumption_chain`
-- `prod_role_has_putrolepolicy_on_non_admin_role`
-- `x-account-from-dev-to-prod-role-assumption-s3-access`
+- `to-admin/prod/prod_self_privesc_putRolePolicy`
+- `to-admin/prod/prod_self_privesc_attachRolePolicy`
+- `to-admin/prod/prod_self_privesc_createPolicyVersion`
+- `to-admin/prod/prod_role_with_multiple_privesc_paths`
+- `to-bucket/prod/prod_simple_explicit_role_assumption_chain`
+- `to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role`
+- `to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access`
 
 ### 3. `tests/update_demo_scripts.sh` - Update Scripts
 Adds standardized output format to demo scripts (already run).

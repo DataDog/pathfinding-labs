@@ -39,49 +39,50 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 | Module | Start | End | Starting Principal | Description |
 |--------|-------|-----|-------------------|-------------|
-| [xa-pe-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | `pl-lambda-prod-updater` | Cross-account PassRole privilege escalation to Lambda admin |
-| [xa-pe-002](./modules/paths/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Multi-hop cross-account privilege escalation using login profiles |
-| [xa-pe-003](./modules/paths/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | `pl-pathfinder-starting-user-operations` | Cross-account role assumption |
+| [xa-pe-001](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | `pl-lambda-prod-updater` | Cross-account PassRole privilege escalation to Lambda admin |
+| [xa-pe-002](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Multi-hop cross-account privilege escalation using login profiles |
+| [xa-pe-003](./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | `pl-pathfinder-starting-user-operations` | Cross-account role assumption |
+| [xa-pe-004](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Cross-account Lambda function code update to extract credentials |
 
 #### Intra-Account Privilege Escalation - Attacking other principals
 
 | Module | Start | End | Starting Principal | Description |
 |--------|-------|-----|-------------------|-------------|
-| [ia-pe-001](./modules/paths/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | prod | prod | `prod-role-a-non-admin` | PutRolePolicy privilege escalation to admin access |
-| [ia-pe-002](./modules/paths/prod_role_with_multiple_privesc_paths/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
-| [ia-pe-003](./modules/paths/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | 3-hop role assumption chain in prod environment |
-| [ia-pe-004](./modules/paths/dev__user_has_createAccessKey_to_admin/README.md) | dev | dev | `pl-Adam` | User privilege escalation via CreateAccessKey on admin user |
+| [ia-pe-001](./modules/paths/to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | prod | prod | `prod-role-a-non-admin` | PutRolePolicy privilege escalation to admin access |
+| [ia-pe-002](./modules/paths/to-admin/prod/prod_role_with_multiple_privesc_paths/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
+| [ia-pe-003](./modules/paths/to-admin/dev/dev__user_has_createAccessKey_to_admin/README.md) | dev | dev | `pl-Adam` | User privilege escalation via CreateAccessKey on admin user |
 
 
 #### Intra-Account Privilege Escalation - Self-escalation
 
 | Module | Start | End | Starting Principal | Description |
 |--------|-------|-----|-------------------|-------------|
-| [ia-pe-005](./modules/paths/prod_self_privesc_putRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via PutRolePolicy on own role |
-| [ia-pe-006](./modules/paths/prod_self_privesc_attachRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via AttachRolePolicy on own role |
-| [ia-pe-007](./modules/paths/prod_self_privesc_createPolicyVersion/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via CreatePolicyVersion on own policy |
+| [ia-pe-005](./modules/paths/to-admin/prod/prod_self_privesc_putRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via PutRolePolicy on own role |
+| [ia-pe-006](./modules/paths/to-admin/prod/prod_self_privesc_attachRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via AttachRolePolicy on own role |
+| [ia-pe-007](./modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via CreatePolicyVersion on own policy |
 
 
 #### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
 
 | Module | Start | End | Starting Principal | Description |
 |--------|-------|-----|-------------------|-------------|
-| [xa-sd-001](./modules/paths/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | `s3-sensitive-data-access-user` | From dev to prod via role assumption with S3 access |
+| [xa-sd-001](./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | `s3-sensitive-data-access-user` | From dev to prod via role assumption with S3 access |
 
 
 #### Intra-Account Accessing S3 Bucket through lateral movement without full admin access
 
 | Module | Start | End | Starting Principal | Description |
 |--------|-------|-----|-------------------|-------------|
-| [ia-sd-002](./modules/paths/prod_role_has_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | S3 bucket access through resource policy bypassing IAM restrictions |
-| [ia-sd-003](./modules/paths/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
+| [ia-sd-001](./modules/paths/to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | S3 bucket access through resource policy bypassing IAM restrictions |
+| [ia-sd-002](./modules/paths/to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
+| [ia-sd-003](./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | 3-hop role assumption chain in prod environment to s3 bucket|
 
 
 #### Misc
 
 | Module | Start | End | Description |
 |--------|-------|-----|-------------|
-| [misc-001](./modules/paths/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
+| [misc-001](./modules/paths/to-admin/dev/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
 
 ### Environment Modules
 

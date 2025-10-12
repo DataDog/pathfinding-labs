@@ -47,25 +47,26 @@ declare -A test_execution_times
 
 # Test modules configuration (only modules with demo_attack.sh scripts)
 declare -a test_modules=(
-    "prod_self_privesc_putRolePolicy"
-    "prod_self_privesc_attachRolePolicy" 
-    "prod_self_privesc_createPolicyVersion"
-    "prod_role_with_multiple_privesc_paths"
-    "prod_simple_explicit_role_assumption_chain"
-    "prod_role_has_putrolepolicy_on_non_admin_role"
-    "x-account-from-dev-to-prod-role-assumption-s3-access"
-    "x-account-from-operations-to-prod-simple-role-assumption"
-    "dev__user_has_createAccessKey_to_admin"
-    "x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
-    "x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
-    "prod_role_has_access_to_bucket_through_resource_policy"
-    "prod_role_has_exclusive_access_to_bucket_through_resource_policy"
+    "to-admin/prod/prod_self_privesc_putRolePolicy"
+    "to-admin/prod/prod_self_privesc_attachRolePolicy" 
+    "to-admin/prod/prod_self_privesc_createPolicyVersion"
+    "to-admin/prod/prod_role_with_multiple_privesc_paths"
+    "to-bucket/prod/prod_simple_explicit_role_assumption_chain"
+    "to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role"
+    "to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access"
+    "to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption"
+    "to-admin/dev/dev__user_has_createAccessKey_to_admin"
+    "to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
+    "to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
+    "to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy"
+    "to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy"
+    "to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda"
 )
 
 # Function to run a single test
 run_test() {
     local module_name="$1"
-    local module_path="../modules/$module_name"
+    local module_path="../modules/paths/$module_name"
     local demo_script="$module_path/demo_attack.sh"
     
     echo -e "${YELLOW}Running test: $module_name${NC}"

@@ -63,22 +63,22 @@ echo "TEST_METRICS:'"$module_name"':'"$metrics"'"\
 echo ""
 echo "Updating self-privilege escalation scripts..."
 
-update_demo_script "../modules/prod_self_privesc_attachRolePolicy/demo_attack.sh" \
+update_demo_script "../modules/paths/to-admin/prod/prod_self_privesc_attachRolePolicy/demo_attack.sh" \
     "prod_self_privesc_attachRolePolicy" \
     "Successfully escalated privileges using AttachRolePolicy to attach admin policy" \
     "policy_attached=true,admin_access_gained=true"
 
-update_demo_script "../modules/prod_self_privesc_createPolicyVersion/demo_attack.sh" \
+update_demo_script "../modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion/demo_attack.sh" \
     "prod_self_privesc_createPolicyVersion" \
     "Successfully escalated privileges using CreatePolicyVersion to create admin policy version" \
     "policy_version_created=true,admin_access_gained=true"
 
-update_demo_script "../modules/prod_simple_explicit_role_assumption_chain/demo_attack.sh" \
+update_demo_script "../modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain/demo_attack.sh" \
     "prod_simple_explicit_role_assumption_chain" \
     "Successfully demonstrated role assumption chain with S3 access" \
     "roles_assumed=3,s3_access_gained=true,flag_retrieved=true"
 
-update_demo_script "../modules/prod_role_has_putrolepolicy_on_non_admin_role/demo_attack.sh" \
+update_demo_script "../modules/paths/to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role/demo_attack.sh" \
     "prod_role_has_putrolepolicy_on_non_admin_role" \
     "Successfully demonstrated cross-role privilege escalation using PutRolePolicy" \
     "cross_role_policy_attached=true,admin_access_gained=true"

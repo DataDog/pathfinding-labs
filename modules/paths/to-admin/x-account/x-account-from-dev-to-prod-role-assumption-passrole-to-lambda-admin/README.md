@@ -1,23 +1,28 @@
 # Cross-Account PassRole to Lambda Admin
 
-This module demonstrates a cross-account privilege escalation attack where a dev user can escalate to admin privileges by assuming a prod role with `iam:PassRole` permission and using it to create Lambda functions with admin roles.
+This module demonstrates a multi-hop cross-account privilege escalation attack where a dev user can escalate to admin privileges through a chain of role assumptions, ultimately using `iam:PassRole` permission to create Lambda functions with admin roles.
 
 ## Attack Path Overview
 
-The attack path shows how a dev user can escalate to admin privileges through cross-account role assumption and PassRole permission abuse.
+The attack path shows how a dev user can escalate to admin privileges through multi-hop role assumption and PassRole permission abuse:
+1. `pl-pathfinder-starting-user-dev` (user) → `pl-lambda-prod-updater` (dev role)
+2. `pl-lambda-prod-updater` (dev role) → `pl-lambda-updater` (prod role)  
+3. `pl-lambda-updater` (prod role) → `pl-Lambda-admin` (via PassRole to Lambda service)
 
 ## Access Path Diagram
 
 ```mermaid
 graph LR
     %% Nodes
-    DevUser[dev:iam:pl-lambda-prod-updater]
+    StartingUser[dev:iam:pl-pathfinder-starting-user-dev]
+    DevRole[dev:iam:pl-lambda-prod-updater]
     ProdRole[prod:iam:pl-lambda-updater]
     LambdaAdmin[prod:iam:pl-Lambda-admin]
     LambdaFunction[prod:lambda:function:admin-function]
     
     %% Edges
-    DevUser -->|sts:AssumeRole| ProdRole
+    StartingUser -->|sts:AssumeRole| DevRole
+    DevRole -->|sts:AssumeRole| ProdRole
     ProdRole -->|iam:PassRole| LambdaAdmin
     ProdRole -->|lambda:CreateFunction| LambdaFunction
     LambdaFunction -->|uses| LambdaAdmin
@@ -28,28 +33,29 @@ graph LR
     classDef adminNode fill:#ffebee,stroke:#c62828,stroke-width:2px
     classDef serviceNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     
-    class DevUser userNode
-    class ProdRole roleNode
+    class StartingUser userNode
+    class DevRole,ProdRole roleNode
     class LambdaAdmin adminNode
     class LambdaFunction serviceNode
 ```
 
 ## Attack Steps
 
-1. **Initial State**: Dev user `pl-lambda-prod-updater` has `sts:AssumeRole` permission on prod role `pl-lambda-updater`
-2. **Cross-Account Assumption**: Dev user assumes the prod role `pl-lambda-updater`
-3. **PassRole Abuse**: The assumed role has `iam:PassRole` permission and can pass admin roles to services
-4. **Lambda Creation**: Create a Lambda function using the `pl-Lambda-admin` role (which has full admin permissions)
-5. **Admin Access**: The Lambda function executes with full admin privileges
+1. **Initial State**: Dev user `pl-pathfinder-starting-user-dev` has `sts:AssumeRole` permission on dev role `pl-lambda-prod-updater`
+2. **First Role Assumption**: Dev user assumes the dev role `pl-lambda-prod-updater`
+3. **Cross-Account Assumption**: Dev role assumes the prod role `pl-lambda-updater` 
+4. **PassRole Abuse**: The prod role has `iam:PassRole` permission and can pass admin roles to services
+5. **Lambda Creation**: Create a Lambda function using the `pl-Lambda-admin` role (which has full admin permissions)
+6. **Admin Access**: The Lambda function executes with full admin privileges
 
 ## Resources Created
 
 ### Dev Environment (`dev.tf`)
-- **Lambda Prod Updater User** (`pl-lambda-prod-updater`): User with permission to assume prod role
-- **User Policy**: Policy that grants `sts:AssumeRole` permission specifically on the prod lambda-updater role
+- **Lambda Prod Updater Role** (`pl-lambda-prod-updater`): Role that can be assumed by `pl-pathfinder-starting-user-dev` and has permission to assume prod role
+- **Role Policy**: Policy that grants `sts:AssumeRole` permission specifically on the prod lambda-updater role
 
 ### Prod Environment (`prod.tf`)
-- **Lambda Updater Role** (`pl-lambda-updater`): Role that trusts dev account and has PassRole permission
+- **Lambda Updater Role** (`pl-lambda-updater`): Role that trusts the dev lambda-prod-updater role and has PassRole permission
 - **Lambda Updater Policy**: Policy with Lambda permissions and `iam:PassRole`
 - **Lambda Admin Role** (`pl-Lambda-admin`): Admin role that can be passed to Lambda service
 - **Lambda Admin Policy**: Full admin policy attached to the Lambda admin role
@@ -57,7 +63,8 @@ graph LR
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- The dev user must have permission to assume the prod role
+- The dev user `pl-pathfinder-starting-user-dev` must have permission to assume the dev role `pl-lambda-prod-updater`
+- The dev role must have permission to assume the prod role `pl-lambda-updater`
 - The prod role must have `iam:PassRole` permission
 - The Lambda admin role must exist and be assumable by Lambda service
 
@@ -100,16 +107,18 @@ chmod +x cleanup_attack.sh
 The `demo_attack.sh` script demonstrates the complete attack flow:
 
 1. **Verification**: Checks current identity and permissions
-2. **Role Assumption**: Assumes the prod lambda-updater role
-3. **PassRole Abuse**: Creates a Lambda function using the admin role
-4. **Admin Verification**: Invokes the Lambda function to confirm admin access
-5. **Cleanup**: Removes the created Lambda function
+2. **First Role Assumption**: Assumes the dev lambda-prod-updater role
+3. **Cross-Account Role Assumption**: Assumes the prod lambda-updater role
+4. **PassRole Abuse**: Creates a Lambda function using the admin role
+5. **Admin Verification**: Invokes the Lambda function to confirm admin access
+6. **Cleanup**: Removes the created Lambda function
 
 ## Security Implications
 
-This attack demonstrates a critical cross-account privilege escalation vulnerability:
+This attack demonstrates a critical multi-hop cross-account privilege escalation vulnerability:
 
-- **Cross-Account Access**: Dev user can access prod resources
+- **Multi-Hop Privilege Escalation**: Chain of role assumptions from user to dev role to prod role
+- **Cross-Account Access**: Dev roles can access prod resources through trust relationships
 - **PassRole Abuse**: `iam:PassRole` permission allows escalating to admin roles
 - **Service Trust**: Lambda service can assume admin roles
 - **High Impact**: Full admin access through Lambda function execution
@@ -118,10 +127,11 @@ This attack demonstrates a critical cross-account privilege escalation vulnerabi
 
 1. **Principle of Least Privilege**: Avoid granting `iam:PassRole` permissions unless absolutely necessary
 2. **Cross-Account Restrictions**: Limit cross-account role assumptions to specific use cases
-3. **Role Trust Policies**: Use more restrictive trust policies for service roles
-4. **PassRole Monitoring**: Monitor and alert on PassRole usage
-5. **Regular Audits**: Regularly audit cross-account permissions and PassRole usage
-6. **Service Role Restrictions**: Limit which roles can be passed to which services
+3. **Multi-Hop Prevention**: Avoid creating long chains of role assumptions; use direct access where possible
+4. **Role Trust Policies**: Use more restrictive trust policies for service roles
+5. **PassRole Monitoring**: Monitor and alert on PassRole usage
+6. **Regular Audits**: Regularly audit cross-account permissions and PassRole usage
+7. **Service Role Restrictions**: Limit which roles can be passed to which services
 
 ## Testing
 
@@ -134,6 +144,7 @@ cd tests
 ```
 
 The test will verify that:
+- The dev role assumption works
 - The cross-account role assumption works
 - PassRole permission allows creating Lambda with admin role
 - The Lambda function executes with admin privileges
@@ -141,8 +152,8 @@ The test will verify that:
 
 ## Outputs
 
-- `lambda_prod_updater_user_name`: The name of the lambda prod updater user in dev
-- `lambda_prod_updater_user_arn`: The ARN of the lambda prod updater user
+- `lambda_prod_updater_role_name`: The name of the lambda prod updater role in dev
+- `lambda_prod_updater_role_arn`: The ARN of the lambda prod updater role
 - `lambda_updater_role_name`: The name of the lambda updater role in prod
 - `lambda_updater_role_arn`: The ARN of the lambda updater role in prod
 - `lambda_admin_role_name`: The name of the lambda admin role in prod
