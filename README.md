@@ -78,7 +78,7 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 | [ia-sd-003](./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | 3-hop role assumption chain in prod environment to s3 bucket|
 
 
-#### Misc
+#### Vulnerable Cloud Resources
 
 | Module | Start | End | Description |
 |--------|-------|-----|-------------|
