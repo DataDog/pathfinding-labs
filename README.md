@@ -1,19 +1,40 @@
 # Pathfinder Labs 
 
-Try your hand at identifying and exploiting multiple cross-account AWS privilege escalation paths. 
+Pathfinder Labs is a modular system for deploying intentionally vulnerable resources to your playground AWS account(s). 
 
-Here are the types of attack paths that Pathfinder labs will create
+## Who's it's for?
 
-| Start | Hop 1 | Hop 2 | Hop 3 | 
-|--|--|--|--|
-|`Prod:Low-priv`| **`Prod:Admin`** 👑| | |
-|`Operations:Admin` | **`Prod:Admin`** 👑| | | 
-|`Operations:Low-priv` | `Prod:low-priv` | **`Prod:Admin`** 👑| | 
-|`Dev:Low-priv` | `Dev:Admin` | `Prod:low-priv` | **`Prod:Admin`** 👑| 
-|`Dev:Low-priv` | `Ops:Low-priv` | **`Prod:Admin`** 👑| | | 
+* **Blue teamers** - Test your CSPM tools. Do they detect all of the intentionally vulnerable modules? 
+* **Red teamers** - Test your skills. Does your toolset and methodology find the vulnerable resources? Do you have the skills to exploit them? 
 
+## How it works: 
 
-And many more. 
+**Step 1.** You tell pathfinder labs which AWS profile(s) to use
+**Step 2.** You pick which modules you want to deploy
+**Step 3.** You enable the modules and deploy
+**Step 4.** You either exploit them, see if your CSPM detects them, or do both. 
+**Step 5.** You disable the modules
+
+## What kinds of vulnerable paths are supported: 
+
+* Single hop IAM privilege escalation paths that lead to admin, e.g., 
+   * `RoleA -> iam:createAccessKey -> RoleB`
+   * `RoleA -> iam:passrole + ec2:runInstance -> RoleB`
+* Single hop IAM privilege escalation paths that lead to a sensitive bucket, e.g., 
+   * `RoleA -> iam:createAccessKey -> RoleB -> sensitive-bucket`
+   * `RoleA -> iam:passrole + ec2:runInstance -> RoleB`
+* Multi hop IAM privilege escalation paths that lead to admin, e.g., 
+   * `RoleA -> iam:createAccessKey -> RoleB -> sts:AssumeRole -> Role C` 
+* Multi hop IAM privilege escalation paths that lead to a sensitive bucket, e.g., 
+   * `RoleA -> iam:createAccessKey -> RoleB -> sts:AssumeRole -> Role C -> sensitive-bucket` 
+* Multi account IAM privilege escalation paths that lead to admin, e.g.,
+   * `Account1:RoleA -> iam:createAccessKey -> Account1:RoleB -> sts:AssumeRole -> Account2:Role C -> Account2:sensitive-bucket`
+* Multi account IAM privilege escalation paths that lead to a sensitive bucket, e.g., 
+   * `Account1:RoleA -> iam:createAccessKey -> Account1:RoleB -> sts:AssumeRole -> Account2:Role C -> Account2:sensitive-bucket`
+* Toxic combinations, e.g.,
+   * `Lambda Function is publicly accessible and has an administrative role attached`
+   * `S3 bucket publicly exposed with sensitive data`
+
 
 
 ## Background
@@ -33,16 +54,8 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 | ia   | Intra-Account         | 
 | pe   | Privilege Escalation  | 
 | sd   | Sensitive Data Access |
-| misc | Miscellaneous         |
+| tc   | Toxic Combination     |
 
-#### Cross-Account Privilege Escalation
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [xa-pe-001](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | `pl-lambda-prod-updater` | Cross-account PassRole privilege escalation to Lambda admin |
-| [xa-pe-002](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Multi-hop cross-account privilege escalation using login profiles |
-| [xa-pe-003](./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | `pl-pathfinder-starting-user-operations` | Cross-account role assumption |
-| [xa-pe-004](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Cross-account Lambda function code update to extract credentials |
 
 #### Intra-Account Privilege Escalation - Attacking other principals
 
@@ -62,13 +75,6 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 | [ia-pe-007](./modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via CreatePolicyVersion on own policy |
 
 
-#### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [xa-sd-001](./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | `s3-sensitive-data-access-user` | From dev to prod via role assumption with S3 access |
-
-
 #### Intra-Account Accessing S3 Bucket through lateral movement without full admin access
 
 | Module | Start | End | Starting Principal | Description |
@@ -77,12 +83,33 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 | [ia-sd-002](./modules/paths/to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
 | [ia-sd-003](./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | 3-hop role assumption chain in prod environment to s3 bucket|
 
+#### Cross-Account Privilege Escalation
+
+| Module | Start | End | Starting Principal | Description |
+|--------|-------|-----|-------------------|-------------|
+| [xa-pe-001](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | `pl-lambda-prod-updater` | Cross-account PassRole privilege escalation to Lambda admin |
+| [xa-pe-002](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Multi-hop cross-account privilege escalation using login profiles |
+| [xa-pe-003](./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | `pl-pathfinder-starting-user-operations` | Cross-account role assumption |
+| [xa-pe-004](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Cross-account Lambda function code update to extract credentials |
+
+
+
+
+#### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
+
+| Module | Start | End | Starting Principal | Description |
+|--------|-------|-----|-------------------|-------------|
+| [xa-sd-001](./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | `s3-sensitive-data-access-user` | From dev to prod via role assumption with S3 access |
+
+
+
+
 
 #### Vulnerable Cloud Resources
 
 | Module | Start | End | Description |
 |--------|-------|-----|-------------|
-| [misc-001](./modules/paths/to-admin/dev/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
+| [tc-001](./modules/paths/to-admin/dev/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
 
 ### Environment Modules
 
@@ -97,22 +124,10 @@ Deploy Pathfinder Labs, and put your skills, and your tooling, to the test!
 
 ### If you already have 3 accounts that you can use for this lab
 
-* **Step 1:** Configure profiles using aws-vault, aws-sso-util 
-* **Step 2:** Configure Pathfinder Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
+* **Step 1:** Configure profiles using aws-vault or aws-sso-util 
+* **Step 2:** Configure Pathfinder Labs' terraform.tfvars with the AWS profiles to use for prod, dev, and ops (You can just configure prod to start if you'd like)
 * **Step 3:** Deploy Pathfinder Labs
 * **Step 4:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
-
-### If you don't yet have 3 accounts that you can use for this lab
-
-* **Step 1, Option A:** If you don't have anything you consider a production workload in your personal playground/testing account, enable AWS Organizations in this account
-* **Step 1, Option B:** If you do have what you consider production workloads in your personal playground/test account, create a new AWS account and enable AWS Organizations in this new account
-* **Step 2:** From within the Organization management account, create 3 accounts dedicated for pathfinder-labs pl-prod, pl-dev, pl-ops (creating accounts is free, and they will all roll up their billing to the mgmt account). 
-* **Step 4:** Set up AWS IAM Identity Center in your org management account
-* **Step 5:** Configure profiles using aws-vault, aws-sso-util 
-* **Step 6:** Configure Pathfinder Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
-* **Step 7:** Deploy Pathfinder Labs
-* **Step 8:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
-
 
 
 ## Resource Naming Convention

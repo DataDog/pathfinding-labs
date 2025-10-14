@@ -34,88 +34,159 @@ resource "random_string" "resource_suffix" {
   special = false
 }
 
-module "dev_resources" {
-  source = "./modules/environments/dev"
-  providers = {
-    aws = aws.dev
-  }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
-}
+##############################################################################
+# ENVIRONMENT MODULES (Always Deployed)
+##############################################################################
 
-module "operations_resources" {
-  source = "./modules/environments/operations"
-  providers = {
-    aws = aws.operations
-  }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  github_repo           = var.github_repo
-  resource_suffix        = random_string.resource_suffix.result
-}
-
-module "prod_resources" {
-  source = "./modules/environments/prod"
+module "prod_environment" {
+  source = "./environments/prod"
   providers = {
     aws = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
-  github_repo            = var.github_repo
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "x_account_from_operations_to_prod_simple_role_assumption" {
-  source = "./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption"  
+module "dev_environment" {
+  source = "./environments/dev"
   providers = {
-    aws.prod = aws.prod
-    aws.operations = aws.operations
-  } 
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
-}
-
-module "x_account_from_dev_to_prod_role_assumption_s3_access" {
-  source = "./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access"
-  providers = {
-    aws.prod = aws.prod
-    aws.dev = aws.dev
+    aws = aws.dev
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "dev_lambda_admin" {
-  source = "./modules/paths/to-admin/dev/dev_lambda_admin"
+module "ops_environment" {
+  source = "./environments/ops"
   providers = {
-    aws.dev = aws.dev
+    aws = aws.operations
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "prod_simple_explicit_role_assumption_chain" {
-  source = "./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain"
+##############################################################################
+# PROD ONE-HOP TO-ADMIN SCENARIOS
+##############################################################################
+
+module "prod_one_hop_to_admin_iam_putrolepolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_putrolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy"
   providers = {
     aws.prod = aws.prod
   }
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
 }
 
-module "prod_role_has_putrolepolicy_on_non_admin_role" {
-  source = "./modules/paths/to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role"
+module "prod_one_hop_to_admin_iam_attachrolepolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_attachrolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-attachrolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  prod_account_id       = var.prod_account_id
+  dev_account_id        = var.dev_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_createpolicyversion" {
+  count  = var.enable_prod_one_hop_to_admin_iam_createpolicyversion ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-createpolicyversion"
+  providers = {
+    aws.prod = aws.prod
+  }
+  prod_account_id       = var.prod_account_id
+  dev_account_id        = var.dev_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_createaccesskey" {
+  count  = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+##############################################################################
+# PROD ONE-HOP TO-BUCKET SCENARIOS
+##############################################################################
+
+module "prod_one_hop_to_bucket_iam_putrolepolicy" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_putrolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-putrolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_bucket_iam_attachrolepolicy" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_attachrolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-attachrolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_bucket_iam_createaccesskey" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-updateassumerolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_bucket_iam_assumerole" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_assumerole ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+##############################################################################
+# PROD MULTI-HOP TO-ADMIN SCENARIOS
+##############################################################################
+
+module "prod_multi_hop_to_admin_putrolepolicy_on_other" {
+  count  = var.enable_prod_multi_hop_to_admin_putrolepolicy_on_other ? 1 : 0
+  source = "./modules/scenarios/prod/multi-hop/to-admin/putrolepolicy-on-other"
   providers = {
     aws.prod = aws.prod
   }
@@ -123,116 +194,142 @@ module "prod_role_has_putrolepolicy_on_non_admin_role" {
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "prod_self_privesc_putRolePolicy" {
-  source = "./modules/paths/to-admin/prod/prod_self_privesc_putRolePolicy"
+module "prod_multi_hop_to_admin_multiple_paths_combined" {
+  count  = var.enable_prod_multi_hop_to_admin_multiple_paths_combined ? 1 : 0
+  source = "./modules/scenarios/prod/multi-hop/to-admin/multiple-paths-combined"
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "prod_self_privesc_attachRolePolicy" {
-  source = "./modules/paths/to-admin/prod/prod_self_privesc_attachRolePolicy"
+##############################################################################
+# PROD MULTI-HOP TO-BUCKET SCENARIOS
+##############################################################################
+
+module "prod_multi_hop_to_bucket_role_chain_to_s3" {
+  count  = var.enable_prod_multi_hop_to_bucket_role_chain_to_s3 ? 1 : 0
+  source = "./modules/scenarios/prod/multi-hop/to-bucket/role-chain-to-s3"
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "prod_self_privesc_createPolicyVersion" {
-  source = "./modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion"
+module "prod_multi_hop_to_bucket_resource_policy_bypass" {
+  count  = var.enable_prod_multi_hop_to_bucket_resource_policy_bypass ? 1 : 0
+  source = "./modules/scenarios/prod/multi-hop/to-bucket/resource-policy-bypass"
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "prod_role_with_multiple_privesc_paths" {
-  source = "./modules/paths/to-admin/prod/prod_role_with_multiple_privesc_paths"
+module "prod_multi_hop_to_bucket_exclusive_resource_policy" {
+  count  = var.enable_prod_multi_hop_to_bucket_exclusive_resource_policy ? 1 : 0
+  source = "./modules/scenarios/prod/multi-hop/to-bucket/exclusive-resource-policy"
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "dev__user_has_createAccessKey_to_admin" {
-  source = "./modules/paths/to-admin/dev/dev__user_has_createAccessKey_to_admin"
+##############################################################################
+# PROD TOXIC-COMBO SCENARIOS
+##############################################################################
+
+module "prod_toxic_combo_public_lambda_with_admin" {
+  count  = var.enable_prod_toxic_combo_public_lambda_with_admin ? 1 : 0
+  source = "./modules/scenarios/prod/toxic-combo/public-lambda-with-admin"
   providers = {
     aws.dev = aws.dev
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "x_account_from_dev_to_prod_role_assumption_passrole_to_lambda_admin" {
-  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin"
-  providers = {
-    aws.dev = aws.dev
-    aws.prod = aws.prod
-  }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
-}
+##############################################################################
+# CROSS-ACCOUNT DEV-TO-PROD SCENARIOS
+##############################################################################
 
-module "x_account_from_dev_to_prod_multi_hop_privesc_both_sides" {
-  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides"
-  providers = {
-    aws.dev = aws.dev
-    aws.prod = aws.prod
-  }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
-}
-
-module "prod_role_has_access_to_bucket_through_resource_policy" {
-  source = "./modules/paths/to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy"
+module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
+  count  = var.enable_cross_account_dev_to_prod_one_hop_simple_role_assumption ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
   providers = {
     aws.prod = aws.prod
+    aws.dev  = aws.dev
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "prod_role_has_exclusive_access_to_bucket_through_resource_policy" {
-  source = "./modules/paths/to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy"
+module "cross_account_dev_to_prod_multi_hop_passrole_lambda_admin" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/passrole-lambda-admin"
   providers = {
+    aws.dev  = aws.dev
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
-module "x_account_from_dev_to_prod_invoke_and_update_on_prod_lambda" {
-  source = "./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda"
+module "cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides"
   providers = {
-    aws.dev = aws.dev
+    aws.dev  = aws.dev
     aws.prod = aws.prod
   }
-  dev_account_id         = var.dev_account_id
-  prod_account_id        = var.prod_account_id
-  operations_account_id  = var.operations_account_id
-  resource_suffix        = random_string.resource_suffix.result
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
 }
 
+module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/lambda-invoke-update"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+}
+
+##############################################################################
+# CROSS-ACCOUNT OPS-TO-PROD SCENARIOS
+##############################################################################
+
+module "cross_account_ops_to_prod_one_hop_simple_role_assumption" {
+  count  = var.enable_cross_account_ops_to_prod_one_hop_simple_role_assumption ? 1 : 0
+  source = "./modules/scenarios/cross-account/ops-to-prod/one-hop/simple-role-assumption"
+  providers = {
+    aws.prod       = aws.prod
+    aws.operations = aws.operations
+  }
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+}

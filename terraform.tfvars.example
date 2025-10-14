@@ -1,24 +1,53 @@
-# Example terraform.tfvars file for Pathfinder-labs
-# Copy this file to terraform.tfvars and modify the values as needed
-#
-# Note: All resources will be created with a random 6-character suffix
-# to prevent conflicts when multiple people deploy this repository.
-# S3 bucket names will follow the pattern: pl-{resource-type}-{account-id}-{random-suffix}
+##############################################################################
+# ACCOUNT CONFIGURATION
+##############################################################################
 
-aws_region  = "us-west-2"
+prod_account_id        = "111111111111"
+dev_account_id         = "222222222222"
+operations_account_id  = "333333333333"
 
-# AWS Account Configuration
-dev_account_aws_profile = "pl-dev.AWSAdministratorAccess"
-dev_account_id = "123456789012"
+prod_account_aws_profile       = "pl-pathfinder-starting-user-prod"
+dev_account_aws_profile        = "pl-pathfinder-starting-user-dev"
+operations_account_aws_profile = "pl-pathfinder-starting-user-operations"
 
-operations_account_aws_profile = "pl-ops.AWSAdministratorAccess"
-operations_account_id = "123456789012"
+# Optional: For OIDC-GitHub challenge
+# github_repo = "your-org/your-repo"
 
-prod_account_aws_profile = "pl-prod.AWSAdministratorAccess"
-prod_account_id = "123456789012"
+##############################################################################
+# SCENARIO ENABLEMENT
+# Set to true to enable a scenario, false to disable
+##############################################################################
 
-# GitHub Repository Configuration (Optional)
-# If you want to enable GitHub OIDC integration, provide your repository name
-# Format: "owner/repository-name"
-# Example: github_repo = "myorg/my-infrastructure-repo"
+# PROD ONE-HOP TO-ADMIN
+enable_prod_one_hop_to_admin_iam_putrolepolicy      = false
+enable_prod_one_hop_to_admin_iam_attachrolepolicy   = false
+enable_prod_one_hop_to_admin_iam_createpolicyversion = false
+enable_prod_one_hop_to_admin_iam_createaccesskey     = false
 
+# PROD ONE-HOP TO-BUCKET
+enable_prod_one_hop_to_bucket_iam_putrolepolicy          = false
+enable_prod_one_hop_to_bucket_iam_attachrolepolicy       = false
+enable_prod_one_hop_to_bucket_iam_createaccesskey        = false
+enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy = false
+enable_prod_one_hop_to_bucket_iam_assumerole             = false
+
+# PROD MULTI-HOP TO-ADMIN
+enable_prod_multi_hop_to_admin_putrolepolicy_on_other  = false
+enable_prod_multi_hop_to_admin_multiple_paths_combined = false
+
+# PROD MULTI-HOP TO-BUCKET
+enable_prod_multi_hop_to_bucket_role_chain_to_s3         = false
+enable_prod_multi_hop_to_bucket_resource_policy_bypass   = false
+enable_prod_multi_hop_to_bucket_exclusive_resource_policy = false
+
+# PROD TOXIC-COMBO
+enable_prod_toxic_combo_public_lambda_with_admin = false
+
+# CROSS-ACCOUNT DEV-TO-PROD
+enable_cross_account_dev_to_prod_one_hop_simple_role_assumption    = false
+enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin   = false
+enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides    = false
+enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update    = false
+
+# CROSS-ACCOUNT OPS-TO-PROD
+enable_cross_account_ops_to_prod_one_hop_simple_role_assumption = false
