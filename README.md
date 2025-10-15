@@ -6,11 +6,10 @@ Pathfinder Labs helps security teams validate their Cloud Security Posture Manag
 
 ## Why does this exist? 
 
-Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?**
+Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?** 
 
-You need tooling that can help you answer these questions. And you a way to deploy intentionally vulnerable resources so that you can test your tooling. That's my we created Pathfinder Labs. 
----
-
+You need tooling that can help you answer these questions. And you need an easy way to deploy intentionally vulnerable resources so that you can test your tooling. That's why we created Pathfinder Labs.
+  
 ##  Who Is This For?
 
 ### **Blue Teamers**
@@ -456,7 +455,7 @@ terraform apply
 
 ---
 
-## 🔍 CSPM Detection Examples
+## CSPM Detection Examples
 
 Each scenario documents what a properly configured CSPM should detect:
 
@@ -513,7 +512,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ---
 
-## 📊 Current Status
+## Current Status
 
 - ✅ **20 scenarios** available
 - ✅ **Single-account support** (works with just one AWS account)
@@ -524,7 +523,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] Web interface for scenario management
 - [ ] Go CLI for easier configuration
@@ -538,8 +537,6 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Additional Resources
 
-- [Scenario Migration Guide](MIGRATION_COMPARISON.md)
-- [Restructure Plan](RESTRUCTURE_PLAN.md)
 - [IAM Vulnerable Project](https://github.com/bishopfox/iam-vulnerable) - Inspiration for single-account paths
 - [MITRE ATT&CK Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)
 
@@ -557,9 +554,3 @@ Built with inspiration from:
 - [IAM Vulnerable](https://github.com/bishopfox/iam-vulnerable) by Bishop Fox
 - [Stratus Red Team](https://github.com/DataDog/stratus-red-team) by Datadog
 - AWS Security community
-
----
-
-**⭐ If you find Pathfinder Labs useful, please star the repository!**
-
-*Made with ☕ for the cloud security community*
