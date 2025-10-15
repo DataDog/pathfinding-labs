@@ -95,7 +95,7 @@ RoleA → iam:PassRole + ec2:RunInstances → RoleB</code></pre>
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/pathfinder-labs.git
+git clone https://github.com/DataDog/pathfinder-labs.git
 cd pathfinder-labs
 
 # 2. Copy and configure your settings
@@ -142,10 +142,13 @@ terraform apply
 Pathfinder Labs organizes attack scenarios into four main categories:
 
 ### **One-Hop Privilege Escalation**
-Single privilege escalation step from one principal to another. These are single-account scenarios within the prod environment.
+Atomic privesc scenarios from one principal to another (of the first princpal granting themselves administrative access).
+These are single-account scenarios within the prod environment.
+These include scenarios where multiple distinct permissions are required
 
 **Examples:**
-- `User → AssumeRole → Role(with iam:PutRolePolicy) → Admin`
+- `User → iam:PutUserPolicy (on self) → Admin`
+- `Role → iam:PutRolePolicy + sts:AssumeRole → AdminRole → Admin`
 - `Role → iam:CreateAccessKey → AdminUser → Admin`
 - `Role → iam:PassRole + lambda:CreateFunction → AdminRole → Admin`
 
@@ -153,15 +156,15 @@ Single privilege escalation step from one principal to another. These are single
 Multiple privilege escalation steps chaining through multiple principals. These are single-account scenarios within the prod environment.
 
 **Examples:**
-- `User → AssumeRole → RoleA → iam:CreateAccessKey → UserB → AssumeRole → AdminRole`
-- `RoleA → PutRolePolicy → RoleB → AssumeRole → RoleC → Sensitive Bucket`
+- `User → sts:AssumeRole → RoleA → iam:CreateAccessKey → UserB → AssumeRole → AdminRole`
+- `RoleA → iam:PutRolePolicy → RoleB → AssumeRole → RoleC → Sensitive Bucket`
 
 ### **Toxic Combinations**
 Multiple misconfigurations that together create critical security risks. These are single-account scenarios within the prod environment.
 
 **Examples:**
 - `Lambda Function (publicly accessible) + Admin Role`
-- `EC2 Instance (internet-facing) + Critical CVE + Admin Role`
+- `EC2 Instance (publicly accessible) + Critical CVE + Admin Role`
 - `S3 Bucket (public) + Sensitive Data + No Encryption`
 
 ### **Cross-Account Privilege Escalation**
@@ -218,18 +221,18 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 
 ### Cross-Account Dev-to-Prod (4 scenarios)
 
-| Scenario | Type | Description |
+| Scenario | Hops | Description |
 |----------|------|-------------|
-| `simple-role-assumption` | One-hop | Direct cross-account role assumption from dev to prod |
-| `passrole-lambda-admin` | Multi-hop | PassRole privilege escalation via Lambda across accounts |
-| `multi-hop-both-sides` | Multi-hop | Privilege escalation in both accounts before crossing |
-| `lambda-invoke-update` | Multi-hop | Lambda function code update to extract prod credentials |
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from dev to prod |
+| `passrole-lambda-admin` | 1 | PassRole privilege escalation via Lambda across accounts |
+| `multi-hop-both-sides` | 3 | Privilege escalation in both accounts before crossing |
+| `lambda-invoke-update` | 2 | Lambda function code update to extract prod credentials |
 
 ### Cross-Account Ops-to-Prod (1 scenario)
 
 | Scenario | Type | Description |
 |----------|------|-------------|
-| `simple-role-assumption` | One-hop | Direct cross-account role assumption from ops to prod |
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from ops to prod |
 
 ---
 
