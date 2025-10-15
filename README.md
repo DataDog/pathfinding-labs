@@ -1,191 +1,559 @@
 # Pathfinder Labs 
 
-Try your hand at identifying and exploiting multiple cross-account AWS privilege escalation paths. 
+**A modular platform for deploying intentionally vulnerable AWS configurations**
 
-Here are the types of attack paths that Pathfinder labs will create
+Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying real-world attack scenarios in isolated AWS environments.
 
-| Start | Hop 1 | Hop 2 | Hop 3 | 
-|--|--|--|--|
-|`Prod:Low-priv`| **`Prod:Admin`** 👑| | |
-|`Operations:Admin` | **`Prod:Admin`** 👑| | | 
-|`Operations:Low-priv` | `Prod:low-priv` | **`Prod:Admin`** 👑| | 
-|`Dev:Low-priv` | `Dev:Admin` | `Prod:low-priv` | **`Prod:Admin`** 👑| 
-|`Dev:Low-priv` | `Ops:Low-priv` | **`Prod:Admin`** 👑| | | 
+## Why does this exist? 
 
+Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?** 
 
-And many more. 
+You need tooling that can help you answer these questions. And you need an easy way to deploy intentionally vulnerable resources so that you can test your tooling. That's why we created Pathfinder Labs.
+  
+##  Who Is This For?
 
+### **Blue Teamers**
+- ✅ **Validate CSPM Detection**: Does your security tooling detect all vulnerable configurations?
+- ✅ **Train Your Team**: Provide hands-on experience with real attack scenarios
+- ✅ **Measure Coverage**: Identify gaps in your security monitoring
 
-## Background
+### **Red Teamers**
+- ✅ **Practice IAM Exploitation**: Sharpen your privilege escalation skills
+- ✅ **Test Your Tooling**: Does your toolset find all the paths?
+- ✅ **Build Attack Chains**: Learn complex multi-hop and cross-account techniques
+- ✅ **Demonstrate Risk**: Show stakeholders real-world attack scenarios
 
-Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%?
-These are important questions to ask. In fact, you can ask the same question in another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?**
+## What types of paths are supported?
 
-There are tools that will help you find AWS privilege escalation paths, but most of them do this at the account level. **But what about cross-account privilege escalation paths?** Are you sure you are finding all of them before they are exploited? 
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;">Path Type</th>
+      <th style="text-align:left;">Attack Example(s)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Single-Hop<br>IAM Privesc to Admin</strong></td>
+      <td>
+        <pre><code>RoleA → iam:CreateAccessKey → RoleB
+RoleA → iam:PassRole + ec2:RunInstances → RoleB</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Single-Hop<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>RoleA → iam:CreateAccessKey → RoleB → Sensitive-Bucket
+RoleA → iam:PassRole + ec2:RunInstances → RoleB</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Hop<br>IAM Privesc to Admin</strong></td>
+      <td>
+        <pre><code>RoleA → iam:CreateAccessKey → RoleB → sts:AssumeRole → RoleC</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Hop<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>RoleA → iam:CreateAccessKey → RoleB → sts:AssumeRole → RoleC → Sensitive-Bucket</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Account<br>IAM Privesc to Admin</strong></td>
+      <td>
+        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC
+</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Account<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC → Account2:Sensitive-Bucket</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Toxic Combinations</strong></td>
+      <td>
+        <ul>
+          <li><code>Lambda function is publicly accessible and has an administrative role attached</code></li>
+          <li><code>S3 bucket publicly exposed with sensitive data</code></li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-Deploy Pathfinder Labs, and put your skills, and your tooling, to the test! 
+## Quick Start
 
-## Access Path Modules
+### Prerequisites
+- One or more AWS accounts (playground/sandbox accounts recommended)
+- AWS CLI configured with appropriate profiles
+- Terraform 1.0+
 
-| Key  | Description           |
-|------|-----------------------|
-| xa   | Cross-Account         |
-| ia   | Intra-Account         | 
-| pe   | Privilege Escalation  | 
-| sd   | Sensitive Data Access |
-| misc | Miscellaneous         |
-
-#### Cross-Account Privilege Escalation
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [xa-pe-001](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin/README.md) | dev | prod | `pl-lambda-prod-updater` | Cross-account PassRole privilege escalation to Lambda admin |
-| [xa-pe-002](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-multi-hop-privesc-both-sides/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Multi-hop cross-account privilege escalation using login profiles |
-| [xa-pe-003](./modules/paths/to-admin/x-account/x-account-from-operations-to-prod-simple-role-assumption/README.md) | operations | prod | `pl-pathfinder-starting-user-operations` | Cross-account role assumption |
-| [xa-pe-004](./modules/paths/to-admin/x-account/x-account-from-dev-to-prod-invoke-and-update-on-prod-lambda/README.md) | dev | prod | `pl-pathfinder-starting-user-dev` | Cross-account Lambda function code update to extract credentials |
-
-#### Intra-Account Privilege Escalation - Attacking other principals
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [ia-pe-001](./modules/paths/to-admin/prod/prod_role_has_putrolepolicy_on_non_admin_role/README.md) | prod | prod | `prod-role-a-non-admin` | PutRolePolicy privilege escalation to admin access |
-| [ia-pe-002](./modules/paths/to-admin/prod/prod_role_with_multiple_privesc_paths/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Multiple privilege escalation paths via EC2, Lambda, and CloudFormation |
-| [ia-pe-003](./modules/paths/to-admin/dev/dev__user_has_createAccessKey_to_admin/README.md) | dev | dev | `pl-Adam` | User privilege escalation via CreateAccessKey on admin user |
-
-
-#### Intra-Account Privilege Escalation - Self-escalation
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [ia-pe-005](./modules/paths/to-admin/prod/prod_self_privesc_putRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via PutRolePolicy on own role |
-| [ia-pe-006](./modules/paths/to-admin/prod/prod_self_privesc_attachRolePolicy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via AttachRolePolicy on own role |
-| [ia-pe-007](./modules/paths/to-admin/prod/prod_self_privesc_createPolicyVersion/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Self-privilege escalation via CreatePolicyVersion on own policy |
-
-
-#### Cross-Account Accessing S3 Bucket through lateral movement without full admin access
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [xa-sd-001](./modules/paths/to-bucket/x-account/x-account-from-dev-to-prod-role-assumption-s3-access/README.md) | dev | prod | `s3-sensitive-data-access-user` | From dev to prod via role assumption with S3 access |
-
-
-#### Intra-Account Accessing S3 Bucket through lateral movement without full admin access
-
-| Module | Start | End | Starting Principal | Description |
-|--------|-------|-----|-------------------|-------------|
-| [ia-sd-001](./modules/paths/to-bucket/prod/prod_role_has_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | S3 bucket access through resource policy bypassing IAM restrictions |
-| [ia-sd-002](./modules/paths/to-bucket/prod/prod_role_has_exclusive_access_to_bucket_through_resource_policy/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | Exclusive S3 bucket access through restrictive resource policy with explicit deny for others |
-| [ia-sd-003](./modules/paths/to-bucket/prod/prod_simple_explicit_role_assumption_chain/README.md) | prod | prod | `pl-pathfinder-starting-user-prod` | 3-hop role assumption chain in prod environment to s3 bucket|
-
-
-#### Vulnerable Cloud Resources
-
-| Module | Start | End | Description |
-|--------|-------|-----|-------------|
-| [misc-001](./modules/paths/to-admin/dev/dev_lambda_admin/README.md) | dev | dev | Lambda admin access patterns in dev environment |
-
-### Environment Modules
-
-| Module | Description |
-|--------|-------------|
-| [dev](./modules/environments/dev/README.md) | Development environment resources |
-| [prod](./modules/environments/prod/README.md) | Production environment resources |
-| [operations](./modules/environments/operations/README.md) | Operations environment resources |
-
-
-## Quick Start (Going to turn this into a script)
-
-### If you already have 3 accounts that you can use for this lab
-
-* **Step 1:** Configure profiles using aws-vault, aws-sso-util 
-* **Step 2:** Configure Pathfinder Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
-* **Step 3:** Deploy Pathfinder Labs
-* **Step 4:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
-
-### If you don't yet have 3 accounts that you can use for this lab
-
-* **Step 1, Option A:** If you don't have anything you consider a production workload in your personal playground/testing account, enable AWS Organizations in this account
-* **Step 1, Option B:** If you do have what you consider production workloads in your personal playground/test account, create a new AWS account and enable AWS Organizations in this new account
-* **Step 2:** From within the Organization management account, create 3 accounts dedicated for pathfinder-labs pl-prod, pl-dev, pl-ops (creating accounts is free, and they will all roll up their billing to the mgmt account). 
-* **Step 4:** Set up AWS IAM Identity Center in your org management account
-* **Step 5:** Configure profiles using aws-vault, aws-sso-util 
-* **Step 6:** Configure Pathfinder Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
-* **Step 7:** Deploy Pathfinder Labs
-* **Step 8:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
-
-
-
-## Resource Naming Convention
-
-All resources created by Pathfinder-labs follow a consistent naming pattern to prevent conflicts when multiple people deploy the repository:
-
-- **Prefix**: All resources use the `pl-` prefix (Pathfinder Labs)
-- **Random Suffix**: Globally namespaced resources (like S3 buckets) include a 6-character random alphanumeric suffix
-- **Format**: `pl-{resource-type}-{account-id}-{random-suffix}`
-
-This ensures that multiple deployments can coexist without resource name conflicts.
-
-## Pathfinder Starting Users
-
-The Pathfinder-labs project creates standardized starting users for each environment to serve as the initial access point for privilege escalation scenarios:
-
-### **Available Users:**
-- **`pl-pathfinder-starting-user-dev`** - Development environment starting user
-- **`pl-pathfinder-starting-user-prod`** - Production environment starting user  
-- **`pl-pathfinder-starting-user-operations`** - Operations environment starting user
-
-### **Permissions:**
-Each pathfinder starting user has minimal permissions:
-- `sts:GetCallerIdentity` - Can identify themselves
-- `iam:GetUser` - Can get their own user information
-
-### **Creating AWS Profiles:**
-After running `terraform apply`, create AWS profiles for each environment:
+### Setup in 5 Steps
 
 ```bash
+# 1. Clone the repository
+git clone https://github.com/DataDog/pathfinder-labs.git
+cd pathfinder-labs
+
+# 2. Copy and configure your settings
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your account IDs and AWS profiles
+
+# 3. Enable specific scenarios (edit terraform.tfvars)
+enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+
+# 4. Deploy
+terraform init
+terraform apply
+
+# 5. Create pathfinder profiles for testing
 ./create_pathfinder_profiles.sh
 ```
 
-This creates three profiles:
-- `pl-pathfinder-starting-user-dev` - Development environment
-- `pl-pathfinder-starting-user-prod` - Production environment
-- `pl-pathfinder-starting-user-operations` - Operations environment
+---
 
-### **Usage in Scenarios:**
-- **User-based scenarios**: Use the pathfinder starting user directly
-- **Role-based scenarios**: Initial roles trust the pathfinder starting user instead of `:root`
-- **Cross-account scenarios**: Each environment's pathfinder user can assume trusted roles
+## How It Works
 
-## Usage
+**Modular Architecture**: Each attack scenario is a self-contained, independently deployable module that can be enabled or disabled via boolean flags.
 
-Each module can be used independently to test or implement specific cross-account access patterns. The modules are designed to be reusable and can be combined to create more complex access patterns.
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. Select Scenarios      (terraform.tfvars)            │
+│     enable_scenario_x = true                            │
+├─────────────────────────────────────────────────────────┤
+│  2. Deploy                (terraform apply)             │
+│     Creates vulnerable resources in your AWS account    │
+├─────────────────────────────────────────────────────────┤
+│  3. Test                  (demo_attack.sh)              │
+│     Exploit OR detect with your CSPM                    │
+├─────────────────────────────────────────────────────────┤
+│  4. Clean Up              (terraform apply)             │
+│     enable_scenario_x = false                           │
+└─────────────────────────────────────────────────────────┘
+```
 
-To use a module:
+---
 
-1. Add the module to your root `main.tf`:
+## Scenario Taxonomy
+
+Pathfinder Labs organizes attack scenarios into four main categories:
+
+### **One-Hop Privilege Escalation**
+Atomic privesc scenarios from one principal to another (of the first princpal granting themselves administrative access).
+These are single-account scenarios within the prod environment.
+These include scenarios where multiple distinct permissions are required
+
+**Examples:**
+- `User → iam:PutUserPolicy (on self) → Admin`
+- `Role → iam:PutRolePolicy + sts:AssumeRole → AdminRole → Admin`
+- `Role → iam:CreateAccessKey → AdminUser → Admin`
+- `Role → iam:PassRole + lambda:CreateFunction → AdminRole → Admin`
+
+### **Multi-Hop Privilege Escalation**
+Multiple privilege escalation steps chaining through multiple principals. These are single-account scenarios within the prod environment.
+
+**Examples:**
+- `User → sts:AssumeRole → RoleA → iam:CreateAccessKey → UserB → AssumeRole → AdminRole`
+- `RoleA → iam:PutRolePolicy → RoleB → AssumeRole → RoleC → Sensitive Bucket`
+
+### **Toxic Combinations**
+Multiple misconfigurations that together create critical security risks. These are single-account scenarios within the prod environment.
+
+**Examples:**
+- `Lambda Function (publicly accessible) + Admin Role`
+- `EC2 Instance (publicly accessible) + Critical CVE + Admin Role`
+- `S3 Bucket (public) + Sensitive Data + No Encryption`
+
+### **Cross-Account Privilege Escalation**
+Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). These scenarios demonstrate how compromise in one account can lead to access in another.
+
+**Examples:**
+- `Dev:User → AssumeRole → Prod:Role → Admin`
+- `Dev:Role → Lambda:InvokeFunction → Prod:Lambda → Extract Credentials → Prod:Admin`
+- `Ops:User → AssumeRole → Prod:Role → S3:SensitiveBucket`
+
+---
+
+## Available Scenarios
+
+### One-Hop to Admin (4 scenarios)
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-putrolepolicy` | Self-modification | Role can modify its own inline policy to grant admin access |
+| `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself for escalation |
+| `iam-createpolicyversion` | Policy versioning | Role can create new policy versions with elevated permissions |
+| `iam-createaccesskey` | Credential creation | Role can create access keys for an admin user |
+
+### One-Hop to Bucket (5 scenarios)
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-putrolepolicy` | Self-modification | Role can grant itself S3 bucket access via inline policy |
+| `iam-attachrolepolicy` | Self-modification | Role can attach S3 access policies to itself |
+| `iam-createaccesskey` | Credential creation | Role can create keys for user with bucket access |
+| `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policies to assume bucket-access roles |
+| `sts-assumerole` | Direct assumption | Role can directly assume another role with bucket permissions |
+
+### Multi-Hop to Admin (2 scenarios)
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `multiple-paths-combined` | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
+| `putrolepolicy-on-other` | 2 | Role can modify another role's policy to gain admin access |
+
+### Multi-Hop to Bucket (3 scenarios)
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `resource-policy-bypass` | 2 | Access bucket through resource policy bypassing IAM restrictions |
+| `exclusive-resource-policy` | 2 | Exclusive bucket access via restrictive resource policy |
+| `role-chain-to-s3` | 3 | Three-hop role assumption chain ending at S3 bucket |
+
+### Toxic Combo (1 scenario)
+
+| Scenario | Risk Level | Description |
+|----------|------------|-------------|
+| `public-lambda-with-admin` | 🔴 Critical | Publicly accessible Lambda function with administrative role |
+
+### Cross-Account Dev-to-Prod (4 scenarios)
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from dev to prod |
+| `passrole-lambda-admin` | 1 | PassRole privilege escalation via Lambda across accounts |
+| `multi-hop-both-sides` | 3 | Privilege escalation in both accounts before crossing |
+| `lambda-invoke-update` | 2 | Lambda function code update to extract prod credentials |
+
+### Cross-Account Ops-to-Prod (1 scenario)
+
+| Scenario | Type | Description |
+|----------|------|-------------|
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from ops to prod |
+
+---
+
+## Configuration
+
+### Enabling Scenarios
+
+Edit your `terraform.tfvars` file:
+
 ```hcl
-module "module_name" {
-  source = "./modules/module_name"
-  providers = {
-    aws.prod = aws.prod
-    aws.dev = aws.dev
-    aws.operations = aws.operations
-  }
-  dev_account_id = var.dev_account_id
-  prod_account_id = var.prod_account_id
-  operations_account_id = var.operations_account_id
+# Account Configuration
+prod_account_id        = "111111111111"
+dev_account_id         = "222222222222"
+operations_account_id  = "333333333333"
+
+prod_account_aws_profile       = "my-prod-profile"
+dev_account_aws_profile        = "my-dev-profile"
+operations_account_aws_profile = "my-ops-profile"
+
+# Enable specific scenarios
+enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+enable_prod_one_hop_to_admin_iam_createaccesskey = true
+enable_prod_toxic_combo_public_lambda_with_admin = true
+
+# Keep everything else disabled
+enable_prod_multi_hop_to_bucket_role_chain_to_s3 = false
+# ... etc
+```
+
+### Single Account Mode
+
+**You only need ONE AWS account to use most of Pathfinder Labs!**
+
+All single-account scenarios deploy to the `prod` account. The `dev` and `ops` accounts are only required for cross-account scenarios.
+
+```hcl
+# Minimal configuration (single account)
+prod_account_id          = "111111111111"
+prod_account_aws_profile = "my-playground-account"
+
+# These are optional and only needed for cross-account scenarios
+# dev_account_id         = ""
+# operations_account_id  = ""
+```
+
+---
+
+## Running Attack Demonstrations
+
+Each scenario includes a demonstration script that shows how to exploit the vulnerability:
+
+```bash
+# Navigate to a specific scenario
+cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+
+# Run the demonstration
+./demo_attack.sh
+
+# Clean up attack artifacts (keeps infrastructure)
+./cleanup_attack.sh
+```
+
+The demo scripts provide:
+- ✅ Step-by-step exploitation walkthrough
+- ✅ AWS CLI commands with explanations
+- ✅ Real-time verification of privilege escalation
+- ✅ Color-coded output for clarity
+
+---
+
+## Security Practices
+
+### Pathfinder Starting Users
+
+Each environment has a dedicated starting user with **minimal permissions**:
+
+- **`pl-pathfinder-starting-user-prod`** - Production starting point
+- **`pl-pathfinder-starting-user-dev`** - Development starting point  
+- **`pl-pathfinder-starting-user-operations`** - Operations starting point
+
+**Permissions:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity",
+        "iam:GetUser"
+      ],
+      "Resource": "*"
+    }
+  ]
 }
 ```
 
-2. Configure the required variables in your `terraform.tfvars` file
-3. Run `terraform init` and `terraform apply`
-4. Create pathfinder profiles: `./create_pathfinder_profiles.sh`
+### Cleanup Users
+
+Each environment includes an admin cleanup user for easy teardown:
+- **`pl-admin-user-for-cleanup-scripts`**
+
+---
+
+## Resource Naming Convention
+
+All resources follow a consistent naming pattern:
+
+```
+pl-{resource-description}-{context}
+
+Examples:
+- pl-pathfinder-starting-user-prod
+- pl-cak-admin (CreateAccessKey Admin)
+- pl-prod-one-hop-putrolepolicy-role
+```
+
+Globally unique resources (S3 buckets) include a random suffix:
+```
+pl-{resource}-{account-id}-{random-6-char}
+
+Example:
+- pl-sensitive-data-954976316246-a3f9x2
+```
+
+---
+
+## Architecture
+
+### Directory Structure
+
+```
+pathfinder-labs/
+├── environments/              # Base infrastructure (always deployed)
+│   ├── prod/                 # Production environment base resources
+│   ├── dev/                  # Development environment base resources
+│   └── operations/           # Operations environment base resources
+│
+├── modules/scenarios/        # Attack scenarios (opt-in via flags)
+│   ├── prod/
+│   │   ├── one-hop/
+│   │   │   ├── to-admin/    # Single-step privilege escalation to admin
+│   │   │   └── to-bucket/   # Single-step escalation to S3 access
+│   │   ├── multi-hop/
+│   │   │   ├── to-admin/    # Multi-step escalation to admin
+│   │   │   └── to-bucket/   # Multi-step escalation to S3 access
+│   │   └── toxic-combo/     # Attack paths with multiple conditions
+│   └── cross-account/
+│       ├── dev-to-prod/     # Dev → Prod attack paths
+│       └── ops-to-prod/     # Ops → Prod attack paths
+│
+├── main.tf                   # Root module with conditional instantiation
+├── variables.tf              # Boolean flags for each scenario
+├── outputs.tf                # Credential outputs for testing
+└── terraform.tfvars          # Your configuration (gitignored)
+```
+
+### Module Structure
+
+Each scenario follows a standard structure:
+
+```
+scenario-name/
+├── main.tf              # Terraform resources
+├── variables.tf         # Input variables
+├── outputs.tf           # Output values
+├── README.md            # Documentation with mermaid diagrams
+├── demo_attack.sh       # Exploitation demonstration
+└── cleanup_attack.sh    # Artifact cleanup script
+```
+
+---
+
+## 🎯 Use Cases
+
+### 1. CSPM Validation
+```bash
+# Deploy a known vulnerability
+enable_prod_toxic_combo_public_lambda_with_admin = true
+terraform apply
+
+# Check if your CSPM detects it
+# Expected alerts:
+# - Lambda function publicly accessible
+# - Lambda function has administrative permissions
+# - Critical risk: Toxic combination detected
+```
+
+### 2. Red Team Training
+```bash
+# Deploy privilege escalation paths
+enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+terraform apply
+
+# Practice exploitation
+cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+./demo_attack.sh
+
+# Learn the technique, modify the script, try variations
+```
+
+### 3. Security Tool Testing
+```bash
+# Deploy multiple scenarios
+enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+enable_prod_one_hop_to_admin_iam_createaccesskey = true
+enable_prod_multi_hop_to_admin_multiple_paths_combined = true
+terraform apply
+
+# Test if your tooling finds all paths
+# Compare results across different security tools
+```
+
+### 4. Incident Response Practice
+```bash
+# Create a realistic compromise scenario
+enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update = true
+terraform apply
+
+# Practice detection, investigation, and response
+# Use CloudTrail, GuardDuty, and other AWS security services
+```
+
+---
+
+## CSPM Detection Examples
+
+Each scenario documents what a properly configured CSPM should detect:
+
+### Example: iam-createaccesskey Scenario
+
+**Expected CSPM Alerts:**
+- ⚠️ IAM role can create access keys for privileged users
+- ⚠️ Privilege escalation path detected
+- ⚠️ Role has permissions on admin user
+- ⚠️ Potential for credential theft
+
+**MITRE ATT&CK Mapping:**
+- **Tactic**: Privilege Escalation, Persistence
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+
+---
 
 ## Contributing
 
-When adding new modules:
-1. Create a new directory under `modules/`
-2. Implement the required resources
-3. Create a README.md in the module directory documenting the access paths using mermaid graph syntax
-4. Include any specific usage instructions or requirements
-5. Add the module to this table of contents
+We welcome contributions! To add a new scenario:
+
+1. **Create the scenario directory** following the standard structure
+2. **Implement resources** with proper provider configuration
+3. **Write documentation** including mermaid diagrams and CSPM detection notes
+4. **Create demo scripts** showing the exploitation technique
+5. **Add to main.tf** with conditional instantiation
+6. **Add boolean variable** to variables.tf
+7. **Update terraform.tfvars.example**
+8. **Test thoroughly** in an isolated AWS account
+9. **Submit a pull request** with clear description
+
+See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
+
+---
+
+## Important Warnings
+
+### **ONLY USE IN PLAYGROUND/SANDBOX ACCOUNTS**
+
+- ❌ **NEVER** deploy to production AWS accounts
+- ❌ **NEVER** deploy to accounts with real customer data
+- ❌ **NEVER** deploy to accounts with production workloads
+- ✅ **ALWAYS** use isolated playground/sandbox accounts
+- ✅ **ALWAYS** tear down resources when finished
+- ✅ **ALWAYS** monitor costs and set billing alarms
+
+### Security Best Practices
+
+1. **Use SCPs** to prevent accidental production deployment
+2. **Set up billing alerts** to catch unexpected charges
+3. **Use separate AWS Organizations** for testing
+4. **Review each scenario** before enabling
+5. **Document your testing** for compliance and audit purposes
+
+---
+
+## Current Status
+
+- ✅ **20 scenarios** available
+- ✅ **Single-account support** (works with just one AWS account)
+- ✅ **Multi-account support** (optional cross-account scenarios)
+- ✅ **Modular architecture** (enable/disable any scenario)
+- ✅ **Demo scripts** for all scenarios
+- ✅ **CSPM detection guidance** included
+
+---
+
+## Roadmap
+
+- [ ] Web interface for scenario management
+- [ ] Go CLI for easier configuration
+- [ ] More toxic combination scenarios
+- [ ] GCP and Azure support
+- [ ] Integration with popular CSPM tools
+- [ ] Automated testing framework
+- [ ] Video walkthroughs for each scenario
+
+---
+
+## Additional Resources
+
+- [IAM Vulnerable Project](https://github.com/bishopfox/iam-vulnerable) - Inspiration for single-account paths
+- [MITRE ATT&CK Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)
+
+---
+
+## License
+
+[Add your license here]
+
+---
+
+## Acknowledgments
+
+Built with inspiration from:
+- [IAM Vulnerable](https://github.com/bishopfox/iam-vulnerable) by Bishop Fox
+- [Stratus Red Team](https://github.com/DataDog/stratus-red-team) by Datadog
+- AWS Security community
