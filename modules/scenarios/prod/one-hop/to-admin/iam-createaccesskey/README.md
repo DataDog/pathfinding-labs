@@ -1,6 +1,6 @@
 # One-Hop Privilege Escalation: iam:CreateAccessKey
 
-**Scenario Type:** One-Hop (Single Principal Traversal)  
+**Scenario Type:** One-Hop  
 **Target:** Admin Access  
 **Technique:** Access key creation for admin user via iam:CreateAccessKey
 
@@ -8,54 +8,74 @@
 
 This scenario demonstrates a privilege escalation vulnerability where a role has permission to create access keys for an administrator user. The attacker can assume a role with `iam:CreateAccessKey` permission on an admin user, create new access keys for that user, and then use those credentials to gain administrator access.
 
-## Attack Path
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-cak-adam`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-cak-admin`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-cak-adam]
-    B -->|iam:CreateAccessKey| C[prod:iam:user:pl-cak-admin]
-    C -->|Administrator Access| D[Full Admin Permissions]
+    A[pl-cak-adam] -->|iam:CreateAccessKey| B[pl-cak-admin]
+    B -->|Administrator Access| C[Effective Administrator]
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. **Initial Access**: Assume the role `pl-cak-adam` using the pathfinder starting user
-2. **Create Access Keys**: Use `iam:CreateAccessKey` to create new access keys for the admin user `pl-cak-admin`
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-cak-adam` to begin the scenario
+2. **Create Access Keys**: `pl-cak-adam` uses `iam:CreateAccessKey` to create new access keys for the admin user `pl-cak-admin`
 3. **Switch Context**: Configure AWS CLI to use the newly created access keys
 4. **Verification**: Verify administrator access with the new credentials
 
-## Resources Created
+### Scenario specific resources created
 
-- **Admin User**: `pl-cak-admin`
-  - Permissions: Administrator Access (AWS managed policy)
-  
-- **Privilege Escalation Role**: `pl-cak-adam`
-  - Trusts: `pl-pathfinder-starting-user-prod`
-  - Permissions: `iam:CreateAccessKey` on `pl-cak-admin`
+| ARN | Purpose | 
+| -- | -- | 
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-cak-adam` | Starting principal |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-createaccesskey-policy` | Allows `iam:createaccesskey` on `pl-cak-admin` only | 
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-cak-admin` | Destination principal |
 
-- **Policy**: `pl-prod-one-hop-createaccesskey-policy`
-  - Allows: `iam:CreateAccessKey` on the admin user's ARN
+## Executing the attack 
 
-## CSPM Detection
+### Using the automated demo_attack.sh 
 
-This scenario should trigger alerts for:
-- IAM role with CreateAccessKey permissions on privileged users
-- Overly permissive iam:CreateAccessKey permissions
-- Privilege escalation path detected
-- Role can create credentials for admin users
+To demonstrate the privilege escalation path, run the provided demo script:
 
-## MITRE ATT&CK Mapping
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+./demo_attack.sh
+```
+
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
+
+### Cleaning up the attack artifacts
+
+After demonstrating the attack, clean up the inline policy added during the demo:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+./cleanup_attack.sh
+```
+
+## Detection and prevention 
+
+
+### MITRE ATT&CK Mapping
 
 - **Tactic**: Privilege Escalation, Persistence
 - **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
 - **Sub-technique**: Creating additional credentials for privileged accounts
 
-## Usage
 
-See `demo_attack.sh` for a complete demonstration of this attack path.
-See `cleanup_attack.sh` to revert any changes made during the demonstration.
-
-## Prevention
+## Prevention recommendations  
 
 - Avoid granting `iam:CreateAccessKey` permissions on privileged users
 - Use resource-based conditions to restrict which users can have keys created

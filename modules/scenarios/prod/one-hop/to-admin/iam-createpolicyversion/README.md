@@ -1,82 +1,84 @@
-# Prod Self Privilege Escalation via CreatePolicyVersion Module
+# One-Hop Privilege Escalation: iam:CreatePolicyVersion
 
-This module creates a role that can escalate its own privileges by creating new versions of policies attached to itself using `iam:CreatePolicyVersion` and `iam:SetDefaultPolicyVersion`.
+**Scenario Type:** One-Hop
+**Target:** Admin Access
+**Technique:** Self-modification via iam:CreatePolicyVersion
 
-## Access Path
+## Overview
 
-The attack path is:
-1. `pl-pathfinder_starting_user_basic` assumes `pl-prod-self-privesc-createPolicyVersion-role-1`
-2. The role can then use `iam:CreatePolicyVersion` to create a new version of its own policy with elevated permissions
-3. The role uses `iam:SetDefaultPolicyVersion` to make the new version active
-4. The role now has the elevated permissions defined in the new policy version
+This scenario demonstrates a privilege escalation vulnerability where a role can modify its own permissions by creating new versions of policies attached to itself. The attacker starts with minimal permissions but can grant themselves administrator access by creating a new policy version with elevated permissions.
 
-## Architecture
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-createPolicyVersion-role-1`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-prod-self-privesc-createPolicyVersion-role-1]
-    B -->|iam:CreatePolicyVersion| C[prod:iam:policy:prod-self-privesc-createPolicyVersion-policy]
-    B -->|iam:SetDefaultPolicyVersion| C
-    C -->|new version| D[Administrator Access]
+    A[pl-prod-self-privesc-createPolicyVersion-role-1] -->|iam:CreatePolicyVersion| B[pl-prod-self-privesc-createPolicyVersion-policy]    
+    B -->|Administrator Access| C[Effective Administrator]
 ```
 
-## Resources Created
+### Attack Steps
 
-- **Role**: `pl-prod-self-privesc-createPolicyVersion-role-1`
-  - Trusts: `pl-pathfinder-starting-user-prod` user
-  - Permissions: `iam:CreatePolicyVersion` and `iam:SetDefaultPolicyVersion` on its own policy
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-self-privesc-createPolicyVersion-role-1` to begin the scenario
+2. **Create New Policy Version**: `pl-prod-self-privesc-createPolicyVersion-role-1` uses `iam:CreatePolicyVersion` to create a new version of its attached policy with administrator permissions
+3. **Verification**: Verify administrator access with the modified policy
 
-- **Policy**: `pl-prod-self-privesc-createPolicyVersion-policy`
-  - Allows: `iam:CreatePolicyVersion` and `iam:SetDefaultPolicyVersion` on the policy itself
-  - Resource: The policy's own ARN (not wildcard)
+### Scenario specific resources created
 
-## Usage
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-createPolicyVersion-role-1` | Starting principal with policy versioning capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-self-privesc-createPolicyVersion-policy` | Allows `iam:CreatePolicyVersion`, and `iam:ListPolicyVersions` on itself |
 
-This module demonstrates a self-privilege escalation attack where a role can modify its own permissions by creating new policy versions. This is particularly dangerous because:
+## Executing the attack
 
-1. The role starts with minimal permissions
-2. It can create new versions of its own policy with any permissions
-3. It can set the new version as the default to activate the permissions
-4. The attack is self-contained and doesn't require external resources
+### Using the automated demo_attack.sh
 
-## Demo Scripts
+To demonstrate the privilege escalation path, run the provided demo script:
 
-### demo_attack.sh
-A demo script that shows how to:
-1. Assume the role using the pathfinder starting user credentials
-2. Use `aws iam create-policy-version` to create a new policy version with admin permissions
-3. Use `aws iam set-default-policy-version` to activate the new version
-4. Verify the escalation worked
-5. Clean up by reverting to the original policy version
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-createpolicyversion
+./demo_attack.sh
+```
 
-### cleanup_attack.sh
-A cleanup script that removes any changes made by the demo script:
-1. Assumes the role using the pathfinder starting user credentials
-2. Reverts to the original policy version created by Terraform
-3. Deletes any additional policy versions created during the demo
-4. Verifies the role is back to its original state
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
 
-## Security Implications
+### Cleaning up the attack artifacts
 
-This pattern is dangerous because:
-- It allows privilege escalation without external dependencies
-- The role can modify its own permissions through policy versioning
-- It can gain administrator access through policy modification
-- It's difficult to detect as it appears as normal policy management
-- It bypasses typical privilege escalation detection mechanisms
-- Policy versioning is often overlooked in security monitoring
+After demonstrating the attack, clean up the policy versions created during the demo:
 
-## Difference from Other Self-Privilege Escalation Modules
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-createpolicyversion
+./cleanup_attack.sh
+```
 
-This module uses `iam:CreatePolicyVersion` instead of other methods:
-- **PutRolePolicy**: Creates inline policies directly on the role
-- **AttachRolePolicy**: Attaches existing managed policies to the role
-- **CreatePolicyVersion**: Modifies existing managed policies by creating new versions
+## Detection and prevention
 
-## Policy Versioning Attack
 
-The attack works by:
-1. Creating a new version of the existing policy with elevated permissions
-2. Setting the new version as the default (active) version
-3. The role immediately gains the new permissions
-4. The attack can be hidden by reverting to the original version after use
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Sub-technique**: Abuse of IAM Permissions
+
+
+## Prevention recommendations
+
+- Avoid granting `iam:CreatePolicyVersion` permissions on policies attached to the same role
+- If required, use resource-based conditions to restrict which policies can be modified
+- Implement SCPs to prevent policy version manipulation for privilege escalation
+- Monitor CloudTrail for `CreatePolicyVersion` API calls, especially when roles modify their own policies
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
+- Implement alerting on policy version changes for critical roles
+- Limit the number of policy versions that can exist (AWS allows up to 5)

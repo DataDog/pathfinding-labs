@@ -52,6 +52,14 @@ echo -e "${YELLOW}Step 3: Checking current permissions${NC}"
 echo "Current caller identity:"
 aws sts get-caller-identity
 
+echo ""
+echo "Verifying we don't have admin permissions yet..."
+if aws iam list-users --max-items 1 &> /dev/null; then
+    echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
+else
+    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (no admin access yet)${NC}"
+fi
+
 
 echo ""
 echo -e "${YELLOW}Step 4: Creating new policy version with admin permissions (self-privilege escalation)${NC}"

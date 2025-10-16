@@ -179,7 +179,7 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 
 ## Available Scenarios
 
-### One-Hop to Admin (4 scenarios)
+### One-Hop to Admin (6 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
@@ -187,6 +187,8 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself for escalation |
 | `iam-createpolicyversion` | Policy versioning | Role can create new policy versions with elevated permissions |
 | `iam-createaccesskey` | Credential creation | Role can create access keys for an admin user |
+| `sts-assumerole` | Direct assumption | Role can directly assume another role with admin permissions |
+| `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policy of admin role to grant access |
 
 ### One-Hop to Bucket (5 scenarios)
 
@@ -517,7 +519,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **20 scenarios** available
+- ✅ **21 scenarios** available
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)

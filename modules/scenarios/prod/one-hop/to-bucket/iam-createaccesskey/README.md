@@ -1,43 +1,90 @@
-# One-Hop Privilege Escalation: iam:CreateAccessKey to S3 Bucket
+# One-Hop Privilege Escalation: iam:CreateAccessKey
 
-**Scenario Type:** One-Hop (Single Principal Traversal) - User-Based  
-**Target:** S3 Bucket Access  
-**Technique:** iam:CreateAccessKey on a privileged user
+**Scenario Type:** One-Hop
+**Target:** S3 Bucket Access
+**Technique:** Access key creation for bucket-access user via iam:CreateAccessKey
 
 ## Overview
 
-This scenario demonstrates privilege escalation where an attacker with `iam:CreateAccessKey` permission can create access keys for a privileged user, then use those credentials to access a sensitive S3 bucket.
+This scenario demonstrates a privilege escalation vulnerability where a user has permission to create access keys for another user with S3 bucket access. The attacker creates new access keys for the privileged user and uses those credentials to access sensitive S3 buckets.
 
-## Attack Path
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-createaccesskey-bucket-privesc-user`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-createaccesskey-bucket-access-user`
+- `arn:aws:s3:::pl-prod-one-hop-createaccesskey-bucket-ACCOUNT_ID-SUFFIX`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:privesc-user] -->|iam:CreateAccessKey| B[prod:iam:user:bucket-access-user]
-    A -->|use new credentials| B
-    B -->|s3:GetObject| C[prod:s3:target-bucket]
+    A[pl-prod-one-hop-createaccesskey-bucket-privesc-user] -->|iam:CreateAccessKey| B[pl-prod-one-hop-createaccesskey-bucket-access-user]
+    B -->|s3:GetObject, s3:PutObject| C[pl-prod-one-hop-createaccesskey-bucket]
+    C -->|Access Sensitive Data| D[Sensitive Bucket Access]
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. Use privesc-user credentials
-2. Create access keys for bucket-access-user via `iam:CreateAccessKey`
-3. Configure AWS CLI with the new credentials
-4. Access the target S3 bucket
+1. **Scaffolding aka Initial Access**: Authenticate as `pl-prod-one-hop-createaccesskey-bucket-privesc-user` to begin the scenario
+2. **Create Access Keys**: Use `iam:CreateAccessKey` to create new access keys for `pl-prod-one-hop-createaccesskey-bucket-access-user`
+3. **Switch Context**: Configure AWS CLI to use the newly created access keys
+4. **Access S3 Bucket**: Read and download sensitive data from the target bucket
 
-## Resources Created
+### Scenario specific resources created
 
-- **Target Bucket**: `pl-prod-one-hop-createaccesskey-bucket-{account_id}-{suffix}`
-- **Bucket Access User**: `pl-prod-one-hop-createaccesskey-bucket-access-user` (has S3 access)
-- **Privesc User**: `pl-prod-one-hop-createaccesskey-bucket-privesc-user` (has CreateAccessKey permission)
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-createaccesskey-bucket-privesc-user` | Starting principal with CreateAccessKey permission |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-createaccesskey-bucket-access-user` | Destination principal with S3 bucket access |
+| `arn:aws:s3:::pl-prod-one-hop-createaccesskey-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-one-hop-createaccesskey-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## CSPM Detection
+## Executing the attack
 
-Should trigger alerts for:
-- User with CreateAccessKey permissions on other users
-- New access key creation for privileged users
-- Privilege escalation path detected
+### Using the automated demo_attack.sh
 
-## Usage
+To demonstrate the privilege escalation path, run the provided demo script:
 
-See `demo_attack.sh` and `cleanup_attack.sh` scripts.
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-createaccesskey
+./demo_attack.sh
+```
+
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation to bucket access
+4. Output standardized test results for automation
+
+### Cleaning up the attack artifacts
+
+After demonstrating the attack, clean up the access keys created during the demo:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-createaccesskey
+./cleanup_attack.sh
+```
+
+## Detection and prevention
+
+
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation, Persistence, Collection
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Sub-technique**: T1530 - Data from Cloud Storage Object
+
+
+## Prevention recommendations
+
+- Avoid granting `iam:CreateAccessKey` permissions on privileged users
+- Use resource-based conditions to restrict which users can have keys created
+- Implement SCPs to prevent access key creation on privileged users
+- Monitor CloudTrail for `CreateAccessKey` API calls on privileged accounts
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
+- Implement S3 bucket policies that restrict access even for privileged users
+- Enable S3 access logging to track data access patterns
 

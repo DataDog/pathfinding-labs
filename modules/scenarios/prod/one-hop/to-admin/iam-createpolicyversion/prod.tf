@@ -40,7 +40,6 @@ resource "aws_iam_policy" "prod_self_privesc_createPolicyVersion_policy" {
         Effect = "Allow"
         Action = [
           "iam:CreatePolicyVersion",
-          "iam:SetDefaultPolicyVersion",
           "iam:ListPolicyVersions"
         ]
         Resource = "arn:aws:iam::${var.prod_account_id}:policy/pl-prod-self-privesc-createPolicyVersion-policy"

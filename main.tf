@@ -121,6 +121,28 @@ module "prod_one_hop_to_admin_iam_createaccesskey" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "prod_one_hop_to_admin_sts_assumerole" {
+  count  = var.enable_prod_one_hop_to_admin_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/sts-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_updateassumerolepolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-updateassumerolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -169,9 +191,9 @@ module "prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "prod_one_hop_to_bucket_iam_assumerole" {
-  count  = var.enable_prod_one_hop_to_bucket_iam_assumerole ? 1 : 0
-  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-assumerole"
+module "prod_one_hop_to_bucket_sts_assumerole" {
+  count  = var.enable_prod_one_hop_to_bucket_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/sts-assumerole"
   providers = {
     aws.prod = aws.prod
   }

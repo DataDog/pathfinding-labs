@@ -1,64 +1,94 @@
-# One-Hop Privilege Escalation: iam:PutRolePolicy to S3 Bucket
+# One-Hop Privilege Escalation: iam:PutRolePolicy
 
-**Scenario Type:** One-Hop (Single Principal Traversal)  
-**Target:** S3 Bucket Access  
+**Scenario Type:** One-Hop
+**Target:** S3 Bucket Access
 **Technique:** iam:PutRolePolicy on another role with S3 access
 
 ## Overview
 
-This scenario demonstrates privilege escalation where an attacker can modify another role's inline policy using `iam:PutRolePolicy`, then assume that role to gain access to a sensitive S3 bucket. This differs from the to-admin variant because the target is S3 bucket access rather than full administrative privileges.
+This scenario demonstrates privilege escalation where an attacker can modify another role's inline policy using `iam:PutRolePolicy`, then assume that role to gain access to a sensitive S3 bucket. Unlike self-modification scenarios, this involves modifying a different role's permissions and then assuming it to access sensitive data.
 
-## Attack Path
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-privesc-role`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-access-role`
+- `arn:aws:s3:::pl-prod-one-hop-putrolepolicy-bucket-ACCOUNT_ID-SUFFIX`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:privesc-role]
-    B -->|iam:PutRolePolicy| C[prod:iam:role:bucket-access-role]
-    B -->|sts:AssumeRole| C
-    C -->|s3:GetObject| D[prod:s3:target-bucket]
+    A[pl-prod-one-hop-putrolepolicy-bucket-privesc-role] -->|iam:PutRolePolicy| B[pl-prod-one-hop-putrolepolicy-bucket-access-role]
+    A -->|sts:AssumeRole| B
+    B -->|s3:GetObject, s3:PutObject| C[pl-prod-one-hop-putrolepolicy-bucket]
+    C -->|Access Sensitive Data| D[Sensitive Bucket Access]
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. **Initial Access**: Assume the `pl-prod-one-hop-putrolepolicy-bucket-privesc-role`
-2. **Modify Target Role**: Use `iam:PutRolePolicy` to add an inline policy to `bucket-access-role` that allows the privesc role to assume it
-3. **Assume Privileged Role**: Assume the `bucket-access-role` 
-4. **Access S3**: Read sensitive data from the target S3 bucket
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-putrolepolicy-bucket-privesc-role` to begin the scenario
+2. **Modify Target Role Trust Policy**: Use `iam:PutRolePolicy` to add an inline policy to `pl-prod-one-hop-putrolepolicy-bucket-access-role` allowing the privesc role to assume it
+3. **Assume Bucket Access Role**: Assume the `pl-prod-one-hop-putrolepolicy-bucket-access-role` which has S3 permissions
+4. **Access S3 Bucket**: Read and download sensitive data from the target bucket
 
-## Resources Created
+### Scenario specific resources created
 
-- **Target Bucket**: `pl-prod-one-hop-putrolepolicy-bucket-{account_id}-{suffix}`
-  - Contains sensitive data file
-  
-- **Bucket Access Role**: `pl-prod-one-hop-putrolepolicy-bucket-access-role`
-  - Has S3 read/write permissions on the target bucket
-  
-- **Privesc Role**: `pl-prod-one-hop-putrolepolicy-bucket-privesc-role`
-  - Trusts: `pl-pathfinder-starting-user-prod`
-  - Permissions: `iam:PutRolePolicy` on bucket-access-role, `sts:AssumeRole` on bucket-access-role
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-privesc-role` | Starting principal with PutRolePolicy permission |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-putrolepolicy-bucket-privesc-policy` | Allows `iam:PutRolePolicy` and `sts:AssumeRole` on bucket-access-role |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-access-role` | Target role with S3 bucket permissions |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-putrolepolicy-bucket-access-policy` | Grants S3 read/write access to target bucket |
+| `arn:aws:s3:::pl-prod-one-hop-putrolepolicy-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-one-hop-putrolepolicy-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## CSPM Detection
+## Executing the attack
 
-This scenario should trigger alerts for:
-- IAM role with PutRolePolicy permissions on other roles
-- Privilege escalation path to sensitive S3 bucket
-- Role trust relationship modification
+### Using the automated demo_attack.sh
 
-## MITRE ATT&CK Mapping
+To demonstrate the privilege escalation path, run the provided demo script:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-putrolepolicy
+./demo_attack.sh
+```
+
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation to bucket access
+4. Output standardized test results for automation
+
+### Cleaning up the attack artifacts
+
+After demonstrating the attack, clean up the inline policy added during the demo:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-putrolepolicy
+./cleanup_attack.sh
+```
+
+## Detection and prevention
+
+
+### MITRE ATT&CK Mapping
 
 - **Tactic**: Privilege Escalation, Collection
 - **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
 - **Sub-technique**: T1530 - Data from Cloud Storage Object
 
-## Usage
 
-See `demo_attack.sh` for a complete demonstration of this attack path.
-See `cleanup_attack.sh` to revert any changes made during the demonstration.
+## Prevention recommendations
 
-## Prevention
-
-- Restrict `iam:PutRolePolicy` permissions
-- Use service control policies (SCPs) to prevent privilege escalation
+- Avoid granting `iam:PutRolePolicy` permissions on other roles
+- Use resource-based conditions to restrict which roles can be modified
+- Implement SCPs to prevent privilege escalation techniques
+- Monitor CloudTrail for `PutRolePolicy` API calls followed by `AssumeRole` and S3 access
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
 - Implement S3 bucket policies that restrict access even for privileged roles
-- Monitor CloudTrail for `PutRolePolicy` and unusual S3 access patterns
+- Enable S3 access logging to track data access patterns
 
