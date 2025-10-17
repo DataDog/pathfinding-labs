@@ -143,6 +143,83 @@ module "prod_one_hop_to_admin_iam_updateassumerolepolicy" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "prod_one_hop_to_admin_iam_createloginprofile" {
+  count  = var.enable_prod_one_hop_to_admin_iam_createloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-createloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_updateloginprofile" {
+  count  = var.enable_prod_one_hop_to_admin_iam_updateloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-updateloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_putuserpolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_putuserpolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-putuserpolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_putgrouppolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_putgrouppolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-putgrouppolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_addusertogroup" {
+  count  = var.enable_prod_one_hop_to_admin_iam_addusertogroup ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-addusertogroup"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_attachuserpolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_attachuserpolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-attachuserpolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_attachgrouppolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_attachgrouppolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-attachgrouppolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################

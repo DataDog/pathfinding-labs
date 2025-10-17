@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.dev]
     }
   }
@@ -12,7 +12,7 @@ terraform {
 resource "aws_iam_role" "lambda_prod_updater" {
   provider = aws.dev
   name     = "pl-lambda-prod-updater"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -37,8 +37,8 @@ resource "aws_iam_role_policy" "lambda_prod_updater" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-lambda-updater"
       }
     ]

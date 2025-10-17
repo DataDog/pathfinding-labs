@@ -92,8 +92,8 @@ resource "random_password" "app-secret" {
 }
 
 resource "random_string" "resource-suffix" {
-  length           = 5 
-  upper = false 
+  length  = 5
+  upper   = false
   special = false
 }
 

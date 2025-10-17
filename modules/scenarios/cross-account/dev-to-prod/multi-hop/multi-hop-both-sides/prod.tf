@@ -14,8 +14,8 @@ resource "aws_iam_user_policy" "jeremy_admin" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "*"
+        Effect   = "Allow"
+        Action   = "*"
         Resource = "*"
       }
     ]
@@ -32,7 +32,7 @@ resource "aws_iam_user_login_profile" "jeremy" {
 resource "aws_iam_role" "trustsdev" {
   provider = aws.prod
   name     = "pl-trustsdev"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -51,7 +51,7 @@ resource "aws_iam_role" "trustsdev" {
 resource "aws_iam_policy" "trustsdev" {
   provider = aws.prod
   name     = "pl-trustsdev"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -71,7 +71,7 @@ resource "aws_iam_policy" "trustsdev" {
 
 # Attach trustsdev policy to trustsdev role
 resource "aws_iam_role_policy_attachment" "trustsdev" {
-  provider = aws.prod
-  role     = aws_iam_role.trustsdev.name
+  provider   = aws.prod
+  role       = aws_iam_role.trustsdev.name
   policy_arn = aws_iam_policy.trustsdev.arn
 }

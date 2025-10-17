@@ -2,11 +2,11 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying real-world attack scenarios in isolated AWS environments.
+Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to isolated sandbox environments.
 
 ## Why does this exist? 
 
-Who has access to my most sensitive S3 bucket? Is it 5% of my organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to my most sensitive S3 bucket?** 
+Can you easily answer the question: Exactly who has access to my most sensitive S3 bucket? Is it 5% of your organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to the data in my most sensitive S3 bucket?** 
 
 You need tooling that can help you answer these questions. And you need an easy way to deploy intentionally vulnerable resources so that you can test your tooling. That's why we created Pathfinder Labs.
   
@@ -179,7 +179,7 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 
 ## Available Scenarios
 
-### One-Hop to Admin (6 scenarios)
+### One-Hop to Admin (10 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
@@ -187,9 +187,12 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself for escalation |
 | `iam-createpolicyversion` | Policy versioning | Role can create new policy versions with elevated permissions |
 | `iam-createaccesskey` | Credential creation | Role can create access keys for an admin user |
+| `iam-createloginprofile` | Console credential creation | Role can create console password for an admin user |
+| `iam-updateloginprofile` | Password reset | Role can reset console password for an admin user |
 | `sts-assumerole` | Direct assumption | Role can directly assume another role with admin permissions |
 | `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policy of admin role to grant access |
-
+| `iam-putuserpolicy` | User inline policy | Role can add inline admin policy directly to a user |
+| `iam-putgrouppolicy` | Group inline policy | Role can add inline admin policy to a group containing the user |
 ### One-Hop to Bucket (5 scenarios)
 
 | Scenario | Attack Vector | Description |
@@ -519,7 +522,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **21 scenarios** available
+- ✅ **25 scenarios** available
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)

@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -29,8 +29,8 @@ resource "aws_iam_role" "prod_self_privesc_createPolicyVersion_role" {
 
 # Policy that allows the role to create new versions of policies attached to itself
 resource "aws_iam_policy" "prod_self_privesc_createPolicyVersion_policy" {
-  provider = aws.prod
-  name     = "pl-prod-self-privesc-createPolicyVersion-policy"
+  provider    = aws.prod
+  name        = "pl-prod-self-privesc-createPolicyVersion-policy"
   description = "Allows the role to create new versions of policies for privilege escalation"
 
   policy = jsonencode({
@@ -57,7 +57,7 @@ resource "aws_iam_policy" "prod_self_privesc_createPolicyVersion_policy" {
 
 # Attach the policy to the role
 resource "aws_iam_role_policy_attachment" "prod_self_privesc_createPolicyVersion_policy_attachment" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.prod_self_privesc_createPolicyVersion_role.name
   policy_arn = aws_iam_policy.prod_self_privesc_createPolicyVersion_policy.arn
 }

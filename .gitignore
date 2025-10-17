@@ -40,10 +40,6 @@ terraform.rc
 .cursor
 AGENTS.md
 
-# Claude 
-CLAUDE.md
-.claude
-
 # Terraform 
 .terraform.lock.hcl
 

@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.dev]
     }
   }
@@ -37,8 +37,8 @@ resource "aws_iam_role_policy" "assume_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = aws_iam_role.s3_access_role.arn
       }
     ]
@@ -61,8 +61,8 @@ resource "aws_iam_user_policy" "user_assume_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = aws_iam_role.s3_access_role.arn
       }
     ]

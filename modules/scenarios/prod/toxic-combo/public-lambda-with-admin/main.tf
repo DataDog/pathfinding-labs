@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.dev]
     }
   }
@@ -36,12 +36,12 @@ resource "aws_iam_role_policy_attachment" "lambda_admin_policy" {
 
 # Lambda function
 resource "aws_lambda_function" "hello_world" {
-  provider         = aws.dev
-  filename         = "${path.module}/lambda/lambda_function.zip"
-  function_name    = "hello-world-admin"
-  role            = aws_iam_role.lambda_admin_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs18.x"
+  provider      = aws.dev
+  filename      = "${path.module}/lambda/lambda_function.zip"
+  function_name = "hello-world-admin"
+  role          = aws_iam_role.lambda_admin_role.arn
+  handler       = "index.handler"
+  runtime       = "nodejs18.x"
 
   source_code_hash = filebase64sha256("${path.module}/lambda/lambda_function.zip")
 }
@@ -50,5 +50,5 @@ resource "aws_lambda_function" "hello_world" {
 resource "aws_lambda_function_url" "hello_world_url" {
   provider           = aws.dev
   function_name      = aws_lambda_function.hello_world.function_name
-  authorization_type = "NONE"  # Makes the function publicly accessible
+  authorization_type = "NONE" # Makes the function publicly accessible
 } 

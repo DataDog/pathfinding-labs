@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -12,7 +12,7 @@ terraform {
 resource "aws_iam_role" "bucket_access_role" {
   provider = aws.prod
   name     = "pl-bucket-access-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -31,7 +31,7 @@ resource "aws_iam_role" "bucket_access_role" {
 resource "aws_iam_policy" "bucket_access_role_policy" {
   provider = aws.prod
   name     = "pl-bucket-access-role-policy"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -48,8 +48,8 @@ resource "aws_iam_policy" "bucket_access_role_policy" {
 
 # Attach the minimal policy to the role
 resource "aws_iam_role_policy_attachment" "bucket_access_role" {
-  provider = aws.prod
-  role     = aws_iam_role.bucket_access_role.name
+  provider   = aws.prod
+  role       = aws_iam_role.bucket_access_role.name
   policy_arn = aws_iam_policy.bucket_access_role_policy.arn
 }
 

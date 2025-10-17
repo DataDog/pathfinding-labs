@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 6.0"
       //configuration_aliases = [ aws.operations ]
 
@@ -255,8 +255,8 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 // iam role that trusts a github repo to assume it as part of an OIDC flow
 // Only create this role if a GitHub repository is provided
 resource "aws_iam_role" "ops-infra-deployer" {
-  count = var.github_repo != null ? 1 : 0
-  name = "pl-ops-infra-deployer"
+  count              = var.github_repo != null ? 1 : 0
+  name               = "pl-ops-infra-deployer"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -283,7 +283,7 @@ EOF
 // policy that allows the ops-infra-deployer role in this account to assume the Deployement role in the prod, dev, and operations accounts
 // Only create this policy if a GitHub repository is provided
 resource "aws_iam_policy" "ops-infra-deployer-policy" {
-  count = var.github_repo != null ? 1 : 0
+  count       = var.github_repo != null ? 1 : 0
   name        = "pl-ops-infra-deployer-policy"
   description = "Allows ops-infra-deployer to assume the deployment role in the prod, dev, and operations accounts"
 
@@ -291,8 +291,8 @@ resource "aws_iam_policy" "ops-infra-deployer-policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
+        Effect   = "Allow",
+        Action   = "sts:AssumeRole",
         Resource = "*"
         #Resource = [
         #  "arn:aws:iam::${var.prod_account_id}:role/Deployment",
@@ -301,11 +301,11 @@ resource "aws_iam_policy" "ops-infra-deployer-policy" {
         #]
       },
       {
-        Effect = "Allow",
-        Action = "sts:TagSession",
-        Resource ="*"
-      }     
-      
+        Effect   = "Allow",
+        Action   = "sts:TagSession",
+        Resource = "*"
+      }
+
     ]
   })
 }
@@ -313,7 +313,7 @@ resource "aws_iam_policy" "ops-infra-deployer-policy" {
 // attach the policy to the ops-infra-deployer role
 // Only create this attachment if a GitHub repository is provided
 resource "aws_iam_role_policy_attachment" "ops-infra-deployer-policy" {
-  count = var.github_repo != null ? 1 : 0
+  count      = var.github_repo != null ? 1 : 0
   role       = aws_iam_role.ops-infra-deployer[0].name
   policy_arn = aws_iam_policy.ops-infra-deployer-policy[0].arn
 }
@@ -323,10 +323,10 @@ resource "aws_iam_role_policy_attachment" "ops-infra-deployer-policy" {
 // create an identity provider for the github OIDC flow
 // Only create this provider if a GitHub repository is provided
 resource "aws_iam_openid_connect_provider" "github" {
-  count = var.github_repo != null ? 1 : 0
-  client_id_list = ["sts.amazonaws.com"]
+  count           = var.github_repo != null ? 1 : 0
+  client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
-  url = "https://token.actions.githubusercontent.com"
+  url             = "https://token.actions.githubusercontent.com"
 }
 
 // create a Deployment Role in Ops

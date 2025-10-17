@@ -25,6 +25,14 @@ enable_prod_one_hop_to_admin_iam_createpolicyversion      = false
 enable_prod_one_hop_to_admin_iam_createaccesskey         = false
 enable_prod_one_hop_to_admin_sts_assumerole              = false
 enable_prod_one_hop_to_admin_iam_updateassumerolepolicy  = false
+enable_prod_one_hop_to_admin_iam_createloginprofile      = false
+enable_prod_one_hop_to_admin_iam_updateloginprofile      = false
+enable_prod_one_hop_to_admin_iam_putuserpolicy           = false
+enable_prod_one_hop_to_admin_iam_putgrouppolicy          = false
+enable_prod_one_hop_to_admin_iam_addusertogroup          = false
+enable_prod_one_hop_to_admin_iam_attachuserpolicy        = false
+enable_prod_one_hop_to_admin_iam_attachgrouppolicy       = false
+
 
 # PROD ONE-HOP TO-BUCKET
 enable_prod_one_hop_to_bucket_iam_putrolepolicy          = false

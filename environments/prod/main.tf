@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 6.0"
       //configuration_aliases = [ aws.prod ]
     }
@@ -115,7 +115,7 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 #   iam_instance_profile = aws_iam_instance_profile.bastion.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "bastion"
 #   }
@@ -166,7 +166,7 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 #   iam_instance_profile = aws_iam_instance_profile.jump.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "jump"
 #   }
@@ -852,7 +852,7 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 #   iam_instance_profile = aws_iam_instance_profile.EC2Admin.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "teleport"
 #   }

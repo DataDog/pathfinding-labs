@@ -12,32 +12,35 @@ This scenario demonstrates a privilege escalation vulnerability where a role has
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-cak-adam`
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-cak-admin`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-cak-starting-user` (Scenario-specific starting user)
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-cak-role` (Vulnerable role with CreateAccessKey permission)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-cak-admin` (Target admin user)
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-cak-adam] -->|iam:CreateAccessKey| B[pl-cak-admin]
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-one-hop-cak-starting-user] -->|sts:AssumeRole| B[pl-prod-one-hop-cak-role]
+    B -->|iam:CreateAccessKey| C[pl-prod-one-hop-cak-admin]
+    C -->|Administrator Access| D[Effective Administrator]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-cak-adam` to begin the scenario
-2. **Create Access Keys**: `pl-cak-adam` uses `iam:CreateAccessKey` to create new access keys for the admin user `pl-cak-admin`
-3. **Switch Context**: Configure AWS CLI to use the newly created access keys
-4. **Verification**: Verify administrator access with the new credentials
+1. **Initial Access**: Start as `pl-prod-one-hop-cak-starting-user` (credentials provided via Terraform outputs)
+2. **Assume Role**: Assume the vulnerable role `pl-prod-one-hop-cak-role`
+3. **Create Access Keys**: Use `iam:CreateAccessKey` to create new access keys for the admin user `pl-prod-one-hop-cak-admin`
+4. **Switch Context**: Configure AWS CLI to use the newly created access keys
+5. **Verification**: Verify administrator access with the new credentials
 
 ### Scenario specific resources created
 
-| ARN | Purpose | 
-| -- | -- | 
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-cak-adam` | Starting principal |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-createaccesskey-policy` | Allows `iam:createaccesskey` on `pl-cak-admin` only | 
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-cak-admin` | Destination principal |
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-cak-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-cak-role` | Vulnerable role with CreateAccessKey permission |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-createaccesskey-policy` | Allows `iam:CreateAccessKey` on `pl-prod-one-hop-cak-admin` only |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-one-hop-cak-admin` | Target admin user |
 
 ## Executing the attack 
 

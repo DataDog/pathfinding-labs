@@ -14,7 +14,7 @@ resource "aws_iam_role" "admin_role" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "ec2.amazonaws.com"  # Initially trusts EC2 service
+          Service = "ec2.amazonaws.com" # Initially trusts EC2 service
         }
         Action = "sts:AssumeRole"
       }
@@ -76,7 +76,7 @@ resource "aws_iam_role_policy" "starting_role_policy" {
         Effect = "Allow"
         Action = [
           "iam:UpdateAssumeRolePolicy",
-          "iam:GetRole"  # To verify the attack worked
+          "iam:GetRole" # To verify the attack worked
         ]
         Resource = aws_iam_role.admin_role.arn
       },

@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -29,8 +29,8 @@ resource "aws_iam_role" "privesc_role" {
 
 # Policy that allows the role to modify its own role policy (self-privilege escalation)
 resource "aws_iam_policy" "privesc_policy" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-putrolepolicy-policy"
+  provider    = aws.prod
+  name        = "pl-prod-one-hop-putrolepolicy-policy"
   description = "Allows the role to modify its own role policy for privilege escalation"
 
   policy = jsonencode({
@@ -49,7 +49,7 @@ resource "aws_iam_policy" "privesc_policy" {
 
 # Attach the policy to the role
 resource "aws_iam_role_policy_attachment" "privesc_policy_attachment" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.privesc_role.name
   policy_arn = aws_iam_policy.privesc_policy.arn
 }

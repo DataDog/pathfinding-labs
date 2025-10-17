@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROFILE="pl-admin-cleanup-prod"
-ADMIN_USER="pl-cak-admin"
+ADMIN_USER="pl-prod-one-hop-cak-admin"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateAccessKey Demo Cleanup${NC}"

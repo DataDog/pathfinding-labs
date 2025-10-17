@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -35,8 +35,8 @@ resource "aws_iam_role" "bucket_access_role" {
 
 # Policy granting S3 access to the privileged role
 resource "aws_iam_policy" "bucket_access_policy" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-putrolepolicy-bucket-access-policy"
+  provider    = aws.prod
+  name        = "pl-prod-one-hop-putrolepolicy-bucket-access-policy"
   description = "Grants read/write access to the target S3 bucket"
 
   policy = jsonencode({
@@ -86,8 +86,8 @@ resource "aws_iam_role" "privesc_role" {
 
 # Policy allowing PutRolePolicy on the bucket access role
 resource "aws_iam_policy" "privesc_policy" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-putrolepolicy-bucket-privesc-policy"
+  provider    = aws.prod
+  name        = "pl-prod-one-hop-putrolepolicy-bucket-privesc-policy"
   description = "Allows modifying the bucket access role's policy"
 
   policy = jsonencode({
@@ -113,7 +113,7 @@ resource "aws_iam_policy" "privesc_policy" {
 
 # Attach privilege escalation policy to starting role
 resource "aws_iam_role_policy_attachment" "privesc_policy_attachment" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.privesc_role.name
   policy_arn = aws_iam_policy.privesc_policy.arn
 }

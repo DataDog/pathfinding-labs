@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -44,8 +44,8 @@ resource "aws_iam_role" "prod_s3_access_role" {
 
 # Policy for Role 3 - Full read/write access to the S3 bucket
 resource "aws_iam_policy" "prod_s3_access_policy" {
-  provider = aws.prod
-  name     = "pl-prod-s3-access-policy"
+  provider    = aws.prod
+  name        = "pl-prod-s3-access-policy"
   description = "Full read/write access to role chain destination bucket"
 
   policy = jsonencode({
@@ -113,16 +113,16 @@ resource "aws_iam_role" "prod_intermediate_role" {
 
 # Policy for Role 2 - Allows assuming the final S3 access role
 resource "aws_iam_policy" "prod_intermediate_policy" {
-  provider = aws.prod
-  name     = "pl-prod-intermediate-policy"
+  provider    = aws.prod
+  name        = "pl-prod-intermediate-policy"
   description = "Allows assuming the S3 access role"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = aws_iam_role.prod_s3_access_role.arn
       }
     ]
