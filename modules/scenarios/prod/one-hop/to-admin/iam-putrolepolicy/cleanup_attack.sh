@@ -22,7 +22,7 @@ if ! command -v aws &> /dev/null; then
 fi
 
 # Check if the role exists
-ROLE_NAME="pl-prod-self-privesc-putRolePolicy-role-1"
+ROLE_NAME="pl-prod-one-hop-putrolepolicy-role"
 echo -e "${YELLOW}Step 1: Checking if role exists${NC}"
 if aws iam get-role --role-name "$ROLE_NAME" --profile pl-admin-cleanup-prod &> /dev/null; then
     echo -e "${GREEN}✓ Role $ROLE_NAME exists${NC}"
@@ -116,4 +116,4 @@ aws iam get-policy --policy-arn "$POLICY_ARN" --profile "$PROFILE" --query 'Poli
 echo ""
 echo -e "${GREEN}=== Cleanup Complete ===${NC}"
 echo "The role has been restored to its original state."
-echo "Only the intended 'pl-prod-self-privesc-putRolePolicy-policy' should remain attached."
+echo "Only the intended 'pl-prod-one-hop-putrolepolicy-policy' should remain attached."

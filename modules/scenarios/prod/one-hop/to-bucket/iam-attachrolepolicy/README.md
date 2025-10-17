@@ -1,44 +1,95 @@
-# One-Hop Privilege Escalation: iam:AttachRolePolicy to S3 Bucket
+# One-Hop Privilege Escalation: iam:AttachRolePolicy
 
-**Scenario Type:** One-Hop (Single Principal Traversal)  
-**Target:** S3 Bucket Access  
+**Scenario Type:** One-Hop
+**Target:** S3 Bucket Access
 **Technique:** iam:AttachRolePolicy on another role with S3 access
 
 ## Overview
 
-This scenario demonstrates privilege escalation where an attacker can attach managed policies to another role using `iam:AttachRolePolicy`, then assume that role to gain access to a sensitive S3 bucket.
+This scenario demonstrates privilege escalation where an attacker can attach managed policies to another role using `iam:AttachRolePolicy`, then assume that role to gain access to a sensitive S3 bucket. The attacker attaches the AWS-managed AmazonS3FullAccess policy to a role they can assume, granting them access to all S3 buckets in the account.
 
-## Attack Path
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-privesc-role`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-access-role`
+- `arn:aws:s3:::pl-prod-one-hop-attachrolepolicy-bucket-ACCOUNT_ID-SUFFIX`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:privesc-role]
-    B -->|iam:AttachRolePolicy| C[prod:iam:role:bucket-access-role]
-    B -->|sts:AssumeRole| C
-    C -->|s3:GetObject| D[prod:s3:target-bucket]
+    A[pl-prod-one-hop-attachrolepolicy-bucket-privesc-role] -->|iam:AttachRolePolicy| B[pl-prod-one-hop-attachrolepolicy-bucket-access-role]
+    A -->|sts:AssumeRole| B
+    B -->|s3:GetObject, s3:PutObject| C[pl-prod-one-hop-attachrolepolicy-bucket]
+    C -->|Access Sensitive Data| D[Sensitive Bucket Access]
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. Assume the `pl-prod-one-hop-attachrolepolicy-bucket-privesc-role`
-2. Use `iam:AttachRolePolicy` to attach a managed policy (like AdministratorAccess or S3FullAccess) to `bucket-access-role`
-3. Assume the `bucket-access-role`
-4. Access the target S3 bucket
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-attachrolepolicy-bucket-privesc-role` to begin the scenario
+2. **Attach Managed Policy**: Use `iam:AttachRolePolicy` to attach the AWS-managed AmazonS3FullAccess policy to `pl-prod-one-hop-attachrolepolicy-bucket-access-role`
+3. **Assume Bucket Access Role**: Assume the `pl-prod-one-hop-attachrolepolicy-bucket-access-role` which now has S3 full access
+4. **Access S3 Bucket**: Read and download sensitive data from the target bucket
 
-## Resources Created
+### Scenario specific resources created
 
-- **Target Bucket**: `pl-prod-one-hop-attachrolepolicy-bucket-{account_id}-{suffix}`
-- **Bucket Access Role**: `pl-prod-one-hop-attachrolepolicy-bucket-access-role`
-- **Privesc Role**: `pl-prod-one-hop-attachrolepolicy-bucket-privesc-role`
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-privesc-role` | Starting principal with AttachRolePolicy permission |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-attachrolepolicy-bucket-privesc-policy` | Allows `iam:AttachRolePolicy` and `sts:AssumeRole` on bucket-access-role |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-access-role` | Target role that will have S3 policy attached |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-attachrolepolicy-bucket-access-policy` | Grants S3 read/write access to target bucket |
+| `arn:aws:s3:::pl-prod-one-hop-attachrolepolicy-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-one-hop-attachrolepolicy-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## CSPM Detection
+## Executing the attack
 
-Should trigger alerts for:
-- IAM role with AttachRolePolicy permissions on other roles
-- Privilege escalation path to S3 bucket
-- Managed policy attachment to roles
+### Using the automated demo_attack.sh
 
-## Usage
+To demonstrate the privilege escalation path, run the provided demo script:
 
-See `demo_attack.sh` and `cleanup_attack.sh` scripts.
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-attachrolepolicy
+./demo_attack.sh
+```
+
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation to bucket access
+4. Output standardized test results for automation
+
+### Cleaning up the attack artifacts
+
+After demonstrating the attack, clean up the attached policy:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-bucket/iam-attachrolepolicy
+./cleanup_attack.sh
+```
+
+## Detection and prevention
+
+
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation, Collection
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Sub-technique**: T1530 - Data from Cloud Storage Object
+
+
+## Prevention recommendations
+
+- Avoid granting `iam:AttachRolePolicy` permissions on other roles
+- Use resource-based conditions to restrict which roles can be modified
+- Implement SCPs to prevent privilege escalation techniques
+- Monitor CloudTrail for `AttachRolePolicy` API calls followed by `AssumeRole` and S3 access
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
+- Restrict attachment of high-privilege AWS-managed policies like AmazonS3FullAccess
+- Implement S3 bucket policies that restrict access even for privileged roles
+- Enable S3 access logging to track data access patterns
 

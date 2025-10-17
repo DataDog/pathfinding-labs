@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -29,8 +29,8 @@ resource "aws_iam_role" "prod_role_with_multiple_privesc_paths" {
 
 # Policy that allows multiple privilege escalation paths
 resource "aws_iam_policy" "prod_privesc_policy_with_multiple_paths" {
-  provider = aws.prod
-  name     = "pl-prod-privesc-policy-with-multiple-paths"
+  provider    = aws.prod
+  name        = "pl-prod-privesc-policy-with-multiple-paths"
   description = "Allows multiple privilege escalation paths"
 
   policy = jsonencode({
@@ -58,7 +58,7 @@ resource "aws_iam_policy" "prod_privesc_policy_with_multiple_paths" {
 
 # Attach the policy to the role
 resource "aws_iam_role_policy_attachment" "prod_privesc_policy_with_multiple_paths" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.prod_role_with_multiple_privesc_paths.name
   policy_arn = aws_iam_policy.prod_privesc_policy_with_multiple_paths.arn
 }
@@ -84,7 +84,7 @@ resource "aws_iam_role" "prod_ec2_admin_role" {
 
 # Attach admin policy to EC2 role
 resource "aws_iam_role_policy_attachment" "prod_ec2_admin_role" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.prod_ec2_admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -110,7 +110,7 @@ resource "aws_iam_role" "prod_lambda_admin_role" {
 
 # Attach admin policy to Lambda role
 resource "aws_iam_role_policy_attachment" "prod_lambda_admin_role" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.prod_lambda_admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
@@ -136,7 +136,7 @@ resource "aws_iam_role" "prod_cloudformation_admin_role" {
 
 # Attach admin policy to CloudFormation role
 resource "aws_iam_role_policy_attachment" "prod_cloudformation_admin_role" {
-  provider = aws.prod
+  provider   = aws.prod
   role       = aws_iam_role.prod_cloudformation_admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

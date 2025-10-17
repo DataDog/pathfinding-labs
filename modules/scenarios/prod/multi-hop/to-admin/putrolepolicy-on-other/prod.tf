@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -29,8 +29,8 @@ resource "aws_iam_role" "prod_role_a" {
 
 # Policy for RoleA - Allows PutRolePolicy only on RoleB
 resource "aws_iam_policy" "prod_role_a_policy" {
-  provider = aws.prod
-  name     = "pl-prod-role-a-putrolepolicy-policy"
+  provider    = aws.prod
+  name        = "pl-prod-role-a-putrolepolicy-policy"
   description = "Allows RoleA to modify RoleB's policies"
 
   policy = jsonencode({

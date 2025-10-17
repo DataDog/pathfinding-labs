@@ -1,9 +1,9 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-      configuration_aliases = [aws.dev, aws.prod]
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
+      configuration_aliases = [aws.dev]
     }
   }
 }
@@ -24,8 +24,8 @@ resource "aws_iam_user_policy" "josh_admin" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "*"
+        Effect   = "Allow"
+        Action   = "*"
         Resource = "*"
       }
     ]
@@ -36,7 +36,7 @@ resource "aws_iam_user_policy" "josh_admin" {
 resource "aws_iam_role" "helpdesk" {
   provider = aws.dev
   name     = "pl-helpdesk"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -55,7 +55,7 @@ resource "aws_iam_role" "helpdesk" {
 resource "aws_iam_policy" "helpdesk" {
   provider = aws.dev
   name     = "pl-helpdesk"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -77,7 +77,7 @@ resource "aws_iam_policy" "helpdesk" {
 
 # Attach helpdesk policy to helpdesk role
 resource "aws_iam_role_policy_attachment" "helpdesk" {
-  provider = aws.dev
-  role     = aws_iam_role.helpdesk.name
+  provider   = aws.dev
+  role       = aws_iam_role.helpdesk.name
   policy_arn = aws_iam_policy.helpdesk.arn
 }

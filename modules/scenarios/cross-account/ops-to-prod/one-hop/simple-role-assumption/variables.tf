@@ -102,7 +102,7 @@ variable "dev_account_aws_profile" {
 
 variable "operations_account_aws_profile" {
   description = "AWS profile for operations account"
-  default     = "pl-ops.AWSAdministratorAccess"  
+  default     = "pl-ops.AWSAdministratorAccess"
 }
 
 variable "prod_account_aws_profile" {

@@ -74,6 +74,72 @@ variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
   default     = false
 }
 
+variable "enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances" {
+  description = "Enable: prod → one-hop → to-admin → iam-passrole+ec2-runinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_sts_assumerole" {
+  description = "Enable: prod → one-hop → to-admin → sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_updateassumerolepolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-updateassumerolepolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_createloginprofile" {
+  description = "Enable: prod → one-hop → to-admin → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_updateloginprofile" {
+  description = "Enable: prod → one-hop → to-admin → iam-updateloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_putuserpolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-putuserpolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_putgrouppolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-putgrouppolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_addusertogroup" {
+  description = "Enable: prod → one-hop → to-admin → iam-addusertogroup"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_attachuserpolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-attachuserpolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_attachgrouppolicy" {
+  description = "Enable: prod → one-hop → to-admin → iam-attachgrouppolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "Enable: prod → one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -102,7 +168,7 @@ variable "enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
   default     = false
 }
 
-variable "enable_prod_one_hop_to_bucket_iam_assumerole" {
+variable "enable_prod_one_hop_to_bucket_sts_assumerole" {
   description = "Enable: prod → one-hop → to-bucket → iam-assumerole"
   type        = bool
   default     = false

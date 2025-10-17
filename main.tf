@@ -121,6 +121,127 @@ module "prod_one_hop_to_admin_iam_createaccesskey" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "prod_one_hop_to_admin_iam_passrole_ec2_runinstances" {
+  count  = var.enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-passrole+ec2-runinstances"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_sts_assumerole" {
+  count  = var.enable_prod_one_hop_to_admin_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/sts-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_updateassumerolepolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-updateassumerolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_createloginprofile" {
+  count  = var.enable_prod_one_hop_to_admin_iam_createloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-createloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_updateloginprofile" {
+  count  = var.enable_prod_one_hop_to_admin_iam_updateloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-updateloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_putuserpolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_putuserpolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-putuserpolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_putgrouppolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_putgrouppolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-putgrouppolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_addusertogroup" {
+  count  = var.enable_prod_one_hop_to_admin_iam_addusertogroup ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-addusertogroup"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_attachuserpolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_attachuserpolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-attachuserpolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_attachgrouppolicy" {
+  count  = var.enable_prod_one_hop_to_admin_iam_attachgrouppolicy ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-attachgrouppolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  count  = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-passrole+lambda-createfunction+lambda-invokefunction"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -169,9 +290,9 @@ module "prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "prod_one_hop_to_bucket_iam_assumerole" {
-  count  = var.enable_prod_one_hop_to_bucket_iam_assumerole ? 1 : 0
-  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-assumerole"
+module "prod_one_hop_to_bucket_sts_assumerole" {
+  count  = var.enable_prod_one_hop_to_bucket_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/sts-assumerole"
   providers = {
     aws.prod = aws.prod
   }

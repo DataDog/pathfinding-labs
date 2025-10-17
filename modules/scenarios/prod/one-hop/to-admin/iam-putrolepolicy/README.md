@@ -1,59 +1,83 @@
 # One-Hop Privilege Escalation: iam:PutRolePolicy
 
-**Scenario Type:** One-Hop (Single Principal Traversal)  
-**Target:** Admin Access  
+**Scenario Type:** One-Hop
+**Target:** Admin Access
 **Technique:** Self-modification via iam:PutRolePolicy
 
 ## Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a role can modify its own inline policies using `iam:PutRolePolicy`. The attacker starts with minimal permissions but can grant themselves administrator access by adding an inline policy to their own role.
 
-## Attack Path
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-role`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-prod-one-hop-putrolepolicy-role]
-    B -->|iam:PutRolePolicy| B
-    B -->|self-modification| C[Administrator Access]
+    A[pl-prod-one-hop-putrolepolicy-role] -->|iam:PutRolePolicy on self| B[pl-prod-one-hop-putrolepolicy-role]
+    B -->|Administrator Access| C[Effective Administrator]
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. **Initial Access**: Assume the role `pl-prod-one-hop-putrolepolicy-role` using the pathfinder starting user
-2. **Privilege Escalation**: Use `iam:PutRolePolicy` to add an inline policy granting admin permissions to the role
-3. **Verification**: Verify the escalation by testing administrative actions
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-putrolepolicy-role` to begin the scenario
+2. **Self-Modification**: `pl-prod-one-hop-putrolepolicy-role` uses `iam:PutRolePolicy` to add an inline policy granting administrator access to itself
+3. **Verification**: Verify administrator access with the modified role
 
-## Resources Created
+### Scenario specific resources created
 
-- **Role**: `pl-prod-one-hop-putrolepolicy-role`
-  - Trusts: `pl-pathfinder-starting-user-prod`
-  - Permissions: `iam:PutRolePolicy` on itself
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-role` | Starting principal with self-modification capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-putrolepolicy-policy` | Allows `iam:PutRolePolicy` on the role itself |
 
-- **Policy**: `pl-prod-one-hop-putrolepolicy-policy`
-  - Allows: `iam:PutRolePolicy` on the role's own ARN
+## Executing the attack
 
-## CSPM Detection
+### Using the automated demo_attack.sh
 
-This scenario should trigger alerts for:
-- IAM role with self-modification permissions
-- Overly permissive iam:PutRolePolicy permissions
-- Privilege escalation path detected
+To demonstrate the privilege escalation path, run the provided demo script:
 
-## MITRE ATT&CK Mapping
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+./demo_attack.sh
+```
+
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
+
+### Cleaning up the attack artifacts
+
+After demonstrating the attack, clean up the inline policy added during the demo:
+
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+./cleanup_attack.sh
+```
+
+## Detection and prevention
+
+
+### MITRE ATT&CK Mapping
 
 - **Tactic**: Privilege Escalation
 - **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
 - **Sub-technique**: Abuse of IAM Permissions
 
-## Usage
 
-See `demo_attack.sh` for a complete demonstration of this attack path.
-See `cleanup_attack.sh` to revert any changes made during the demonstration.
-
-## Prevention
+## Prevention recommendations
 
 - Avoid granting `iam:PutRolePolicy` permissions on roles
-- If required, use conditions to restrict which roles can be modified
-- Implement SCPs to prevent privilege escalation techniques
-- Monitor CloudTrail for `PutRolePolicy` API calls
+- If required, use resource-based conditions to restrict which roles can be modified
+- Implement SCPs to prevent self-modification of roles
+- Monitor CloudTrail for `PutRolePolicy` API calls, especially when the role modifies itself
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
 

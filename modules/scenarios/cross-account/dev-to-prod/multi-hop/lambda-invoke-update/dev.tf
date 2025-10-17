@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
+      source                = "hashicorp/aws"
+      version               = "~> 6.0"
       configuration_aliases = [aws.dev]
     }
   }
@@ -12,7 +12,7 @@ terraform {
 resource "aws_iam_role" "dev_lambda_invoke_role" {
   provider = aws.dev
   name     = "pl-dev-lambda-invoke-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -31,7 +31,7 @@ resource "aws_iam_role" "dev_lambda_invoke_role" {
 resource "aws_iam_policy" "dev_lambda_invoke_policy" {
   provider = aws.dev
   name     = "pl-dev-lambda-invoke-policy"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -49,7 +49,7 @@ resource "aws_iam_policy" "dev_lambda_invoke_policy" {
 
 # Attach the policy to the role
 resource "aws_iam_role_policy_attachment" "dev_lambda_invoke_role" {
-  provider = aws.dev
-  role     = aws_iam_role.dev_lambda_invoke_role.name
+  provider   = aws.dev
+  role       = aws_iam_role.dev_lambda_invoke_role.name
   policy_arn = aws_iam_policy.dev_lambda_invoke_policy.arn
 }

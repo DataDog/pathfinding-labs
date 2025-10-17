@@ -28,7 +28,7 @@ fi
 export AWS_PAGER=""
 
 # Role name and ARN (we'll construct the ARN since we can't get it via GetRole)
-ROLE_NAME="pl-prod-self-privesc-putRolePolicy-role-1"
+ROLE_NAME="pl-prod-one-hop-putrolepolicy-role"
 ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query 'Account' --output text)
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
 
@@ -89,9 +89,9 @@ echo -e "${GREEN}✓ Privilege escalation successful!${NC}"
 echo "The role now has administrator access through its own policy modification."
 
 # Standardized test results output
-echo "TEST_RESULT:prod_self_privesc_putRolePolicy:SUCCESS"
-echo "TEST_DETAILS:prod_self_privesc_putRolePolicy:Successfully escalated privileges using PutRolePolicy to attach admin policy"
-echo "TEST_METRICS:prod_self_privesc_putRolePolicy:policy_attached=true,admin_access_gained=true,cleanup_completed=true"
+echo "TEST_RESULT:prod_one_hop_to_admin_iam_putrolepolicy:SUCCESS"
+echo "TEST_DETAILS:prod_one_hop_to_admin_iam_putrolepolicy:Successfully escalated privileges using PutRolePolicy to attach admin policy"
+echo "TEST_METRICS:prod_one_hop_to_admin_iam_putrolepolicy:policy_attached=true,admin_access_gained=true,cleanup_completed=true"
 
 #Sleep for 10 seconds
 echo "Sleeping for 10 seconds..."

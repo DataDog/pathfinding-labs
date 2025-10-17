@@ -1,69 +1,84 @@
-# Prod Self Privilege Escalation via AttachRolePolicy Module
+# One-Hop Privilege Escalation: iam:AttachRolePolicy
 
-This module creates a role that can escalate its own privileges by attaching managed policies to itself using `iam:AttachRolePolicy`.
+**Scenario Type:** One-Hop
+**Target:** Admin Access
+**Technique:** Self-modification via iam:AttachRolePolicy
 
-## Access Path
+## Overview
 
-The attack path is:
-1. `pl-pathfinder_starting_user_basic` assumes `pl-prod-self-privesc-attachRolePolicy-role-1`
-2. The role can then use `iam:AttachRolePolicy` to attach managed policies to itself
-3. The role can attach the AdministratorAccess policy to gain full admin privileges
+This scenario demonstrates a privilege escalation vulnerability where a role can attach managed policies to itself using `iam:AttachRolePolicy`. The attacker starts with minimal permissions but can grant themselves administrator access by attaching the AWS-managed AdministratorAccess policy to their own role.
 
-## Architecture
+## Understanding the attack scenario
+
+### Principals in the attack path
+
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-attachRolePolicy-role-1`
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-prod-self-privesc-attachRolePolicy-role-1]
-    B -->|iam:AttachRolePolicy| B
-    B -->|self-attachment| C[AdministratorAccess Policy]
+    A[pl-prod-self-privesc-attachRolePolicy-role-1] -->|iam:AttachRolePolicy| B[AdministratorAccess Policy]
+    B -->|Administrator Access| C[Effective Administrator]
 ```
 
-## Resources Created
+### Attack Steps
 
-- **Role**: `pl-prod-self-privesc-attachRolePolicy-role-1`
-  - Trusts: `pl-pathfinder-starting-user-prod` user
-  - Permissions: `iam:AttachRolePolicy` on itself only
+1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-self-privesc-attachRolePolicy-role-1` to begin the scenario
+2. **Attach Admin Policy**: `pl-prod-self-privesc-attachRolePolicy-role-1` uses `iam:AttachRolePolicy` to attach the AWS-managed AdministratorAccess policy to itself
+3. **Verification**: Verify administrator access with the modified role
 
-- **Policy**: `pl-prod-self-privesc-attachRolePolicy-policy`
-  - Allows: `iam:AttachRolePolicy` on the role itself
-  - Resource: The role's own ARN (not wildcard)
+### Scenario specific resources created
 
-## Usage
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-attachRolePolicy-role-1` | Starting principal with policy attachment capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-self-privesc-attachRolePolicy-policy` | Allows `iam:AttachRolePolicy` on the role itself |
 
-This module demonstrates a self-privilege escalation attack where a role can attach managed policies to itself. This is particularly dangerous because:
+## Executing the attack
 
-1. The role starts with minimal permissions
-2. It can attach any managed policy to itself
-3. It can attach the AdministratorAccess policy for full privileges
-4. The attack is self-contained and doesn't require external resources
+### Using the automated demo_attack.sh
 
-## Demo Scripts
+To demonstrate the privilege escalation path, run the provided demo script:
 
-### demo_attack.sh
-A demo script that shows how to:
-1. Assume the role using the pathfinder starting user credentials
-2. Use `aws iam attach-role-policy` to attach the AdministratorAccess policy
-3. Verify the escalation worked
-4. Clean up the attached policy
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-attachrolepolicy
+./demo_attack.sh
+```
 
-### cleanup_attack.sh
-A cleanup script that removes any changes made by the demo script:
-1. Assumes the role using the pathfinder starting user credentials
-2. Detaches the AdministratorAccess policy created during the demo
-3. Checks for and optionally detaches other dangerous policies
-4. Verifies the role is back to its original state
+The script will:
+1. Display a step-by-step walkthrough with color-coded output
+2. Show the commands being executed and their results
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
 
-## Security Implications
+### Cleaning up the attack artifacts
 
-This pattern is dangerous because:
-- It allows privilege escalation without external dependencies
-- The role can attach any managed policy to itself
-- It can gain administrator access through policy attachment
-- It's difficult to detect as it appears as normal policy management
-- It bypasses typical privilege escalation detection mechanisms
+After demonstrating the attack, clean up the attached policies created during the demo:
 
-## Difference from PutRolePolicy Module
+```bash
+cd modules/scenarios/prod/one-hop/to-admin/iam-attachrolepolicy
+./cleanup_attack.sh
+```
 
-This module uses `iam:AttachRolePolicy` (managed policies) instead of `iam:PutRolePolicy` (inline policies):
-- **AttachRolePolicy**: Attaches existing managed policies to the role
-- **PutRolePolicy**: Creates inline policies directly on the role
+## Detection and prevention
+
+
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Sub-technique**: Abuse of IAM Permissions
+
+
+## Prevention recommendations
+
+- Avoid granting `iam:AttachRolePolicy` permissions on roles
+- If required, use resource-based conditions to restrict which roles can be modified
+- Implement SCPs to prevent self-attachment of policies
+- Monitor CloudTrail for `AttachRolePolicy` API calls, especially when roles modify themselves
+- Enable MFA requirements for sensitive operations
+- Use IAM Access Analyzer to identify privilege escalation paths
+- Restrict attachment of high-privilege AWS-managed policies like AdministratorAccess
+- Use conditions to limit which policies can be attached (e.g., by policy name pattern)

@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 6.0"
       //configuration_aliases = [ aws.prod ]
     }
@@ -115,7 +115,7 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 #   iam_instance_profile = aws_iam_instance_profile.bastion.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "bastion"
 #   }
@@ -166,7 +166,7 @@ resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
 #   iam_instance_profile = aws_iam_instance_profile.jump.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "jump"
 #   }
@@ -546,8 +546,8 @@ resource "aws_iam_group" "Devops" {
 }
 
 resource "aws_iam_group_membership" "Diane-Devops" {
-  name = "Diane-Devops"
-  users = [ aws_iam_user.Diane-Devops.name, aws_iam_user.Dana-Devops.name, aws_iam_user.Dawn-Devops.name ]
+  name  = "Diane-Devops"
+  users = [aws_iam_user.Diane-Devops.name, aws_iam_user.Dana-Devops.name, aws_iam_user.Dawn-Devops.name]
   group = aws_iam_group.Devops.name
 }
 
@@ -578,9 +578,9 @@ resource "aws_iam_role" "EC2Admin" {
 }
 
 resource "aws_iam_role_policy_attachment" "EC2admin" {
-  role = aws_iam_role.EC2Admin.name
+  role       = aws_iam_role.EC2Admin.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-} 
+}
 
 resource "aws_iam_instance_profile" "EC2Admin" {
   name = "pl-EC2Admin"
@@ -592,24 +592,24 @@ resource "aws_iam_instance_profile" "EC2Admin" {
 # Deployment role - only created when GitHub integration is enabled
 resource "aws_iam_role" "Deployement" {
   count = var.github_repo != null ? 1 : 0
-  name = "pl-Deployement"
+  name  = "pl-Deployement"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
         Effect = "Allow",
         Principal = {
-         AWS = "arn:aws:iam::${var.operations_account_id}:role/pl-ops-infra-deployer"
+          AWS = "arn:aws:iam::${var.operations_account_id}:role/pl-ops-infra-deployer"
         },
-        Action = [ "sts:AssumeRole", "sts:TagSession" ]
+        Action = ["sts:AssumeRole", "sts:TagSession"]
       }
     ]
   })
 }
 
 resource "aws_iam_role_policy_attachment" "Deployementadmin" {
-  count = var.github_repo != null ? 1 : 0
-  role = aws_iam_role.Deployement[0].name
+  count      = var.github_repo != null ? 1 : 0
+  role       = aws_iam_role.Deployement[0].name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
@@ -633,8 +633,8 @@ resource "aws_iam_user_policy" "Bob" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = "*",
+        Effect   = "Allow",
+        Action   = "*",
         Resource = "*"
       }
     ]
@@ -663,7 +663,7 @@ resource "aws_iam_role" "EC2-automation" {
       }
     ]
   })
-} 
+}
 
 resource "aws_iam_policy" "EC2-ssm-access" {
   name = "pl-EC2-ssm-access"
@@ -685,37 +685,37 @@ resource "aws_iam_policy" "EC2-ssm-access" {
   })
 }
 
-resource aws_iam_user "lambda-publisher" {
-  name = "pl-lambda-publisher"  
+resource "aws_iam_user" "lambda-publisher" {
+  name = "pl-lambda-publisher"
 }
 
-resource aws_iam_user_policy_attachment "lambda-publisher" {
-  user = aws_iam_user.lambda-publisher.name
+resource "aws_iam_user_policy_attachment" "lambda-publisher" {
+  user       = aws_iam_user.lambda-publisher.name
   policy_arn = "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
 }
 
 
 
-resource aws_iam_user "Pam-Helpdesk" {
-  name = "pl-Pam-Helpdesk"  
+resource "aws_iam_user" "Pam-Helpdesk" {
+  name = "pl-Pam-Helpdesk"
 }
 
-resource aws_iam_policy "helpdesk-createaccesskeys" {
+resource "aws_iam_policy" "helpdesk-createaccesskeys" {
   name = "pl-helpdesk-createaccesskeys"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
-        Action = "iam:CreateAccessKey", 
+        Effect   = "Allow",
+        Action   = "iam:CreateAccessKey",
         Resource = "*"
       }
     ]
   })
 }
 
-resource aws_iam_user_policy_attachment "Pam-Helpdesk" {
-  user = aws_iam_user.Pam-Helpdesk.name
+resource "aws_iam_user_policy_attachment" "Pam-Helpdesk" {
+  user       = aws_iam_user.Pam-Helpdesk.name
   policy_arn = aws_iam_policy.helpdesk-createaccesskeys.arn
 }
 
@@ -770,8 +770,8 @@ resource "aws_iam_policy" "breakglass-prod" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
-        Action = "*",
+        Effect   = "Allow",
+        Action   = "*",
         Resource = "*"
       }
     ]
@@ -779,7 +779,7 @@ resource "aws_iam_policy" "breakglass-prod" {
 }
 
 resource "aws_iam_role_policy_attachment" "breakglass-prod" {
-  role = aws_iam_role.breakglass-prod-admin.name
+  role       = aws_iam_role.breakglass-prod-admin.name
   policy_arn = aws_iam_policy.breakglass-prod.arn
 }
 
@@ -797,8 +797,8 @@ resource "aws_iam_policy" "Ryan" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
+        Effect   = "Allow",
+        Action   = "sts:AssumeRole",
         Resource = "*"
       }
     ]
@@ -806,7 +806,7 @@ resource "aws_iam_policy" "Ryan" {
 }
 
 resource "aws_iam_user_policy_attachment" "Ryan" {
-  user = aws_iam_user.Ryan.name
+  user       = aws_iam_user.Ryan.name
   policy_arn = aws_iam_policy.Ryan.arn
 }
 
@@ -852,7 +852,7 @@ resource "aws_iam_user_policy_attachment" "Ryan" {
 #   iam_instance_profile = aws_iam_instance_profile.EC2Admin.name
 #   associate_public_ip_address = true
 #   vpc_security_group_ids = [ aws_security_group.intra-sg-access.id ]
-  
+
 #   tags = {
 #     Name = "teleport"
 #   }

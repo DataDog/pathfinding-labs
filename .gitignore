@@ -40,11 +40,9 @@ terraform.rc
 .cursor
 AGENTS.md
 
-# Claude 
-CLAUDE.md
-
 # Terraform 
 .terraform.lock.hcl
 
 
 test_results/
+*.backup
