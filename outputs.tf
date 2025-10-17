@@ -149,6 +149,53 @@ output "prod_one_hop_to_admin_iam_attachgrouppolicy_group_name" {
   value       = var.enable_prod_one_hop_to_admin_iam_attachgrouppolicy ? module.prod_one_hop_to_admin_iam_attachgrouppolicy[0].group_name : null
 }
 
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_name" {
+  description = "Starting user name for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_name : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_arn" {
+  description = "Starting user ARN for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_arn : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_access_key_id" {
+  description = "Starting user access key ID for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_access_key_id : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_secret_access_key" {
+  description = "Starting user secret access key for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_role_name" {
+  description = "Starting role name for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_role_name : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_role_arn" {
+  description = "Starting role ARN for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_role_arn : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_admin_role_name" {
+  description = "Admin role name for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].admin_role_name : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_admin_role_arn" {
+  description = "Admin role ARN for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].admin_role_arn : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_attack_path" {
+  description = "Attack path description for iam-passrole+lambda-createfunction+lambda-invokefunction scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].attack_path_description : null
+}
+
 output "prod_one_hop_to_admin_iam_createaccesskey_starting_user_access_key_id" {
   description = "Access key ID for the starting user in iam-createaccesskey scenario"
   value       = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? module.prod_one_hop_to_admin_iam_createaccesskey[0].starting_user_access_key_id : null
@@ -158,6 +205,18 @@ output "prod_one_hop_to_admin_iam_createaccesskey_starting_user_access_key_id" {
 output "prod_one_hop_to_admin_iam_createaccesskey_starting_user_secret_access_key" {
   description = "Secret access key for the starting user in iam-createaccesskey scenario"
   value       = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? module.prod_one_hop_to_admin_iam_createaccesskey[0].starting_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_ec2_runinstances_starting_user_access_key_id" {
+  description = "Access key ID for pl-prod-one-hop-prec-starting-user"
+  value       = try(module.prod_one_hop_to_admin_iam_passrole_ec2_runinstances[0].starting_user_access_key_id, "not_enabled")
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_ec2_runinstances_starting_user_secret_access_key" {
+  description = "Secret access key for pl-prod-one-hop-prec-starting-user"
+  value       = try(module.prod_one_hop_to_admin_iam_passrole_ec2_runinstances[0].starting_user_secret_access_key, "not_enabled")
   sensitive   = true
 }
 
@@ -190,4 +249,9 @@ output "dev_account_id" {
 output "operations_account_id" {
   description = "ID of the operations account"
   value       = var.operations_account_id
+}
+
+output "aws_region" {
+  description = "AWS region for resources"
+  value       = var.aws_region
 }

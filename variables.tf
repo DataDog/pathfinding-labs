@@ -74,6 +74,12 @@ variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
   default     = false
 }
 
+variable "enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances" {
+  description = "Enable: prod → one-hop → to-admin → iam-passrole+ec2-runinstances"
+  type        = bool
+  default     = false
+}
+
 variable "enable_prod_one_hop_to_admin_sts_assumerole" {
   description = "Enable: prod → one-hop → to-admin → sts-assumerole"
   type        = bool
@@ -124,6 +130,12 @@ variable "enable_prod_one_hop_to_admin_iam_attachuserpolicy" {
 
 variable "enable_prod_one_hop_to_admin_iam_attachgrouppolicy" {
   description = "Enable: prod → one-hop → to-admin → iam-attachgrouppolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "Enable: prod → one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
   type        = bool
   default     = false
 }
