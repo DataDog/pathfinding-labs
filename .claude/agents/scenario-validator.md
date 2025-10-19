@@ -42,7 +42,7 @@ Required files:
 
 #### Validate Terraform Syntax
 ```bash
-cd {scenario-directory}
+cd {project-root}
 terraform init -backend=false
 terraform validate
 ```
@@ -51,7 +51,7 @@ If validation fails, read the error and fix the issues.
 
 #### Check Resource Names
 Read `main.tf` and verify:
-- Resource names follow pattern: `pl-{env}-{category}-{scenario}-{type}`
+- Resource names follow pattern: `pl-{environment}-{scenario-shorthand}-{type}`
 - Provider is correctly specified (aws.prod, aws.dev, etc.)
 - Trust policies reference correct principals
 - IAM policies have proper permissions
@@ -229,7 +229,7 @@ Resource names should be consistent across:
 - cleanup_attack.sh variables
 
 #### Profile Usage Consistency
-- demo_attack.sh should use: `pl-pathfinder-starting-user-prod`
+- demo_attack.sh should use: `pl-{environment}-{scenario-shorthand}-starting-user`
 - cleanup_attack.sh should use: `pl-admin-cleanup-prod`
 - README should reference these profiles
 
@@ -261,7 +261,7 @@ Resource names should be consistent across:
 
 ### Issue: Wrong trust policy
 **Symptom**: Role trusts `:root` instead of pathfinder starting user
-**Fix**: Update trust policy to reference `pl-pathfinder-starting-user-prod`
+**Fix**: Update trust policy to reference `pl-{environment}-{scenario-shorthand}-starting-user`
 
 ### Issue: Missing outputs
 **Symptom**: outputs.tf doesn't include all necessary outputs for demo script

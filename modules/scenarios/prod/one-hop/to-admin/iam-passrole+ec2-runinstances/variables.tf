@@ -13,3 +13,4 @@ variable "resource_suffix" {
   description = "Random suffix for globally namespaced resources to prevent conflicts"
   type        = string
 }
+

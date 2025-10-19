@@ -174,6 +174,12 @@ variable "enable_prod_one_hop_to_bucket_sts_assumerole" {
   default     = false
 }
 
+variable "enable_prod_one_hop_to_bucket_iam_updateloginprofile" {
+  description = "Enable: prod → one-hop → to-bucket → iam-updateloginprofile"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # PROD MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################

@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: PassRole + Lambda CreateFunction + InvokeFunction
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Privilege escalation via iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction
+* **Scenario Type:** One-Hop
+* **Target:** Admin Access
+* **Technique:** Privilege escalation via iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction
 
 ## Overview
 

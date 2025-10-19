@@ -3,7 +3,7 @@ name: scenario-demo-creator
 description: Creates demo_attack.sh and cleanup_attack.sh scripts for Pathfinder Labs scenarios
 tools: Write, Read, Grep, Glob
 model: inherit
-color: magenta
+color: yellow
 ---
 
 # Pathfinder Labs Demo Script Creator Agent
@@ -25,10 +25,9 @@ You are a specialized agent for creating demonstration and cleanup scripts for P
 ```bash
 # Step 1: Retrieve credentials and region from Terraform outputs
 echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
-cd ../../../../../..  # Navigate to root of terraform project
 
-STARTING_ACCESS_KEY_ID=$(terraform output -raw {module_output_prefix}_starting_user_access_key_id 2>/dev/null || echo "")
-STARTING_SECRET_ACCESS_KEY=$(terraform output -raw {module_output_prefix}_starting_user_secret_access_key 2>/dev/null || echo "")
+STARTING_ACCESS_KEY_ID=$(cd ../../../../../.. && terraform output -raw {module_output_prefix}_starting_user_access_key_id 2>/dev/null || echo "")
+STARTING_SECRET_ACCESS_KEY=$(cd ../../../../../.. && terraform output -raw {module_output_prefix}_starting_user_secret_access_key 2>/dev/null || echo "")
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$STARTING_ACCESS_KEY_ID" ] || [ -z "$STARTING_SECRET_ACCESS_KEY" ]; then
@@ -210,7 +209,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER="pl-{environment}-{category}-{scenario-shorthand}-starting-user"
+STARTING_USER="pl-{environment}-{scenario-shorthand}-starting-user"
 # Add scenario-specific resource names
 
 echo -e "${GREEN}========================================${NC}"

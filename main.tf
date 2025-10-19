@@ -301,6 +301,17 @@ module "prod_one_hop_to_bucket_sts_assumerole" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "prod_one_hop_to_bucket_iam_updateloginprofile" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-updateloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################

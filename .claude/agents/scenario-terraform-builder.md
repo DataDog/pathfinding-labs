@@ -39,17 +39,17 @@ You need the following information to build the Terraform code:
 #
 # This scenario demonstrates how {brief description}
 
-# Resource naming convention: pl-{environment}-{category}-{scenario-shorthand}-{resource-type}
+# Resource naming convention: pl-{environment}-{scenario-shorthand}-{resource-type}
 # For single account scenarios, use provider = aws.prod
 # For cross-account, use appropriate providers (aws.dev, aws.prod, aws.operations)
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-starting-user"
+  name     = "pl-{environment}-{scenario-shorthand}-starting-user"
 
   tags = {
-    Name        = "pl-{environment}-{category}-{scenario-shorthand}-starting-user"
+    Name        = "pl-{environment}-{scenario-shorthand}-starting-user"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "starting-user"
@@ -65,7 +65,7 @@ resource "aws_iam_access_key" "starting_user_key" {
 # Minimal policy for the starting user (just enough to assume the role)
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-starting-user-policy"
+  name     = "pl-{environment}-{scenario-shorthand}-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
@@ -76,7 +76,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{category}-{scenario-shorthand}-role"
+        Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{scenario-shorthand}-role"
       },
       {
         Effect = "Allow"
@@ -92,7 +92,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # Vulnerable role (for role-based scenarios)
 resource "aws_iam_role" "vulnerable_role" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-role"
+  name     = "pl-{environment}-{scenario-shorthand}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -106,7 +106,7 @@ resource "aws_iam_role" "vulnerable_role" {
   })
 
   tags = {
-    Name        = "pl-{environment}-{category}-{scenario-shorthand}-role"
+    Name        = "pl-{environment}-{scenario-shorthand}-role"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "vulnerable-role"
@@ -116,7 +116,7 @@ resource "aws_iam_role" "vulnerable_role" {
 # Attach policy granting the exploitable permission(s)
 resource "aws_iam_role_policy" "vulnerable_role_policy" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-policy"
+  name     = "pl-{environment}-{scenario-shorthand}-policy"
   role     = aws_iam_role.vulnerable_role.id
 
   policy = jsonencode({
@@ -144,7 +144,7 @@ Add an admin role as the target:
 # Admin role (target of privilege escalation)
 resource "aws_iam_role" "admin_role" {
   provider = aws.prod
-  name     = "pl-prod-{category}-{scenario}-admin-role"
+  name     = "pl-{environment}-{scenario-shorthand}-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -158,7 +158,7 @@ resource "aws_iam_role" "admin_role" {
   })
 
   tags = {
-    Name        = "pl-prod-{category}-{scenario}-admin-role"
+    Name        = "pl-{environment}-{scenario-shorthand}-admin-role"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "admin-target"
@@ -293,7 +293,7 @@ output "target_bucket_arn" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-{env}-{category}-{scenario}-starting-user) → {describe-the-path} → {target}"
+  value       = "User (pl-{environment}-{scenario-shorthand}-starting-user) → {describe-the-path} → {target}"
 }
 ``` 
 
@@ -301,7 +301,7 @@ output "attack_path" {
 ## Naming Conventions
 
 ### Resource Names
-Pattern: `pl-{environment}-{category}-{scenario}-{resource-type}`
+Pattern: `pl-{environment}-{scenario-shorthand}-{resource-type}`
 
 Examples:
 - `pl-prod-one-hop-iam-putrolepolicy-role`
@@ -481,7 +481,7 @@ tags = {
 
 Before considering your work done:
 
-1. Verify all resource names follow the `pl-{env}-{category}-{scenario}-{type}` pattern
+1. Verify all resource names follow the `pl-{environment}-{scenario-shorthand}-{type}` pattern
 2. Ensure correct provider is specified for each resource
 3. Check that trust policies reference the correct principals
 4. Verify IAM policies grant the exact permissions needed for the attack

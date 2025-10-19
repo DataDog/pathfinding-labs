@@ -53,7 +53,7 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-{env}-{category}-{scenario}-starting-user` (Scenario-specific starting user)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-{environment}-{scenario-shorthand}-starting-user` (Scenario-specific starting user)
 - `arn:aws:iam::PROD_ACCOUNT:role/{vulnerable-role-name}` (Vulnerable role, if applicable)
 - `arn:aws:iam::PROD_ACCOUNT:{role|user}/{target-name}` (Target resource)
 
@@ -71,8 +71,8 @@ graph LR
 
 ### Attack Steps
 
-1. **Initial Access**: Start as `pl-{env}-{category}-{scenario}-starting-user` (credentials provided via Terraform outputs)
-2. **Assume Role** (if applicable): Assume the vulnerable role `pl-{env}-{category}-{scenario}-role`
+1. **Initial Access**: Start as `pl-{environment}-{scenario-shorthand}-starting-user` (credentials provided via Terraform outputs)
+2. **Assume Role** (if applicable): Assume the vulnerable role `pl-{environment}-{scenario-shorthand}-role`
 3. **{Step Name}**: {Detailed description of the attack step}
 4. **Verification**: Verify {admin|bucket} access
 
@@ -80,7 +80,7 @@ graph LR
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-{env}-{category}-{scenario}-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-{environment}-{scenario-shorthand}-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::PROD_ACCOUNT:role/{name}` | {Purpose description} |
 | `arn:aws:iam::PROD_ACCOUNT:policy/{name}` | {Purpose description} |
 
@@ -146,7 +146,7 @@ Write 2-3 paragraphs that:
 
 ### Principals Section
 List ALL principals involved in the attack path:
-- **Always start with the scenario-specific starting user**: `pl-{env}-{category}-{scenario}-starting-user`
+- **Always start with the scenario-specific starting user**: `pl-{environment}-{scenario-shorthand}-starting-user`
 - Include all intermediate roles (if applicable)
 - Include the target resource (role, user, or bucket)
 - Use placeholder `PROD_ACCOUNT` for account IDs
@@ -164,7 +164,7 @@ Create a flowchart showing the progression:
 Example:
 ```mermaid
 graph LR
-    A[pl-prod-one-hop-xxx-starting-user] -->|sts:AssumeRole| B[Vulnerable Role]
+    A[pl-{environment}-{scenario-shorthand}-starting-user] -->|sts:AssumeRole| B[Vulnerable Role]
     B -->|iam:PutRolePolicy| C[Self-Modified Role]
     C -->|Administrator Access| D[Effective Administrator]
 

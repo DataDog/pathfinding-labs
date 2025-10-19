@@ -220,6 +220,65 @@ output "prod_one_hop_to_admin_iam_passrole_ec2_runinstances_starting_user_secret
   sensitive   = true
 }
 
+# Prod one-hop to-bucket scenario outputs
+output "prod_one_hop_to_bucket_iam_updateloginprofile_starting_user_name" {
+  description = "Starting user name for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].starting_user_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_starting_user_arn" {
+  description = "Starting user ARN for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].starting_user_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_starting_user_access_key_id" {
+  description = "Starting user access key ID for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].starting_user_access_key_id : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_starting_user_secret_access_key" {
+  description = "Starting user secret access key for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].starting_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_target_user_name" {
+  description = "Target user name for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].target_user_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_target_user_arn" {
+  description = "Target user ARN for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].target_user_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_original_password" {
+  description = "Original password for target user in iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].original_password : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_sensitive_bucket_name" {
+  description = "Sensitive bucket name for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].sensitive_bucket_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_sensitive_bucket_arn" {
+  description = "Sensitive bucket ARN for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].sensitive_bucket_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_console_login_url" {
+  description = "Console login URL for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].console_login_url : null
+}
+
+output "prod_one_hop_to_bucket_iam_updateloginprofile_attack_path" {
+  description = "Attack path for iam-updateloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].attack_path : null
+}
+
 # S3 bucket names for enabled scenarios
 output "prod_multi_hop_to_admin_putrolepolicy_admin_bucket_name" {
   description = "Name of the admin demo S3 bucket in prod multi-hop putrolepolicy-on-other scenario"

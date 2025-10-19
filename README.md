@@ -195,7 +195,7 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-putgrouppolicy` | Group inline policy | Role can add inline admin policy to a group containing the user |
 | `iam-passrole+ec2-runinstances` | Compute privilege escalation | Role can pass admin role to EC2 instance and backdoor trust policy |
 | `iam-passrole+lambda-createfunction+lambda-invokefunction` | Lambda execution role | Role can create Lambda functions with admin role, invoke them to extract credentials |
-### One-Hop to Bucket (5 scenarios)
+### One-Hop to Bucket (6 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
@@ -203,6 +203,7 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-attachrolepolicy` | Self-modification | Role can attach S3 access policies to itself |
 | `iam-createaccesskey` | Credential creation | Role can create keys for user with bucket access |
 | `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policies to assume bucket-access roles |
+| `iam-updateloginprofile` | Password reset | Role can reset console password for user with bucket access |
 | `sts-assumerole` | Direct assumption | Role can directly assume another role with bucket permissions |
 
 ### Multi-Hop to Admin (2 scenarios)
@@ -524,7 +525,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **27 scenarios** available
+- ✅ **28 scenarios** available
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)
