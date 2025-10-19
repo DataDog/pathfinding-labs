@@ -242,6 +242,17 @@ module "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefu
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "prod_one_hop_to_admin_iam_passrole_cloudformation" {
+  count  = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-admin/iam-passrole-cloudformation"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -271,6 +282,17 @@ module "prod_one_hop_to_bucket_iam_attachrolepolicy" {
 module "prod_one_hop_to_bucket_iam_createaccesskey" {
   count  = var.enable_prod_one_hop_to_bucket_iam_createaccesskey ? 1 : 0
   source = "./modules/scenarios/prod/one-hop/to-bucket/iam-createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "prod_one_hop_to_bucket_iam_createloginprofile" {
+  count  = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? 1 : 0
+  source = "./modules/scenarios/prod/one-hop/to-bucket/iam-createloginprofile"
   providers = {
     aws.prod = aws.prod
   }

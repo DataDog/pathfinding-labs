@@ -3,7 +3,7 @@ name: scenario-demo-creator
 description: Creates demo_attack.sh and cleanup_attack.sh scripts for Pathfinder Labs scenarios
 tools: Write, Read, Grep, Glob
 model: inherit
-color: yellow
+color: purple
 ---
 
 # Pathfinder Labs Demo Script Creator Agent
@@ -12,14 +12,13 @@ You are a specialized agent for creating demonstration and cleanup scripts for P
 
 ## Core Responsibilities
 
-1. **Create demo_attack.sh** - Interactive script demonstrating the privilege escalation
+1. **Create demo_attack.sh** - Script demonstrating the privilege escalation
 2. **Create cleanup_attack.sh** - Script to remove attack artifacts
 3. **Ensure scripts are executable** - Set proper permissions
 4. **Follow established patterns** - Color-coded output, step-by-step execution, verification
+5. **Ensure scripts use region from terraform outputs** - Use the established pattern. 
 
-## CRITICAL: Credential and Region Retrieval Pattern
-
-**ALL demo scripts MUST retrieve credentials AND region from Terraform outputs - NOT from AWS CLI profiles.**
+CRITICAL: Credential and Region Retrieval Pattern - ALL demo scripts MUST retrieve credentials AND region from Terraform outputs - NOT from AWS CLI profiles.
 
 ### Step 1: Retrieve from Terraform (REQUIRED PATTERN)
 ```bash
@@ -88,9 +87,9 @@ export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 ```
 
-### Rule 3: Explicit --region Flags for EC2 Commands
+### Rule 3: Explicit --region Flags for non iam and sts Commands
 
-**CRITICAL**: AWS CLI commands in subshells `$()` don't inherit environment variables properly. **ALWAYS** add `--region $AWS_REGION` to EC2 commands:
+**CRITICAL**: AWS CLI commands in subshells `$()` don't inherit environment variables properly. **ALWAYS** add `--region $AWS_REGION` to these commands:
 
 ```bash
 # ✅ CORRECT - Explicit region flag
@@ -125,29 +124,6 @@ AMI_ID=$(aws ec2 describe-images \
     --query 'Images[0].ImageId' \
     --output text)
 ```
-
-### Rule 4: Commands That Require --region Flags
-
-**All EC2 commands:**
-- `aws ec2 describe-images --region $AWS_REGION`
-- `aws ec2 describe-vpcs --region $AWS_REGION`
-- `aws ec2 describe-subnets --region $AWS_REGION`
-- `aws ec2 run-instances --region $AWS_REGION`
-- `aws ec2 describe-instances --region $AWS_REGION`
-- `aws ec2 terminate-instances --region $AWS_REGION`
-- `aws ec2 describe-instance-status --region $AWS_REGION`
-
-**Other regional services:**
-- Lambda: `aws lambda create-function --region $AWS_REGION`
-- Lambda: `aws lambda invoke --region $AWS_REGION`
-- Lambda: `aws lambda delete-function --region $AWS_REGION`
-- Any command run in subshells `$()`
-- Any command that queries regional resources
-
-**Global services (NO --region needed):**
-- IAM commands (iam:*)
-- STS commands (sts:*)
-- S3 commands (s3:* and s3api:*)
 
 ### Rule 5: Cleanup Scripts Must Also Use Terraform Region
 

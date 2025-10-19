@@ -140,6 +140,12 @@ variable "enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda
   default     = false
 }
 
+variable "enable_prod_one_hop_to_admin_iam_passrole_cloudformation" {
+  description = "Enable: prod → one-hop → to-admin → iam-passrole-cloudformation"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # PROD ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -158,6 +164,12 @@ variable "enable_prod_one_hop_to_bucket_iam_attachrolepolicy" {
 
 variable "enable_prod_one_hop_to_bucket_iam_createaccesskey" {
   description = "Enable: prod → one-hop → to-bucket → iam-createaccesskey"
+  type        = bool
+  default     = false
+}
+
+variable "enable_prod_one_hop_to_bucket_iam_createloginprofile" {
+  description = "Enable: prod → one-hop → to-bucket → iam-createloginprofile"
   type        = bool
   default     = false
 }

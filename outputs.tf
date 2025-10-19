@@ -196,6 +196,43 @@ output "prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefu
   value       = var.enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? module.prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].attack_path_description : null
 }
 
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_starting_user_name" {
+  description = "Starting user name for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].starting_user_name : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_starting_user_arn" {
+  description = "Starting user ARN for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].starting_user_arn : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_starting_user_access_key_id" {
+  description = "Starting user access key ID for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].starting_user_access_key_id : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_starting_user_secret_access_key" {
+  description = "Starting user secret access key for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].starting_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_admin_role_name" {
+  description = "Admin role name for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].admin_role_name : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_admin_role_arn" {
+  description = "Admin role ARN for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].admin_role_arn : null
+}
+
+output "prod_one_hop_to_admin_iam_passrole_cloudformation_attack_path" {
+  description = "Attack path description for iam-passrole-cloudformation scenario"
+  value       = var.enable_prod_one_hop_to_admin_iam_passrole_cloudformation ? module.prod_one_hop_to_admin_iam_passrole_cloudformation[0].attack_path : null
+}
+
 output "prod_one_hop_to_admin_iam_createaccesskey_starting_user_access_key_id" {
   description = "Access key ID for the starting user in iam-createaccesskey scenario"
   value       = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? module.prod_one_hop_to_admin_iam_createaccesskey[0].starting_user_access_key_id : null
@@ -277,6 +314,59 @@ output "prod_one_hop_to_bucket_iam_updateloginprofile_console_login_url" {
 output "prod_one_hop_to_bucket_iam_updateloginprofile_attack_path" {
   description = "Attack path for iam-updateloginprofile to-bucket scenario"
   value       = var.enable_prod_one_hop_to_bucket_iam_updateloginprofile ? module.prod_one_hop_to_bucket_iam_updateloginprofile[0].attack_path : null
+}
+
+# Prod one-hop to-bucket iam-createloginprofile scenario outputs
+output "prod_one_hop_to_bucket_iam_createloginprofile_starting_user_name" {
+  description = "Starting user name for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].starting_user_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_starting_user_arn" {
+  description = "Starting user ARN for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].starting_user_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_starting_user_access_key_id" {
+  description = "Starting user access key ID for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].starting_user_access_key_id : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_starting_user_secret_access_key" {
+  description = "Starting user secret access key for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].starting_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_hop1_user_name" {
+  description = "Target user name for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].hop1_user_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_hop1_user_arn" {
+  description = "Target user ARN for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].hop1_user_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_sensitive_bucket_name" {
+  description = "Sensitive bucket name for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].sensitive_bucket_name : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_sensitive_bucket_arn" {
+  description = "Sensitive bucket ARN for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].sensitive_bucket_arn : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_console_login_url" {
+  description = "Console login URL for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].console_login_url : null
+}
+
+output "prod_one_hop_to_bucket_iam_createloginprofile_attack_path_description" {
+  description = "Attack path description for iam-createloginprofile to-bucket scenario"
+  value       = var.enable_prod_one_hop_to_bucket_iam_createloginprofile ? module.prod_one_hop_to_bucket_iam_createloginprofile[0].attack_path_description : null
 }
 
 # S3 bucket names for enabled scenarios

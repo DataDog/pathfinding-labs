@@ -34,11 +34,13 @@ enable_prod_one_hop_to_admin_iam_attachuserpolicy        = false
 enable_prod_one_hop_to_admin_iam_attachgrouppolicy       = false
 enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances = false
 enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
+enable_prod_one_hop_to_admin_iam_passrole_cloudformation = false
 
 # PROD ONE-HOP TO-BUCKET
 enable_prod_one_hop_to_bucket_iam_putrolepolicy          = false
 enable_prod_one_hop_to_bucket_iam_attachrolepolicy       = false
 enable_prod_one_hop_to_bucket_iam_createaccesskey        = false
+enable_prod_one_hop_to_bucket_iam_createloginprofile     = false  # CreateLoginProfile privilege escalation to S3
 enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy = false
 enable_prod_one_hop_to_bucket_iam_assumerole             = false
 enable_prod_one_hop_to_bucket_iam_updateloginprofile     = false  # UpdateLoginProfile privilege escalation to S3
