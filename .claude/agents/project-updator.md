@@ -234,7 +234,7 @@ variable "enable_prod_one_hop_to_admin_iam_example" {
 # main.tf
 module "prod_one_hop_to_admin_iam_example" {
   count  = var.enable_prod_one_hop_to_admin_iam_example ? 1 : 0
-  source = "./modules/scenarios/prod/one-hop/to-admin/iam-example"
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-example"
 
   providers = {
     aws.prod = aws.prod
@@ -284,7 +284,7 @@ variable "enable_prod_toxic_combo_example" {
 # main.tf
 module "prod_toxic_combo_example" {
   count  = var.enable_prod_toxic_combo_example ? 1 : 0
-  source = "./modules/scenarios/prod/toxic-combo/example"
+  source = "./modules/scenarios/single-account/toxic-combo/example"
 
   providers = {
     aws.prod = aws.prod

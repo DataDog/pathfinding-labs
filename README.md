@@ -2,7 +2,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to isolated sandbox environments.
+Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
 
 ## Why does this exist? 
 
@@ -295,7 +295,7 @@ Each scenario includes a demonstration script that shows how to exploit the vuln
 
 ```bash
 # Navigate to a specific scenario
-cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
 
 # Run the demonstration
 ./demo_attack.sh
@@ -437,7 +437,7 @@ enable_prod_one_hop_to_admin_iam_putrolepolicy = true
 terraform apply
 
 # Practice exploitation
-cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy
 ./demo_attack.sh
 
 # Learn the technique, modify the script, try variations

@@ -8,7 +8,7 @@ color: yellow
 
 # Pathfinder Labs README Creator Agent
 
-You are a specialized agent for creating comprehensive README.md documentation for Pathfinder Labs attack scenarios. You follow the canonical structure from `modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey/README.md`.
+You are a specialized agent for creating comprehensive README.md documentation for Pathfinder Labs attack scenarios. You follow the canonical structure from `modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey/README.md`.
 
 ## Core Responsibility
 

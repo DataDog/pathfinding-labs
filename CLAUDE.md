@@ -144,7 +144,7 @@ Each scenario includes demonstration scripts:
 
 ```bash
 # Navigate to a specific scenario
-cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
 
 # Run the demonstration
 ./demo_attack.sh
@@ -239,11 +239,11 @@ scenario-name/
 ### Adding a New Scenario (Step-by-Step)
 
 1. **Create the scenario directory** under the appropriate path:
-   - One-hop to admin: `modules/scenarios/prod/one-hop/to-admin/scenario-name/`
-   - One-hop to bucket: `modules/scenarios/prod/one-hop/to-bucket/scenario-name/`
-   - Multi-hop to admin: `modules/scenarios/prod/multi-hop/to-admin/scenario-name/`
-   - Multi-hop to bucket: `modules/scenarios/prod/multi-hop/to-bucket/scenario-name/`
-   - Toxic combo: `modules/scenarios/prod/toxic-combo/scenario-name/`
+   - One-hop to admin: `modules/scenarios/single-account/privesc-one-hop/to-admin/scenario-name/`
+   - One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/scenario-name/`
+   - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/scenario-name/`
+   - Multi-hop to bucket: `modules/scenarios/single-account/privesc-multi-hop/to-bucket/scenario-name/`
+   - Toxic combo: `modules/scenarios/single-account/toxic-combo/scenario-name/`
    - Cross-account: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
 
 2. **Implement Terraform resources** in `main.tf`:
@@ -306,7 +306,7 @@ scenario-name/
    ```hcl
    module "prod_one_hop_to_admin_scenario_name" {
      count  = var.enable_prod_one_hop_to_admin_scenario_name ? 1 : 0
-     source = "./modules/scenarios/prod/one-hop/to-admin/scenario-name"
+     source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/scenario-name"
 
      providers = {
        aws = aws.prod
@@ -476,7 +476,7 @@ Practice exploitation techniques:
 ```bash
 enable_prod_one_hop_to_admin_iam_putrolepolicy = true
 terraform apply
-cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy
 ./demo_attack.sh
 ```
 
