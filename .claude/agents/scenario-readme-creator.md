@@ -20,16 +20,26 @@ Create a complete, high-quality README.md file that:
 
 ## Required Input from Orchestrator
 
-You need the following information:
+The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
-- **Scenario title**: Human-readable name
-- **Scenario type**: One-hop, multi-hop, toxic-combo, cross-account
-- **Target type**: Admin access or S3 bucket access
-- **Technique**: The IAM permission(s) being exploited
-- **Attack path**: Complete path with principals and actions
-- **All principal ARNs**: Starting user, roles, target resources
+**From scenario.yaml you will use:**
+- **name**: Scenario identifier
+- **description**: One-line scenario description
+- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
+- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **target**: "to-admin" or "to-bucket"
+- **environments**: Array of environments involved
+- **attack_path.principals**: Ordered list of all principals in the attack
+- **attack_path.summary**: Human-readable attack flow
+- **permissions.required**: Required IAM permissions
+- **permissions.helpful**: Optional helpful permissions
+- **mitre_attack.tactics**: MITRE ATT&CK tactics
+- **mitre_attack.techniques**: MITRE ATT&CK techniques
+- **terraform.module_path**: Scenario location
+
+Additionally, the orchestrator will provide:
 - **Resource names**: All resources created for the scenario
-- **MITRE ATT&CK mapping**: Tactic, technique, sub-technique
 - **Detection guidance**: What CSPM tools should detect
 - **Prevention recommendations**: Security best practices
 - **Directory path**: Where to create the README.md
@@ -41,8 +51,11 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 ```markdown
 # {Scenario Title}
 
-**Scenario Type:** {One-Hop|Multi-Hop|Toxic-Combo|Cross-Account}
-**Target:** {Admin Access|S3 Bucket Access}
+**Category:** {Privilege Escalation|Regular Finding|Toxic Combination}
+**Sub-Category:** {self-escalation|principal-lateral-movement|service-passrole|access-resource|credential-access}
+**Path Type:** {self-escalation|one-hop|multi-hop}
+**Target:** {to-admin|to-bucket}
+**Environments:** {prod|dev|operations}
 **Technique:** {Brief description of the exploit}
 
 ## Overview
@@ -133,10 +146,13 @@ cd modules/scenarios/{path-to-scenario}
 ## Section Guidelines
 
 ### Title and Metadata
-- Title should be human-readable (e.g., "One-Hop Privilege Escalation: iam:CreateAccessKey")
-- Scenario Type: One-Hop, Multi-Hop, Toxic-Combo, or Cross-Account
-- Target: "Admin Access" or "S3 Bucket Access"
-- Technique: Brief one-line description of the exploit
+- Title should be human-readable (e.g., "Privilege Escalation via iam:CreateAccessKey")
+- **Category**: Use exact values from scenario.yaml ("Privilege Escalation", "Regular Finding", "Toxic Combination")
+- **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-lateral-movement")
+- **Path Type**: "self-escalation", "one-hop", or "multi-hop" from scenario.yaml
+- **Target**: "to-admin" or "to-bucket" from scenario.yaml
+- **Environments**: List environments from scenario.yaml (e.g., "prod" or "dev, prod")
+- **Technique**: Brief one-line description of the exploit
 
 ### Overview Section
 Write 2-3 paragraphs that:
@@ -224,30 +240,66 @@ Provide 4-6 specific, actionable recommendations:
 - MFA requirements
 - IAM Access Analyzer usage
 
-## Variations by Scenario Type
+## Variations by Scenario Classification
 
-### One-Hop to Admin
-- Focus on single privilege escalation step
-- Target is always an admin role or user
+### Path Type: self-escalation
+- Principal modifies its own permissions directly
+- No intermediate principals or privilege escalation hops
+- Sub-category must be "self-escalation"
+- Focus on the permission that allows self-modification (e.g., iam:PutUserPolicy on self, iam:PutRolePolicy on self)
+- Examples: iam:AttachUserPolicy, iam:AttachRolePolicy, iam:PutGroupPolicy, iam:AddUserToGroup
+
+### Path Type: one-hop
+- Single privilege escalation step to target
+- May involve assuming a role first (setup hop doesn't count)
+- Target is either an admin role/user or an S3 bucket
+- Verification should test target permissions
+
+### Path Type: multi-hop
+- Multiple privilege escalation steps through intermediate principals
+- Clearly label each hop in the attack steps
+- Show all intermediate principals in the mermaid diagram
+- Explain why each hop is necessary
+
+### Sub-Category Variations
+
+**self-escalation**: Principal modifies its own permissions
+- Examples: iam:PutUserPolicy on self, iam:AttachRolePolicy on self
+
+**principal-lateral-movement**: One principal accesses another
+- Examples: sts:AssumeRole, iam:CreateAccessKey for another user
+
+**service-passrole**: Pass privileged role to AWS service
+- Examples: iam:PassRole + lambda:CreateFunction, iam:PassRole + ec2:RunInstances
+
+**access-resource**: Access existing resources/workloads
+- Examples: ssm:StartSession to EC2, lambda:UpdateFunctionCode on existing Lambda
+
+**credential-access**: Access hardcoded credentials in resources
+- Examples: lambda:GetFunction (with env vars), ssm:StartSession (to find creds on filesystem)
+
+### Target Variations
+
+**to-admin**: Goal is full administrative access
 - Verification should test admin permissions (e.g., `iam:ListUsers`)
+- Target is typically an admin role or user
 
-### One-Hop to Bucket
-- Target is an S3 bucket with sensitive data
+**to-bucket**: Goal is access to sensitive S3 bucket
 - Verification should test bucket access (list objects, get object)
 - Include bucket ARN in resources table
 
-### Multi-Hop
-- Clearly label each hop in the attack steps
-- Show intermediate principals in the mermaid diagram
-- Explain why each hop is necessary
+### Environment Variations
 
-### Cross-Account
-- Specify which accounts are involved (dev, prod, operations)
+**Single-account (prod)**: All resources in one account
+- Use PROD_ACCOUNT placeholder in ARNs
+
+**Cross-account (dev→prod, ops→prod)**: Multiple accounts involved
+- Specify which accounts are involved
 - Update principal ARNs to show different accounts
 - Explain the cross-account trust relationships
 - Show both accounts in the mermaid diagram
 
-### Toxic Combo
+### Category: Toxic Combination
 - Explain the compound risk from multiple misconfigurations
 - Focus on CSPM detection rather than exploitation steps
 - May have fewer "attack steps" and more "risk factors"

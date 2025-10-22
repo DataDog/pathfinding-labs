@@ -1,0 +1,63 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "iam-attachgrouppolicy"
+description: "User in a group with iam:AttachGroupPolicy can attach admin policy to their group"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "self-escalation"
+path_type: "self-escalation"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-agp-user"
+    - "arn:aws:iam::{account_id}:group/pl-agp-group"
+
+  summary: "starting_user → (iam:AttachGroupPolicy) → attach admin policy to own group → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:AttachGroupPolicy"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListGroups"
+      purpose: "List groups the user belongs to"
+
+    - permission: "iam:ListAttachedGroupPolicies"
+      purpose: "View currently attached group policies"
+
+    - permission: "iam:ListPolicies"
+      purpose: "Discover available managed policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1098.001 - Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy"
+  module_path: "modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-attachgrouppolicy"

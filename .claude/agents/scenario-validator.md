@@ -23,9 +23,58 @@ You are a specialized agent for validating the consistency and correctness of Pa
 
 You need:
 - **Scenario directory path**: Full path to the scenario to validate
+- **scenario.yaml file**: The complete scenario.yaml file that was used to generate the scenario (conforms to `/SCHEMA.md`)
 - **Expected scenario details**: Attack path, resource names, etc. for comparison
 
+The validator should ensure that all generated files (Terraform, README, demo scripts) accurately reflect the information in scenario.yaml and conform to the schema defined in `/SCHEMA.md`.
+
 ## Validation Steps
+
+### 0. Schema Validation
+
+#### Check scenario.yaml Exists
+```bash
+cd {scenario-directory}
+ls -la scenario.yaml
+```
+
+#### Validate against SCHEMA.md
+Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
+
+**Required Core Metadata:**
+- `schema_version`: "1.0.0"
+- `name`: Scenario identifier
+- `description`: One-line description
+- `cost_estimate`: AWS cost estimate
+
+**Required Classification:**
+- `category`: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- `sub_category`: Valid sub-category for the category
+- `path_type`: "self-escalation", "one-hop", or "multi-hop"
+- `target`: "to-admin" or "to-bucket"
+- `environments`: Array with at least one environment
+
+**Required Attack Path:**
+- `attack_path.principals`: Array of principal ARNs
+- `attack_path.summary`: Attack flow description
+
+**Required Permissions:**
+- `permissions.required`: At least one required permission entry
+
+**Required MITRE ATT&CK:**
+- `mitre_attack.tactics`: At least one tactic
+- `mitre_attack.techniques`: At least one technique
+
+**Required Terraform:**
+- `terraform.variable_name`: Boolean variable name
+- `terraform.module_path`: Relative path to module
+
+#### Validate Classification Consistency
+Check that the classification makes sense:
+- If `path_type` is "self-escalation", `sub_category` must be "self-escalation"
+- If `sub_category` is "self-escalation", `path_type` must be "self-escalation"
+- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-lateral-movement, service-passrole, access-resource, credential-access
+- If `category` is "Toxic Combination" or "Regular Finding", `sub_category` should be one of: Publicly-accessible, sensitive-data, contains-vulnerability, overly-permissive
 
 ### 1. Terraform Validation
 
@@ -75,10 +124,16 @@ Read `outputs.tf` and verify:
 
 #### Check Structure
 Read `README.md` and verify it contains all required sections:
-1. Title with scenario metadata (Type, Target, Technique)
+1. Title with scenario metadata matching scenario.yaml:
+   - **Category**: From scenario.yaml (Privilege Escalation, Regular Finding, Toxic Combination)
+   - **Sub-Category**: From scenario.yaml
+   - **Path Type**: From scenario.yaml (self-escalation, one-hop, multi-hop)
+   - **Target**: From scenario.yaml (to-admin, to-bucket)
+   - **Environments**: From scenario.yaml
+   - **Technique**: Brief description
 2. Overview
 3. Understanding the attack scenario
-   - Principals in the attack path
+   - Principals in the attack path (must match scenario.yaml)
    - Attack Path Diagram (mermaid)
    - Attack Steps
    - Scenario specific resources created
@@ -86,8 +141,16 @@ Read `README.md` and verify it contains all required sections:
    - Using the automated demo_attack.sh
    - Cleaning up the attack artifacts
 5. Detection and prevention
-   - MITRE ATT&CK Mapping
+   - MITRE ATT&CK Mapping (must match scenario.yaml)
 6. Prevention recommendations
+
+#### Validate Metadata Section
+The README header should match scenario.yaml exactly:
+- Category value matches `scenario.yaml: category`
+- Sub-Category value matches `scenario.yaml: sub_category`
+- Path Type value matches `scenario.yaml: path_type`
+- Target value matches `scenario.yaml: target`
+- Environments value matches `scenario.yaml: environments`
 
 #### Validate Mermaid Diagram
 - Check that mermaid syntax is correct
@@ -95,10 +158,14 @@ Read `README.md` and verify it contains all required sections:
 - Ensure actions are labeled on edges
 - Confirm color coding is applied
 
-#### Cross-Reference with Terraform
+#### Cross-Reference with scenario.yaml and Terraform
+- Principal ARNs in README match `scenario.yaml: attack_path.principals`
 - Principal ARNs in README match resources in main.tf
 - Resource names in the resources table match Terraform
-- Attack path description matches the IAM permissions granted
+- Attack path description matches `scenario.yaml: attack_path.summary`
+- Attack path description matches the IAM permissions granted in main.tf
+- MITRE ATT&CK tactics match `scenario.yaml: mitre_attack.tactics`
+- MITRE ATT&CK techniques match `scenario.yaml: mitre_attack.techniques`
 
 #### Validate File Paths
 - Bash examples have correct directory paths
@@ -214,11 +281,13 @@ Should find the scenario in the appropriate table.
 
 #### Attack Path Consistency
 The attack path should be consistent across:
-- README.md "Attack Steps" section
-- README.md mermaid diagram
-- Terraform IAM permissions
-- demo_attack.sh script steps
-- outputs.tf attack_path value
+- **scenario.yaml**: `attack_path.summary` and `attack_path.principals` (source of truth)
+- **README.md**: "Attack Steps" section matches scenario.yaml
+- **README.md**: Mermaid diagram shows all principals from scenario.yaml
+- **README.md**: Metadata section matches scenario.yaml classification
+- **Terraform**: IAM permissions implement the attack described in scenario.yaml
+- **demo_attack.sh**: Script steps execute the attack from scenario.yaml
+- **outputs.tf**: attack_path value matches scenario.yaml summary
 
 #### Resource Name Consistency
 Resource names should be consistent across:
@@ -286,6 +355,17 @@ SCENARIO VALIDATION REPORT
 
 Scenario: {scenario-name}
 Location: {directory-path}
+Schema Version: {schema_version from scenario.yaml}
+
+SCHEMA VALIDATION (scenario.yaml)
+  ✓ scenario.yaml file exists
+  ✓ All required fields present
+  ✓ Schema version is valid (1.0.0)
+  ✓ Classification values are valid
+  ✓ Category and sub_category are consistent
+  ✓ Path type matches sub_category
+  ✗ Issue: {description}
+    - Fixed: {what was changed}
 
 TERRAFORM VALIDATION
   ✓ Files present (main.tf, variables.tf, outputs.tf)

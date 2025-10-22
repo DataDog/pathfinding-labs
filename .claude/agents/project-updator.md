@@ -20,14 +20,20 @@ You are a specialized agent for integrating new scenarios into the Pathfinder La
 
 ## Required Input from Orchestrator
 
-You need the following information:
+The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
-- **Scenario name**: Hyphenated name (e.g., iam-putgrouppolicy)
-- **Scenario type**: one-hop, multi-hop, toxic-combo, cross-account
-- **Target type**: to-admin or to-bucket
-- **Environment**: prod, dev, or operations
-- **Module path**: Relative path to the scenario module
-- **Description**: Brief one-line description for the variable
+**From scenario.yaml you will use:**
+- **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
+- **description**: Brief one-line description for the variable
+- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", etc.
+- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **target**: "to-admin" or "to-bucket"
+- **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
+- **terraform.variable_name**: The exact boolean variable name to use
+- **terraform.module_path**: Relative path to the scenario module
+
+Additionally, the orchestrator will provide:
 - **Attack vector**: Short description for README table
 - **Full description**: Longer description for README table
 
@@ -38,59 +44,78 @@ You need the following information:
 Location: `/variables.tf`
 
 #### Variable Naming Pattern
+
+**IMPORTANT**: Use the exact variable name from `scenario.yaml` field `terraform.variable_name`. The orchestrator has already constructed the correct name following this pattern:
+
 ```
-enable_{environment}_{hop_type}_to_{target}_{scenario_name}
+enable_{environment}_{path_type}_to_{target}_{scenario_name}
 ```
 
-Examples:
-- `enable_prod_one_hop_to_admin_iam_putgrouppolicy`
-- `enable_prod_multi_hop_to_bucket_role_chain_to_s3`
-- `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
+Examples from scenario.yaml:
+- `enable_prod_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
+- `enable_prod_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
+- `enable_prod_one_hop_to_admin_iam_createaccesskey` (one-hop)
+- `enable_prod_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
 #### Variable Format
 ```hcl
-variable "enable_{environment}_{category}_to_{target}_{scenario_name}" {
-  description = "Enable: {environment} → {category} → to-{target} → {scenario-name}"
+variable "enable_{environment}_{path_type}_to_{target}_{scenario_name}" {
+  description = "Enable: {environment} → {path_type} → to-{target} → {scenario-name}"
   type        = bool
   default     = false
 }
 ```
 
+Note: Use the exact variable name from `scenario.yaml` field `terraform.variable_name`.
+
 #### Placement Strategy
-Find the appropriate section in variables.tf:
-- Look for comment headers like `# Production One-Hop to Admin Scenarios`
+Find the appropriate section in variables.tf based on the scenario classification from scenario.yaml:
+- Look for comment headers matching the path_type and target
 - Add in alphabetical order within the section
 - If section doesn't exist, create it with a clear header
 
-Example sections:
+Example sections (organized by environments, path_type, and target):
 ```hcl
+# Production Self-Escalation to Admin Scenarios
+# Production Self-Escalation to Bucket Scenarios
 # Production One-Hop to Admin Scenarios
 # Production One-Hop to Bucket Scenarios
 # Production Multi-Hop to Admin Scenarios
 # Production Multi-Hop to Bucket Scenarios
-# Production Toxic Combo Scenarios
+# Production Toxic Combination Scenarios
+# Production Regular Finding Scenarios
 # Cross-Account Dev to Prod Scenarios
 # Cross-Account Operations to Prod Scenarios
 ```
+
+The section header should match: `# {Environment} {Path Type} to {Target} Scenarios`
+
+Note: For self-escalation scenarios, use "Self-Escalation" in the header (not "No-Hop").
 
 ### 2. Root main.tf
 
 Location: `/main.tf`
 
 #### Module Naming Pattern
+
+Derive from the variable name by removing the `enable_` prefix:
+
 ```
-{environment}_{category}_to_{target}_{scenario_name}
+{environment}_{path_type}_to_{target}_{scenario_name}
 ```
 
 Examples:
-- `prod_one_hop_to_admin_iam_putgrouppolicy`
-- `prod_multi_hop_to_bucket_role_chain_to_s3`
-- `cross_account_dev_to_prod_simple_role_assumption`
+- `prod_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
+- `prod_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
+- `prod_one_hop_to_admin_iam_createaccesskey` (one-hop)
+- `prod_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
 #### Module Format for Single-Account (Prod)
 ```hcl
-module "{environment}_{category}_to_{target}_{scenario_name}" {
-  count  = var.enable_{environment}_{category}_to_{target}_{scenario_name} ? 1 : 0
+module "{environment}_{path_type}_to_{target}_{scenario_name}" {
+  count  = var.enable_{environment}_{path_type}_to_{target}_{scenario_name} ? 1 : 0
   source = "./{relative-path-to-scenario}"
 
   providers = {
@@ -103,10 +128,12 @@ module "{environment}_{category}_to_{target}_{scenario_name}" {
 }
 ```
 
+Note: Use the exact module path from `scenario.yaml` field `terraform.module_path`.
+
 #### Module Format for Cross-Account
 ```hcl
-module "cross_account_dev_to_prod_{category}_{scenario_name}" {
-  count  = var.enable_cross_account_dev_to_prod_{category}_{scenario_name} ? 1 : 0
+module "cross_account_dev_to_prod_{path_type}_{scenario_name}" {
+  count  = var.enable_cross_account_dev_to_prod_{path_type}_{scenario_name} ? 1 : 0
   source = "./{relative-path-to-scenario}"
 
   providers = {
@@ -120,6 +147,8 @@ module "cross_account_dev_to_prod_{category}_{scenario_name}" {
   resource_suffix = random_string.resource_suffix.result
 }
 ```
+
+Note: Provider configuration depends on the `environments` field in scenario.yaml.
 
 #### Placement Strategy
 Find the appropriate section in main.tf:
@@ -143,10 +172,10 @@ enable_{environment}_{category}_to_{target}_{scenario_name} = false
 
 Example:
 ```hcl
-# Production One-Hop to Admin Scenarios
-enable_prod_one_hop_to_admin_iam_putrolepolicy    = false
-enable_prod_one_hop_to_admin_iam_attachrolepolicy = false
-enable_prod_one_hop_to_admin_iam_putgrouppolicy   = false  # New scenario
+# Production Self-Escalation to Admin Scenarios
+enable_prod_self_escalation_to_admin_iam_putrolepolicy    = false
+enable_prod_self_escalation_to_admin_iam_attachrolepolicy = false
+enable_prod_self_escalation_to_admin_iam_putgrouppolicy   = false  # New scenario
 ```
 
 ### 4. terraform.tfvars
@@ -222,19 +251,45 @@ Find the appropriate table based on scenario type and add a new row.
 
 ## Common Patterns
 
-### Standard Prod One-Hop Scenario
+**IMPORTANT**: Always use the exact variable name and module path from scenario.yaml. These examples show the expected patterns:
+
+### Self-Escalation Scenario
 ```hcl
 # variables.tf
-variable "enable_prod_one_hop_to_admin_iam_example" {
-  description = "Enable: prod → one-hop → to-admin → iam-example"
+variable "enable_prod_self_escalation_to_admin_iam_putuserpolicy" {
+  description = "Enable: prod → self-escalation → to-admin → iam-putuserpolicy"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "prod_one_hop_to_admin_iam_example" {
-  count  = var.enable_prod_one_hop_to_admin_iam_example ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-example"
+module "prod_self_escalation_to_admin_iam_putuserpolicy" {
+  count  = var.enable_prod_self_escalation_to_admin_iam_putuserpolicy ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+```
+
+### Standard One-Hop Scenario
+```hcl
+# variables.tf
+variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
+  description = "Enable: prod → one-hop → to-admin → iam-createaccesskey"
+  type        = bool
+  default     = false
+}
+
+# main.tf
+module "prod_one_hop_to_admin_iam_createaccesskey" {
+  count  = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"
 
   providers = {
     aws.prod = aws.prod
@@ -249,16 +304,16 @@ module "prod_one_hop_to_admin_iam_example" {
 ### Cross-Account Scenario
 ```hcl
 # variables.tf
-variable "enable_cross_account_dev_to_prod_one_hop_example" {
-  description = "Enable: cross-account → dev-to-prod → one-hop → example"
+variable "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption" {
+  description = "Enable: cross-account → dev-to-prod → one-hop → simple-role-assumption"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "cross_account_dev_to_prod_one_hop_example" {
-  count  = var.enable_cross_account_dev_to_prod_one_hop_example ? 1 : 0
-  source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/example"
+module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
+  count  = var.enable_cross_account_dev_to_prod_one_hop_simple_role_assumption ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
 
   providers = {
     aws.dev  = aws.dev
@@ -272,19 +327,19 @@ module "cross_account_dev_to_prod_one_hop_example" {
 }
 ```
 
-### Toxic Combo Scenario
+### Toxic Combination Scenario
 ```hcl
 # variables.tf
-variable "enable_prod_toxic_combo_example" {
-  description = "Enable: prod → toxic-combo → example"
+variable "enable_prod_toxic_combo_public_lambda_with_admin" {
+  description = "Enable: prod → toxic-combo → public-lambda-with-admin"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "prod_toxic_combo_example" {
-  count  = var.enable_prod_toxic_combo_example ? 1 : 0
-  source = "./modules/scenarios/single-account/toxic-combo/example"
+module "prod_toxic_combo_public_lambda_with_admin" {
+  count  = var.enable_prod_toxic_combo_public_lambda_with_admin ? 1 : 0
+  source = "./modules/scenarios/single-account/toxic-combo/public-lambda-with-admin"
 
   providers = {
     aws.prod = aws.prod
@@ -343,8 +398,15 @@ providers = {
 ### Variable Description Format
 Always follow this pattern for clarity:
 ```
-Enable: {environment} → {category} → to-{target} → {scenario-name}
+Enable: {environment} → {path_type} → to-{target} → {scenario-name}
 ```
+
+Examples:
+- `Enable: prod → self-escalation → to-admin → iam-putuserpolicy`
+- `Enable: prod → self-escalation → to-admin → iam-putrolepolicy`
+- `Enable: prod → one-hop → to-admin → iam-createaccesskey`
+- `Enable: prod → one-hop → to-bucket → iam-createaccesskey`
+- `Enable: cross-account → one-hop → dev-to-prod → simple-role-assumption`
 
 ## Error Handling
 

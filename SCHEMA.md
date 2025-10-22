@@ -99,7 +99,7 @@ Taxonomy and categorization for discovery and filtering.
 ```yaml
 category: "Privilege Escalation"
 sub_category: "self-escalation"
-path_type: "one-hop"
+path_type: "self-escalation"
 target: "to-admin"
 environments:
   - "prod"
@@ -131,11 +131,13 @@ environments:
 
 | Value | Description | Example Techniques |
 |-------|-------------|-------------------|
-| `"self-escalation"` | Principal modifies its own permissions | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
-| `"principal-lateral-movement"` | One principal accesses another principal | `sts:AssumeRole`, `iam:createaccesskey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
-| `"service-passrole"` | Pass privileged role to AWS service | `iam:PassRole` + `lambda:CreateFunction` |
-| `"access-resource"` | Access existing resources, mostly workloads | `ssm:startSession` to existing EC2 with to admin role, `lambda:UpdateFunctionCode` to existing Lambda |
-| `"credential-access"` | Access to hardcoded credentials with a resource | `lambda:Listfunctions` to a function with creds in environment variables, `ssm:startSession` or SSH to an EC2 with hardcoded credentials on filesytem |
+| `"self-escalation"` | Principal modifies its own permissions (path_type: self-escalation only) | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
+| `"principal-lateral-movement"` | One principal accesses another principal (one-hop or multi-hop) | `iam:PutRolePolicy` on another role, single technique used across hops |
+| `"service-passrole"` | Pass privileged role to AWS service (one-hop or multi-hop) | `iam:PassRole` + `lambda:CreateFunction`, `iam:PassRole` + `ec2:RunInstances` |
+| `"access-resource"` | Access existing resources, mostly workloads (one-hop) | `sts:AssumeRole` to admin role, `ssm:StartSession` to EC2 with admin role |
+| `"credential-access"` | Access to hardcoded credentials with a resource (one-hop or multi-hop) | `ssm:StartSession` to EC2 with hardcoded creds, `lambda:GetFunction` with creds in environment |
+| `"privilege-chaining"` | Multiple escalation techniques chained together (multi-hop only) | Mixed techniques like PassRole → PutRolePolicy → AssumeRole |
+| `"cross-account-escalation"` | Privilege escalation spanning AWS accounts (cross-account only) | Any technique that crosses account boundaries |
 
 **For `category: "Toxic Combination"` or `"Regular Finding"`:**
 
@@ -150,11 +152,17 @@ environments:
 
 | Value | Description | When to Use |
 |-------|-------------|-------------|
-| `"self-escalation"` | When a principal can modify it's own permissions. | When the category is `self-escalation` |
-| `"one-hop"` | One hop privilege escalation | When there is are only two IAM principals in the path. This is the most common. |
-| `"multi-hop"` | Multiple hop privilege escalation | Chain of 2+ one-hop privilege escalations. Requires at least 3 principals |
+| `"self-escalation"` | Principal modifies its own permissions | 1 principal total (the principal modifies itself) |
+| `"one-hop"` | Single privilege escalation step | 2 principals total (Principal A → Principal B) |
+| `"multi-hop"` | Multiple privilege escalation steps | 3+ principals total (Principal A → B → C → ...) |
+| `"cross-account"` | Attack spans multiple AWS accounts | Escalation crosses account boundaries (takes precedence over hop count) |
 
-**Note**: Setup hops (e.g., `starting_user → AssumeRole → starting_role`) don't count toward hop count. Count only the escalation steps.
+**Principal Counting Rules:**
+- Count only the IAM principals involved in the escalation path (users, roles)
+- Don't count setup hops (e.g., `starting_user → AssumeRole → starting_role`)
+- Don't count AWS services (EC2, Lambda) unless they hold credentials
+- Don't count resources (S3 buckets) unless they're an intermediate credential store
+- For cross-account: Use `"cross-account"` as path_type regardless of hop count
 
 ##### `target`
 
@@ -449,8 +457,8 @@ Maps the scenario to Terraform variables and modules.
 
 ```yaml
 terraform:
-  variable_name: "enable_prod_one_hop_to_admin_iam_putuserpolicy"
-  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy"
+  variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy"
+  module_path: "modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy"
 ```
 
 #### Fields
@@ -462,22 +470,32 @@ terraform:
 
 #### Variable Naming Convention
 
-Format: `enable_{environment}_{path_type}_{target}_{technique}`
+**Single-Account Format**: `enable_single_account_{category_pathtype}_{target}_{technique}`
+
+**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
 
 **Examples:**
 
 ```yaml
-# One-hop to admin
-variable_name: "enable_prod_one_hop_to_admin_iam_putuserpolicy"
+# Self-escalation (single-account)
+variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy"
+variable_name: "enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy"
 
-# Multi-hop to bucket
-variable_name: "enable_prod_multi_hop_to_bucket_role_chain_to_s3"
+# One-hop (single-account)
+variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey"
+variable_name: "enable_single_account_privesc_one_hop_to_bucket_sts_assumerole"
 
-# Cross-account
+# Multi-hop (single-account)
+variable_name: "enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other"
+variable_name: "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3"
+
+# Toxic combo (single-account)
+variable_name: "enable_single_account_toxic_combo_public_lambda_with_admin"
+
+# Cross-account (no target in variable name)
 variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
-
-# Toxic combo
-variable_name: "enable_prod_toxic_combo_public_lambda_with_admin"
+variable_name: "enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin"
+variable_name: "enable_cross_account_ops_to_prod_one_hop_simple_role_assumption"
 ```
 
 #### Module Path
@@ -564,7 +582,7 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_prod_one_hop_to_admin_iam_createaccesskey"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey"
   module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"
 ```
 
@@ -634,7 +652,7 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances"
   module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-runinstances"
 ```
 
@@ -709,7 +727,7 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_prod_multi_hop_to_admin_putrolepolicy_on_other"
+  variable_name: "enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other"
   module_path: "modules/scenarios/single-account/privesc-multi-hop/to-admin/putrolepolicy-on-other"
 ```
 
@@ -777,8 +795,8 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_prod_credential_access_ec2_hardcoded_credentials"
-  module_path: "modules/scenarios/single-account/credential-access/ec2-hardcoded-credentials"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ec2_hardcoded_credentials"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-hardcoded-credentials"
 ```
 
 ---

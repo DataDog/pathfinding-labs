@@ -1,0 +1,60 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "iam-putrolepolicy"
+description: "Role with iam:PutRolePolicy on itself can add inline admin policy to escalate privileges"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "self-escalation"
+path_type: "self-escalation"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:role/pl-prod-one-hop-putrolepolicy-role"
+
+  summary: "starting_user → (AssumeRole) → privesc_role → (iam:PutRolePolicy on self) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PutRolePolicy"
+      resource: "arn:aws:iam::*:role/pl-prod-one-hop-putrolepolicy-role"
+
+  helpful:
+    - permission: "iam:GetRolePolicy"
+      purpose: "View existing inline policies on the role"
+
+    - permission: "iam:ListRolePolicies"
+      purpose: "List all inline policies attached to the role"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1098.001 - Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy"
+  module_path: "modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy"

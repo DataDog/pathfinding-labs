@@ -1,0 +1,67 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "role-chain-to-s3"
+description: "Three-hop role assumption chain to reach S3 bucket access"
+cost_estimate: "$0.001/hour"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-lateral-movement"
+path_type: "multi-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
+    - "arn:aws:iam::{account_id}:role/pl-prod-role-b"
+    - "arn:aws:iam::{account_id}:role/pl-prod-role-c-bucket"
+    - "arn:aws:s3:::pl-sensitive-data-{account_id}"
+
+  summary: "starting_user → (AssumeRole) → role_a → (AssumeRole) → role_b → (AssumeRole) → role_c → bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available roles in the chain"
+
+    - permission: "iam:GetRole"
+      purpose: "View role trust policies and permissions"
+
+    - permission: "s3:ListBucket"
+      purpose: "Verify bucket access after chain"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3"
+  module_path: "modules/scenarios/single-account/privesc-multi-hop/to-bucket/role-chain-to-s3"

@@ -155,11 +155,21 @@ aws ec2 describe-instances \
 
 ## Required Input from Orchestrator
 
-You need the following information:
+The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
-- **Scenario type**: One-hop, multi-hop, toxic-combo, cross-account
-- **Target type**: Admin access or S3 bucket access
-- **Attack path**: Complete sequence of steps with AWS CLI commands
+**From scenario.yaml you will use:**
+- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
+- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **target**: "to-admin" or "to-bucket"
+- **environments**: Array of environments involved
+- **attack_path.principals**: Ordered list of all principals in the attack
+- **attack_path.summary**: Human-readable attack flow
+- **permissions.required**: Required IAM permissions for the attack
+- **name**: Scenario identifier
+
+Additionally, the orchestrator will provide:
+- **Attack path details**: Complete sequence of steps with AWS CLI commands
 - **Resource names**: All roles, users, buckets, etc. involved
 - **Directory path**: Where to create the scripts
 - **Cleanup requirements**: What artifacts are created during the demo
@@ -689,33 +699,72 @@ echo -e "${GREEN}✓ No cleanup required${NC}"
 echo ""
 ```
 
-## Script Variations by Scenario Type
+## Script Variations by Classification
 
-### One-Hop to Admin
-- Always verify lack of admin access first
-- Single escalation action (PutRolePolicy, CreateAccessKey, etc.)
-- Final verification with `iam:ListUsers`
+### Path Type: self-escalation
+- Principal modifies its own permissions directly
+- No intermediate principals needed
+- Verify lack of elevated permissions first
+- Perform self-modification action (e.g., iam:PutUserPolicy on self)
+- Wait for policy propagation
+- Verify elevated permissions
 
-### One-Hop to Bucket
-- Verify lack of bucket access first
-- Single escalation to bucket permissions
-- Final verification with `s3:ListBucket` and `s3:GetObject`
+### Path Type: one-hop
+- May involve role assumption as setup (doesn't count as the hop)
+- Single privilege escalation action
+- For **target: to-admin**: Final verification with `iam:ListUsers`
+- For **target: to-bucket**: Final verification with `s3:ListBucket` and `s3:GetObject`
 
-### Multi-Hop
-- Multiple assume-role operations
+### Path Type: multi-hop
+- Multiple assume-role operations or privilege escalation steps
 - Show intermediate credentials clearly
 - Track which principal is active at each step
 - Re-export region at each credential switch
+- Number hops clearly in output
 
-### Cross-Account
+### Sub-Category Variations
+
+**self-escalation**: Modify own permissions
+- Focus on the self-modification action
+- May not need role assumption
+
+**principal-lateral-movement**: Access another principal
+- Show credential switch to the target principal
+- Verify identity after each switch
+
+**service-passrole**: Pass privileged role to AWS service
+- Create the service resource (Lambda, EC2, etc.)
+- Wait for resource to be ready
+- Execute/invoke the resource with elevated privileges
+
+**access-resource**: Access existing workloads
+- Show discovery of the existing resource (optional)
+- Access the resource (e.g., ssm:StartSession)
+- Use the resource's elevated permissions
+
+**credential-access**: Access hardcoded credentials
+- Access the resource containing credentials
+- Extract the credentials
+- Switch to use the extracted credentials
+- Verify elevated access
+
+### Environment Variations
+
+**Single-account (prod)**: All resources in one account
+- Use prod account credentials throughout
+- Region from Terraform stays consistent
+
+**Cross-account**: Multiple accounts involved
 - Region is consistent across accounts
-- Show account switching clearly
-- Verify identity in each account
+- Show account switching clearly with credential changes
+- Verify identity in each account after switching
+- Export region after each credential switch
 
-### Toxic Combo
+### Category: Toxic Combination
 - May focus more on showing the risk than exploitation
 - Might not have traditional attack steps
 - Focus on demonstrating the compound vulnerability
+- Show why the combination is dangerous
 
 ## Quality Checklist
 

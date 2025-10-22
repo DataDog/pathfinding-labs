@@ -1,0 +1,64 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "simple-role-assumption"
+description: "Cross-account role assumption from dev to prod for S3 bucket access"
+cost_estimate: "$0.001/hour"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "cross-account-escalation"
+path_type: "cross-account"
+target: "to-bucket"
+environments:
+  - "dev"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{dev_account_id}:user/pl-pathfinder-starting-user-dev"
+    - "arn:aws:iam::{dev_account_id}:role/pl-x-account-dev-s3-sensitive-data-access-role"
+    - "arn:aws:iam::{prod_account_id}:role/s3-sensitive-data-access-role"
+    - "arn:aws:s3:::pl-sensitive-data-bucket-{prod_account_id}"
+
+  summary: "starting_user_dev → (AssumeRole) → dev_role → (sts:AssumeRole cross-account) → prod_role → (s3:GetObject) → prod bucket"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::{prod_account_id}:role/*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover roles with cross-account trust relationships"
+
+    - permission: "s3:ListBucket"
+      purpose: "List contents of the sensitive bucket"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"

@@ -20,15 +20,24 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 
 ## Required Input from Orchestrator
 
-You need the following information to build the Terraform code:
+The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
-- **Scenario type**: one-hop, multi-hop, toxic-combo, cross-account
-- **Target type**: to-admin or to-bucket
+**From scenario.yaml you will use:**
+- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
+- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **target**: "to-admin" or "to-bucket"
+- **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
+- **attack_path.principals**: Ordered list of all principals in the attack
+- **attack_path.summary**: Human-readable attack flow
+- **permissions.required**: Required IAM permissions for the attack
+- **terraform.module_path**: Where to create the Terraform files
+- **name**: Scenario name
+
+Additionally, the orchestrator will provide:
 - **Directory path**: Full path where files should be created
 - **Resource names**: All role names, policy names, bucket names, etc.
-- **Attack path**: Complete path with principals and actions
-- **Provider configuration**: Which AWS provider(s) to use
-- **Environment**: prod, dev, or operations
+- **Provider configuration**: Which AWS provider(s) to use based on environments
 
 ## File Templates
 
@@ -304,9 +313,11 @@ output "attack_path" {
 Pattern: `pl-{environment}-{scenario-shorthand}-{resource-type}`
 
 Examples:
-- `pl-prod-one-hop-iam-putrolepolicy-role`
-- `pl-prod-one-hop-iam-putrolepolicy-admin-role`
-- `pl-prod-multi-hop-role-chain-intermediate-role`
+- `pl-prod-prp-to-admin-starting-role` (self-escalation: PutRolePolicy)
+- `pl-prod-prp-to-admin-admin-role` (target admin role)
+- `pl-prod-cak-to-admin-starting-user` (one-hop: CreateAccessKey)
+- `pl-prod-cak-to-admin-admin-user` (target admin user)
+- `pl-prod-multi-hop-role-chain-intermediate-role` (multi-hop)
 
 ### S3 Buckets (Globally Unique)
 Pattern: `pl-{purpose}-${var.account_id}-${var.resource_suffix}`

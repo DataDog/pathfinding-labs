@@ -1,0 +1,68 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "lambda-invoke-update"
+description: "Cross-account Lambda function code injection to extract admin credentials"
+cost_estimate: "$0.20/month"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "privilege-chaining"
+path_type: "cross-account"
+target: "to-admin"
+environments:
+  - "dev"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{dev_account_id}:user/pl-pathfinder-starting-user-dev"
+    - "arn:aws:iam::{dev_account_id}:role/pl-dev-lambda-invoke-role"
+    - "arn:aws:lambda:{region}:{prod_account_id}:function:pl-prod-hello-world"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-lambda-execution-role"
+
+  summary: "starting_user_dev → (AssumeRole) → dev_lambda_role → (lambda:UpdateFunctionCode cross-account) → prod_lambda → (credential extraction) → prod_lambda_execution_role (admin)"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "lambda:UpdateFunctionCode"
+      resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
+
+    - permission: "lambda:InvokeFunction"
+      resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
+
+  helpful:
+    - permission: "lambda:ListFunctions"
+      purpose: "Discover Lambda functions in prod account"
+
+    - permission: "lambda:GetFunction"
+      purpose: "View Lambda function configuration and role"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1648 - Serverless Execution"
+    - "T1552.005 - Cloud Instance Metadata API"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/multi-hop/lambda-invoke-update"

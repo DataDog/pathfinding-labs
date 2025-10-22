@@ -1,0 +1,62 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "exclusive-resource-policy"
+description: "Access S3 bucket with exclusive resource policy that denies all except specific role"
+cost_estimate: "$0.001/hour"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-lateral-movement"
+path_type: "multi-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
+    - "arn:aws:iam::{account_id}:role/pl-prod-exclusive-role"
+    - "arn:aws:s3:::pl-exclusive-bucket-{account_id}"
+
+  summary: "starting_user → (AssumeRole) → role_a → (sts:AssumeRole) → exclusive_role → bucket with exclusive policy → bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/pl-prod-exclusive-role"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover roles with exclusive bucket access"
+
+    - permission: "s3:GetBucketPolicy"
+      purpose: "View bucket resource policy"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_multi_hop_to_bucket_exclusive_resource_policy"
+  module_path: "modules/scenarios/single-account/privesc-multi-hop/to-bucket/exclusive-resource-policy"
