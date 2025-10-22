@@ -26,8 +26,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **name**: Scenario identifier
 - **description**: One-line scenario description
 - **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
-- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
 - **attack_path.principals**: Ordered list of all principals in the attack
@@ -52,8 +52,8 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 # {Scenario Title}
 
 **Category:** {Privilege Escalation|Regular Finding|Toxic Combination}
-**Sub-Category:** {self-escalation|principal-lateral-movement|service-passrole|access-resource|credential-access}
-**Path Type:** {self-escalation|one-hop|multi-hop}
+**Sub-Category:** {self-escalation|principal-lateral-movement|service-passrole|access-resource|credential-access|privilege-chaining|cross-account-escalation}
+**Path Type:** {self-escalation|one-hop|multi-hop|cross-account}
 **Target:** {to-admin|to-bucket}
 **Environments:** {prod|dev|operations}
 **Technique:** {Brief description of the exploit}
@@ -148,8 +148,8 @@ cd modules/scenarios/{path-to-scenario}
 ### Title and Metadata
 - Title should be human-readable (e.g., "Privilege Escalation via iam:CreateAccessKey")
 - **Category**: Use exact values from scenario.yaml ("Privilege Escalation", "Regular Finding", "Toxic Combination")
-- **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-lateral-movement")
-- **Path Type**: "self-escalation", "one-hop", or "multi-hop" from scenario.yaml
+- **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-lateral-movement", "privilege-chaining", "cross-account-escalation")
+- **Path Type**: "self-escalation", "one-hop", "multi-hop", or "cross-account" from scenario.yaml
 - **Target**: "to-admin" or "to-bucket" from scenario.yaml
 - **Environments**: List environments from scenario.yaml (e.g., "prod" or "dev, prod")
 - **Technique**: Brief one-line description of the exploit
@@ -261,6 +261,13 @@ Provide 4-6 specific, actionable recommendations:
 - Show all intermediate principals in the mermaid diagram
 - Explain why each hop is necessary
 
+### Path Type: cross-account
+- Attack spans multiple AWS accounts (dev→prod, ops→prod)
+- Show account boundaries in the mermaid diagram
+- Explain cross-account trust relationships
+- Document which resources are in which accounts
+- Verification should test access across account boundary
+
 ### Sub-Category Variations
 
 **self-escalation**: Principal modifies its own permissions
@@ -277,6 +284,12 @@ Provide 4-6 specific, actionable recommendations:
 
 **credential-access**: Access hardcoded credentials in resources
 - Examples: lambda:GetFunction (with env vars), ssm:StartSession (to find creds on filesystem)
+
+**privilege-chaining**: Multiple escalation techniques chained together (multi-hop only)
+- Examples: PassRole → PutRolePolicy → AssumeRole
+
+**cross-account-escalation**: Privilege escalation spanning AWS accounts (cross-account only)
+- Examples: Any technique that crosses account boundaries
 
 ### Target Variations
 

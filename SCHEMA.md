@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.0.0`
+### Current Version: `1.1.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2025-01-21 | Added `cross-account` path_type; Changed `no-hop` to `self-escalation`; Added `privilege-chaining` and `cross-account-escalation` sub_categories; Added principal counting rules |
 | 1.0.0 | 2025-01-21 | Initial schema release |
 
 ---
@@ -1024,4 +1025,4 @@ For questions about the schema or suggestions for improvements:
 3. Provide examples when possible
 
 **Last Updated:** 2025-01-21
-**Schema Version:** 1.0.0
+**Schema Version:** 1.1.0

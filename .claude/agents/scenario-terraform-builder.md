@@ -24,8 +24,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 
 **From scenario.yaml you will use:**
 - **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
-- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **attack_path.principals**: Ordered list of all principals in the attack

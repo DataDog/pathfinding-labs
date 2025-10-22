@@ -114,9 +114,17 @@ environments:
 
 | Value | Description | When to Use |
 |-------|-------------|-------------|
-| `"no-hop"` | When a principal can modify it's own permissions. | When the category is `self-escalation` |
-| `"one-hop"` | One hop privilege escalation | When there is are only two IAM principals in the path. This is the most common. |
-| `"multi-hop"` | Multiple hop privilege escalation | Chain of 2+ one-hop privilege escalations. Requires at least 3 principals |
+| `"self-escalation"` | Principal modifies its own permissions | 1 principal total (the principal modifies itself) |
+| `"one-hop"` | Single privilege escalation step | 2 principals total (Principal A → Principal B) |
+| `"multi-hop"` | Multiple privilege escalation steps | 3+ principals total (Principal A → B → C → ...) |
+| `"cross-account"` | Attack spans multiple AWS accounts | Escalation crosses account boundaries (takes precedence over hop count) |
+
+**Principal Counting Rules:**
+- Count only the IAM principals involved in the escalation path (users, roles)
+- Don't count setup hops (e.g., `starting_user → AssumeRole → starting_role`)
+- Don't count AWS services (EC2, Lambda) unless they hold credentials
+- Don't count resources (S3 buckets) unless they're an intermediate credential store
+- For cross-account: Use `"cross-account"` as path_type regardless of hop count
 
 **Note**: Setup hops (e.g., `starting_user → AssumeRole → starting_role`) don't count toward hop count. Count only the escalation steps.
 
@@ -143,6 +151,8 @@ Before delegating, determine and document:
 
 ### 1. Directory Path
 Based on classification:
+- Self-escalation to admin: `modules/scenarios/single-account/privesc-self-escalation/to-admin/{scenario-name}/`
+- Self-escalation to bucket: `modules/scenarios/single-account/privesc-self-escalation/to-bucket/{scenario-name}/`
 - One-hop to admin: `modules/scenarios/single-account/privesc-one-hop/to-admin/{scenario-name}/`
 - One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/{scenario-name}/`
 - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/{scenario-name}/`
@@ -161,14 +171,30 @@ Examples:
 - Intermediary principals should use scenario short names, like `pl-prod-aug-to-admin-hop1` or `pl-prod-aug-to-bucket-hop1`for AddUsersToGroup, or `pl-prod-cak-to-admin-hop1` `pl-prod-cak-to-bucket-hop1` for createacesskey.  
 
 ### 3. Variable Naming
-Pattern: `enable_{environment}_{path_type}_to_{target}_{scenario_name}`
 
-Example: `enable_prod_privesc_self_escalation_to_admin_iam_putgrouppolicy`
+**Single-Account Format**: `enable_single_account_privesc_{path_type}_to_{target}_{technique}`
+
+**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
+
+**Examples:**
+- Self-escalation: `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
+- One-hop: `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey`
+- Multi-hop: `enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
+- Toxic combo: `enable_single_account_toxic_combo_public_lambda_with_admin`
+- Cross-account: `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 4. Module Naming
-Pattern: `{environment}_{path_type}_to_{target}_{scenario_name}`
 
-Example: `prod_privesc_self_escalation_to_admin_iam_putgrouppolicy`
+**Single-Account Format**: `single_account_privesc_{path_type}_to_{target}_{technique}`
+
+**Cross-Account Format**: `cross_account_{source_to_dest}_{hop_type}_{technique}`
+
+**Examples:**
+- Self-escalation: `single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
+- One-hop: `single_account_privesc_one_hop_to_admin_iam_createaccesskey`
+- Multi-hop: `single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
+- Toxic combo: `single_account_toxic_combo_public_lambda_with_admin`
+- Cross-account: `cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 5. Attack Path Design Rules
 
@@ -261,7 +287,7 @@ Orchestrator:
 2. "Perfect! I have everything needed. Here's what I'm creating:
    - Category: Privilege Escalation
    - Sub-Category: self-escalation
-   - Path Type: self-escalation (no-hop)
+   - Path Type: self-escalation
    - Path: user → iam:PutGroupPolicy → modify group policy → admin access
    - Location: modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putgrouppolicy/
 

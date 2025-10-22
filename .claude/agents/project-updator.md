@@ -26,8 +26,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
 - **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", etc.
-- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **terraform.variable_name**: The exact boolean variable name to use
@@ -47,21 +47,33 @@ Location: `/variables.tf`
 
 **IMPORTANT**: Use the exact variable name from `scenario.yaml` field `terraform.variable_name`. The orchestrator has already constructed the correct name following this pattern:
 
-```
-enable_{environment}_{path_type}_to_{target}_{scenario_name}
-```
+**Single-Account Format**: `enable_single_account_privesc_{path_type}_to_{target}_{technique}`
+
+**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
 
 Examples from scenario.yaml:
-- `enable_prod_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
-- `enable_prod_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
-- `enable_prod_one_hop_to_admin_iam_createaccesskey` (one-hop)
-- `enable_prod_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
+- `enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
+- `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey` (one-hop)
+- `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `enable_single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
 - `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
 #### Variable Format
+
+**Single-Account**:
 ```hcl
-variable "enable_{environment}_{path_type}_to_{target}_{scenario_name}" {
-  description = "Enable: {environment} → {path_type} → to-{target} → {scenario-name}"
+variable "enable_single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
+  description = "Enable: single-account → privesc-{path_type} → to-{target} → {scenario-name}"
+  type        = bool
+  default     = false
+}
+```
+
+**Cross-Account**:
+```hcl
+variable "enable_cross_account_{source}_to_{dest}_{hop_type}_{scenario_name}" {
+  description = "Enable: cross-account → {source}-to-{dest} → {hop_type} → {scenario-name}"
   type        = bool
   default     = false
 }
@@ -75,23 +87,20 @@ Find the appropriate section in variables.tf based on the scenario classificatio
 - Add in alphabetical order within the section
 - If section doesn't exist, create it with a clear header
 
-Example sections (organized by environments, path_type, and target):
+Example sections (organized by account type, path_type, and target):
 ```hcl
-# Production Self-Escalation to Admin Scenarios
-# Production Self-Escalation to Bucket Scenarios
-# Production One-Hop to Admin Scenarios
-# Production One-Hop to Bucket Scenarios
-# Production Multi-Hop to Admin Scenarios
-# Production Multi-Hop to Bucket Scenarios
-# Production Toxic Combination Scenarios
-# Production Regular Finding Scenarios
-# Cross-Account Dev to Prod Scenarios
-# Cross-Account Operations to Prod Scenarios
+# SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT MULTI-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT MULTI-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT TOXIC-COMBO SCENARIOS
+# CROSS-ACCOUNT DEV-TO-PROD SCENARIOS
+# CROSS-ACCOUNT OPS-TO-PROD SCENARIOS
 ```
 
-The section header should match: `# {Environment} {Path Type} to {Target} Scenarios`
-
-Note: For self-escalation scenarios, use "Self-Escalation" in the header (not "No-Hop").
+The section header should use uppercase format as shown above.
 
 ### 2. Root main.tf
 
@@ -101,21 +110,22 @@ Location: `/main.tf`
 
 Derive from the variable name by removing the `enable_` prefix:
 
-```
-{environment}_{path_type}_to_{target}_{scenario_name}
-```
+**Single-Account**: `single_account_privesc_{path_type}_to_{target}_{scenario_name}`
+
+**Cross-Account**: `cross_account_{source}_to_{dest}_{hop_type}_{scenario_name}`
 
 Examples:
-- `prod_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
-- `prod_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
-- `prod_one_hop_to_admin_iam_createaccesskey` (one-hop)
-- `prod_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
+- `single_account_privesc_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
+- `single_account_privesc_one_hop_to_admin_iam_createaccesskey` (one-hop)
+- `single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
+- `single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
 - `cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
-#### Module Format for Single-Account (Prod)
+#### Module Format for Single-Account
 ```hcl
-module "{environment}_{path_type}_to_{target}_{scenario_name}" {
-  count  = var.enable_{environment}_{path_type}_to_{target}_{scenario_name} ? 1 : 0
+module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
+  count  = var.enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} ? 1 : 0
   source = "./{relative-path-to-scenario}"
 
   providers = {
@@ -161,8 +171,10 @@ Find the appropriate section in main.tf:
 Location: `/terraform.tfvars.example`
 
 #### Format
+Use the exact variable name from scenario.yaml, set to `false`:
+
 ```hcl
-enable_{environment}_{category}_to_{target}_{scenario_name} = false
+enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} = false
 ```
 
 #### Placement
@@ -172,10 +184,10 @@ enable_{environment}_{category}_to_{target}_{scenario_name} = false
 
 Example:
 ```hcl
-# Production Self-Escalation to Admin Scenarios
-enable_prod_self_escalation_to_admin_iam_putrolepolicy    = false
-enable_prod_self_escalation_to_admin_iam_attachrolepolicy = false
-enable_prod_self_escalation_to_admin_iam_putgrouppolicy   = false  # New scenario
+# SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN
+enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy    = false
+enable_single_account_privesc_self_escalation_to_admin_iam_attachrolepolicy = false
+enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy   = false  # New scenario
 ```
 
 ### 4. terraform.tfvars
@@ -183,8 +195,10 @@ enable_prod_self_escalation_to_admin_iam_putgrouppolicy   = false  # New scenari
 Location: `/terraform.tfvars`
 
 #### Format
+Use the exact variable name from scenario.yaml, typically set to `true` for testing:
+
 ```hcl
-enable_{environment}_{category}_to_{target}_{scenario_name} = true
+enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} = true
 ```
 
 #### Placement
@@ -256,15 +270,15 @@ Find the appropriate table based on scenario type and add a new row.
 ### Self-Escalation Scenario
 ```hcl
 # variables.tf
-variable "enable_prod_self_escalation_to_admin_iam_putuserpolicy" {
-  description = "Enable: prod → self-escalation → to-admin → iam-putuserpolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "prod_self_escalation_to_admin_iam_putuserpolicy" {
-  count  = var.enable_prod_self_escalation_to_admin_iam_putuserpolicy ? 1 : 0
+module "single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
+  count  = var.enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy"
 
   providers = {
@@ -280,15 +294,15 @@ module "prod_self_escalation_to_admin_iam_putuserpolicy" {
 ### Standard One-Hop Scenario
 ```hcl
 # variables.tf
-variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
-  description = "Enable: prod → one-hop → to-admin → iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "prod_one_hop_to_admin_iam_createaccesskey" {
-  count  = var.enable_prod_one_hop_to_admin_iam_createaccesskey ? 1 : 0
+module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"
 
   providers = {
@@ -330,15 +344,15 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
 ### Toxic Combination Scenario
 ```hcl
 # variables.tf
-variable "enable_prod_toxic_combo_public_lambda_with_admin" {
-  description = "Enable: prod → toxic-combo → public-lambda-with-admin"
+variable "enable_single_account_toxic_combo_public_lambda_with_admin" {
+  description = "Enable: single-account → toxic-combo → public-lambda-with-admin"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "prod_toxic_combo_public_lambda_with_admin" {
-  count  = var.enable_prod_toxic_combo_public_lambda_with_admin ? 1 : 0
+module "single_account_toxic_combo_public_lambda_with_admin" {
+  count  = var.enable_single_account_toxic_combo_public_lambda_with_admin ? 1 : 0
   source = "./modules/scenarios/single-account/toxic-combo/public-lambda-with-admin"
 
   providers = {
@@ -397,16 +411,18 @@ providers = {
 
 ### Variable Description Format
 Always follow this pattern for clarity:
-```
-Enable: {environment} → {path_type} → to-{target} → {scenario-name}
-```
+
+**Single-Account**: `Enable: single-account → privesc-{path_type} → to-{target} → {scenario-name}`
+
+**Cross-Account**: `Enable: cross-account → {source}-to-{dest} → {hop_type} → {scenario-name}`
 
 Examples:
-- `Enable: prod → self-escalation → to-admin → iam-putuserpolicy`
-- `Enable: prod → self-escalation → to-admin → iam-putrolepolicy`
-- `Enable: prod → one-hop → to-admin → iam-createaccesskey`
-- `Enable: prod → one-hop → to-bucket → iam-createaccesskey`
-- `Enable: cross-account → one-hop → dev-to-prod → simple-role-assumption`
+- `Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy`
+- `Enable: single-account → privesc-self-escalation → to-admin → iam-putrolepolicy`
+- `Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey`
+- `Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey`
+- `Enable: single-account → toxic-combo → public-lambda-with-admin`
+- `Enable: cross-account → dev-to-prod → one-hop → simple-role-assumption`
 
 ## Error Handling
 

@@ -50,7 +50,7 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 **Required Classification:**
 - `category`: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
 - `sub_category`: Valid sub-category for the category
-- `path_type`: "self-escalation", "one-hop", or "multi-hop"
+- `path_type`: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - `target`: "to-admin" or "to-bucket"
 - `environments`: Array with at least one environment
 
@@ -73,7 +73,8 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 Check that the classification makes sense:
 - If `path_type` is "self-escalation", `sub_category` must be "self-escalation"
 - If `sub_category` is "self-escalation", `path_type` must be "self-escalation"
-- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-lateral-movement, service-passrole, access-resource, credential-access
+- If `path_type` is "cross-account", `sub_category` should be "cross-account-escalation"
+- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-lateral-movement, service-passrole, access-resource, credential-access, privilege-chaining, cross-account-escalation
 - If `category` is "Toxic Combination" or "Regular Finding", `sub_category` should be one of: Publicly-accessible, sensitive-data, contains-vulnerability, overly-permissive
 
 ### 1. Terraform Validation
@@ -127,7 +128,7 @@ Read `README.md` and verify it contains all required sections:
 1. Title with scenario metadata matching scenario.yaml:
    - **Category**: From scenario.yaml (Privilege Escalation, Regular Finding, Toxic Combination)
    - **Sub-Category**: From scenario.yaml
-   - **Path Type**: From scenario.yaml (self-escalation, one-hop, multi-hop)
+   - **Path Type**: From scenario.yaml (self-escalation, one-hop, multi-hop, cross-account)
    - **Target**: From scenario.yaml (to-admin, to-bucket)
    - **Environments**: From scenario.yaml
    - **Technique**: Brief description

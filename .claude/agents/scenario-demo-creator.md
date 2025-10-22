@@ -159,8 +159,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 
 **From scenario.yaml you will use:**
 - **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", etc.
-- **path_type**: "self-escalation", "one-hop", or "multi-hop"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
 - **attack_path.principals**: Ordered list of all principals in the attack
@@ -722,6 +722,13 @@ echo ""
 - Re-export region at each credential switch
 - Number hops clearly in output
 
+### Path Type: cross-account
+- Attack spans multiple AWS accounts (dev→prod, ops→prod)
+- Region retrieved from Terraform stays consistent across accounts
+- Show account switching clearly with credential changes
+- Verify identity in each account after switching
+- Re-export region after each credential switch
+
 ### Sub-Category Variations
 
 **self-escalation**: Modify own permissions
@@ -747,6 +754,16 @@ echo ""
 - Extract the credentials
 - Switch to use the extracted credentials
 - Verify elevated access
+
+**privilege-chaining**: Multiple escalation techniques chained together (multi-hop only)
+- Show each technique clearly
+- Track the progression through different escalation methods
+- Verify success at each stage
+
+**cross-account-escalation**: Privilege escalation spanning AWS accounts (cross-account only)
+- Show account boundaries in the output
+- Verify account ID after each switch
+- Export region consistently across accounts
 
 ### Environment Variations
 
