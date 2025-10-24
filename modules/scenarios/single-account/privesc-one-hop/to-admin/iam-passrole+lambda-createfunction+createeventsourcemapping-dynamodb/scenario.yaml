@@ -1,0 +1,86 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.1.0"
+name: "iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+description: "User with PassRole, CreateFunction, and CreateEventSourceMapping can create Lambda with privileged role, link to DynamoDB stream, and gain admin access when table events trigger execution"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-prcfcesmd-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-prcfcesmd-to-admin-target-role"
+    - "arn:aws:lambda:{region}:{account_id}:function/malicious-escalation-function"
+    - "arn:aws:dynamodb:{region}:{account_id}:table/pl-prod-prcfcesmd-to-admin-trigger-table"
+
+  summary: "starting_user → (PassRole + CreateFunction) → Lambda with target role → (CreateEventSourceMapping) → DynamoDB stream trigger → Lambda executes → (AttachUserPolicy) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-prcfcesmd-to-admin-target-role"
+
+    - permission: "lambda:CreateFunction"
+      resource: "*"
+
+    - permission: "lambda:CreateEventSourceMapping"
+      resource: "*"
+
+  helpful:
+    - permission: "dynamodb:ListStreams"
+      purpose: "Discover available DynamoDB streams to target"
+
+    - permission: "dynamodb:DescribeStream"
+      purpose: "Get stream ARN and configuration details"
+
+    - permission: "dynamodb:DescribeTable"
+      purpose: "Get table details including stream ARN"
+
+    - permission: "lambda:ListFunctions"
+      purpose: "Verify Lambda function creation"
+
+    - permission: "lambda:GetFunction"
+      purpose: "Confirm function configuration and role"
+
+    - permission: "lambda:GetEventSourceMapping"
+      purpose: "Check event source mapping status and verify activation"
+
+    - permission: "iam:ListRoles"
+      purpose: "Discover privileged roles available for PassRole"
+
+    - permission: "dynamodb:PutItem"
+      purpose: "Trigger Lambda execution by inserting test record (demo only)"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"

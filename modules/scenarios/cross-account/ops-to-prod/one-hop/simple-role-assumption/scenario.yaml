@@ -1,0 +1,61 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "simple-role-assumption"
+description: "Cross-account role assumption from operations to prod"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "cross-account-escalation"
+path_type: "cross-account"
+target: "to-admin"
+environments:
+  - "operations"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{operations_account_id}:user/pl-pathfinder-starting-user-operations"
+    - "arn:aws:iam::{operations_account_id}:role/pl-x-account-ops-role-with-assume-role-star"
+    - "arn:aws:iam::{prod_account_id}:role/*"
+
+  summary: "starting_user_ops → (AssumeRole) → ops_role → (sts:AssumeRole cross-account on *) → any_prod_role → privileged access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover roles in prod account"
+
+    - permission: "iam:GetRole"
+      purpose: "View role trust policies and permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_ops_to_prod_one_hop_simple_role_assumption"
+  module_path: "modules/scenarios/cross-account/ops-to-prod/one-hop/simple-role-assumption"

@@ -2,7 +2,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to isolated sandbox environments.
+Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
 
 ## Why does this exist? 
 
@@ -36,40 +36,40 @@ You need tooling that can help you answer these questions. And you need an easy 
     <tr>
       <td><strong>Single-Hop<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → RoleB
-RoleA → iam:PassRole + ec2:RunInstances → RoleB</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (Admin)
+RoleA → iam:PassRole + ec2:RunInstances → RoleB (Admin)</code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Single-Hop<br>IAM Privesc to Bucket</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → RoleB → Sensitive-Bucket
-RoleA → iam:PassRole + ec2:RunInstances → RoleB</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → Sensitive-Bucket
+RoleA → iam:PassRole + ec2:RunInstances → RoleB (not an admin) → Sensitive-Bucket</code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Multi-Hop<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → RoleB → sts:AssumeRole → RoleC</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → sts:AssumeRole → RoleC (Admin)</code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Multi-Hop<br>IAM Privesc to Bucket</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → RoleB → sts:AssumeRole → RoleC → Sensitive-Bucket</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → sts:AssumeRole → RoleC (not an admin) → Sensitive-Bucket</code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Multi-Account<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC
+        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC (Admin)
 </code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Multi-Account<br>IAM Privesc to Bucket</strong></td>
       <td>
-        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC → Account2:Sensitive-Bucket</code></pre>
+        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC (not an admin) → Account2:Sensitive-Bucket</code></pre>
       </td>
     </tr>
     <tr>
@@ -109,8 +109,9 @@ enable_prod_one_hop_to_admin_iam_putrolepolicy = true
 terraform init
 terraform apply
 
-# 5. Create pathfinder profiles for testing
-./create_pathfinder_profiles.sh
+# 5. Run demo scripts (credentials are automatically read from terraform outputs)
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
+./demo_attack.sh
 ```
 
 ---
@@ -133,6 +134,18 @@ terraform apply
 │  4. Clean Up              (terraform apply)             │
 │     enable_scenario_x = false                           │
 └─────────────────────────────────────────────────────────┘
+```
+
+### Terraform Outputs
+
+All scenarios provide **grouped outputs** that bundle all credentials and resource information into a single JSON object:
+
+```bash
+# Example: Get all outputs for a scenario
+terraform output -json | jq '.single_account_privesc_one_hop_to_admin_iam_createaccesskey'
+
+# Demo scripts automatically parse these outputs
+# No need to manually configure AWS profiles or copy credentials!
 ```
 
 ---
@@ -175,11 +188,25 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 - `Dev:Role → Lambda:InvokeFunction → Prod:Lambda → Extract Credentials → Prod:Admin`
 - `Ops:User → AssumeRole → Prod:Role → S3:SensitiveBucket`
 
+### **Tool Testing**
+Edge cases and scenarios designed to test detection engine capabilities. These scenarios aren't distinct escalation types, but rather configurations that challenge CSPM and security tool detection accuracy.
+
+**Focus Areas:**
+- Resource policies that bypass IAM restrictions
+- Complex policy condition evaluation
+- False positive scenarios
+- Policy parsing edge cases
+
+**Examples:**
+- `Resource policy granting exclusive bucket access, bypassing IAM policies`
+- `Complex condition keys that tools may misinterpret`
+- `Legitimate configurations that appear vulnerable`
+
 ---
 
 ## Available Scenarios
 
-### One-Hop to Admin (12 scenarios)
+### One-Hop to Admin (14 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
@@ -187,7 +214,6 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself for escalation |
 | `iam-createpolicyversion` | Policy versioning | Role can create new policy versions with elevated permissions |
 | `iam-createaccesskey` | Credential creation | Role can create access keys for an admin user |
-| `iam-createloginprofile` | Console credential creation | Role can create console password for an admin user |
 | `iam-updateloginprofile` | Password reset | Role can reset console password for an admin user |
 | `sts-assumerole` | Direct assumption | Role can directly assume another role with admin permissions |
 | `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policy of admin role to grant access |
@@ -195,14 +221,18 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `iam-putgrouppolicy` | Group inline policy | Role can add inline admin policy to a group containing the user |
 | `iam-passrole+ec2-runinstances` | Compute privilege escalation | Role can pass admin role to EC2 instance and backdoor trust policy |
 | `iam-passrole+lambda-createfunction+lambda-invokefunction` | Lambda execution role | Role can create Lambda functions with admin role, invoke them to extract credentials |
-### One-Hop to Bucket (5 scenarios)
+| `iam-passrole-cloudformation` | Service role passing | User passes admin role to CloudFormation to create escalated role |
+| `lambda-updatefunctioncode` | Lambda code modification | User can modify existing Lambda function code to execute malicious logic under privileged role |
+### One-Hop to Bucket (7 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
 | `iam-putrolepolicy` | Self-modification | Role can grant itself S3 bucket access via inline policy |
 | `iam-attachrolepolicy` | Self-modification | Role can attach S3 access policies to itself |
 | `iam-createaccesskey` | Credential creation | Role can create keys for user with bucket access |
+| `iam-createloginprofile` | Console credential creation | Role can create console password for user with bucket access |
 | `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policies to assume bucket-access roles |
+| `iam-updateloginprofile` | Password reset | Role can reset console password for user with bucket access |
 | `sts-assumerole` | Direct assumption | Role can directly assume another role with bucket permissions |
 
 ### Multi-Hop to Admin (2 scenarios)
@@ -212,12 +242,10 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | `multiple-paths-combined` | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
 | `putrolepolicy-on-other` | 2 | Role can modify another role's policy to gain admin access |
 
-### Multi-Hop to Bucket (3 scenarios)
+### Multi-Hop to Bucket (1 scenario)
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
-| `resource-policy-bypass` | 2 | Access bucket through resource policy bypassing IAM restrictions |
-| `exclusive-resource-policy` | 2 | Exclusive bucket access via restrictive resource policy |
 | `role-chain-to-s3` | 3 | Three-hop role assumption chain ending at S3 bucket |
 
 ### Toxic Combo (1 scenario)
@@ -225,6 +253,13 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 | Scenario | Risk Level | Description |
 |----------|------------|-------------|
 | `public-lambda-with-admin` | 🔴 Critical | Publicly accessible Lambda function with administrative role |
+
+### Tool Testing (2 scenarios)
+
+| Scenario | Focus | Description |
+|----------|-------|-------------|
+| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
+| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
 
 ### Cross-Account Dev-to-Prod (4 scenarios)
 
@@ -293,7 +328,7 @@ Each scenario includes a demonstration script that shows how to exploit the vuln
 
 ```bash
 # Navigate to a specific scenario
-cd modules/scenarios/prod/one-hop/to-admin/iam-createaccesskey
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
 
 # Run the demonstration
 ./demo_attack.sh
@@ -307,6 +342,11 @@ The demo scripts provide:
 - ✅ AWS CLI commands with explanations
 - ✅ Real-time verification of privilege escalation
 - ✅ Color-coded output for clarity
+- ✅ **Automatic credential retrieval** - No AWS profile configuration needed!
+
+**How it works:** Demo scripts automatically read credentials from Terraform's grouped outputs, so you can run them immediately after `terraform apply` without any additional setup.
+
+**Optional:** If you want to configure AWS CLI profiles for manual testing, you can run `./create_pathfinder_profiles.sh` to create profiles for the pathfinder starting users.
 
 ---
 
@@ -387,6 +427,7 @@ pathfinder-labs/
 │   │   │   ├── to-admin/    # Multi-step escalation to admin
 │   │   │   └── to-bucket/   # Multi-step escalation to S3 access
 │   │   └── toxic-combo/     # Attack paths with multiple conditions
+│   ├── tool-testing/         # Edge cases for testing detection engines
 │   └── cross-account/
 │       ├── dev-to-prod/     # Dev → Prod attack paths
 │       └── ops-to-prod/     # Ops → Prod attack paths
@@ -435,7 +476,7 @@ enable_prod_one_hop_to_admin_iam_putrolepolicy = true
 terraform apply
 
 # Practice exploitation
-cd modules/scenarios/prod/one-hop/to-admin/iam-putrolepolicy
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy
 ./demo_attack.sh
 
 # Learn the technique, modify the script, try variations
@@ -524,7 +565,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **27 scenarios** available
+- ✅ **29 scenarios** available
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)

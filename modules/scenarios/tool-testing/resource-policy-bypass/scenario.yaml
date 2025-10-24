@@ -1,0 +1,66 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "resource-policy-bypass"
+description: "Bypass S3 bucket resource policy restrictions by assuming role with bucket access"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-lateral-movement"
+path_type: "multi-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
+    - "arn:aws:iam::{account_id}:role/pl-prod-bucket-role"
+    - "arn:aws:s3:::pl-restricted-bucket-{account_id}"
+
+  summary: "starting_user → (AssumeRole) → role_a → (sts:AssumeRole) → bucket_role → bypass resource policy → bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover roles with bucket access"
+
+    - permission: "s3:GetBucketPolicy"
+      purpose: "View bucket resource policy restrictions"
+
+    - permission: "iam:GetRole"
+      purpose: "View role permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0005 - Defense Evasion"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_multi_hop_to_bucket_resource_policy_bypass"
+  module_path: "modules/scenarios/single-account/privesc-multi-hop/to-bucket/resource-policy-bypass"

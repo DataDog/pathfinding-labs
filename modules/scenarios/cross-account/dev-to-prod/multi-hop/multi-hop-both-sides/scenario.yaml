@@ -1,0 +1,74 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "multi-hop-both-sides"
+description: "Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "privilege-chaining"
+path_type: "cross-account"
+target: "to-admin"
+environments:
+  - "dev"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{dev_account_id}:user/pl-pathfinder-starting-user-dev"
+    - "arn:aws:iam::{dev_account_id}:role/pl-helpdesk"
+    - "arn:aws:iam::{dev_account_id}:user/pl-Josh"
+    - "arn:aws:iam::{prod_account_id}:role/pl-trustsdev"
+    - "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
+
+  summary: "starting_user_dev → (AssumeRole) → helpdesk_role → (iam:CreateLoginProfile) → josh_user (admin in dev) → (sts:AssumeRole cross-account) → trustsdev_role → (iam:UpdateLoginProfile) → jeremy_user (admin in prod)"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:CreateLoginProfile"
+      resource: "arn:aws:iam::{dev_account_id}:user/pl-Josh"
+
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::{prod_account_id}:role/pl-trustsdev"
+
+    - permission: "iam:UpdateLoginProfile"
+      resource: "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
+
+  helpful:
+    - permission: "iam:GetLoginProfile"
+      purpose: "View existing login profile configuration"
+
+    - permission: "iam:ListUsers"
+      purpose: "Discover users in both accounts"
+
+    - permission: "iam:GetUser"
+      purpose: "View user details and permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides"

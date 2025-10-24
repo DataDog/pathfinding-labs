@@ -18,47 +18,65 @@ operations_account_aws_profile = "pl-pathfinder-starting-user-operations"
 # Set to true to enable a scenario, false to disable
 ##############################################################################
 
-# PROD ONE-HOP TO-ADMIN
-enable_prod_one_hop_to_admin_iam_putrolepolicy           = false
-enable_prod_one_hop_to_admin_iam_attachrolepolicy        = false
-enable_prod_one_hop_to_admin_iam_createpolicyversion      = false
-enable_prod_one_hop_to_admin_iam_createaccesskey         = false
-enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances = false
-enable_prod_one_hop_to_admin_sts_assumerole              = false
-enable_prod_one_hop_to_admin_iam_updateassumerolepolicy  = false
-enable_prod_one_hop_to_admin_iam_createloginprofile      = false
-enable_prod_one_hop_to_admin_iam_updateloginprofile      = false
-enable_prod_one_hop_to_admin_iam_putuserpolicy           = false
-enable_prod_one_hop_to_admin_iam_putgrouppolicy          = false
-enable_prod_one_hop_to_admin_iam_addusertogroup          = false
-enable_prod_one_hop_to_admin_iam_attachuserpolicy        = false
-enable_prod_one_hop_to_admin_iam_attachgrouppolicy       = false
-enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
+# SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN
+enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy           = false
+enable_single_account_privesc_self_escalation_to_admin_iam_attachrolepolicy        = false
+enable_single_account_privesc_self_escalation_to_admin_iam_createpolicyversion     = false
+enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy           = false
+enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy          = false
+enable_single_account_privesc_self_escalation_to_admin_iam_addusertogroup          = false
+enable_single_account_privesc_self_escalation_to_admin_iam_attachuserpolicy        = false
+enable_single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy       = false
 
-# PROD ONE-HOP TO-BUCKET
-enable_prod_one_hop_to_bucket_iam_putrolepolicy          = false
-enable_prod_one_hop_to_bucket_iam_attachrolepolicy       = false
-enable_prod_one_hop_to_bucket_iam_createaccesskey        = false
-enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy = false
-enable_prod_one_hop_to_bucket_iam_assumerole             = false
+# SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET
+enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy          = false
+enable_single_account_privesc_self_escalation_to_bucket_iam_attachrolepolicy       = false
 
-# PROD MULTI-HOP TO-ADMIN
-enable_prod_multi_hop_to_admin_putrolepolicy_on_other  = false
-enable_prod_multi_hop_to_admin_multiple_paths_combined = false
+# SINGLE-ACCOUNT ONE-HOP TO-ADMIN
+enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey                 = false
+enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile              = false
+enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile              = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances       = false
+enable_single_account_privesc_one_hop_to_admin_sts_assumerole                      = false
+enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy          = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation         = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
 
-# PROD MULTI-HOP TO-BUCKET
-enable_prod_multi_hop_to_bucket_role_chain_to_s3         = false
-enable_prod_multi_hop_to_bucket_resource_policy_bypass   = false
-enable_prod_multi_hop_to_bucket_exclusive_resource_policy = false
+enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode           = false
 
-# PROD TOXIC-COMBO
-enable_prod_toxic_combo_public_lambda_with_admin = false
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
+enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand                     = false
+
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET
+enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey                = false
+enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile             = false
+enable_single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy         = false
+enable_single_account_privesc_one_hop_to_bucket_sts_assumerole                     = false
+enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile             = false
+
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
+enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand                    = false
+
+# SINGLE-ACCOUNT MULTI-HOP TO-ADMIN
+enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other            = false
+enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined           = false
+
+# SINGLE-ACCOUNT MULTI-HOP TO-BUCKET
+enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3                 = false
+
+# TOOL TESTING
+enable_tool_testing_resource_policy_bypass                                         = true
+enable_tool_testing_exclusive_resource_policy                                      = true
+
+# SINGLE-ACCOUNT TOXIC-COMBO
+enable_single_account_toxic_combo_public_lambda_with_admin                         = false
 
 # CROSS-ACCOUNT DEV-TO-PROD
-enable_cross_account_dev_to_prod_one_hop_simple_role_assumption    = false
-enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin   = false
-enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides    = false
-enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update    = false
+enable_cross_account_dev_to_prod_one_hop_simple_role_assumption                    = false
+enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin                   = false
+enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides                    = false
+enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update                    = false
 
 # CROSS-ACCOUNT OPS-TO-PROD
-enable_cross_account_ops_to_prod_one_hop_simple_role_assumption = false
+enable_cross_account_ops_to_prod_one_hop_simple_role_assumption                    = false

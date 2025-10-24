@@ -1,0 +1,64 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "iam-updateassumerolepolicy"
+description: "User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-lateral-movement"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-uarp-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-uarp-bucket-role"
+    - "arn:aws:s3:::pl-sensitive-data-{account_id}"
+
+  summary: "starting_user → (iam:UpdateAssumeRolePolicy) → modify role trust → (sts:AssumeRole) → S3 bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:UpdateAssumeRolePolicy"
+      resource: "arn:aws:iam::*:role/pl-uarp-bucket-role"
+
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/pl-uarp-bucket-role"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover roles with S3 access"
+
+    - permission: "iam:GetRole"
+      purpose: "View current trust policy before modification"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-updateassumerolepolicy"

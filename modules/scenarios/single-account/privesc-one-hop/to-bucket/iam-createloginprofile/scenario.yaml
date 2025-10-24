@@ -1,0 +1,64 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "iam-createloginprofile"
+description: "User with iam:CreateLoginProfile can set password for user with S3 bucket access"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "credential-access"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-clp-starting-user"
+    - "arn:aws:iam::{account_id}:user/pl-clp-bucket-user"
+    - "arn:aws:s3:::pl-sensitive-data-{account_id}"
+
+  summary: "starting_user → (iam:CreateLoginProfile) → set password for bucket_user → console login → S3 bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:CreateLoginProfile"
+      resource: "arn:aws:iam::*:user/pl-clp-bucket-user"
+
+  helpful:
+    - permission: "iam:ListUsers"
+      purpose: "Discover users without login profiles"
+
+    - permission: "iam:GetUser"
+      purpose: "View user details"
+
+    - permission: "iam:GetLoginProfile"
+      purpose: "Check if user already has login profile"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-createloginprofile"

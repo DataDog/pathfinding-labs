@@ -47,177 +47,235 @@ variable "github_repo" {
 }
 
 ##############################################################################
-# PROD ONE-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS
 ##############################################################################
 
-variable "enable_prod_one_hop_to_admin_iam_putrolepolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-putrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putrolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_attachrolepolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-attachrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachrolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_createpolicyversion" {
-  description = "Enable: prod → one-hop → to-admin → iam-createpolicyversion"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_createpolicyversion" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-createpolicyversion"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_createaccesskey" {
-  description = "Enable: prod → one-hop → to-admin → iam-createaccesskey"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_passrole_ec2_runinstances" {
-  description = "Enable: prod → one-hop → to-admin → iam-passrole+ec2-runinstances"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putgrouppolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_sts_assumerole" {
-  description = "Enable: prod → one-hop → to-admin → sts-assumerole"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_addusertogroup" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-addusertogroup"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_updateassumerolepolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachuserpolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_admin_iam_createloginprofile" {
-  description = "Enable: prod → one-hop → to-admin → iam-createloginprofile"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_updateloginprofile" {
-  description = "Enable: prod → one-hop → to-admin → iam-updateloginprofile"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_putuserpolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-putuserpolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_putgrouppolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-putgrouppolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_addusertogroup" {
-  description = "Enable: prod → one-hop → to-admin → iam-addusertogroup"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_attachuserpolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-attachuserpolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_attachgrouppolicy" {
-  description = "Enable: prod → one-hop → to-admin → iam-attachgrouppolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
-  description = "Enable: prod → one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachgrouppolicy"
   type        = bool
   default     = false
 }
 
 ##############################################################################
-# PROD ONE-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET SCENARIOS
 ##############################################################################
 
-variable "enable_prod_one_hop_to_bucket_iam_putrolepolicy" {
-  description = "Enable: prod → one-hop → to-bucket → iam-putrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-putrolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_one_hop_to_bucket_iam_attachrolepolicy" {
-  description = "Enable: prod → one-hop → to-bucket → iam-attachrolepolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_bucket_iam_createaccesskey" {
-  description = "Enable: prod → one-hop → to-bucket → iam-createaccesskey"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_bucket_iam_updateassumerolepolicy" {
-  description = "Enable: prod → one-hop → to-bucket → iam-updateassumerolepolicy"
-  type        = bool
-  default     = false
-}
-
-variable "enable_prod_one_hop_to_bucket_sts_assumerole" {
-  description = "Enable: prod → one-hop → to-bucket → iam-assumerole"
+variable "enable_single_account_privesc_self_escalation_to_bucket_iam_attachrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-attachrolepolicy"
   type        = bool
   default     = false
 }
 
 ##############################################################################
-# PROD MULTI-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
-variable "enable_prod_multi_hop_to_admin_putrolepolicy_on_other" {
-  description = "Enable: prod → multi-hop → to-admin → putrolepolicy-on-other"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_multi_hop_to_admin_multiple_paths_combined" {
-  description = "Enable: prod → multi-hop → to-admin → multiple-paths-combined"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-updateloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-runinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-updateassumerolepolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-sendcommand"
   type        = bool
   default     = false
 }
 
 ##############################################################################
-# PROD MULTI-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
 
-variable "enable_prod_multi_hop_to_bucket_role_chain_to_s3" {
-  description = "Enable: prod → multi-hop → to-bucket → role-chain-to-s3"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_multi_hop_to_bucket_resource_policy_bypass" {
-  description = "Enable: prod → multi-hop → to-bucket → resource-policy-bypass"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createloginprofile"
   type        = bool
   default     = false
 }
 
-variable "enable_prod_multi_hop_to_bucket_exclusive_resource_policy" {
-  description = "Enable: prod → multi-hop → to-bucket → exclusive-resource-policy"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-updateassumerolepolicy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-updateloginprofile"
   type        = bool
   default     = false
 }
 
 ##############################################################################
-# PROD TOXIC-COMBO SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
 
-variable "enable_prod_toxic_combo_public_lambda_with_admin" {
-  description = "Enable: prod → toxic-combo → public-lambda-with-admin"
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# SINGLE-ACCOUNT MULTI-HOP TO-ADMIN SCENARIOS
+##############################################################################
+
+variable "enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other" {
+  description = "Enable: single-account → privesc-multi-hop → to-admin → putrolepolicy-on-other"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
+  description = "Enable: single-account → privesc-multi-hop → to-admin → multiple-paths-combined"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# SINGLE-ACCOUNT MULTI-HOP TO-BUCKET SCENARIOS
+##############################################################################
+
+variable "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
+  description = "Enable: single-account → privesc-multi-hop → to-bucket → role-chain-to-s3"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# TOOL TESTING SCENARIOS
+##############################################################################
+
+variable "enable_tool_testing_resource_policy_bypass" {
+  description = "Enable: tool-testing → resource-policy-bypass (tests detection of resource policies that bypass IAM)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_exclusive_resource_policy" {
+  description = "Enable: tool-testing → exclusive-resource-policy (tests detection of exclusive resource policy configurations)"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# SINGLE-ACCOUNT TOXIC-COMBO SCENARIOS
+##############################################################################
+
+variable "enable_single_account_toxic_combo_public_lambda_with_admin" {
+  description = "Enable: single-account → toxic-combo → public-lambda-with-admin"
   type        = bool
   default     = false
 }

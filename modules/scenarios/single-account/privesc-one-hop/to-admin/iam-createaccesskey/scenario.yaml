@@ -1,0 +1,62 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.0.0"
+name: "iam-createaccesskey"
+description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "credential-access"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-cak-starting-user"
+    - "arn:aws:iam::{account_id}:user/pl-cak-admin"
+
+  summary: "starting_user → (iam:CreateAccessKey) → admin_user credentials → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:CreateAccessKey"
+      resource: "arn:aws:iam::*:user/pl-cak-admin"
+
+  helpful:
+    - permission: "iam:ListUsers"
+      purpose: "Discover privileged users to target"
+
+    - permission: "iam:GetUser"
+      purpose: "View user details and attached policies"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Identify users with admin permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"

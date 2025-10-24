@@ -20,15 +20,24 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 
 ## Required Input from Orchestrator
 
-You need the following information to build the Terraform code:
+The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
-- **Scenario type**: one-hop, multi-hop, toxic-combo, cross-account
-- **Target type**: to-admin or to-bucket
+**From scenario.yaml you will use:**
+- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- **target**: "to-admin" or "to-bucket"
+- **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
+- **attack_path.principals**: Ordered list of all principals in the attack
+- **attack_path.summary**: Human-readable attack flow
+- **permissions.required**: Required IAM permissions for the attack
+- **terraform.module_path**: Where to create the Terraform files
+- **name**: Scenario name
+
+Additionally, the orchestrator will provide:
 - **Directory path**: Full path where files should be created
 - **Resource names**: All role names, policy names, bucket names, etc.
-- **Attack path**: Complete path with principals and actions
-- **Provider configuration**: Which AWS provider(s) to use
-- **Environment**: prod, dev, or operations
+- **Provider configuration**: Which AWS provider(s) to use based on environments
 
 ## File Templates
 
@@ -39,17 +48,17 @@ You need the following information to build the Terraform code:
 #
 # This scenario demonstrates how {brief description}
 
-# Resource naming convention: pl-{environment}-{category}-{scenario-shorthand}-{resource-type}
+# Resource naming convention: pl-{environment}-{scenario-shorthand}-{resource-type}
 # For single account scenarios, use provider = aws.prod
 # For cross-account, use appropriate providers (aws.dev, aws.prod, aws.operations)
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-starting-user"
+  name     = "pl-{environment}-{scenario-shorthand}-starting-user"
 
   tags = {
-    Name        = "pl-{environment}-{category}-{scenario-shorthand}-starting-user"
+    Name        = "pl-{environment}-{scenario-shorthand}-starting-user"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "starting-user"
@@ -65,7 +74,7 @@ resource "aws_iam_access_key" "starting_user_key" {
 # Minimal policy for the starting user (just enough to assume the role)
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-starting-user-policy"
+  name     = "pl-{environment}-{scenario-shorthand}-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
@@ -76,7 +85,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{category}-{scenario-shorthand}-role"
+        Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{scenario-shorthand}-role"
       },
       {
         Effect = "Allow"
@@ -92,7 +101,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # Vulnerable role (for role-based scenarios)
 resource "aws_iam_role" "vulnerable_role" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-role"
+  name     = "pl-{environment}-{scenario-shorthand}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -106,7 +115,7 @@ resource "aws_iam_role" "vulnerable_role" {
   })
 
   tags = {
-    Name        = "pl-{environment}-{category}-{scenario-shorthand}-role"
+    Name        = "pl-{environment}-{scenario-shorthand}-role"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "vulnerable-role"
@@ -116,7 +125,7 @@ resource "aws_iam_role" "vulnerable_role" {
 # Attach policy granting the exploitable permission(s)
 resource "aws_iam_role_policy" "vulnerable_role_policy" {
   provider = aws.prod
-  name     = "pl-{environment}-{category}-{scenario-shorthand}-policy"
+  name     = "pl-{environment}-{scenario-shorthand}-policy"
   role     = aws_iam_role.vulnerable_role.id
 
   policy = jsonencode({
@@ -144,7 +153,7 @@ Add an admin role as the target:
 # Admin role (target of privilege escalation)
 resource "aws_iam_role" "admin_role" {
   provider = aws.prod
-  name     = "pl-prod-{category}-{scenario}-admin-role"
+  name     = "pl-{environment}-{scenario-shorthand}-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -158,7 +167,7 @@ resource "aws_iam_role" "admin_role" {
   })
 
   tags = {
-    Name        = "pl-prod-{category}-{scenario}-admin-role"
+    Name        = "pl-{environment}-{scenario-shorthand}-admin-role"
     Environment = var.environment
     Scenario    = "{scenario-name}"
     Purpose     = "admin-target"
@@ -232,7 +241,9 @@ variable "resource_suffix" {
 
 ### 3. outputs.tf Template
 
-**CRITICAL**: Always include starting user credentials as outputs!
+**CRITICAL**: All scenario outputs must be individual outputs (NOT grouped). The root `outputs.tf` will group them together.
+
+**DO NOT create grouped outputs in the scenario module** - the project-updator agent will create the grouped output in the root outputs.tf.
 
 ```hcl
 # Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
@@ -293,20 +304,24 @@ output "target_bucket_arn" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-{env}-{category}-{scenario}-starting-user) → {describe-the-path} → {target}"
+  value       = "User (pl-{environment}-{scenario-shorthand}-starting-user) → {describe-the-path} → {target}"
 }
-``` 
+```
+
+**IMPORTANT**: The scenario module should output individual values. The root `outputs.tf` will then create a grouped output that bundles all these individual outputs together for easy consumption by demo scripts. The project-updator agent handles creating the grouped output in the root file. 
 
 
 ## Naming Conventions
 
 ### Resource Names
-Pattern: `pl-{environment}-{category}-{scenario}-{resource-type}`
+Pattern: `pl-{environment}-{scenario-shorthand}-{resource-type}`
 
 Examples:
-- `pl-prod-one-hop-iam-putrolepolicy-role`
-- `pl-prod-one-hop-iam-putrolepolicy-admin-role`
-- `pl-prod-multi-hop-role-chain-intermediate-role`
+- `pl-prod-prp-to-admin-starting-role` (self-escalation: PutRolePolicy)
+- `pl-prod-prp-to-admin-admin-role` (target admin role)
+- `pl-prod-cak-to-admin-starting-user` (one-hop: CreateAccessKey)
+- `pl-prod-cak-to-admin-admin-user` (target admin user)
+- `pl-prod-multi-hop-role-chain-intermediate-role` (multi-hop)
 
 ### S3 Buckets (Globally Unique)
 Pattern: `pl-{purpose}-${var.account_id}-${var.resource_suffix}`
@@ -481,7 +496,7 @@ tags = {
 
 Before considering your work done:
 
-1. Verify all resource names follow the `pl-{env}-{category}-{scenario}-{type}` pattern
+1. Verify all resource names follow the `pl-{environment}-{scenario-shorthand}-{type}` pattern
 2. Ensure correct provider is specified for each resource
 3. Check that trust policies reference the correct principals
 4. Verify IAM policies grant the exact permissions needed for the attack
