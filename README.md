@@ -206,7 +206,7 @@ Edge cases and scenarios designed to test detection engine capabilities. These s
 
 ## Available Scenarios
 
-### One-Hop to Admin (13 scenarios)
+### One-Hop to Admin (14 scenarios)
 
 | Scenario | Attack Vector | Description |
 |----------|---------------|-------------|
@@ -222,6 +222,7 @@ Edge cases and scenarios designed to test detection engine capabilities. These s
 | `iam-passrole+ec2-runinstances` | Compute privilege escalation | Role can pass admin role to EC2 instance and backdoor trust policy |
 | `iam-passrole+lambda-createfunction+lambda-invokefunction` | Lambda execution role | Role can create Lambda functions with admin role, invoke them to extract credentials |
 | `iam-passrole-cloudformation` | Service role passing | User passes admin role to CloudFormation to create escalated role |
+| `lambda-updatefunctioncode` | Lambda code modification | User can modify existing Lambda function code to execute malicious logic under privileged role |
 ### One-Hop to Bucket (7 scenarios)
 
 | Scenario | Attack Vector | Description |

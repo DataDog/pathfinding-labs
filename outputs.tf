@@ -432,6 +432,22 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
+  description = "All outputs for lambda-updatefunctioncode one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_role_arn
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_lambda_function_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   description = "All outputs for ssm-sendcommand one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand ? {

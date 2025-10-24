@@ -43,6 +43,8 @@ enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunctio
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation         = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
 
+enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode           = false
+
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
 enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand                     = false
 

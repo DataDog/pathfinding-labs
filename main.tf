@@ -273,6 +273,17 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-sendcommand"

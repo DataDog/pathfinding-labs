@@ -172,6 +172,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ssm-sendcommand"
   type        = bool
