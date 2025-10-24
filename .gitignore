@@ -39,7 +39,7 @@ terraform.rc
 .cursorrules
 .cursor
 AGENTS.md
-
+/plans 
 # Terraform 
 .terraform.lock.hcl
 

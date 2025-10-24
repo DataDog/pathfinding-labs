@@ -5,6 +5,9 @@
 
 set -e
 
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,7 +15,6 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-cleanup-prod"
 START_USER="pl-aug-start-user"
 ADMIN_GROUP="pl-aug-admin-group"
 
@@ -20,21 +22,43 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup: IAM AddUserToGroup Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Check if the user is a member of the admin group
-echo -e "${YELLOW}Step 1: Checking group membership for $START_USER${NC}"
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
+
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
+
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
+
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Check if the user is a member of the admin group
+echo -e "${YELLOW}Step 2: Checking group membership for $START_USER${NC}"
 
 # Get user's current groups
-USER_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --profile $PROFILE --query 'Groups[*].GroupName' --output text 2>/dev/null || echo "")
+USER_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text 2>/dev/null || echo "")
 
 if [[ $USER_GROUPS == *"$ADMIN_GROUP"* ]]; then
     echo "Found: $START_USER is a member of $ADMIN_GROUP"
 
-    # Step 2: Remove the user from the admin group
-    echo -e "${YELLOW}Step 2: Removing $START_USER from $ADMIN_GROUP${NC}"
+    # Step 3: Remove the user from the admin group
+    echo -e "${YELLOW}Step 3: Removing $START_USER from $ADMIN_GROUP${NC}"
     aws iam remove-user-from-group \
         --group-name $ADMIN_GROUP \
-        --user-name $START_USER \
-        --profile $PROFILE
+        --user-name $START_USER
 
     echo -e "${GREEN}✓ Removed $START_USER from $ADMIN_GROUP${NC}"
 else
@@ -42,9 +66,9 @@ else
     echo "The demo may not have been run or was already cleaned up"
 fi
 
-# Step 3: Verify cleanup
-echo -e "\n${YELLOW}Step 3: Verifying cleanup${NC}"
-REMAINING_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --profile $PROFILE --query 'Groups[*].GroupName' --output text 2>/dev/null || echo "")
+# Step 4: Verify cleanup
+echo -e "\n${YELLOW}Step 4: Verifying cleanup${NC}"
+REMAINING_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text 2>/dev/null || echo "")
 
 if [ -z "$REMAINING_GROUPS" ]; then
     echo -e "${GREEN}✓ User $START_USER is not a member of any groups${NC}"

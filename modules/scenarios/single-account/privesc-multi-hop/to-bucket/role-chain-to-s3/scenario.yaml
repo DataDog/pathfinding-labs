@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "role-chain-to-s3"
 description: "Three-hop role assumption chain to reach S3 bucket access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

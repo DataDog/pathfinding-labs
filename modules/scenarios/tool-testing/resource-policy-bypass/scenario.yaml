@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "resource-policy-bypass"
 description: "Bypass S3 bucket resource policy restrictions by assuming role with bucket access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

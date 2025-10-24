@@ -25,20 +25,29 @@ echo -e "${GREEN}========================================${NC}\n"
 
 # Step 1: Extract credentials from Terraform outputs
 echo -e "${YELLOW}Step 1: Extracting credentials from Terraform outputs${NC}"
-TERRAFORM_DIR="../../../../../.."
-pushd $TERRAFORM_DIR > /dev/null
+cd ../../../../../..  # Go to project root
 
-ACCESS_KEY=$(terraform output -raw prod_one_hop_to_bucket_iam_createloginprofile_starting_user_access_key_id 2>/dev/null)
-SECRET_KEY=$(terraform output -raw prod_one_hop_to_bucket_iam_createloginprofile_starting_user_secret_access_key 2>/dev/null)
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_iam_createloginprofile.value // empty')
 
-if [ -z "$ACCESS_KEY" ] || [ "$ACCESS_KEY" == "null" ] || [ -z "$SECRET_KEY" ] || [ "$SECRET_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not retrieve credentials from Terraform outputs${NC}"
-    echo "Make sure the scenario is deployed: terraform apply"
-    popd > /dev/null
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-popd > /dev/null
+# Extract credentials
+ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$ACCESS_KEY" == "null" ] || [ -z "$ACCESS_KEY" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Retrieved credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
 
 # Export credentials as environment variables
 export AWS_ACCESS_KEY_ID=$ACCESS_KEY

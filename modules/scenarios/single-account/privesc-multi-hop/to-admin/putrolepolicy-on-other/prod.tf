@@ -8,6 +8,52 @@ terraform {
   }
 }
 
+# Scenario-specific starting user
+resource "aws_iam_user" "starting_user" {
+  provider = aws.prod
+  name     = "pl-prod-prpo-to-admin-starting-user"
+
+  tags = {
+    Name        = "pl-prod-prpo-to-admin-starting-user"
+    Environment = var.environment
+    Scenario    = "putrolepolicy-on-other"
+    Purpose     = "starting-user"
+  }
+}
+
+# Create access keys for the starting user
+resource "aws_iam_access_key" "starting_user_key" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Minimal policy for the starting user (just enough to assume the role)
+resource "aws_iam_user_policy" "starting_user_policy" {
+  provider = aws.prod
+  name     = "pl-prod-prpo-to-admin-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-role-a-non-admin"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # RoleA: Non-admin role that has iam:PutRolePolicy permission on RoleB
 resource "aws_iam_role" "prod_role_a" {
   provider = aws.prod
@@ -19,12 +65,19 @@ resource "aws_iam_role" "prod_role_a" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.prod_account_id}:user/pl-pathfinder-starting-user-prod"
+          AWS = aws_iam_user.starting_user.arn
         }
         Action = "sts:AssumeRole"
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-prod-role-a-non-admin"
+    Environment = var.environment
+    Scenario    = "putrolepolicy-on-other"
+    Purpose     = "role-a"
+  }
 }
 
 # Policy for RoleA - Allows PutRolePolicy only on RoleB

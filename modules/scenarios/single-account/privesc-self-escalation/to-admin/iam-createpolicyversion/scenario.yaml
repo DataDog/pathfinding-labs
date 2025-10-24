@@ -21,10 +21,10 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
-    - "arn:aws:iam::{account_id}:role/pl-prod-self-privesc-createPolicyVersion-role-1"
+    - "arn:aws:iam::{account_id}:user/pl-prod-cpv-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cpv-to-admin-starting-role"
 
-  summary: "starting_user → (AssumeRole) → privesc_role → (iam:CreatePolicyVersion) → new policy version with admin → admin access"
+  summary: "starting_user → (AssumeRole) → starting_role → (iam:CreatePolicyVersion) → new policy version with admin → admin access"
 
 # =============================================================================
 # PERMISSIONS

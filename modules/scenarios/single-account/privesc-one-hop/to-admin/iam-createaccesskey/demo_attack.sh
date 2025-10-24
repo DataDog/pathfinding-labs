@@ -20,30 +20,34 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateAccessKey Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Retrieve credentials from Terraform outputs
-echo -e "${YELLOW}Step 1: Retrieving scenario-specific user credentials from Terraform${NC}"
-cd ../../../../../..  # Navigate to root of terraform project
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-STARTING_ACCESS_KEY_ID=$(terraform output -raw prod_one_hop_to_admin_iam_createaccesskey_starting_user_access_key_id)
-STARTING_SECRET_ACCESS_KEY=$(terraform output -raw prod_one_hop_to_admin_iam_createaccesskey_starting_user_secret_access_key)
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createaccesskey.value // empty')
 
-if [ -z "$STARTING_ACCESS_KEY_ID" ] || [ -z "$STARTING_SECRET_ACCESS_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve credentials from Terraform outputs${NC}"
-    echo "Make sure the scenario is enabled and terraform apply has been run"
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-echo "Retrieved access key for: $STARTING_USER"
-echo -e "${GREEN}✓ Retrieved credentials from Terraform${NC}\n"
+# Extract credentials
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
-# Navigate back to scenario directory
-cd - > /dev/null
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-unset AWS_SESSION_TOKEN
+echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 
 # Verify starting user identity
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -137,7 +141,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$PRIVESC_ROLE${NC}"
 echo -e "Step 2: Created access keys for ${YELLOW}$ADMIN_USER${NC}"
-echo -e "Step 3: Gained ${RED}Administrator Access${NC}"
+echo -e "Step 3: Gained ${GREEN}Administrator Access${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (AssumeRole) → $PRIVESC_ROLE → (CreateAccessKey) → $ADMIN_USER → Admin"

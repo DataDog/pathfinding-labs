@@ -20,10 +20,28 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + EC2 RunInstances Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 0: Get region from Terraform
-echo -e "${YELLOW}Retrieving region from Terraform configuration${NC}"
-cd ../../../../../..  # Navigate to root of terraform project
+# Step 0: Get admin credentials from Terraform
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
+
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
+
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+# Get region from Terraform
 CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$CURRENT_REGION" ]; then
@@ -33,27 +51,11 @@ fi
 
 echo "Region from Terraform: $CURRENT_REGION"
 
-# Navigate back to scenario directory
-cd - > /dev/null
-echo ""
-
-# Try to use the admin cleanup profile, but fall back to default credentials if not available
-echo "Checking AWS credentials..."
-if aws sts get-caller-identity --profile $PROFILE &> /dev/null; then
-    echo "Using AWS profile: $PROFILE"
-    AWS_PROFILE_FLAG="--profile $PROFILE"
-elif [ -n "$AWS_ACCESS_KEY_ID" ]; then
-    echo "Using AWS credentials from environment variables"
-    AWS_PROFILE_FLAG=""
-else
-    echo -e "${RED}Error: No AWS credentials available${NC}"
-    echo "Either configure the '$PROFILE' profile or set AWS environment variables"
-    exit 1
-fi
-
 # Get account ID
-ACCOUNT_ID=$(aws sts get-caller-identity $AWS_PROFILE_FLAG --query 'Account' --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
+
+cd - > /dev/null  # Return to scenario directory
 echo ""
 
 # Step 1: Find and terminate EC2 instances
@@ -64,7 +66,7 @@ echo ""
 
 # Find instances by tag (first search all states to see if any exist)
 ALL_INSTANCES=$(aws ec2 describe-instances \
-    $AWS_PROFILE_FLAG \
+     \
     --region $CURRENT_REGION \
     --filters "Name=tag:Name,Values=$DEMO_INSTANCE_TAG" \
     --query 'Reservations[*].Instances[*].[InstanceId,State.Name]' \
@@ -78,7 +80,7 @@ fi
 
 # Now find instances that can be terminated
 INSTANCE_IDS=$(aws ec2 describe-instances \
-    $AWS_PROFILE_FLAG \
+     \
     --region $CURRENT_REGION \
     --filters "Name=tag:Name,Values=$DEMO_INSTANCE_TAG" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
     --query 'Reservations[*].Instances[*].InstanceId' \
@@ -93,7 +95,7 @@ else
     for INSTANCE_ID in $INSTANCE_IDS; do
         echo "Terminating instance: $INSTANCE_ID"
         aws ec2 terminate-instances \
-            $AWS_PROFILE_FLAG \
+             \
             --region $CURRENT_REGION \
             --instance-ids $INSTANCE_ID \
             --output text > /dev/null
@@ -104,7 +106,7 @@ else
     echo "Waiting for instances to terminate (this may take a minute)..."
     for INSTANCE_ID in $INSTANCE_IDS; do
         aws ec2 wait instance-terminated \
-            $AWS_PROFILE_FLAG \
+             \
             --region $CURRENT_REGION \
             --instance-ids $INSTANCE_ID 2>/dev/null || true
     done
@@ -132,7 +134,7 @@ TRUST_POLICY='{
 
 # Update the trust policy
 aws iam update-assume-role-policy \
-    $AWS_PROFILE_FLAG \
+     \
     --role-name $ADMIN_ROLE \
     --policy-document "$TRUST_POLICY"
 
@@ -143,7 +145,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Verifying cleanup${NC}"
 
 # Check trust policy
-CURRENT_TRUST=$(aws iam get-role $AWS_PROFILE_FLAG --role-name $ADMIN_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
+CURRENT_TRUST=$(aws iam get-role  --role-name $ADMIN_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
 
 if echo "$CURRENT_TRUST" | grep -q "ec2.amazonaws.com"; then
     echo -e "${GREEN}✓ Trust policy verified - contains ec2.amazonaws.com${NC}"
@@ -153,7 +155,7 @@ fi
 
 # Check that no demo instances are running
 REMAINING_INSTANCES=$(aws ec2 describe-instances \
-    $AWS_PROFILE_FLAG \
+     \
     --region $CURRENT_REGION \
     --filters "Name=tag:Name,Values=$DEMO_INSTANCE_TAG" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
     --query 'Reservations[*].Instances[*].InstanceId' \

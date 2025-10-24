@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "simple-role-assumption"
 description: "Cross-account role assumption from operations to prod"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

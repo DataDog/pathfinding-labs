@@ -1,6 +1,6 @@
-# One-Hop Privilege Escalation: iam:AttachRolePolicy
+# Self-Escalation Privilege Escalation: iam:AttachRolePolicy
 
-**Scenario Type:** One-Hop
+**Scenario Type:** Self-Escalation
 **Target:** Admin Access
 **Technique:** Self-modification via iam:AttachRolePolicy
 
@@ -12,29 +12,31 @@ This scenario demonstrates a privilege escalation vulnerability where a role can
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-attachRolePolicy-role-1`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-arp-to-admin-starting-user`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-arp-to-admin-starting-role`
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-prod-self-privesc-attachRolePolicy-role-1] -->|iam:AttachRolePolicy| B[AdministratorAccess Policy]
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-arp-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-arp-to-admin-starting-role]
+    B -->|iam:AttachRolePolicy| C[AdministratorAccess Policy]
+    C -->|Administrator Access| D[Effective Administrator]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-self-privesc-attachRolePolicy-role-1` to begin the scenario
-2. **Attach Admin Policy**: `pl-prod-self-privesc-attachRolePolicy-role-1` uses `iam:AttachRolePolicy` to attach the AWS-managed AdministratorAccess policy to itself
+1. **Initial Access**: `pl-prod-arp-to-admin-starting-user` assumes the role `pl-prod-arp-to-admin-starting-role` to begin the scenario
+2. **Attach Admin Policy**: `pl-prod-arp-to-admin-starting-role` uses `iam:AttachRolePolicy` to attach the AWS-managed AdministratorAccess policy to itself
 3. **Verification**: Verify administrator access with the modified role
 
 ### Scenario specific resources created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-attachRolePolicy-role-1` | Starting principal with policy attachment capability |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-self-privesc-attachRolePolicy-policy` | Allows `iam:AttachRolePolicy` on the role itself |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-arp-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-arp-to-admin-starting-role` | Starting role with policy attachment capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-arp-to-admin-policy` | Allows `iam:AttachRolePolicy` on the role itself |
 
 ## Executing the attack
 

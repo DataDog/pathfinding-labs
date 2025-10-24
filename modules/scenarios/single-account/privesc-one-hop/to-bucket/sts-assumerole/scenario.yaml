@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "sts-assumerole"
 description: "User with sts:AssumeRole can directly assume role with S3 bucket access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

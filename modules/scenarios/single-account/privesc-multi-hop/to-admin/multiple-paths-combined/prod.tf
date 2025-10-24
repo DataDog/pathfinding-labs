@@ -8,6 +8,52 @@ terraform {
   }
 }
 
+# Scenario-specific starting user
+resource "aws_iam_user" "starting_user" {
+  provider = aws.prod
+  name     = "pl-prod-mpc-to-admin-starting-user"
+
+  tags = {
+    Name        = "pl-prod-mpc-to-admin-starting-user"
+    Environment = var.environment
+    Scenario    = "multiple-paths-combined"
+    Purpose     = "starting-user"
+  }
+}
+
+# Create access keys for the starting user
+resource "aws_iam_access_key" "starting_user_key" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Minimal policy for the starting user (just enough to assume the role)
+resource "aws_iam_user_policy" "starting_user_policy" {
+  provider = aws.prod
+  name     = "pl-prod-mpc-to-admin-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-role-with-multiple-privesc-paths"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Role with multiple privilege escalation paths
 resource "aws_iam_role" "prod_role_with_multiple_privesc_paths" {
   provider = aws.prod
@@ -19,12 +65,19 @@ resource "aws_iam_role" "prod_role_with_multiple_privesc_paths" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.prod_account_id}:user/pl-pathfinder-starting-user-prod"
+          AWS = aws_iam_user.starting_user.arn
         }
         Action = "sts:AssumeRole"
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-prod-role-with-multiple-privesc-paths"
+    Environment = var.environment
+    Scenario    = "multiple-paths-combined"
+    Purpose     = "vulnerable-role"
+  }
 }
 
 # Policy that allows multiple privilege escalation paths

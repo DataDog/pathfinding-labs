@@ -25,8 +25,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 **From scenario.yaml you will use:**
 - **name**: Scenario identifier
 - **description**: One-line scenario description
-- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved

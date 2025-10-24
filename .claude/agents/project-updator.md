@@ -14,9 +14,10 @@ You are a specialized agent for integrating new scenarios into the Pathfinder La
 
 1. **Update root variables.tf** - Add boolean flag for the scenario
 2. **Update root main.tf** - Add module instantiation
-3. **Update terraform.tfvars.example** - Add example configuration
-4. **Update terraform.tfvars** - Add default configuration (usually true for testing)
-5. **Update README.md** - Add scenario to the appropriate table and update counts
+3. **Update root outputs.tf** - Add grouped output for the scenario
+4. **Update terraform.tfvars.example** - Add example configuration
+5. **Update terraform.tfvars** - Add default configuration (usually true for testing)
+6. **Update README.md** - Add scenario to the appropriate table and update counts
 
 ## Required Input from Orchestrator
 
@@ -25,11 +26,12 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 **From scenario.yaml you will use:**
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
-- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
+- **cost_estimate**: Scenarios that have cost assoicated with them will be grouped together within the terraform.tfvars and terraform.tfvars.example files 
 - **terraform.variable_name**: The exact boolean variable name to use
 - **terraform.module_path**: Relative path to the scenario module
 
@@ -51,12 +53,16 @@ Location: `/variables.tf`
 
 **Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
 
+**Tool Testing Format**: `enable_tool_testing_{technique}`
+
 Examples from scenario.yaml:
 - `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
 - `enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
 - `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey` (one-hop)
 - `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
 - `enable_single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
+- `enable_tool_testing_resource_policy_bypass` (tool testing)
+- `enable_tool_testing_exclusive_resource_policy` (tool testing)
 - `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
 #### Variable Format
@@ -90,14 +96,26 @@ Find the appropriate section in variables.tf based on the scenario classificatio
 Example sections (organized by account type, path_type, and target):
 ```hcl
 # SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS NON-FREE
 # SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET SCENARIOS NON-FREE
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 # SINGLE-ACCOUNT MULTI-HOP TO-ADMIN SCENARIOS
+# SINGLE-ACCOUNT MULTI-HOP TO-ADMIN SCENARIOS NON-FREE
 # SINGLE-ACCOUNT MULTI-HOP TO-BUCKET SCENARIOS
+# SINGLE-ACCOUNT MULTI-HOP TO-BUCKET SCENARIOS NON-FREE
 # SINGLE-ACCOUNT TOXIC-COMBO SCENARIOS
+# SINGLE-ACCOUNT TOXIC-COMBO SCENARIOS NON-FREE
+# TOOL TESTING SCENARIOS
+# TOOL TESTING SCENARIOS NON-FREE
 # CROSS-ACCOUNT DEV-TO-PROD SCENARIOS
+# CROSS-ACCOUNT DEV-TO-PROD SCENARIOS NON-FREE
 # CROSS-ACCOUNT OPS-TO-PROD SCENARIOS
+# CROSS-ACCOUNT OPS-TO-PROD SCENARIOS NON-FREE
+
 ```
 
 The section header should use uppercase format as shown above.
@@ -166,7 +184,84 @@ Find the appropriate section in main.tf:
 - Add modules in the same order as variables
 - Maintain consistent formatting and indentation
 
-### 3. terraform.tfvars.example
+### 3. Root outputs.tf
+
+Location: `/outputs.tf`
+
+**CRITICAL**: Every scenario must have a grouped output in the root outputs.tf that bundles all the module's individual outputs into a single JSON object for easy consumption by demo scripts.
+
+#### Grouped Output Format
+
+**Single-Account**:
+```hcl
+output "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
+  description = "All outputs for {scenario-name} {path_type} to-{target} scenario"
+  value = var.enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} ? {
+    starting_user_name              = module.single_account_privesc_{path_type}_to_{target}_{scenario_name}[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_{path_type}_to_{target}_{scenario_name}[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_{path_type}_to_{target}_{scenario_name}[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_{path_type}_to_{target}_{scenario_name}[0].starting_user_secret_access_key
+    # Add other scenario-specific outputs (role ARNs, bucket names, etc.)
+    attack_path                     = module.single_account_privesc_{path_type}_to_{target}_{scenario_name}[0].attack_path
+  } : null
+  sensitive = true
+}
+```
+
+**Example for iam-createaccesskey to-admin**:
+```hcl
+output "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
+  description = "All outputs for iam-createaccesskey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_secret_access_key
+    admin_user_name                 = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].admin_user_name
+    admin_user_arn                  = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].admin_user_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].attack_path
+  } : null
+  sensitive = true
+}
+```
+
+**Example for iam-putrolepolicy to-bucket**:
+```hcl
+output "single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy" {
+  description = "All outputs for iam-putrolepolicy self-escalation to-bucket scenario"
+  value = var.enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy ? {
+    starting_user_name              = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_user_secret_access_key
+    starting_role_name              = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_role_name
+    starting_role_arn               = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].starting_role_arn
+    target_bucket_name              = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].target_bucket_arn
+    attack_path                     = module.single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy[0].attack_path
+  } : null
+  sensitive = true
+}
+```
+
+#### What to Include in Grouped Outputs
+
+Include ALL outputs from the scenario module:
+- **Starting user outputs** (ALWAYS): name, arn, access_key_id, secret_access_key
+- **Role outputs** (if applicable): role names and ARNs for vulnerable roles, intermediate roles
+- **Target outputs**:
+  - For to-admin: admin role/user name and ARN
+  - For to-bucket: bucket name and ARN
+- **Attack path** (ALWAYS): The attack_path description output
+- **Any other scenario-specific outputs**: Additional resources created by the scenario
+
+#### Placement Strategy
+- Find the appropriate section based on scenario type
+- Add in the same order as modules in main.tf
+- Maintain consistent formatting with existing grouped outputs
+- Always mark as `sensitive = true` since it contains credentials
+
+### 4. terraform.tfvars.example
 
 Location: `/terraform.tfvars.example`
 
@@ -386,11 +481,15 @@ Before completing, verify:
 4. ✅ Module source path is correct and points to the scenario directory
 5. ✅ Providers are correctly specified for the scenario type
 6. ✅ Account IDs match the environment (prod, dev, operations)
-7. ✅ terraform.tfvars.example has `false` default
-8. ✅ terraform.tfvars has `true` for testing
-9. ✅ README scenario count is incremented
-10. ✅ README table entry is in the correct section
-11. ✅ All file edits maintain consistent formatting
+7. ✅ **Grouped output created in root outputs.tf**
+8. ✅ **Grouped output includes ALL module outputs**
+9. ✅ **Grouped output is marked as sensitive = true**
+10. ✅ **Grouped output name matches module name (without "enable_" prefix)**
+11. ✅ terraform.tfvars.example has `false` default
+12. ✅ terraform.tfvars has `true` for testing
+13. ✅ README scenario count is incremented
+14. ✅ README table entry is in the correct section
+15. ✅ All file edits maintain consistent formatting
 
 ## Special Considerations
 
@@ -438,6 +537,9 @@ After updating all files, report back to the orchestrator:
 - List of all files updated
 - Variable name added
 - Module name added
+- **Grouped output added to outputs.tf**
+- terraform.tfvars.example entry added
+- terraform.tfvars entry added
 - README entry added
 - Confirmation that all updates follow conventions
 - Any notes or warnings about the updates

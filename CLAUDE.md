@@ -41,6 +41,7 @@ pathfinder-labs/
 │   │   │   ├── to-admin/    # Multi-step escalation to admin
 │   │   │   └── to-bucket/   # Multi-step escalation to S3 access
 │   │   └── toxic-combo/     # Multiple misconfigurations combined
+│   ├── tool-testing/         # Edge cases for testing detection engines
 │   └── cross-account/
 │       ├── dev-to-prod/     # Dev → Prod attack paths
 │       └── ops-to-prod/     # Ops → Prod attack paths
@@ -76,6 +77,14 @@ pathfinder-labs/
 - Privilege escalation paths spanning multiple AWS accounts
 - Examples: Dev → Prod, Ops → Prod
 - Deploy to: **dev/ops → prod accounts** (requires multi-account setup)
+
+**Tool Testing**
+- Edge cases and scenarios designed to test detection engine capabilities
+- Not distinct escalation types, but scenarios to measure detection accuracy
+- Examples: Resource policies that bypass IAM, complex policy conditions, false positive scenarios
+- Can be single-account or cross-account, to-admin or to-bucket, one-hop or multi-hop
+- Focus on testing CSPM and security tool detection rather than new attack techniques
+- Deploy to: **prod account** (for single-account) or **cross-account**
 
 ### Account Usage Strategy
 
@@ -118,8 +127,9 @@ terraform init
 terraform plan
 terraform apply
 
-# 5. Create pathfinder profiles for testing
-./create_pathfinder_profiles.sh
+# 5. Run demo scripts (credentials are automatically read from terraform outputs)
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
+./demo_attack.sh
 ```
 
 ### Initial Setup (Multi-Account with Dev/Ops)
@@ -158,6 +168,7 @@ Demo scripts provide:
 - AWS CLI commands with explanations
 - Real-time verification of privilege escalation
 - Color-coded output for clarity
+- **Automatic credential retrieval from Terraform outputs** (no AWS profile configuration needed)
 
 ### Development Workflow
 ```bash
@@ -211,6 +222,12 @@ terraform state list
 |----------|------------|-------------|
 | `public-lambda-with-admin` | Critical | Public Lambda with administrative role |
 
+### Tool Testing (2 scenarios)
+| Scenario | Focus | Description |
+|----------|-------|-------------|
+| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
+| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
+
 ### Cross-Account (5 scenarios)
 | Scenario | Type | Description |
 |----------|------|-------------|
@@ -244,6 +261,7 @@ scenario-name/
    - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/scenario-name/`
    - Multi-hop to bucket: `modules/scenarios/single-account/privesc-multi-hop/to-bucket/scenario-name/`
    - Toxic combo: `modules/scenarios/single-account/toxic-combo/scenario-name/`
+   - Tool testing: `modules/scenarios/tool-testing/scenario-name/`
    - Cross-account: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
 
 2. **Implement Terraform resources** in `main.tf`:
@@ -318,9 +336,24 @@ scenario-name/
    }
    ```
 
-10. **Update terraform.tfvars.example** with the new boolean flag
+10. **Add grouped output** to root `outputs.tf`:
+   ```hcl
+   output "single_account_privesc_one_hop_to_admin_scenario_name" {
+     description = "All outputs for scenario-name one-hop to-admin scenario"
+     value = var.enable_single_account_privesc_one_hop_to_admin_scenario_name ? {
+       starting_user_name              = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_name
+       starting_user_arn               = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_arn
+       starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_access_key_id
+       starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_secret_access_key
+       attack_path                     = module.single_account_privesc_one_hop_to_admin_scenario_name[0].attack_path
+     } : null
+     sensitive = true
+   }
+   ```
 
-11. **Test thoroughly** in an isolated AWS account
+11. **Update terraform.tfvars.example** with the new boolean flag
+
+12. **Test thoroughly** in an isolated AWS account
 
 ### Demo Script Best Practices
 
@@ -329,8 +362,34 @@ Demo scripts should:
 - Show step-by-step exploitation with explanations
 - Verify privilege escalation actually works
 - Include AWS CLI commands with comments
-- Test against the pathfinder starting user profile
+- **Read credentials from grouped Terraform outputs** using this pattern:
+  ```bash
+  cd ../../../../../..  # Navigate to project root
+  MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_CATEGORY_SCENARIO.value // empty')
+  ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+  SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+  cd - > /dev/null  # Return to scenario directory
+  ```
+- **Use 15-second waits** for IAM policy propagation (not 5 seconds)
 - Clean up any temporary resources created during demo
+
+### Cleanup Script Best Practices
+
+Cleanup scripts should:
+- **Use admin credentials from Terraform outputs** for cleanup operations:
+  ```bash
+  cd ../../../../../..  # Navigate to project root
+  ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+  ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+  export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+  export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+  unset AWS_SESSION_TOKEN
+  cd - > /dev/null  # Return to scenario directory
+  ```
+- Remove attack artifacts (access keys, modified policies, etc.)
+- **Preserve infrastructure** - cleanup scripts remove demo artifacts, not the terraform resources
+- Provide clear feedback about what was cleaned up
+- Use color-coded output to show cleanup progress
 
 ### Resource Naming Convention
 
@@ -393,6 +452,8 @@ Each scenario has a corresponding boolean variable:
 # Format: enable_{account}_{category}_{target}_{technique}
 enable_prod_one_hop_to_admin_iam_putrolepolicy = true
 enable_prod_multi_hop_to_bucket_role_chain_to_s3 = true
+enable_tool_testing_resource_policy_bypass = true
+enable_tool_testing_exclusive_resource_policy = true
 enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
 ```
 

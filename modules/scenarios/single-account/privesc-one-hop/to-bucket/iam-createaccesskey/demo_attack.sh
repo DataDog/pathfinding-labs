@@ -24,18 +24,31 @@ echo -e "${YELLOW}Make sure you have deployed this scenario with Terraform first
 
 # Step 1: Get credentials from Terraform outputs
 echo -e "${YELLOW}Step 1: Retrieving privesc user credentials from Terraform${NC}"
-PRIVESC_ACCESS_KEY=$(cd ../../../../../../ && terraform output -raw prod_one_hop_to_bucket_iam_createaccesskey_privesc_user_access_key_id 2>/dev/null || echo "")
-PRIVESC_SECRET_KEY=$(cd ../../../../../../ && terraform output -raw prod_one_hop_to_bucket_iam_createaccesskey_privesc_user_secret_access_key 2>/dev/null || echo "")
+cd ../../../../../..  # Go to project root
 
-if [ -z "$PRIVESC_ACCESS_KEY" ] || [ -z "$PRIVESC_SECRET_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve privesc user credentials from Terraform${NC}"
-    echo -e "${YELLOW}Please ensure the scenario is deployed and outputs are available${NC}"
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_iam_createaccesskey.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
+    exit 1
+fi
+
+# Extract credentials
+PRIVESC_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_access_key_id')
+PRIVESC_SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_secret_access_key')
+
+if [ "$PRIVESC_ACCESS_KEY" == "null" ] || [ -z "$PRIVESC_ACCESS_KEY" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
 echo "Privesc user: $PRIVESC_USER"
 echo "Access Key ID: ${PRIVESC_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Configure AWS credentials for privesc user
 echo -e "${YELLOW}Step 2: Configuring AWS credentials for privesc user${NC}"

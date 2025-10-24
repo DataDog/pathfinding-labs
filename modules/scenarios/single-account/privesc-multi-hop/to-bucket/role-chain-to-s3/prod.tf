@@ -8,6 +8,52 @@ terraform {
   }
 }
 
+# Scenario-specific starting user
+resource "aws_iam_user" "starting_user" {
+  provider = aws.prod
+  name     = "pl-prod-rcs-to-bucket-starting-user"
+
+  tags = {
+    Name        = "pl-prod-rcs-to-bucket-starting-user"
+    Environment = var.environment
+    Scenario    = "role-chain-to-s3"
+    Purpose     = "starting-user"
+  }
+}
+
+# Create access keys for the starting user
+resource "aws_iam_access_key" "starting_user_key" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Minimal policy for the starting user (just enough to assume the initial role)
+resource "aws_iam_user_policy" "starting_user_policy" {
+  provider = aws.prod
+  name     = "pl-prod-rcs-to-bucket-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-initial-role"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # S3 Bucket - Destination for the role chain
 resource "aws_s3_bucket" "prod_role_chain_destination" {
   provider = aws.prod
@@ -40,6 +86,13 @@ resource "aws_iam_role" "prod_s3_access_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-prod-s3-access-role"
+    Environment = var.environment
+    Scenario    = "role-chain-to-s3"
+    Purpose     = "s3-access-role"
+  }
 }
 
 # Policy for Role 3 - Full read/write access to the S3 bucket
@@ -109,6 +162,13 @@ resource "aws_iam_role" "prod_intermediate_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-prod-intermediate-role"
+    Environment = var.environment
+    Scenario    = "role-chain-to-s3"
+    Purpose     = "intermediate-role"
+  }
 }
 
 # Policy for Role 2 - Allows assuming the final S3 access role
@@ -136,7 +196,7 @@ resource "aws_iam_role_policy_attachment" "prod_intermediate_policy" {
   policy_arn = aws_iam_policy.prod_intermediate_policy.arn
 }
 
-# Role 1: Initial role (can be assumed by anyone in the prod account who has sts:AssumeRole permissions)
+# Role 1: Initial role (can be assumed by the scenario-specific starting user)
 resource "aws_iam_role" "prod_initial_role" {
   provider = aws.prod
   name     = "pl-prod-initial-role"
@@ -147,12 +207,19 @@ resource "aws_iam_role" "prod_initial_role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.prod_account_id}:user/pl-pathfinder-starting-user-prod"
+          AWS = aws_iam_user.starting_user.arn
         }
         Action = "sts:AssumeRole"
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-prod-initial-role"
+    Environment = var.environment
+    Scenario    = "role-chain-to-s3"
+    Purpose     = "initial-role"
+  }
 }
 
 # # Policy for Role 1 - Allows assuming the intermediate role

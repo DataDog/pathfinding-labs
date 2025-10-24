@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Cleanup script for iam:PutRolePolicy to S3 bucket demo
-# This script restores the original trust policy on the bucket access role
+# This script removes the escalated inline policy from the starting role
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,60 +15,65 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
-BUCKET_ACCESS_ROLE="pl-prod-one-hop-putrolepolicy-bucket-access-role"
+STARTING_ROLE="pl-prod-prp-to-bucket-starting-role"
+POLICY_NAME="EscalatedS3Access"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PutRolePolicy Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get account ID
-echo -e "${YELLOW}Step 1: Getting account ID${NC}"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query 'Account' --output text)
-echo "Account ID: $ACCOUNT_ID"
-echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-# Step 2: Restore original trust policy
-echo -e "${YELLOW}Step 2: Restoring original trust policy on $BUCKET_ACCESS_ROLE${NC}"
-echo "Setting trust policy to only allow pl-pathfinder-starting-user-prod..."
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-# Restore the original trust policy that only allows the starting user
-cat > /tmp/original-trust-policy.json << EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${ACCOUNT_ID}:user/pl-pathfinder-starting-user-prod"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
 
-aws iam update-assume-role-policy \
-    --role-name $BUCKET_ACCESS_ROLE \
-    --policy-document file:///tmp/original-trust-policy.json \
-    --profile $PROFILE
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
 
-echo -e "${GREEN}✓ Restored original trust policy${NC}\n"
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
-# Step 3: Remove local temporary files
-echo -e "${YELLOW}Step 3: Removing local temporary files${NC}"
-DOWNLOAD_FILE="/tmp/putrolepolicy-sensitive-data-${ACCOUNT_ID}.txt"
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify admin identity
+echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin identity${NC}\n"
+
+# Step 3: Remove the escalated inline policy
+echo -e "${YELLOW}Step 3: Removing escalated inline policy from $STARTING_ROLE${NC}"
+echo "Deleting policy: $POLICY_NAME"
+
+# Check if the policy exists first
+if aws iam get-role-policy --role-name "$STARTING_ROLE" --policy-name "$POLICY_NAME" &> /dev/null; then
+    aws iam delete-role-policy \
+        --role-name "$STARTING_ROLE" \
+        --policy-name "$POLICY_NAME"
+    echo -e "${GREEN}✓ Successfully removed escalated policy${NC}\n"
+else
+    echo -e "${YELLOW}Policy $POLICY_NAME not found on role $STARTING_ROLE (may have been already cleaned up)${NC}\n"
+fi
+
+# Step 4: Remove local temporary files
+echo -e "${YELLOW}Step 4: Removing local temporary files${NC}"
+DOWNLOAD_FILE="/tmp/prp-sensitive-data.txt"
 
 if [ -f "$DOWNLOAD_FILE" ]; then
     rm -f "$DOWNLOAD_FILE"
     echo -e "${GREEN}✓ Deleted $DOWNLOAD_FILE${NC}"
 else
-    echo "No downloaded file found at $DOWNLOAD_FILE"
-fi
-
-if [ -f "/tmp/original-trust-policy.json" ]; then
-    rm -f "/tmp/original-trust-policy.json"
-    echo -e "${GREEN}✓ Deleted /tmp/original-trust-policy.json${NC}"
+    echo -e "${YELLOW}No downloaded file found at $DOWNLOAD_FILE${NC}"
 fi
 
 echo ""
@@ -73,6 +81,6 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}The bucket access role trust policy has been restored${NC}"
+echo -e "${GREEN}The escalated inline policy has been removed${NC}"
 echo -e "${YELLOW}The infrastructure (bucket, roles, sensitive-data.txt) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"

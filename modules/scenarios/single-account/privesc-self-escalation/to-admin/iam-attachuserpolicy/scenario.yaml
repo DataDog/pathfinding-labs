@@ -21,7 +21,7 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-aup-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-aup-to-admin-starting-user"
 
   summary: "starting_user → (iam:AttachUserPolicy on self) → attach AdministratorAccess → admin access"
 

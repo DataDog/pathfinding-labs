@@ -18,22 +18,34 @@ You are a specialized agent for creating demonstration and cleanup scripts for P
 4. **Follow established patterns** - Color-coded output, step-by-step execution, verification
 5. **Ensure scripts use region from terraform outputs** - Use the established pattern. 
 
-CRITICAL: Credential and Region Retrieval Pattern - ALL demo scripts MUST retrieve credentials AND region from Terraform outputs - NOT from AWS CLI profiles.
+CRITICAL: Credential and Region Retrieval Pattern - ALL demo scripts MUST retrieve credentials AND region from Terraform grouped outputs - NOT from AWS CLI profiles.
 
-### Step 1: Retrieve from Terraform (REQUIRED PATTERN)
+### Step 1: Retrieve from Terraform Grouped Outputs (REQUIRED PATTERN)
 ```bash
 # Step 1: Retrieve credentials and region from Terraform outputs
 echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
+cd ../../../../../..  # Navigate to root of terraform project
 
-STARTING_ACCESS_KEY_ID=$(cd ../../../../../.. && terraform output -raw {module_output_prefix}_starting_user_access_key_id 2>/dev/null || echo "")
-STARTING_SECRET_ACCESS_KEY=$(cd ../../../../../.. && terraform output -raw {module_output_prefix}_starting_user_secret_access_key 2>/dev/null || echo "")
-AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+# Get the module output using the grouped output pattern
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.{module_output_name}.value // empty')
 
-if [ -z "$STARTING_ACCESS_KEY_ID" ] || [ -z "$STARTING_SECRET_ACCESS_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve credentials from Terraform outputs${NC}"
-    echo "Make sure the scenario is enabled and terraform apply has been run"
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
+
+# Extract credentials
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Get region
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -47,6 +59,12 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+```
+
+**Example for specific scenario**:
+```bash
+# For iam-createaccesskey to-admin scenario
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createaccesskey.value // empty')
 ```
 
 ### Step 2: Export to Environment (REQUIRED PATTERN)
@@ -151,6 +169,16 @@ aws ec2 describe-instances \
     --output text
 ```
 
+## Rule 6: When interacting with IMDS services, use the IMDSv2 pattern. 
+
+Like this: 
+
+```
+TOKEN=$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\" 2>/dev/null)","curl -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/'"$EC2_ROLE_NAME"
+```
+
+
+
 **Never use** `--profile` flags in demo scripts - credentials come from environment variables.
 
 ## Required Input from Orchestrator
@@ -158,7 +186,7 @@ aws ec2 describe-instances \
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
+- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
 - **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
@@ -202,19 +230,30 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}{Scenario Title} Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Retrieve credentials and region from Terraform outputs
+# Step 1: Retrieve credentials and region from Terraform grouped outputs
 echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
-STARTING_ACCESS_KEY_ID=$(terraform output -raw {module_output_prefix}_starting_user_access_key_id 2>/dev/null || echo "")
-STARTING_SECRET_ACCESS_KEY=$(terraform output -raw {module_output_prefix}_starting_user_secret_access_key 2>/dev/null || echo "")
-AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+# Get the module output using the grouped output pattern
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.{module_output_name}.value // empty')
 
-if [ -z "$STARTING_ACCESS_KEY_ID" ] || [ -z "$STARTING_SECRET_ACCESS_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve credentials from Terraform outputs${NC}"
-    echo "Make sure the scenario is enabled and terraform apply has been run"
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
+
+# Extract credentials from the grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Get region
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -348,9 +387,9 @@ aws iam put-role-policy \
 
 echo -e "${GREEN}✓ Successfully added admin policy${NC}\n"
 
-# Wait for policy to propagate
-echo -e "${YELLOW}Waiting for policy to propagate...${NC}"
-sleep 5
+# Wait for policy to propagate (15 seconds required for IAM changes)
+echo -e "${YELLOW}Waiting 15 seconds for policy to propagate...${NC}"
+sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 ```
 
@@ -480,46 +519,46 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-cleanup-prod"
 # Add resource names
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup: {Scenario Name}${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 0: Get region from Terraform
-echo -e "${YELLOW}Retrieving region from Terraform configuration${NC}"
+# Step 0: Get admin credentials and region from Terraform
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
 
 if [ -z "$CURRENT_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
     CURRENT_REGION="us-east-1"
 fi
 
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_REGION="$CURRENT_REGION"
+unset AWS_SESSION_TOKEN
+
 echo "Region from Terraform: $CURRENT_REGION"
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
-echo ""
-
-# Try to use the admin cleanup profile, but fall back to default credentials if not available
-echo "Checking AWS credentials..."
-if aws sts get-caller-identity --profile $PROFILE &> /dev/null; then
-    echo "Using AWS profile: $PROFILE"
-    AWS_PROFILE_FLAG="--profile $PROFILE"
-elif [ -n "$AWS_ACCESS_KEY_ID" ]; then
-    echo "Using AWS credentials from environment variables"
-    AWS_PROFILE_FLAG=""
-else
-    echo -e "${RED}Error: No AWS credentials available${NC}"
-    echo "Either configure the '$PROFILE' profile or set AWS environment variables"
-    exit 1
-fi
 
 # Get account ID
-ACCOUNT_ID=$(aws sts get-caller-identity $AWS_PROFILE_FLAG --query 'Account' --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo ""
 
@@ -539,15 +578,14 @@ echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false a
 
 #### Removing Inline Policies
 ```bash
-echo -e "${YELLOW}Step 1: Removing inline policy from role${NC}"
+echo -e "${YELLOW}Step 2: Removing inline policy from role${NC}"
 ROLE_NAME="{role-name}"
 POLICY_NAME="EscalatedAdminPolicy"
 
-if aws iam get-role-policy --role-name $ROLE_NAME --policy-name $POLICY_NAME $AWS_PROFILE_FLAG &> /dev/null; then
+if aws iam get-role-policy --role-name $ROLE_NAME --policy-name $POLICY_NAME &> /dev/null; then
     aws iam delete-role-policy \
         --role-name $ROLE_NAME \
-        --policy-name $POLICY_NAME \
-        $AWS_PROFILE_FLAG
+        --policy-name $POLICY_NAME
     echo -e "${GREEN}✓ Removed policy: $POLICY_NAME${NC}"
 else
     echo -e "${YELLOW}Policy $POLICY_NAME not found (may already be deleted)${NC}"
@@ -557,11 +595,11 @@ echo ""
 
 #### Deleting Access Keys
 ```bash
-echo -e "${YELLOW}Step 1: Deleting access keys created during demo${NC}"
+echo -e "${YELLOW}Step 2: Deleting access keys created during demo${NC}"
 ADMIN_USER="{admin-user-name}"
 
 # List and delete all access keys for the user (except the one from Terraform)
-ACCESS_KEYS=$(aws iam list-access-keys --user-name $ADMIN_USER $AWS_PROFILE_FLAG --query 'AccessKeyMetadata[*].AccessKeyId' --output text)
+ACCESS_KEYS=$(aws iam list-access-keys --user-name $ADMIN_USER --query 'AccessKeyMetadata[*].AccessKeyId' --output text)
 
 if [ -n "$ACCESS_KEYS" ]; then
     for KEY_ID in $ACCESS_KEYS; do
@@ -569,8 +607,7 @@ if [ -n "$ACCESS_KEYS" ]; then
         echo "Deleting access key: $KEY_ID"
         aws iam delete-access-key \
             --user-name $ADMIN_USER \
-            --access-key-id $KEY_ID \
-            $AWS_PROFILE_FLAG
+            --access-key-id $KEY_ID
     done
     echo -e "${GREEN}✓ Deleted access keys${NC}"
 else
@@ -581,7 +618,7 @@ echo ""
 
 #### Terminating EC2 Instances (with region flags)
 ```bash
-echo -e "${YELLOW}Step 1: Finding and terminating demo EC2 instances${NC}"
+echo -e "${YELLOW}Step 2: Finding and terminating demo EC2 instances${NC}"
 DEMO_INSTANCE_TAG="{demo-instance-tag-name}"
 
 echo "Searching for instances with tag: Name=$DEMO_INSTANCE_TAG"
@@ -590,7 +627,6 @@ echo ""
 
 # Find instances by tag (first search all states to see if any exist)
 ALL_INSTANCES=$(aws ec2 describe-instances \
-    $AWS_PROFILE_FLAG \
     --region $CURRENT_REGION \
     --filters "Name=tag:Name,Values=$DEMO_INSTANCE_TAG" \
     --query 'Reservations[*].Instances[*].[InstanceId,State.Name]' \
@@ -604,7 +640,6 @@ fi
 
 # Now find instances that can be terminated
 INSTANCE_IDS=$(aws ec2 describe-instances \
-    $AWS_PROFILE_FLAG \
     --region $CURRENT_REGION \
     --filters "Name=tag:Name,Values=$DEMO_INSTANCE_TAG" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
     --query 'Reservations[*].Instances[*].InstanceId' \
@@ -619,7 +654,6 @@ else
     for INSTANCE_ID in $INSTANCE_IDS; do
         echo "Terminating instance: $INSTANCE_ID"
         aws ec2 terminate-instances \
-            $AWS_PROFILE_FLAG \
             --region $CURRENT_REGION \
             --instance-ids $INSTANCE_ID \
             --output text > /dev/null
@@ -630,7 +664,6 @@ else
     echo "Waiting for instances to terminate (this may take a minute)..."
     for INSTANCE_ID in $INSTANCE_IDS; do
         aws ec2 wait instance-terminated \
-            $AWS_PROFILE_FLAG \
             --region $CURRENT_REGION \
             --instance-ids $INSTANCE_ID 2>/dev/null || true
     done
@@ -641,14 +674,13 @@ echo ""
 
 #### Deleting Lambda Functions (with region flags)
 ```bash
-echo -e "${YELLOW}Step 1: Deleting Lambda function${NC}"
+echo -e "${YELLOW}Step 2: Deleting Lambda function${NC}"
 FUNCTION_NAME="pl-demo-escalation-function"
 
-if aws lambda get-function --function-name $FUNCTION_NAME --region $CURRENT_REGION $AWS_PROFILE_FLAG &> /dev/null; then
+if aws lambda get-function --function-name $FUNCTION_NAME --region $CURRENT_REGION &> /dev/null; then
     aws lambda delete-function \
         --function-name $FUNCTION_NAME \
-        --region $CURRENT_REGION \
-        $AWS_PROFILE_FLAG
+        --region $CURRENT_REGION
     echo -e "${GREEN}✓ Deleted Lambda function: $FUNCTION_NAME${NC}"
 else
     echo -e "${YELLOW}Function $FUNCTION_NAME not found (may already be deleted)${NC}"
@@ -682,7 +714,6 @@ TRUST_POLICY='{
 
 # Update the trust policy
 aws iam update-assume-role-policy \
-    $AWS_PROFILE_FLAG \
     --role-name $ADMIN_ROLE \
     --policy-document "$TRUST_POLICY"
 
@@ -792,16 +823,20 @@ Before completing, verify:
 3. ✅ All variables are defined before use
 4. ✅ Color codes are consistent (RED, GREEN, YELLOW, BLUE, NC)
 5. ✅ Resource names match Terraform outputs
-6. ✅ **Region retrieved from Terraform output**
-7. ✅ **Region re-exported at every credential switch**
-8. ✅ **All EC2 commands have explicit --region flags**
-9. ✅ **All Lambda commands have explicit --region flags**
-10. ✅ **Cleanup script retrieves region from Terraform**
-11. ✅ **Cleanup script uses region in all EC2 commands**
-12. ✅ Error handling for missing resources in cleanup
-13. ✅ Clear step numbering and descriptions
-14. ✅ Final summary is accurate
-15. ✅ Scripts will be made executable (chmod +x)
+6. ✅ **Credentials retrieved from grouped Terraform outputs using jq**
+7. ✅ **Region retrieved from Terraform output**
+8. ✅ **Region re-exported at every credential switch**
+9. ✅ **All EC2 commands have explicit --region flags**
+10. ✅ **All Lambda commands have explicit --region flags**
+11. ✅ **All IAM policy propagation waits are 15 seconds (not 5)**
+12. ✅ **Cleanup script gets admin credentials from Terraform (not AWS profiles)**
+13. ✅ **Cleanup script retrieves region from Terraform**
+14. ✅ **Cleanup script uses region in all EC2 commands**
+15. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
+16. ✅ Error handling for missing resources in cleanup
+17. ✅ Clear step numbering and descriptions
+18. ✅ Final summary is accurate
+19. ✅ Scripts will be made executable (chmod +x)
 
 ## File Permissions
 

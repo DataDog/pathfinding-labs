@@ -26,16 +26,25 @@ echo -e "${GREEN}========================================${NC}\n"
 echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
-STARTING_ACCESS_KEY_ID=$(terraform output -raw prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_access_key_id 2>/dev/null || echo "")
-STARTING_SECRET_ACCESS_KEY=$(terraform output -raw prod_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction_starting_user_secret_access_key 2>/dev/null || echo "")
-AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_passrole_lambda.value // empty')
 
-if [ -z "$STARTING_ACCESS_KEY_ID" ] || [ -z "$STARTING_SECRET_ACCESS_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve credentials from Terraform outputs${NC}"
-    echo "Make sure the scenario is enabled and terraform apply has been run"
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
+# Extract credentials
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
     AWS_REGION="us-east-1"

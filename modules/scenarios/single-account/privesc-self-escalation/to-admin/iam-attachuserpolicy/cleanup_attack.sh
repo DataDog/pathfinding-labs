@@ -5,6 +5,9 @@
 
 set -e
 
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -13,104 +16,74 @@ NC='\033[0m' # No Color
 
 # Configuration
 MANAGED_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
-STARTING_USER="pl-pathfinder-starting-user-prod"
-PRIVESC_USER="pl-aup-user"
+STARTING_USER="pl-prod-aup-to-admin-starting-user"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM AttachUserPolicy Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Determine which user to clean up
-echo -e "${YELLOW}Which user's attached managed policy should be removed?${NC}"
-echo "1. pl-pathfinder-starting-user-prod (role-based attack path)"
-echo "2. pl-aup-user (user-based attack path)"
-echo "3. Both users"
-read -p "Enter choice (1, 2, or 3): " choice
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-cleanup_user() {
-    local USER=$1
-    local PROFILE=$2
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-    echo -e "${YELLOW}Checking for attached managed policies on $USER${NC}"
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
 
-    # List attached policies for the user
-    POLICIES=$(aws iam list-attached-user-policies --user-name $USER --profile $PROFILE --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null || echo "")
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
 
-    if [ -z "$POLICIES" ]; then
-        echo -e "${GREEN}No attached managed policies found for $USER${NC}"
-    else
-        echo "Found attached policies: $POLICIES"
+echo -e "${GREEN}✓ Retrieved admin cleanup credentials${NC}\n"
 
-        # Check specifically for AdministratorAccess policy
-        if echo "$POLICIES" | grep -q "$MANAGED_POLICY_ARN"; then
-            echo -e "${YELLOW}Detaching managed policy: AdministratorAccess${NC}"
-            aws iam detach-user-policy \
-                --user-name $USER \
-                --policy-arn $MANAGED_POLICY_ARN \
-                --profile $PROFILE
-            echo -e "${GREEN}✓ Detached managed policy: AdministratorAccess from $USER${NC}"
-        else
-            echo -e "${YELLOW}Policy AdministratorAccess not found on $USER${NC}"
-        fi
+cd - > /dev/null  # Return to scenario directory
 
-        # Check for any other attached policies
-        REMAINING=$(aws iam list-attached-user-policies --user-name $USER --profile $PROFILE --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null || echo "")
-        if [ ! -z "$REMAINING" ]; then
-            echo -e "${YELLOW}Warning: Other managed policies still attached to $USER:${NC}"
-            echo "$REMAINING"
-            echo "These were not created by this demo and were left in place."
-        fi
-    fi
-}
+# Step 2: Verify admin access
+echo -e "${YELLOW}Step 2: Verifying admin access${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin access${NC}\n"
 
-# Determine which profile to use for cleanup
-echo -e "\n${YELLOW}Which AWS profile has permissions to detach user policies?${NC}"
-echo "1. pl-pathfinder-starting-user-prod (if it still has admin from the demo)"
-echo "2. pl-admin-cleanup-prod (dedicated admin profile)"
-echo "3. Other profile"
-read -p "Enter choice (1, 2, or 3): " profile_choice
+# Step 3: Check if policy is attached
+echo -e "${YELLOW}Step 3: Checking for attached AdministratorAccess policy${NC}"
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[?PolicyArn==`'$MANAGED_POLICY_ARN'`].PolicyName' --output text)
 
-case $profile_choice in
-    1)
-        CLEANUP_PROFILE="pl-pathfinder-starting-user-prod"
-        ;;
-    2)
-        CLEANUP_PROFILE="pl-admin-cleanup-prod"
-        ;;
-    3)
-        read -p "Enter profile name: " CLEANUP_PROFILE
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+if [ -z "$ATTACHED_POLICIES" ]; then
+    echo -e "${GREEN}✓ No AdministratorAccess policy attached (already clean)${NC}\n"
+    echo -e "${GREEN}Cleanup complete - nothing to do${NC}"
+    exit 0
+fi
 
-echo -e "\n${GREEN}Using profile: $CLEANUP_PROFILE${NC}\n"
+echo "Found attached policy: $ATTACHED_POLICIES"
+echo -e "${GREEN}✓ Policy found${NC}\n"
 
-# Perform cleanup based on user choice
-case $choice in
-    1)
-        cleanup_user "$STARTING_USER" "$CLEANUP_PROFILE"
-        ;;
-    2)
-        cleanup_user "$PRIVESC_USER" "$CLEANUP_PROFILE"
-        ;;
-    3)
-        cleanup_user "$STARTING_USER" "$CLEANUP_PROFILE"
-        echo ""
-        cleanup_user "$PRIVESC_USER" "$CLEANUP_PROFILE"
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+# Step 4: Detach the policy
+echo -e "${YELLOW}Step 4: Detaching AdministratorAccess policy from $STARTING_USER${NC}"
+aws iam detach-user-policy \
+    --user-name $STARTING_USER \
+    --policy-arn $MANAGED_POLICY_ARN
 
-echo ""
+echo -e "${GREEN}✓ Successfully detached AdministratorAccess policy${NC}\n"
+
+# Step 5: Verify cleanup
+echo -e "${YELLOW}Step 5: Verifying cleanup${NC}"
+REMAINING_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
+
+if echo "$REMAINING_POLICIES" | grep -q "AdministratorAccess"; then
+    echo -e "${RED}✗ Warning: AdministratorAccess policy still attached${NC}"
+    exit 1
+else
+    echo -e "${GREEN}✓ Confirmed policy removed${NC}\n"
+fi
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Managed policies have been detached${NC}"
-echo -e "${YELLOW}The infrastructure (users and roles) remains deployed${NC}"
-echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+echo "The user $STARTING_USER has been restored to its original permissions"
+echo ""

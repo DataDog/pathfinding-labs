@@ -22,10 +22,33 @@ if ! command -v aws &> /dev/null; then
     exit 1
 fi
 
+# Navigate to the Terraform root directory (6 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
+
+echo "🔍 Retrieving admin credentials from Terraform outputs..."
+cd "$TERRAFORM_ROOT"
+
+# Get admin credentials from Terraform outputs
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ -z "$ADMIN_SECRET_KEY" ]; then
+    echo -e "${RED}❌ Error: Could not retrieve admin credentials from Terraform outputs.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Retrieved admin credentials from Terraform${NC}"
+
+# Set environment variables for admin user
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_DEFAULT_REGION="us-west-2"
+
 # Check if the role exists
 ROLE_NAME="pl-prod-role-with-multiple-privesc-paths"
 echo -e "${YELLOW}Step 1: Checking if role exists${NC}"
-if aws iam get-role --role-name "$ROLE_NAME" --profile pl-admin-cleanup-prod &> /dev/null; then
+if aws iam get-role --role-name "$ROLE_NAME" &> /dev/null; then
     echo -e "${GREEN}✓ Role $ROLE_NAME exists${NC}"
 else
     echo -e "${RED}✗ Role $ROLE_NAME not found. Nothing to clean up.${NC}"
@@ -33,14 +56,12 @@ else
 fi
 
 # Get the role ARN
-ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --profile pl-admin-cleanup-prod --query 'Role.Arn' --output text)
+ROLE_ARN=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text)
 echo "Role ARN: $ROLE_ARN"
 
 echo ""
-echo -e "${YELLOW}Step 2: Using admin cleanup profile${NC}"
-# Use admin cleanup profile directly
-PROFILE="pl-admin-cleanup-prod"
-echo -e "${GREEN}✓ Using admin cleanup profile${NC}"
+echo -e "${YELLOW}Step 2: Using admin credentials from Terraform${NC}"
+echo -e "${GREEN}✓ Admin credentials configured${NC}"
 
 echo ""
 echo -e "${BLUE}=== Cleaning up EC2 Resources ===${NC}"
@@ -56,10 +77,8 @@ INSTANCE_IDS=$(aws ec2 describe-instances \
 
 if [ -n "$INSTANCE_IDS" ] && [ "$INSTANCE_IDS" != "None" ]; then
     echo "Found EC2 instances to terminate: $INSTANCE_IDS"
-    aws ec2 terminate-instances --instance-ids $INSTANCE_IDS --region us-west-2 --profile "$PROFILE"
-    echo "Waiting for instances to terminate..."
-    #aws ec2 wait instance-terminated --instance-ids $INSTANCE_IDS --region us-west-2 --profile "$PROFILE"
-    echo -e "${GREEN}✓ EC2 instances terminated${NC}"
+    aws ec2 terminate-instances --instance-ids $INSTANCE_IDS --region us-west-2     echo "Waiting for instances to terminate..."
+    #aws ec2 wait instance-terminated --instance-ids $INSTANCE_IDS --region us-west-2     echo -e "${GREEN}✓ EC2 instances terminated${NC}"
 else
     echo -e "${GREEN}✓ No EC2 instances found to terminate${NC}"
 fi
@@ -70,8 +89,7 @@ echo -e "${YELLOW}Step 4: Deleting Lambda functions${NC}"
 
 # Delete Lambda function
 if aws lambda get-function --function-name privesc-demo-lambda --region us-west-2 --profile "$PROFILE" &> /dev/null; then
-    aws lambda delete-function --function-name privesc-demo-lambda --region us-west-2 --profile "$PROFILE"
-    echo -e "${GREEN}✓ Lambda function deleted${NC}"
+    aws lambda delete-function --function-name privesc-demo-lambda --region us-west-2     echo -e "${GREEN}✓ Lambda function deleted${NC}"
 else
     echo -e "${GREEN}✓ Lambda function not found (already deleted)${NC}"
 fi
@@ -82,10 +100,8 @@ echo -e "${YELLOW}Step 5: Deleting CloudFormation stack${NC}"
 
 # Delete CloudFormation stack
 if aws cloudformation describe-stacks --stack-name privesc-demo-cf-stack --region us-west-2 --profile "$PROFILE" &> /dev/null; then
-    aws cloudformation delete-stack --stack-name privesc-demo-cf-stack --region us-west-2 --profile "$PROFILE"
-    echo "Waiting for CloudFormation stack to be deleted..."
-    aws cloudformation wait stack-delete-complete --stack-name privesc-demo-cf-stack --region us-west-2 --profile "$PROFILE"
-    echo -e "${GREEN}✓ CloudFormation stack deleted${NC}"
+    aws cloudformation delete-stack --stack-name privesc-demo-cf-stack --region us-west-2     echo "Waiting for CloudFormation stack to be deleted..."
+    aws cloudformation wait stack-delete-complete --stack-name privesc-demo-cf-stack --region us-west-2     echo -e "${GREEN}✓ CloudFormation stack deleted${NC}"
 else
     echo -e "${GREEN}✓ CloudFormation stack not found (already deleted)${NC}"
 fi
@@ -109,21 +125,18 @@ for role in "${ROLES_TO_DELETE[@]}"; do
         ATTACHED_POLICIES=$(aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[].PolicyArn' --output text --profile "$PROFILE")
         for policy in $ATTACHED_POLICIES; do
             if [ -n "$policy" ] && [ "$policy" != "None" ]; then
-                aws iam detach-role-policy --role-name "$role" --policy-arn "$policy" --profile "$PROFILE"
-            fi
+                aws iam detach-role-policy --role-name "$role" --policy-arn "$policy"             fi
         done
         
         # Delete inline policies
         INLINE_POLICIES=$(aws iam list-role-policies --role-name "$role" --query 'PolicyNames' --output text --profile "$PROFILE")
         for policy in $INLINE_POLICIES; do
             if [ -n "$policy" ] && [ "$policy" != "None" ]; then
-                aws iam delete-role-policy --role-name "$role" --policy-name "$policy" --profile "$PROFILE"
-            fi
+                aws iam delete-role-policy --role-name "$role" --policy-name "$policy"             fi
         done
         
         # Delete the role
-        aws iam delete-role --role-name "$role" --profile "$PROFILE"
-        echo -e "${GREEN}✓ Deleted role: $role${NC}"
+        aws iam delete-role --role-name "$role"         echo -e "${GREEN}✓ Deleted role: $role${NC}"
     else
         echo -e "${GREEN}✓ Role $role not found (already deleted)${NC}"
     fi

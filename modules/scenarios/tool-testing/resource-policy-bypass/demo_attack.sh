@@ -24,11 +24,36 @@ if ! command -v aws &> /dev/null; then
     exit 1
 fi
 
-# Check if we have AWS credentials configured
-if ! aws sts get-caller-identity &> /dev/null; then
-    echo -e "${RED}Error: AWS credentials not configured. Please run 'aws configure' first.${NC}"
+# Navigate to the Terraform root directory (4 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+echo "🔍 Retrieving credentials from Terraform outputs..."
+cd "$TERRAFORM_ROOT"
+
+# Get the grouped module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.tool_testing_resource_policy_bypass.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}❌ Error: Could not retrieve module outputs. Make sure the scenario is deployed.${NC}"
     exit 1
 fi
+
+# Extract credentials and resource information from grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+BUCKET_ACCESS_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.bucket_access_role_arn')
+SENSITIVE_BUCKET=$(echo "$MODULE_OUTPUT" | jq -r '.sensitive_bucket_name')
+STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
+
+echo -e "${GREEN}✅ Retrieved credentials for starting user: $STARTING_USER_NAME${NC}"
+echo "📋 Bucket Access Role ARN: $BUCKET_ACCESS_ROLE_ARN"
+echo "📋 Sensitive Bucket: $SENSITIVE_BUCKET"
+
+# Set environment variables for starting user
+export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+export AWS_DEFAULT_REGION="us-west-2"
 
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
@@ -53,10 +78,10 @@ echo "Testing what we can access with current permissions..."
 
 # Test S3 access with current permissions
 echo "Attempting to list all S3 buckets..."
-if BUCKETS=$(aws s3 ls --output json 2>/dev/null); then
+if BUCKETS=$(aws s3api list-buckets --output json 2>/dev/null); then
     echo -e "${GREEN}✓ Can list S3 buckets${NC}"
     echo "Available buckets:"
-    echo "$BUCKETS" | jq -r '.[] | .Name' | while read -r bucket; do
+    echo "$BUCKETS" | jq -r '.Buckets[].Name' | while read -r bucket; do
         echo "  - $bucket"
     done
 else
@@ -90,10 +115,10 @@ if BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$BUCKET_ACCESS_RO
     
     # Test S3 access with assumed role
     echo "Attempting to list all S3 buckets with assumed role..."
-    if ASSUMED_BUCKETS=$(aws s3 ls --output json 2>/dev/null); then
+    if ASSUMED_BUCKETS=$(aws s3api list-buckets --output json 2>/dev/null); then
         echo -e "${GREEN}✓ Can list S3 buckets with assumed role${NC}"
         echo "Available buckets:"
-        echo "$ASSUMED_BUCKETS" | jq -r '.[] | .Name' | while read -r bucket; do
+        echo "$ASSUMED_BUCKETS" | jq -r '.Buckets[].Name' | while read -r bucket; do
             echo "  - $bucket"
         done
     else

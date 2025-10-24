@@ -1,6 +1,6 @@
-# One-Hop Privilege Escalation: iam:PutRolePolicy
+# Self-Escalation Privilege Escalation: iam:PutRolePolicy
 
-**Scenario Type:** One-Hop
+**Scenario Type:** Self-Escalation
 **Target:** Admin Access
 **Technique:** Self-modification via iam:PutRolePolicy
 
@@ -12,29 +12,31 @@ This scenario demonstrates a privilege escalation vulnerability where a role can
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-role`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-prp-to-admin-starting-user`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-prp-to-admin-starting-role`
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-prod-one-hop-putrolepolicy-role] -->|iam:PutRolePolicy on self| B[pl-prod-one-hop-putrolepolicy-role]
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-prp-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-prp-to-admin-starting-role]
+    B -->|iam:PutRolePolicy on self| C[pl-prod-prp-to-admin-starting-role with admin policy]
+    C -->|Administrator Access| D[Effective Administrator]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-putrolepolicy-role` to begin the scenario
-2. **Self-Modification**: `pl-prod-one-hop-putrolepolicy-role` uses `iam:PutRolePolicy` to add an inline policy granting administrator access to itself
+1. **Initial Access**: `pl-prod-prp-to-admin-starting-user` assumes the role `pl-prod-prp-to-admin-starting-role` to begin the scenario
+2. **Self-Modification**: `pl-prod-prp-to-admin-starting-role` uses `iam:PutRolePolicy` to add an inline policy granting administrator access to itself
 3. **Verification**: Verify administrator access with the modified role
 
 ### Scenario specific resources created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-role` | Starting principal with self-modification capability |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-putrolepolicy-policy` | Allows `iam:PutRolePolicy` on the role itself |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-prp-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-prp-to-admin-starting-role` | Starting role with self-modification capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-prp-to-admin-policy` | Allows `iam:PutRolePolicy` on the role itself |
 
 ## Executing the attack
 

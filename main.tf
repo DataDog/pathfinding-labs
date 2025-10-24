@@ -262,6 +262,28 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-sendcommand"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 
 
 ##############################################################################
@@ -352,6 +374,17 @@ module "single_account_privesc_one_hop_to_bucket_iam_updateloginprofile" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-sendcommand"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 ##############################################################################
 # PROD MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################
@@ -393,9 +426,9 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
-module "single_account_privesc_multi_hop_to_bucket_resource_policy_bypass" {
-  count  = var.enable_single_account_privesc_multi_hop_to_bucket_resource_policy_bypass ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-multi-hop/to-bucket/resource-policy-bypass"
+module "tool_testing_resource_policy_bypass" {
+  count  = var.enable_tool_testing_resource_policy_bypass ? 1 : 0
+  source = "./modules/scenarios/tool-testing/resource-policy-bypass"
   providers = {
     aws.prod = aws.prod
   }
@@ -405,9 +438,9 @@ module "single_account_privesc_multi_hop_to_bucket_resource_policy_bypass" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
-module "single_account_privesc_multi_hop_to_bucket_exclusive_resource_policy" {
-  count  = var.enable_single_account_privesc_multi_hop_to_bucket_exclusive_resource_policy ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-multi-hop/to-bucket/exclusive-resource-policy"
+module "tool_testing_exclusive_resource_policy" {
+  count  = var.enable_tool_testing_exclusive_resource_policy ? 1 : 0
+  source = "./modules/scenarios/tool-testing/exclusive-resource-policy"
   providers = {
     aws.prod = aws.prod
   }

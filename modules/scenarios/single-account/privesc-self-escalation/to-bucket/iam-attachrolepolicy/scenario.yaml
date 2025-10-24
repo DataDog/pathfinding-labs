@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "iam-attachrolepolicy"
 description: "Role with iam:AttachRolePolicy on itself can attach policy granting S3 bucket access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

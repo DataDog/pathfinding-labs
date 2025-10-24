@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Demo script for iam:PutGroupPolicy self-escalation
-# This script demonstrates how a user with PutGroupPolicy permission on their own group can escalate to admin
+# This is a USER-BASED self-escalation scenario
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,30 +21,37 @@ POLICY_NAME="EscalatedAdminAccess"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PutGroupPolicy Self-Escalation Demo${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}User-Based Self-Escalation${NC}\n"
 
-# Step 1: Get credentials from terraform output
-echo -e "${YELLOW}Step 1: Retrieving privesc user credentials from Terraform${NC}"
-ACCESS_KEY=$(cd ../../../../../../ && terraform output -raw prod_one_hop_to_admin_iam_putgrouppolicy_privesc_user_access_key_id 2>/dev/null || echo "")
-SECRET_KEY=$(cd ../../../../../../ && terraform output -raw prod_one_hop_to_admin_iam_putgrouppolicy_privesc_user_secret_access_key 2>/dev/null || echo "")
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting privesc user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-if [ -z "$ACCESS_KEY" ] || [ -z "$SECRET_KEY" ]; then
-    echo -e "${RED}Error: Could not retrieve privesc user credentials from Terraform${NC}"
-    echo -e "${YELLOW}Please ensure the scenario is deployed and outputs are available${NC}"
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-echo "Privesc user: $PRIVESC_USER"
-echo "Access Key ID: ${ACCESS_KEY:0:10}..."
-echo -e "${GREEN}✓ Retrieved credentials${NC}\n"
+# Extract credentials
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_secret_access_key')
 
-# Configure AWS credentials for pl-pgp-paul
-export AWS_ACCESS_KEY_ID=$ACCESS_KEY
-export AWS_SECRET_ACCESS_KEY=$SECRET_KEY
-export AWS_REGION=${AWS_REGION:-us-east-1}
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
 
-# Step 2: Verify identity as pl-pgp-paul
-echo -e "${YELLOW}Step 2: Verifying identity as $PRIVESC_USER${NC}"
+echo -e "${GREEN}✓ Retrieved credentials for $PRIVESC_USER${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
 
@@ -112,9 +122,9 @@ echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 echo "The user $PRIVESC_USER should now have admin access via group membership..."
 echo ""
 
-# IAM policy changes can take a moment to propagate
-echo "Waiting for IAM policy to propagate..."
-sleep 3
+# IAM policy changes can take time to propagate
+echo "Waiting 15 seconds for IAM policy to propagate..."
+sleep 15
 
 # Test admin permissions with retry
 echo "Testing admin permissions (listing IAM users)..."

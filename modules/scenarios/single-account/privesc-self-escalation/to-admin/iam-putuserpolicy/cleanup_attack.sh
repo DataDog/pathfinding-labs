@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Cleanup script for iam:PutUserPolicy privilege escalation demo
-# This script removes the inline policy created during the demo
+# This script removes the inline policy attached during the demo
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,104 +15,85 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
+STARTING_USER="pl-prod-pup-to-admin-starting-user"
 INLINE_POLICY_NAME="EscalatedAdminPolicy"
-STARTING_USER="pl-pathfinder-starting-user-prod"
-PRIVESC_USER="pl-pup-user"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PutUserPolicy Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Determine which user to clean up
-echo -e "${YELLOW}Which user's inline policy should be removed?${NC}"
-echo "1. pl-pathfinder-starting-user-prod (role-based attack path)"
-echo "2. pl-pup-user (user-based attack path)"
-echo "3. Both users"
-read -p "Enter choice (1, 2, or 3): " choice
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-cleanup_user() {
-    local USER=$1
-    local PROFILE=$2
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-    echo -e "${YELLOW}Checking for inline policies on $USER${NC}"
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
 
-    # List inline policies for the user
-    POLICIES=$(aws iam list-user-policies --user-name $USER --profile $PROFILE --query 'PolicyNames' --output text 2>/dev/null || echo "")
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
 
-    if [ -z "$POLICIES" ]; then
-        echo -e "${GREEN}No inline policies found for $USER${NC}"
-    else
-        echo "Found inline policies: $POLICIES"
+echo -e "${GREEN}✓ Retrieved admin cleanup credentials${NC}\n"
 
-        # Check specifically for our escalation policy
-        if echo "$POLICIES" | grep -q "$INLINE_POLICY_NAME"; then
-            echo -e "${YELLOW}Removing inline policy: $INLINE_POLICY_NAME${NC}"
-            aws iam delete-user-policy \
-                --user-name $USER \
-                --policy-name $INLINE_POLICY_NAME \
-                --profile $PROFILE
-            echo -e "${GREEN}✓ Deleted inline policy: $INLINE_POLICY_NAME from $USER${NC}"
-        else
-            echo -e "${YELLOW}Policy $INLINE_POLICY_NAME not found on $USER${NC}"
-        fi
+cd - > /dev/null  # Return to scenario directory
 
-        # Check for any other inline policies
-        REMAINING=$(aws iam list-user-policies --user-name $USER --profile $PROFILE --query 'PolicyNames' --output text 2>/dev/null || echo "")
-        if [ ! -z "$REMAINING" ]; then
-            echo -e "${YELLOW}Warning: Other inline policies still exist on $USER: $REMAINING${NC}"
-            echo "These were not created by this demo and were left in place."
-        fi
-    fi
-}
+# Step 2: Verify admin access
+echo -e "${YELLOW}Step 2: Verifying admin access${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin access${NC}\n"
 
-# Determine which profile to use for cleanup
-echo -e "\n${YELLOW}Which AWS profile has permissions to delete user policies?${NC}"
-echo "1. pl-pathfinder-starting-user-prod (if it still has admin from the demo)"
-echo "2. pl-admin-cleanup-prod (dedicated admin profile)"
-echo "3. Other profile"
-read -p "Enter choice (1, 2, or 3): " profile_choice
+# Step 3: Check if inline policy exists
+echo -e "${YELLOW}Step 3: Checking for inline policy $INLINE_POLICY_NAME${NC}"
 
-case $profile_choice in
-    1)
-        CLEANUP_PROFILE="pl-pathfinder-starting-user-prod"
-        ;;
-    2)
-        CLEANUP_PROFILE="pl-admin-cleanup-prod"
-        ;;
-    3)
-        read -p "Enter profile name: " CLEANUP_PROFILE
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+# List inline policies for the user
+POLICIES=$(aws iam list-user-policies --user-name $STARTING_USER --query 'PolicyNames' --output text 2>/dev/null || echo "")
 
-echo -e "\n${GREEN}Using profile: $CLEANUP_PROFILE${NC}\n"
+if [ -z "$POLICIES" ]; then
+    echo -e "${GREEN}✓ No inline policies found (already clean)${NC}\n"
+    echo -e "${GREEN}Cleanup complete - nothing to do${NC}"
+    exit 0
+fi
 
-# Perform cleanup based on user choice
-case $choice in
-    1)
-        cleanup_user "$STARTING_USER" "$CLEANUP_PROFILE"
-        ;;
-    2)
-        cleanup_user "$PRIVESC_USER" "$CLEANUP_PROFILE"
-        ;;
-    3)
-        cleanup_user "$STARTING_USER" "$CLEANUP_PROFILE"
-        echo ""
-        cleanup_user "$PRIVESC_USER" "$CLEANUP_PROFILE"
-        ;;
-    *)
-        echo -e "${RED}Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+echo "Found inline policies: $POLICIES"
 
-echo ""
+# Check specifically for our escalation policy
+if echo "$POLICIES" | grep -q "$INLINE_POLICY_NAME"; then
+    echo -e "${GREEN}✓ Found $INLINE_POLICY_NAME${NC}\n"
+else
+    echo -e "${YELLOW}⚠ Policy $INLINE_POLICY_NAME not found (already removed)${NC}\n"
+    echo -e "${GREEN}Cleanup complete - nothing to do${NC}"
+    exit 0
+fi
+
+# Step 4: Remove the inline policy
+echo -e "${YELLOW}Step 4: Removing inline policy: $INLINE_POLICY_NAME${NC}"
+aws iam delete-user-policy \
+    --user-name $STARTING_USER \
+    --policy-name $INLINE_POLICY_NAME
+
+echo -e "${GREEN}✓ Successfully deleted inline policy${NC}\n"
+
+# Step 5: Verify cleanup
+echo -e "${YELLOW}Step 5: Verifying cleanup${NC}"
+REMAINING_POLICIES=$(aws iam list-user-policies --user-name $STARTING_USER --query 'PolicyNames' --output text 2>/dev/null || echo "")
+
+if echo "$REMAINING_POLICIES" | grep -q "$INLINE_POLICY_NAME"; then
+    echo -e "${RED}✗ Warning: Policy still exists${NC}"
+    exit 1
+else
+    echo -e "${GREEN}✓ Confirmed policy removed${NC}\n"
+fi
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Inline policies have been removed${NC}"
-echo -e "${YELLOW}The infrastructure (users and roles) remains deployed${NC}"
-echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+echo "The user $STARTING_USER has been restored to its original permissions"
+echo ""

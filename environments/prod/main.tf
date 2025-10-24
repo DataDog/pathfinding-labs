@@ -8,15 +8,6 @@ terraform {
   }
 }
 
-# Pathfinder starting user for prod environment
-resource "aws_iam_user" "pathfinder_starting_user" {
-  name = "pl-pathfinder-starting-user-prod"
-}
-
-# Access key for the pathfinder starting user
-resource "aws_iam_access_key" "pathfinder_starting_user" {
-  user = aws_iam_user.pathfinder_starting_user.name
-}
 
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
@@ -34,36 +25,7 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# Basic policy for the pathfinder starting user (minimal permissions)
-resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
-  name = "pl-pathfinder-starting-user-basic-policy"
-  user = aws_iam_user.pathfinder_starting_user.name
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:AssumeRole"
-        ]
-        Resource = [
-          "arn:aws:iam::${var.prod_account_id}:role/pl-prod-self-privesc-attachRolePolicy-role-1",
-          "arn:aws:iam::${var.prod_account_id}:role/pl-prod-self-privesc-createPolicyVersion-role-1",
-          "arn:aws:iam::${var.prod_account_id}:role/pl-prod-role-with-multiple-privesc-paths"
-        ]
-      }
-    ]
-  })
-}
 
 # data "aws_ami" "bastion" {
 #   most_recent = true

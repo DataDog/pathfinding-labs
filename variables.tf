@@ -166,6 +166,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudforma
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-sendcommand"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
@@ -201,6 +213,16 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile
 }
 
 ##############################################################################
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
+##############################################################################
+
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
 # SINGLE-ACCOUNT MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
@@ -226,14 +248,18 @@ variable "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   default     = false
 }
 
-variable "enable_single_account_privesc_multi_hop_to_bucket_resource_policy_bypass" {
-  description = "Enable: single-account → privesc-multi-hop → to-bucket → resource-policy-bypass"
+##############################################################################
+# TOOL TESTING SCENARIOS
+##############################################################################
+
+variable "enable_tool_testing_resource_policy_bypass" {
+  description = "Enable: tool-testing → resource-policy-bypass (tests detection of resource policies that bypass IAM)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_multi_hop_to_bucket_exclusive_resource_policy" {
-  description = "Enable: single-account → privesc-multi-hop → to-bucket → exclusive-resource-policy"
+variable "enable_tool_testing_exclusive_resource_policy" {
+  description = "Enable: tool-testing → exclusive-resource-policy (tests detection of exclusive resource policy configurations)"
   type        = bool
   default     = false
 }

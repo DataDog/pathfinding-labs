@@ -8,6 +8,52 @@ terraform {
   }
 }
 
+# Scenario-specific starting user
+resource "aws_iam_user" "starting_user" {
+  provider = aws.prod
+  name     = "pl-prod-sts-assumerole-to-bucket-starting-user"
+
+  tags = {
+    Name        = "pl-prod-sts-assumerole-to-bucket-starting-user"
+    Environment = var.environment
+    Scenario    = "sts-assumerole"
+    Purpose     = "starting-user"
+  }
+}
+
+# Create access keys for the starting user
+resource "aws_iam_access_key" "starting_user_key" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Minimal policy for the starting user (just enough to assume the role)
+resource "aws_iam_user_policy" "starting_user_policy" {
+  provider = aws.prod
+  name     = "pl-prod-sts-assumerole-to-bucket-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-one-hop-assumerole-bucket-access-role"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_s3_bucket" "target_bucket" {
   provider = aws.prod
   bucket   = "pl-prod-one-hop-assumerole-bucket-${var.account_id}-${var.resource_suffix}"
@@ -20,10 +66,17 @@ resource "aws_iam_role" "bucket_access_role" {
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { AWS = "arn:aws:iam::${var.account_id}:user/pl-pathfinder-starting-user-prod" }
+      Principal = { AWS = aws_iam_user.starting_user.arn }
       Action    = "sts:AssumeRole"
     }]
   })
+
+  tags = {
+    Name        = "pl-prod-one-hop-assumerole-bucket-access-role"
+    Environment = var.environment
+    Scenario    = "sts-assumerole"
+    Purpose     = "bucket-access-role"
+  }
 }
 
 resource "aws_iam_role_policy" "bucket_access_policy" {

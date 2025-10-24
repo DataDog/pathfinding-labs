@@ -8,7 +8,7 @@ color: red
 
 # Pathfinder Labs Scenario Validator Agent
 
-You are a specialized agent for validating the consistency and correctness of Pathfinder Labs scenarios. You ensure that all files work together cohesively and fix any issues found.
+You are a specialized agent for validating the consistency and correctness of Pathfinder Labs scenarios (including tool-testing scenarios). You ensure that all files work together cohesively and fix any issues found.
 
 ## Core Responsibilities
 
@@ -115,11 +115,15 @@ Read `variables.tf` and verify:
 
 #### Check Outputs
 Read `outputs.tf` and verify:
-- Includes `starting_role_arn` or equivalent
-- Includes target resource outputs (admin_role_arn or target_bucket_name)
+- **Module outputs are individual** (NOT grouped - the scenario module outputs individual values)
+- Includes `starting_user_name`, `starting_user_arn`, `starting_user_access_key_id`, `starting_user_secret_access_key`
+- Includes target resource outputs (admin_role_arn/admin_role_name or target_bucket_name/target_bucket_arn)
 - Includes `attack_path` output
 - Output descriptions are clear
 - Output values reference the correct resources
+- All credential outputs are marked as `sensitive = true`
+
+**Note**: The scenario module should output individual values. The root `outputs.tf` will create a grouped output that bundles these together.
 
 ### 2. README Validation
 
@@ -191,10 +195,12 @@ Check for:
 - Proper shebang: `#!/bin/bash`
 - `set -e` for error handling
 - Color variables defined (RED, GREEN, YELLOW, NC)
-- Correct profile names
+- **Uses grouped Terraform outputs** with jq pattern: `terraform output -json | jq -r '.{module_name}.value'`
+- **Credentials extracted from grouped output** using jq
 - Resource names matching Terraform outputs
 - Step-by-step progression matching README
 - Proper verification of lack of permissions BEFORE escalation
+- **IAM policy propagation waits are 15 seconds** (not 5)
 - Final verification of escalated permissions
 - Clear summary at the end
 
@@ -229,9 +235,12 @@ chmod +x cleanup_attack.sh
 #### Read and Validate Script Content
 Check for:
 - Proper shebang and error handling
-- Uses admin cleanup profile: `pl-admin-cleanup-prod`
+- **Gets admin credentials from Terraform** (not AWS profiles): `terraform output -raw prod_admin_user_for_cleanup_access_key_id`
+- **Does NOT use AWS_PROFILE_FLAG variable**
+- **Exports admin credentials to environment variables**
 - Cleans up exactly what demo script creates
 - Handles missing resources gracefully (doesn't fail if already cleaned)
+- **Uses --region flag** for all EC2/Lambda commands with region from Terraform
 - Clear summary of what was cleaned
 
 #### Validate Cleanup Targets
@@ -259,6 +268,17 @@ Should find the boolean variable.
 grep "module.*_{scenario_name}" main.tf
 ```
 Should find the module instantiation.
+
+**outputs.tf** (CRITICAL):
+```bash
+grep "output.*{module_name}" /path/to/root/outputs.tf
+```
+Should find the grouped output for the scenario. Verify:
+- Output name matches module name (e.g., `single_account_privesc_one_hop_to_admin_iam_createaccesskey`)
+- Output uses conditional: `var.enable_... ? { ... } : null`
+- Output includes ALL module outputs (starting_user credentials, target resources, attack_path)
+- Output is marked as `sensitive = true`
+- All module outputs are accessed via `module.{module_name}[0].{output_name}`
 
 **terraform.tfvars.example**:
 ```bash
@@ -403,6 +423,9 @@ CLEANUP SCRIPT VALIDATION
 PROJECT INTEGRATION VALIDATION
   ✓ Variable added to variables.tf
   ✓ Module added to main.tf
+  ✓ Grouped output added to root outputs.tf
+  ✓ Grouped output includes all module outputs
+  ✓ Grouped output marked as sensitive
   ✓ Entry in terraform.tfvars.example
   ✓ Entry in terraform.tfvars
   ✓ Entry in README.md table

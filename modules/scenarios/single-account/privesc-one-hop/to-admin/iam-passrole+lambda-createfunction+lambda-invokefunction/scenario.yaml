@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "iam-passrole+lambda-createfunction+lambda-invokefunction"
 description: "User with iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction can escalate by creating Lambda with admin role"
-cost_estimate: "$0.001/month"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

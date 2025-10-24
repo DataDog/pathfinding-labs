@@ -23,8 +23,8 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
+- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
@@ -241,7 +241,9 @@ variable "resource_suffix" {
 
 ### 3. outputs.tf Template
 
-**CRITICAL**: Always include starting user credentials as outputs!
+**CRITICAL**: All scenario outputs must be individual outputs (NOT grouped). The root `outputs.tf` will group them together.
+
+**DO NOT create grouped outputs in the scenario module** - the project-updator agent will create the grouped output in the root outputs.tf.
 
 ```hcl
 # Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
@@ -304,7 +306,9 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-{environment}-{scenario-shorthand}-starting-user) → {describe-the-path} → {target}"
 }
-``` 
+```
+
+**IMPORTANT**: The scenario module should output individual values. The root `outputs.tf` will then create a grouped output that bundles all these individual outputs together for easy consumption by demo scripts. The project-updator agent handles creating the grouped output in the root file. 
 
 
 ## Naming Conventions

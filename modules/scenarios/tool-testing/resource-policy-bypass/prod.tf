@@ -8,7 +8,53 @@ terraform {
   }
 }
 
-# Role that can be assumed by the prod starting user
+# Scenario-specific starting user
+resource "aws_iam_user" "starting_user" {
+  provider = aws.prod
+  name     = "pl-prod-rpb-to-bucket-starting-user"
+
+  tags = {
+    Name        = "pl-prod-rpb-to-bucket-starting-user"
+    Environment = var.environment
+    Scenario    = "resource-policy-bypass"
+    Purpose     = "starting-user"
+  }
+}
+
+# Create access keys for the starting user
+resource "aws_iam_access_key" "starting_user_key" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Minimal policy for the starting user (just enough to assume the role)
+resource "aws_iam_user_policy" "starting_user_policy" {
+  provider = aws.prod
+  name     = "pl-prod-rpb-to-bucket-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-bucket-access-role"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Role that can be assumed by the scenario-specific starting user
 resource "aws_iam_role" "bucket_access_role" {
   provider = aws.prod
   name     = "pl-bucket-access-role"
@@ -19,12 +65,19 @@ resource "aws_iam_role" "bucket_access_role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.prod_account_id}:user/pl-pathfinder-starting-user-prod"
+          AWS = aws_iam_user.starting_user.arn
         }
         Action = "sts:AssumeRole"
       }
     ]
   })
+
+  tags = {
+    Name        = "pl-bucket-access-role"
+    Environment = var.environment
+    Scenario    = "resource-policy-bypass"
+    Purpose     = "bucket-access-role"
+  }
 }
 
 # Policy that only allows listing all buckets (minimal permission)

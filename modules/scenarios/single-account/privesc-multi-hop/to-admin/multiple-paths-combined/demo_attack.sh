@@ -25,18 +25,41 @@ fi
 # Disable paging for AWS CLI
 export AWS_PAGER=""
 
-# Role name and ARN (we'll construct the ARN since we can't get it via GetRole)
-ROLE_NAME="pl-prod-role-with-multiple-privesc-paths"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query 'Account' --output text)
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+# Navigate to the Terraform root directory (6 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
 
-echo -e "${YELLOW}Step 1: Attempting to assume role${NC}"
-echo "Role ARN: $ROLE_ARN"
+echo "🔍 Retrieving credentials from Terraform outputs..."
+cd "$TERRAFORM_ROOT"
+
+# Get the grouped module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_admin_multiple_paths_combined.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}❌ Error: Could not retrieve module outputs. Make sure the scenario is deployed.${NC}"
+    exit 1
+fi
+
+# Extract credentials and resource information from grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+PRIVESC_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_role_arn')
+STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
+
+echo -e "${GREEN}✅ Retrieved credentials for starting user: $STARTING_USER_NAME${NC}"
+echo "📋 Privesc Role ARN: $PRIVESC_ROLE_ARN"
+
+# Set environment variables for starting user
+export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+export AWS_DEFAULT_REGION="us-west-2"
 
 echo ""
-echo -e "${YELLOW}Step 2: Assuming the role${NC}"
+echo -e "${YELLOW}Step 1: Assuming the role with multiple privilege escalation paths${NC}"
+echo "Role ARN: $PRIVESC_ROLE_ARN"
+
 # Assume the role
-ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$ROLE_ARN" --role-session-name "multiple-privesc-demo" --profile pl-pathfinder-starting-user-prod)
+ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')

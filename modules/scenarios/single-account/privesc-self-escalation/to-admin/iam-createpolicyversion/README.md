@@ -1,6 +1,6 @@
-# One-Hop Privilege Escalation: iam:CreatePolicyVersion
+# Self-Escalation Privilege Escalation: iam:CreatePolicyVersion
 
-**Scenario Type:** One-Hop
+**Scenario Type:** Self-Escalation
 **Target:** Admin Access
 **Technique:** Self-modification via iam:CreatePolicyVersion
 
@@ -12,29 +12,31 @@ This scenario demonstrates a privilege escalation vulnerability where a role can
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-createPolicyVersion-role-1`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-cpv-to-admin-starting-user`
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-cpv-to-admin-starting-role`
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-prod-self-privesc-createPolicyVersion-role-1] -->|iam:CreatePolicyVersion| B[pl-prod-self-privesc-createPolicyVersion-policy]    
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-cpv-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-cpv-to-admin-starting-role]
+    B -->|iam:CreatePolicyVersion| C[pl-prod-cpv-to-admin-policy v2 with admin]
+    C -->|Administrator Access| D[Effective Administrator]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-self-privesc-createPolicyVersion-role-1` to begin the scenario
-2. **Create New Policy Version**: `pl-prod-self-privesc-createPolicyVersion-role-1` uses `iam:CreatePolicyVersion` to create a new version of its attached policy with administrator permissions
+1. **Initial Access**: `pl-prod-cpv-to-admin-starting-user` assumes the role `pl-prod-cpv-to-admin-starting-role` to begin the scenario
+2. **Create New Policy Version**: `pl-prod-cpv-to-admin-starting-role` uses `iam:CreatePolicyVersion` to create a new version of its attached policy with administrator permissions
 3. **Verification**: Verify administrator access with the modified policy
 
 ### Scenario specific resources created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-self-privesc-createPolicyVersion-role-1` | Starting principal with policy versioning capability |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-self-privesc-createPolicyVersion-policy` | Allows `iam:CreatePolicyVersion`, and `iam:ListPolicyVersions` on itself |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-cpv-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-cpv-to-admin-starting-role` | Starting role with policy versioning capability |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-cpv-to-admin-policy` | Allows `iam:CreatePolicyVersion` and `iam:ListPolicyVersions` on itself |
 
 ## Executing the attack
 

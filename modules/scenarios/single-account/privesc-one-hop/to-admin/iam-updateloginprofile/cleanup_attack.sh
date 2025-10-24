@@ -5,6 +5,9 @@
 
 set -e
 
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,96 +15,85 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-user-for-cleanup-scripts-prod"
-ADMIN_USER="pl-ulp-admin"
+ADMIN_USER="pl-prod-ulp-to-admin-target-user"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cleanup: Restoring Original Password${NC}"
+echo -e "${GREEN}IAM UpdateLoginProfile Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Check if we have the original password saved
-echo -e "${YELLOW}Step 1: Looking for saved original password${NC}"
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-if [ -f /tmp/original_password_ulp.txt ]; then
-    ORIGINAL_PASSWORD=$(cat /tmp/original_password_ulp.txt)
-    echo -e "${GREEN}✓ Found saved original password${NC}"
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-    # Step 2: Restore the original password
-    echo -e "\n${YELLOW}Step 2: Restoring original password${NC}"
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
 
-    aws iam update-login-profile \
-        --user-name $ADMIN_USER \
-        --password "$ORIGINAL_PASSWORD" \
-        --no-password-reset-required \
-        --profile $PROFILE
+# Get the original password from terraform output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_updateloginprofile.value // empty')
+ORIGINAL_PASSWORD=$(echo "$MODULE_OUTPUT" | jq -r '.original_password')
 
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ Successfully restored original password${NC}"
-
-        # Clean up temporary file
-        rm /tmp/original_password_ulp.txt
-        echo -e "${GREEN}✓ Removed temporary password file${NC}"
-    else
-        echo -e "${RED}Failed to restore original password${NC}"
-        exit 1
-    fi
-else
-    echo -e "${YELLOW}No saved original password found${NC}"
-    echo "Note: The password was changed but we don't have the original to restore"
-    echo ""
-
-    # Step 2: Get password from Terraform and restore it
-    echo -e "${YELLOW}Step 2: Getting original password from Terraform state${NC}"
-
-    TERRAFORM_DIR="../../../../../.."
-    pushd $TERRAFORM_DIR > /dev/null
-
-    ORIGINAL_PASSWORD=$(terraform output -json | jq -r '.prod_one_hop_to_admin_iam_updateloginprofile[0].original_password.value' 2>/dev/null || echo "")
-
-    popd > /dev/null
-
-    if [ ! -z "$ORIGINAL_PASSWORD" ] && [ "$ORIGINAL_PASSWORD" != "null" ]; then
-        echo -e "${GREEN}✓ Retrieved original password from Terraform${NC}"
-
-        echo -e "\n${YELLOW}Step 3: Restoring original password${NC}"
-
-        aws iam update-login-profile \
-            --user-name $ADMIN_USER \
-            --password "$ORIGINAL_PASSWORD" \
-            --no-password-reset-required \
-            --profile $PROFILE
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ Successfully restored original password${NC}"
-        else
-            echo -e "${RED}Failed to restore original password${NC}"
-            exit 1
-        fi
-    else
-        echo -e "${YELLOW}Unable to retrieve original password from Terraform${NC}"
-        echo "The admin user's password remains changed"
-        echo "You may need to manually reset it or run 'terraform apply' to restore the original state"
+# Also check if we saved it locally during the attack
+if [ -f "/tmp/ulp_original_password.txt" ]; then
+    SAVED_PASSWORD=$(cat /tmp/ulp_original_password.txt)
+    if [ -n "$SAVED_PASSWORD" ]; then
+        ORIGINAL_PASSWORD="$SAVED_PASSWORD"
     fi
 fi
 
-# Step 3: Verify the user still has a login profile
-echo -e "\n${YELLOW}Step 3: Verifying login profile status${NC}"
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
 
-if aws iam get-login-profile --user-name $ADMIN_USER --profile $PROFILE &> /dev/null; then
-    echo -e "${GREEN}✓ Login profile still exists for $ADMIN_USER${NC}"
-    LOGIN_PROFILE_INFO=$(aws iam get-login-profile --user-name $ADMIN_USER --profile $PROFILE --output json)
-    MODIFIED_DATE=$(echo $LOGIN_PROFILE_INFO | jq -r '.LoginProfile.CreateDate')
-    echo "Login profile last modified: $MODIFIED_DATE"
-else
-    echo -e "${RED}⚠ Login profile not found for $ADMIN_USER${NC}"
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify admin identity
+echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin identity${NC}\n"
+
+# Step 3: Restore original password
+echo -e "${YELLOW}Step 3: Restoring original password for $ADMIN_USER${NC}"
+
+if [ -z "$ORIGINAL_PASSWORD" ] || [ "$ORIGINAL_PASSWORD" == "null" ]; then
+    echo -e "${RED}Error: Could not retrieve original password${NC}"
+    echo -e "${YELLOW}You may need to manually reset the password or redeploy the scenario${NC}"
+    exit 1
 fi
 
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ CLEANUP COMPLETE${NC}"
+aws iam update-login-profile \
+    --user-name $ADMIN_USER \
+    --password "$ORIGINAL_PASSWORD" \
+    --no-password-reset-required
+
+echo -e "${GREEN}✓ Successfully restored original password${NC}\n"
+
+# Step 4: Remove local temporary files
+echo -e "${YELLOW}Step 4: Removing local temporary files${NC}"
+SAVED_PASSWORD_FILE="/tmp/ulp_original_password.txt"
+
+if [ -f "$SAVED_PASSWORD_FILE" ]; then
+    rm -f "$SAVED_PASSWORD_FILE"
+    echo -e "${GREEN}✓ Deleted $SAVED_PASSWORD_FILE${NC}"
+else
+    echo -e "${YELLOW}No saved password file found${NC}"
+fi
+
+echo ""
+
 echo -e "${GREEN}========================================${NC}"
-echo -e "\n${YELLOW}Summary:${NC}"
-echo "- Restored original password for user: $ADMIN_USER"
-echo "- Admin user retains both console and API access"
-echo "- Login profile remains active"
-
-echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
+echo -e "${GREEN}Cleanup Complete${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}The original password has been restored${NC}"
+echo -e "${YELLOW}The infrastructure (users, roles) remains deployed${NC}"
+echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"

@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "multiple-paths-combined"
 description: "Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin"
-cost_estimate: "$0.02/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

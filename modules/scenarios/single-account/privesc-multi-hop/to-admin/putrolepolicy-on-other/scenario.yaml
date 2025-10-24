@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "putrolepolicy-on-other"
 description: "RoleA with iam:PutRolePolicy on RoleB can inject admin policy, then assume RoleB for admin access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION

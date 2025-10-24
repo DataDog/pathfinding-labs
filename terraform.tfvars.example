@@ -41,6 +41,10 @@ enable_single_account_privesc_one_hop_to_admin_sts_assumerole                   
 enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy          = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation         = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
+
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
+enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand                     = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET
 enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey                = false
@@ -49,14 +53,19 @@ enable_single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy      
 enable_single_account_privesc_one_hop_to_bucket_sts_assumerole                     = false
 enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile             = false
 
+# SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
+enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand                    = false
+
 # SINGLE-ACCOUNT MULTI-HOP TO-ADMIN
 enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other            = false
 enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined           = false
 
 # SINGLE-ACCOUNT MULTI-HOP TO-BUCKET
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3                 = false
-enable_single_account_privesc_multi_hop_to_bucket_resource_policy_bypass           = false
-enable_single_account_privesc_multi_hop_to_bucket_exclusive_resource_policy        = false
+
+# TOOL TESTING
+enable_tool_testing_resource_policy_bypass                                         = true
+enable_tool_testing_exclusive_resource_policy                                      = true
 
 # SINGLE-ACCOUNT TOXIC-COMBO
 enable_single_account_toxic_combo_public_lambda_with_admin                         = false

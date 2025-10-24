@@ -21,10 +21,10 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
-    - "arn:aws:iam::{account_id}:role/pl-prod-self-privesc-attachRolePolicy-role-1"
+    - "arn:aws:iam::{account_id}:user/pl-prod-arp-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-arp-to-admin-starting-role"
 
-  summary: "starting_user → (AssumeRole) → privesc_role → (iam:AttachRolePolicy on self) → attach AdministratorAccess → admin access"
+  summary: "starting_user → (AssumeRole) → starting_role → (iam:AttachRolePolicy on self) → attach AdministratorAccess → admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -32,7 +32,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:AttachRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-self-privesc-attachRolePolicy-role-1"
+      resource: "arn:aws:iam::*:role/pl-prod-arp-to-admin-starting-role"
 
   helpful:
     - permission: "iam:ListAttachedRolePolicies"

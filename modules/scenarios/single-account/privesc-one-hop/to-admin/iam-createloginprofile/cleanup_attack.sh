@@ -5,6 +5,9 @@
 
 set -e
 
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,53 +15,72 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-user-for-cleanup-scripts-prod"
-ADMIN_USER="pl-clp-admin"
+ADMIN_USER="pl-prod-clp-to-admin-target-user"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cleanup: Removing Login Profile${NC}"
+echo -e "${GREEN}IAM CreateLoginProfile Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Check if login profile exists
-echo -e "${YELLOW}Step 1: Checking if login profile exists for $ADMIN_USER${NC}"
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-if aws iam get-login-profile --user-name $ADMIN_USER --profile $PROFILE &> /dev/null; then
-    echo -e "${GREEN}✓ Login profile found for $ADMIN_USER${NC}"
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-    # Step 2: Delete the login profile
-    echo -e "\n${YELLOW}Step 2: Deleting login profile${NC}"
-
-    aws iam delete-login-profile \
-        --user-name $ADMIN_USER \
-        --profile $PROFILE
-
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ Successfully deleted login profile${NC}"
-    else
-        echo -e "${RED}Failed to delete login profile${NC}"
-        exit 1
-    fi
-else
-    echo -e "${YELLOW}No login profile exists for $ADMIN_USER (nothing to clean up)${NC}"
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
 fi
 
-# Step 3: Verify cleanup
-echo -e "\n${YELLOW}Step 3: Verifying cleanup${NC}"
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
 
-if aws iam get-login-profile --user-name $ADMIN_USER --profile $PROFILE &> /dev/null; then
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify admin identity
+echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin identity${NC}\n"
+
+# Step 3: Check if login profile exists
+echo -e "${YELLOW}Step 3: Checking if login profile exists for $ADMIN_USER${NC}"
+
+if aws iam get-login-profile --user-name $ADMIN_USER &> /dev/null; then
+    echo -e "${GREEN}✓ Login profile found for $ADMIN_USER${NC}\n"
+
+    # Step 4: Delete the login profile
+    echo -e "${YELLOW}Step 4: Deleting login profile${NC}"
+
+    aws iam delete-login-profile --user-name $ADMIN_USER
+
+    echo -e "${GREEN}✓ Successfully deleted login profile${NC}\n"
+else
+    echo -e "${YELLOW}No login profile exists for $ADMIN_USER (nothing to clean up)${NC}\n"
+fi
+
+# Step 5: Verify cleanup
+echo -e "${YELLOW}Step 5: Verifying cleanup${NC}"
+
+if aws iam get-login-profile --user-name $ADMIN_USER &> /dev/null; then
     echo -e "${RED}⚠ Login profile still exists!${NC}"
     exit 1
 else
     echo -e "${GREEN}✓ Confirmed: Login profile has been removed${NC}"
 fi
 
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ CLEANUP COMPLETE${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "\n${YELLOW}Summary:${NC}"
-echo "- Removed login profile for user: $ADMIN_USER"
-echo "- Console access has been revoked"
-echo "- Admin user still has API access via access keys"
+echo ""
 
-echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
-echo "The admin user no longer has console access but retains API access."
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Cleanup Complete${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}The login profile has been removed${NC}"
+echo -e "${YELLOW}The infrastructure (users, roles) remains deployed${NC}"
+echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"

@@ -21,37 +21,41 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + CloudFormation Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 0: Get region from Terraform
-echo -e "${YELLOW}Retrieving region from Terraform configuration${NC}"
-cd ../../../../../..  # Navigate to root of terraform project
+# Step 0: Get admin credentials from Terraform
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
 
-CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
-echo "Region from Terraform: $CURRENT_REGION"
-
-# Navigate back to scenario directory
-cd - > /dev/null
-echo ""
-
-# Use the admin cleanup profile
-echo "Using AWS profile: $PROFILE"
-export AWS_PROFILE="$PROFILE"
-export AWS_DEFAULT_REGION="$CURRENT_REGION"
-
-# Verify credentials
-IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text 2>/dev/null)
-if [ -z "$IDENTITY" ]; then
-    echo -e "${RED}Error: Failed to authenticate with profile $PROFILE${NC}"
-    echo "Make sure the profile is configured: aws configure --profile $PROFILE"
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
     exit 1
 fi
 
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
+
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+# Get region from Terraform
+CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
+echo "Region from Terraform: $CURRENT_REGION"
+export AWS_DEFAULT_REGION="$CURRENT_REGION"
+
+# Verify credentials
+IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Authenticated as: $IDENTITY"
-echo ""
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
+
+cd - > /dev/null  # Return to scenario directory
 echo ""
 
 # Step 1: Delete CloudFormation stack

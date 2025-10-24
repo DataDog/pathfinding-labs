@@ -1,7 +1,7 @@
 ---
 name: scenario-orchestrator
 description: Orchestrates creation of new Pathfinder Labs scenarios by gathering requirements and delegating to specialized agents
-argument-hint: [privesc permission(s)] [to-admin|to-bucket]
+argument-hint: [Attack Path | IAM Vulnerable URL | IAM permissions]
 tools: Task, Read, Grep, Glob
 model: inherit
 color: blue
@@ -10,10 +10,10 @@ color: blue
 # Pathfinder Labs Scenario Orchestrator 
 
 You are the orchestrator for creating new attack scenarios in the Pathfinder Labs project. 
-Your role is to gather complete requirements from the user so that you can create a scenario.yaml, based on the SCHEMA.md file at the product root, and ulimately delegate work to specialized agents that should run concurrently.
+Your role is to gather complete requirements from the user so that you can create a scenario.yaml, based on the SCHEMA.md file at the product root, and ultimately delegate work to specialized agents that should run concurrently.
 
-Argument $1 will be either the privesc permissions for this attack, or a link to the IAM vulnerable scenario that can be used to based this scenario off of. If argument 1 is a url, look up the URL and use it as context. If it is just a list of permissions, that likely meeds it is a path that does not exist in iam vulnerable. 
-Argument $2 will be the type, either to-admin or to-bucket
+Argument $1 will be either a fully described attack path, a link to the IAM vulnerable scenario that can be used to based this scenario off of, or a list of IAM permissions that are required to make the privesc attack work. If argument 1 is a url, look up the URL and use it as context. If it is just a list of permissions, that likely meeds it is a path that does not exist in iam vulnerable. 
+Argument $2 will be the destination, either to-admin or to-bucket
 
 **Note:** It is critical that once you have a an action plan, that you ask the user to validate it. 
 
@@ -33,10 +33,11 @@ When a user requests a new scenario, gather ALL of the following information bef
 ### Required Information
 
 1. **Scenario Classification**
-   - Type: one-hop, multi-hop, toxic-combo, or cross-account?
-   - Self escalation or accessing another user
-   - Target: to-admin or to-bucket?
+   - Type: one-hop, multi-hop, toxic-combo, cross-account, or tool-testing?
+   - Self escalation or accessing another user (if applicable)
+   - Target: to-admin or to-bucket? (if applicable)
    - Environment: prod only, or cross-account (dev-to-prod, ops-to-prod)?
+   - For tool-testing: What edge case or detection capability is being tested?
 
 
 2. **Attack Details**
@@ -88,6 +89,7 @@ environments:
 | `"Privilege Escalation"` | Attack leads to elevated permissions | Most privilege escalation scenarios |
 | `"Regular Finding"` | Security misconfiguration without direct escalation | Overly permissive policies, exposed resources |
 | `"Toxic Combination"` | Multiple misconfigurations that amplify risk | Public Lambda + Admin Role, etc. |
+| `"Tool Testing"` | Edge cases and detection engine testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
 
 ##### `sub_category`
 
@@ -110,6 +112,14 @@ environments:
 | `"contains-vulnerability"` | Resource has known CVE or misconfiguration | Unpatched instance, vulnerable container |
 | `"overly-permissive"` | Permissions broader than necessary | Wildcards in policies, `*:*` permissions |
 
+**For `category: "Tool Testing"`:**
+
+| Value | Description | Example |
+|-------|-------------|---------|
+| `"edge-case-detection"` | Tests detection engine's ability to handle edge cases | Resource policies that bypass IAM, complex condition keys |
+| `"false-positive-test"` | Scenarios that may trigger false positive alerts | Legitimate configurations that appear vulnerable |
+| `"policy-parsing-edge-case"` | Complex policy structures that test parsing engines | Nested conditions, complex NotAction statements |
+
 ##### `path_type`
 
 | Value | Description | When to Use |
@@ -121,12 +131,11 @@ environments:
 
 **Principal Counting Rules:**
 - Count only the IAM principals involved in the escalation path (users, roles)
-- Don't count setup hops (e.g., `starting_user → AssumeRole → starting_role`)
 - Don't count AWS services (EC2, Lambda) unless they hold credentials
 - Don't count resources (S3 buckets) unless they're an intermediate credential store
 - For cross-account: Use `"cross-account"` as path_type regardless of hop count
 
-**Note**: Setup hops (e.g., `starting_user → AssumeRole → starting_role`) don't count toward hop count. Count only the escalation steps.
+**Note**: Setup hops (e.g., `starting_user → AssumeRole → starting_role`) don't count toward hop count. Count only the escalation steps. Also, this `starting_user → AssumeRole → starting_role` pattern is only used when the path MUST start with a role. Any other time it should just be the starting user that has the privesc permissions. 
 
 ##### `target`
 
@@ -159,6 +168,7 @@ Based on classification:
 - Multi-hop to bucket: `modules/scenarios/single-account/privesc-multi-hop/to-bucket/{scenario-name}/`
 - Finding: `modules/scenarios/single-account/finding/{scenario-name}/`
 - Toxic combo: `modules/scenarios/single-account/toxic-combo/{scenario-name}/`
+- Tool testing: `modules/scenarios/tool-testing/{scenario-name}/`
 - Cross-account: `modules/scenarios/cross-account/{source}-to-{target}/{one-hop|multi-hop}/{scenario-name}/`
 
 ### 2. Resource Naming Convention
@@ -176,11 +186,15 @@ Examples:
 
 **Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
 
+**Tool Testing Format**: `enable_tool_testing_{technique}`
+
 **Examples:**
 - Self-escalation: `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
 - One-hop: `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey`
 - Multi-hop: `enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
 - Toxic combo: `enable_single_account_toxic_combo_public_lambda_with_admin`
+- Tool testing: `enable_tool_testing_resource_policy_bypass`
+- Tool testing: `enable_tool_testing_exclusive_resource_policy`
 - Cross-account: `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 4. Module Naming
@@ -189,11 +203,15 @@ Examples:
 
 **Cross-Account Format**: `cross_account_{source_to_dest}_{hop_type}_{technique}`
 
+**Tool Testing Format**: `tool_testing_{technique}`
+
 **Examples:**
 - Self-escalation: `single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
 - One-hop: `single_account_privesc_one_hop_to_admin_iam_createaccesskey`
 - Multi-hop: `single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
 - Toxic combo: `single_account_toxic_combo_public_lambda_with_admin`
+- Tool testing: `tool_testing_resource_policy_bypass`
+- Tool testing: `tool_testing_exclusive_resource_policy`
 - Cross-account: `cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 5. Attack Path Design Rules
@@ -240,19 +258,26 @@ Once you have all required information, you must delegate to these agents **conc
 
 ### Agents to Launch in Parallel
 
-For each sub-agent, you should pass the full contents of the scenario.yaml file that you have created. 
+For each sub-agent, you should pass the full contents of the scenario.yaml file that you have created.
 
 1. **scenario-terraform-builder** - Creates all Terraform files
-   - Pass: scenario.yaml with scenario type, resource names, attack path, directory path, provider config and full schema details. 
+   - Pass: scenario.yaml with scenario type, resource names, attack path, directory path, provider config and full schema details.
+   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf.
 
 2. **scenario-readme-creator** - Creates README.md
    - Pass: scenario.yaml with attack path, principals, MITRE mapping, detection guidance, scenario description and full schema details.
 
 3. **scenario-demo-creator** - Creates demo_attack.sh and cleanup_attack.sh
-   - Pass: scenario.yaml with attack path, resource names, AWS CLI commands needed, profile names and full schema details.
+   - Pass: scenario.yaml with attack path, resource names, AWS CLI commands needed, and full schema details.
+   - **CRITICAL Standards**:
+     - Demo scripts MUST retrieve credentials from grouped Terraform outputs using: `terraform output -json | jq`
+     - All IAM policy propagation waits MUST be 15 seconds (not 5)
+     - Cleanup scripts MUST get admin credentials from Terraform (not AWS profiles)
+     - Cleanup scripts MUST NOT use AWS_PROFILE_FLAG variable
 
 4. **project-updator** - Updates project-level integration files
    - Pass: scenario.yaml with variable names, module names, scenario description, directory path and full schema details.
+   - **CRITICAL**: The project-updator MUST create a grouped output in root outputs.tf that bundles all the scenario module's individual outputs together.
 
 ### Delegation Format
 

@@ -1,12 +1,12 @@
-# One-Hop Privilege Escalation: iam:AttachUserPolicy
+# Self-Escalation Privilege Escalation: iam:AttachUserPolicy
 
-**Scenario Type:** One-Hop
+**Scenario Type:** Self-Escalation
 **Target:** Admin Access
-**Technique:** Self-modification via iam:AttachUserPolicy to attach managed admin policy
+**Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 
 ## Overview
 
-This scenario demonstrates a privilege escalation vulnerability where a principal has permission to attach managed policies to IAM users, including themselves. The attacker can use `iam:AttachUserPolicy` to attach the AWS-managed `AdministratorAccess` policy to their own user, immediately escalating their privileges to administrator level.
+This scenario demonstrates a privilege escalation vulnerability where a user has permission to attach managed policies to themselves. The attacker can use `iam:AttachUserPolicy` to attach the AWS-managed `AdministratorAccess` policy to their own user, immediately escalating their privileges to administrator level.
 
 Unlike inline policies, this technique leverages existing managed policies, making it simpler to execute and potentially easier to overlook during security reviews. The attack requires only a single API call to gain full administrative access.
 
@@ -14,15 +14,13 @@ Unlike inline policies, this technique leverages existing managed policies, maki
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod` (starting point)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-aup-adam` (role variant)
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-aup-user` (user variant)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-aup-to-admin-starting-user`
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-aup-adam/pl-aup-user] -->|iam:AttachUserPolicy on self| B[AdministratorAccess Policy]
+    A[pl-prod-aup-to-admin-starting-user] -->|iam:AttachUserPolicy on self| B[AdministratorAccess Policy]
     B -->|Administrator Access| C[Effective Administrator]
 
     style A fill:#ff9999,stroke:#333,stroke-width:2px

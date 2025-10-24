@@ -82,14 +82,12 @@ cost_estimate: "free"
 | `schema_version` | string | ✅ Yes | Schema version this file conforms to. Format: `"X.Y.Z"` |
 | `name` | string | ✅ Yes | Unique identifier for the scenario. Should match directory name. Use kebab-case. |
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
-| `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario. Use `"free"` or actual cost like `"$0.01/hour"` or `"$1.50/month"` |
+| `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario on a monthly basis. Use `"free"` or actual cost like `"$5.00/month"` |
 
 #### Cost Estimate Examples
 
 - `"free"` - No AWS charges (IAM-only scenarios)
-- `"$0.01/hour"` - Minimal cost (single t3.nano instance)
-- `"$0.50/day"` - Low daily cost
-- `"$5/month"` - Monthly estimation for long-running resources
+- `"$5/month"` - Monthly estimations for anything pay per time unit type resource
 
 ---
 
@@ -125,6 +123,7 @@ environments:
 | `"Privilege Escalation"` | Attack leads to elevated permissions | Most privilege escalation scenarios |
 | `"Regular Finding"` | Security misconfiguration without direct escalation | Overly permissive policies, exposed resources |
 | `"Toxic Combination"` | Multiple misconfigurations that amplify risk | Public Lambda + Admin Role, etc. |
+| `"Tool Testing"` | Edge cases and detection engine testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
 
 ##### `sub_category`
 
@@ -148,6 +147,14 @@ environments:
 | `"sensitive-data"` | Resource contains sensitive information | S3 bucket with PII, PHI, credentials, secrets |
 | `"contains-vulnerability"` | Resource has known CVE or misconfiguration | Unpatched instance, vulnerable container |
 | `"overly-permissive"` | Permissions broader than necessary | Wildcards in policies, `*:*` permissions |
+
+**For `category: "Tool Testing"`:**
+
+| Value | Description | Example |
+|-------|-------------|---------|
+| `"edge-case-detection"` | Tests detection engine's ability to handle edge cases | Resource policies that bypass IAM, complex condition keys |
+| `"false-positive-test"` | Scenarios that may trigger false positive alerts | Legitimate configurations that appear vulnerable |
+| `"policy-parsing-edge-case"` | Complex policy structures that test parsing engines | Nested conditions, complex NotAction statements |
 
 ##### `path_type`
 
@@ -475,6 +482,8 @@ terraform:
 
 **Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
 
+**Tool Testing Format**: `enable_tool_testing_{technique}`
+
 **Examples:**
 
 ```yaml
@@ -492,6 +501,10 @@ variable_name: "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_
 
 # Toxic combo (single-account)
 variable_name: "enable_single_account_toxic_combo_public_lambda_with_admin"
+
+# Tool testing
+variable_name: "enable_tool_testing_resource_policy_bypass"
+variable_name: "enable_tool_testing_exclusive_resource_policy"
 
 # Cross-account (no target in variable name)
 variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
@@ -511,6 +524,10 @@ module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putu
 
 # Multi-hop
 module_path: "modules/scenarios/single-account/privesc-multi-hop/to-admin/putrolepolicy-on-other"
+
+# Tool testing
+module_path: "modules/scenarios/tool-testing/resource-policy-bypass"
+module_path: "modules/scenarios/tool-testing/exclusive-resource-policy"
 
 # Cross-account
 module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
@@ -598,7 +615,7 @@ terraform:
 schema_version: "1.0.0"
 name: "iam-passrole-ec2-runinstances"
 description: "Role with PassRole and EC2 RunInstances can escalate to admin by launching instance with privileged instance profile"
-cost_estimate: "$0.01/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION
@@ -668,7 +685,7 @@ terraform:
 schema_version: "1.0.0"
 name: "putrolepolicy-on-other"
 description: "RoleA with iam:PutRolePolicy on RoleB can inject admin policy, then assume RoleB for admin access"
-cost_estimate: "$0.001/hour"
+cost_estimate: "free"
 
 # =============================================================================
 # CLASSIFICATION
@@ -743,7 +760,7 @@ terraform:
 schema_version: "1.0.0"
 name: "ec2-hardcoded-credentials"
 description: "EC2 instance with hardcoded AWS credentials accessible via SSM"
-cost_estimate: "$0.01/hour"
+cost_estimate: "$5.00/month"
 
 # =============================================================================
 # CLASSIFICATION

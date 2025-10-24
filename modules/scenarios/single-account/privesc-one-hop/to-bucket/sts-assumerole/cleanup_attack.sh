@@ -11,19 +11,46 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-PROFILE="pl-pathfinder-starting-user-prod"
-BUCKET_ACCESS_ROLE="pl-prod-one-hop-assumerole-bucket-access-role"
-
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}STS AssumeRole Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get account ID
-echo -e "${YELLOW}Step 1: Getting account ID${NC}"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile $PROFILE --query 'Account' --output text)
+# Disable paging for AWS CLI
+export AWS_PAGER=""
+
+# Navigate to the Terraform root directory (6 levels up from scenario directory)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
+
+echo "🔍 Retrieving admin credentials from Terraform outputs..."
+cd "$TERRAFORM_ROOT"
+
+# Get admin credentials from Terraform outputs
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ -z "$ADMIN_SECRET_KEY" ]; then
+    echo -e "${RED}❌ Error: Could not retrieve admin credentials from Terraform outputs.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Retrieved admin credentials from Terraform${NC}"
+
+# Set environment variables for admin user
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_DEFAULT_REGION="us-west-2"
+
+# Step 1: Get account ID and bucket name
+echo -e "${YELLOW}Step 1: Getting account ID and bucket information${NC}"
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
-echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
+
+# Get bucket name from Terraform outputs
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_sts_assumerole.value // empty')
+BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
+echo "Target bucket: $BUCKET_NAME"
+echo -e "${GREEN}✓ Retrieved account information${NC}\n"
 
 # Step 2: Remove local temporary files
 echo -e "${YELLOW}Step 2: Removing local temporary files${NC}"
@@ -45,28 +72,16 @@ else
 fi
 echo ""
 
-# Step 3: Assume role to clean up S3 objects
-echo -e "${YELLOW}Step 3: Assuming role to clean up S3 test objects${NC}"
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${BUCKET_ACCESS_ROLE}"
+# Step 3: Clean up S3 test objects using admin credentials
+echo -e "${YELLOW}Step 3: Cleaning up S3 test objects${NC}"
+echo "Using admin credentials to clean up bucket objects"
+echo -e "${GREEN}✓ Ready to clean up S3 objects${NC}\n"
 
-CREDENTIALS=$(aws sts assume-role \
-    --role-arn $ROLE_ARN \
-    --role-session-name cleanup-session \
-    --profile $PROFILE \
-    --query 'Credentials' \
-    --output json)
+# Step 4: Verify bucket exists
+echo -e "${YELLOW}Step 4: Verifying target bucket${NC}"
+echo "Target bucket: $BUCKET_NAME"
 
-export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
-
-echo -e "${GREEN}✓ Assumed role for cleanup${NC}\n"
-
-# Step 4: Get bucket name
-echo -e "${YELLOW}Step 4: Finding target bucket${NC}"
-BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-one-hop-assumerole-bucket-')].Name" --output text)
-
-if [ -z "$BUCKET_NAME" ]; then
+if [ -z "$BUCKET_NAME" ] || [ "$BUCKET_NAME" == "null" ]; then
     echo -e "${RED}Error: Could not find target bucket${NC}"
     exit 1
 fi
