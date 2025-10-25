@@ -118,6 +118,18 @@ variable "enable_single_account_privesc_self_escalation_to_bucket_iam_attachrole
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachrolepolicy+sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachuserpolicy+iam-createaccesskey"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
   type        = bool
@@ -126,6 +138,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createpolicyversion+sts-assumerole"
   type        = bool
   default     = false
 }
@@ -162,6 +180,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putrolepolicy+sts-assumerole"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putuserpolicy+iam-createaccesskey"
   type        = bool
   default     = false
 }

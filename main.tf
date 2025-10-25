@@ -170,7 +170,27 @@ module "single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy" {
 # PROD ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
+module "single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
 
+module "single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachuserpolicy+iam-createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
 
 module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey ? 1 : 0
@@ -227,6 +247,17 @@ module "single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createpolicyversion+sts-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprofile"
@@ -254,6 +285,28 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
 module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+sts-assumerole"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy+iam-createaccesskey"
   providers = {
     aws.prod = aws.prod
   }

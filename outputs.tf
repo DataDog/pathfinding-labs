@@ -226,6 +226,34 @@ output "single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy" {
 }
 
 # One-hop to-admin scenarios
+output "single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
+  description = "All outputs for iam-attachrolepolicy+sts-assumerole one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].target_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey" {
+  description = "All outputs for iam-attachuserpolicy+iam-createaccesskey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].starting_user_secret_access_key
+    target_user_name                = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].target_user_name
+    target_user_arn                 = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].target_user_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy" {
   description = "All outputs for iam-updateassumerolepolicy one-hop scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy ? {
@@ -257,6 +285,22 @@ output "single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
     admin_secret_access_key         = module.single_account_privesc_one_hop_to_admin_iam_createloginprofile[0].admin_secret_access_key
     console_login_url               = module.single_account_privesc_one_hop_to_admin_iam_createloginprofile[0].console_login_url
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_createloginprofile[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole" {
+  description = "All outputs for iam-createpolicyversion+sts-assumerole one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].target_role_arn
+    target_policy_name              = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].target_policy_name
+    target_policy_arn               = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].target_policy_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole[0].attack_path
   } : null
   sensitive = true
 }
@@ -412,6 +456,34 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
     admin_role_name                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].admin_role_name
     escalated_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].escalated_role_name
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
+  description = "All outputs for iam-putrolepolicy+sts-assumerole one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].target_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey" {
+  description = "All outputs for iam-putuserpolicy+iam-createaccesskey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].starting_user_secret_access_key
+    target_user_name                = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].target_user_name
+    target_user_arn                 = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].target_user_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey[0].attack_path
   } : null
   sensitive = true
 }

@@ -1,27 +1,101 @@
-# Pathfinder Labs 
+<div align="center">
+
+# Pathfinder Labs
+
+
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
+![Scenarios](https://img.shields.io/badge/Scenarios-40+-blue?style=for-the-badge)
+![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
+
+[Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
+
+</div>
+
+---
+
 Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
 
-## Why does this exist? 
+##  Why does this exist?
 
-Can you easily answer the question: Exactly who has access to my most sensitive S3 bucket? Is it 5% of your organization or 80%? You can ask the same question another way: **If an attacker compromises one of my employees, what is the likelihood they will be able to get to the data in my most sensitive S3 bucket?** 
+<table>
+<tr>
+<td width="50%" align="center" valign="middle">
 
-You need tooling that can help you answer these questions. And you need an easy way to deploy intentionally vulnerable resources so that you can test your tooling. That's why we created Pathfinder Labs.
-  
+### The Problem
+
+**If an attacker compromises ONE employee...**
+
+What's the likelihood they reach:
+
+Your most sensitive data?
+
+Your critical infrastructure?
+
+</td>
+<td width="50%" align="center" valign="middle">
+
+### The Solution
+
+You need **tooling** to answer these questions
+
+You need to **test** that tooling with 
+
+**real attack scenarios** to validate coverage
+
+**That's why we created Pathfinder Labs**
+
+</td>
+</tr>
+</table>
+
+
+
+### How Pathfinder Labs Works
+
+```mermaid
+graph LR
+    A[Select<br/>Scenarios] --> B[Deploy<br/>Infrastructure]
+    B --> C{Test or Exploit}
+    C -->|Blue Team| D[ Validate<br/>CSPM Detection]
+    C -->|Red Team| E[ Validate <br/>your skillset]
+    D --> F[Measure<br/>Coverage Gaps]
+    E --> G[Run Attack<br/>Demonstrations] 
+    F --> H[Cleanup<br/>Artifacts]
+    G --> H
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style D fill:#e8f5e9
+    style E fill:#ffebee
+    style F fill:#f3e5f5
+    style G fill:#fce4ec
+```
+
 ##  Who Is This For?
 
-### **Blue Teamers**
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🛡️ **Blue Teamers**
 - ✅ **Validate CSPM Detection**: Does your security tooling detect all vulnerable configurations?
 - ✅ **Train Your Team**: Provide hands-on experience with real attack scenarios
 - ✅ **Measure Coverage**: Identify gaps in your security monitoring
 
-### **Red Teamers**
+</td>
+<td width="50%" valign="top">
+
+### ⚔️ **Red Teamers**
 - ✅ **Practice IAM Exploitation**: Sharpen your privilege escalation skills
 - ✅ **Test Your Tooling**: Does your toolset find all the paths?
 - ✅ **Build Attack Chains**: Learn complex multi-hop and cross-account techniques
 - ✅ **Demonstrate Risk**: Show stakeholders real-world attack scenarios
+
+</td>
+</tr>
+</table>
 
 ## What types of paths are supported?
 
@@ -34,42 +108,60 @@ You need tooling that can help you answer these questions. And you need an easy 
   </thead>
   <tbody>
     <tr>
-      <td><strong>Single-Hop<br>IAM Privesc to Admin</strong></td>
+      <td><strong>Self-Escalation<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → UserB (Admin)
-RoleA → iam:PassRole + ec2:RunInstances → RoleB (Admin)</code></pre>
+        <pre><code>RoleA → iam:PutRolePolicy (on self) → Admin
+UserA → iam:PutUserPolicy (on self) → Admin
+UserA → iam:AddUserToGroup → AdminGroup → Admin</code></pre>
       </td>
     </tr>
     <tr>
-      <td><strong>Single-Hop<br>IAM Privesc to Bucket</strong></td>
+      <td><strong>One-Hop<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → Sensitive-Bucket
-RoleA → iam:PassRole + ec2:RunInstances → RoleB (not an admin) → Sensitive-Bucket</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (Admin)
+RoleA → iam:PassRole + ec2:RunInstances → RoleB (Admin)
+RoleA → lambda:UpdateFunctionCode → Lambda with Admin Role</code></pre>
       </td>
     </tr>
     <tr>
       <td><strong>Multi-Hop<br>IAM Privesc to Admin</strong></td>
       <td>
-        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → sts:AssumeRole → RoleC (Admin)</code></pre>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → sts:AssumeRole → RoleC (Admin)
+RoleA → iam:PutRolePolicy → RoleB → sts:AssumeRole → AdminRole</code></pre>
       </td>
     </tr>
     <tr>
-      <td><strong>Multi-Hop<br>IAM Privesc to Bucket</strong></td>
-      <td>
-        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → sts:AssumeRole → RoleC (not an admin) → Sensitive-Bucket</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Multi-Account<br>IAM Privesc to Admin</strong></td>
+      <td><strong>Cross-Account<br>IAM Privesc to Admin</strong></td>
       <td>
         <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC (Admin)
 </code></pre>
       </td>
     </tr>
     <tr>
-      <td><strong>Multi-Account<br>IAM Privesc to Bucket</strong></td>
+      <td><strong>Self-Escalation<br>IAM Privesc to Bucket</strong></td>
       <td>
-        <pre><code>Account1:RoleA → iam:CreateAccessKey → Account1:RoleB → sts:AssumeRole → Account2:RoleC (not an admin) → Account2:Sensitive-Bucket</code></pre>
+        <pre><code>RoleA → iam:PutRolePolicy (on self) → Sensitive-Bucket
+RoleA → iam:AttachRolePolicy (on self) → Sensitive-Bucket</code></pre>
+      </td>
+    </tr>    
+    <tr>
+      <td><strong>One-Hop<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>RoleA → iam:CreateAccessKey → UserB (not an admin) → Sensitive-Bucket
+RoleA → sts:AssumeRole → RoleB (not an admin) → Sensitive-Bucket</code></pre>
+      </td>
+    </tr>    
+    <tr>
+      <td><strong>Multi-Hop<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>RoleA → sts:AssumeRole → RoleB → sts:AssumeRole → RoleC → Sensitive-Bucket
+RoleA → sts:AssumeRole → RoleB (bypass resource policy) → Sensitive-Bucket</code></pre>
+      </td>
+    </tr>    
+    <tr>
+      <td><strong>Cross-Account<br>IAM Privesc to Bucket</strong></td>
+      <td>
+        <pre><code>Account1:RoleA → sts:AssumeRole → Account2:RoleB → Sensitive-Bucket</code></pre>
       </td>
     </tr>
     <tr>
@@ -116,6 +208,142 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
 
 ---
 
+## Available Scenarios - Single Account
+
+All scenarios below deploy to a single AWS account (prod) and can be used with just one playground account.
+
+### Privilege Escalation to Admin
+
+Traditional IAM privilege escalation scenarios or chains of traditional scenarios. Grouped according to how many hops between principals are involved. 
+
+#### Self-Escalation to Admin (8 scenarios)
+
+In these scenarios, an IAM principal has the permission to update their own permissions! Some tools consider these permissions equivalent to that of an administrator, some use the term "effective administrator", and some treat these the same as the one-hop scenarios below.  
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-putrolepolicy` | Self-modification | Role modifies its own inline policy to grant admin access |
+| `iam-attachrolepolicy` | Self-modification | Role attaches managed admin policies to itself |
+| `iam-createpolicyversion` | Policy versioning | Role creates new policy versions with elevated permissions |
+| `iam-putuserpolicy` | User self-modification | User adds inline admin policy to themselves |
+| `iam-attachuserpolicy` | User self-modification | User attaches managed admin policies to themselves |
+| `iam-putgrouppolicy` | Group policy modification | User modifies group inline policy to grant admin access |
+| `iam-attachgrouppolicy` | Group policy attachment | User attaches admin policies to their group |
+| `iam-addusertogroup` | Group membership | User adds themselves to an admin group |
+
+#### One-Hop to Admin (14 scenarios)
+
+In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-createaccesskey` | Credential creation | User creates access keys for an admin user |
+| `iam-createloginprofile` | Console credential creation | User creates console password for an admin user |
+| `iam-updateloginprofile` | Password reset | User resets console password for an admin user |
+| `iam-putuserpolicy+iam-createaccesskey` | User policy modification + credential creation | User adds admin inline policy to target user and creates access keys for them |
+| `iam-attachuserpolicy+iam-createaccesskey` | User policy attachment + credential creation | User attaches AWS-managed AdministratorAccess to target user and creates access keys for them |
+| `sts-assumerole` | Direct assumption | Role directly assumes another role with admin permissions |
+| `iam-updateassumerolepolicy` | Trust policy modification | User modifies trust policy of admin role to grant access |
+| `iam-putrolepolicy+sts-assumerole` | Inline policy modification | User adds inline admin policy to assumable role then assumes it |
+| `iam-passrole+ec2-runinstances` | Compute privilege escalation | User passes admin role to EC2 instance for credential extraction |
+| `iam-passrole+lambda-createfunction+lambda-invokefunction` | Lambda execution role | User creates Lambda with admin role and invokes to extract credentials |
+| `iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb` | Lambda event source | User creates Lambda with admin role triggered by DynamoDB events |
+| `iam-passrole-cloudformation` | Service role passing | User passes admin role to CloudFormation to create escalated resources |
+| `lambda-updatefunctioncode` | Lambda code modification | User modifies existing Lambda function code to execute under privileged role |
+| `ssm-sendcommand` | Remote command execution | User executes commands on EC2 instances with admin roles to extract credentials |
+
+#### Multi-Hop to Admin (2 scenarios)
+
+While everything above is consider an "atomic" privilege escalation path, these scenarios demonstrate what is commonly observed in AWS environments - multi-step paths that lead to administrative access. 
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `multiple-paths-combined` | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
+| `putrolepolicy-on-other` | 2 | Role can modify another role's policy to gain admin access |
+
+---
+
+### Lateral movement to an target S3 Bucket
+
+The attacker uses the same privesc mechanisms as above, but the attacker never gets full admin permissions - they only get to the destination bucket. 
+
+
+#### Self-Escalation to Bucket (2 scenarios)
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-putrolepolicy` | Self-modification | Role modifies its own inline policy to grant S3 bucket access |
+| `iam-attachrolepolicy` | Self-modification | Role attaches S3 access policies to itself |
+
+
+#### One-Hop to Bucket (6 scenarios)
+
+| Scenario | Attack Vector | Description |
+|----------|---------------|-------------|
+| `iam-createaccesskey` | Credential creation | User creates keys for user with bucket access |
+| `iam-createloginprofile` | Console credential creation | User creates console password for user with bucket access |
+| `iam-updateloginprofile` | Password reset | User resets console password for user with bucket access |
+| `iam-updateassumerolepolicy` | Trust policy modification | User modifies trust policies to assume bucket-access roles |
+| `sts-assumerole` | Direct assumption | Role directly assumes another role with bucket permissions |
+| `ssm-sendcommand` | Remote command execution | User executes commands on EC2 instances with bucket access roles |
+
+#### Multi-Hop to Bucket (3 scenarios)
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `role-chain-to-s3` | 3 | Three-hop role assumption chain ending at S3 bucket |
+| `resource-policy-bypass` | 2 | Bypass S3 bucket resource policy restrictions by assuming role with bucket access |
+| `exclusive-resource-policy` | 2 | Access S3 bucket with exclusive resource policy that denies all except specific role |
+
+
+---
+
+### Toxic Combinations (1 scenario)
+
+Toxic combinations are cases 
+
+| Scenario | Risk Level | Description |
+|----------|------------|-------------|
+| `public-lambda-with-admin` | 🔴 Critical | Publicly accessible Lambda function with administrative role |
+
+---
+
+### Tool Testing Scenarios
+
+Edge cases and scenarios designed to test detection engine capabilities.
+
+#### Tool Testing (2 scenarios)
+
+| Scenario | Focus | Description |
+|----------|-------|-------------|
+| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
+| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
+
+---
+
+### Cross-Account Scenarios
+
+Privilege escalation paths that span multiple AWS accounts. These scenarios require at least two AWS accounts (dev/ops and prod).
+
+#### Cross-Account Dev-to-Prod (4 scenarios)
+
+| Scenario | Hops | Description |
+|----------|------|-------------|
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from dev to prod |
+| `passrole-lambda-admin` | 1 | PassRole privilege escalation via Lambda across accounts |
+| `multi-hop-both-sides` | 3 | Privilege escalation in both accounts before crossing |
+| `lambda-invoke-update` | 2 | Lambda function code update to extract prod credentials |
+
+#### Cross-Account Ops-to-Prod (1 scenario)
+
+| Scenario | Type | Description |
+|----------|------|-------------|
+| `simple-role-assumption` | 1 | Direct cross-account role assumption from ops to prod |
+
+---
+
+
+
 ## How It Works
 
 **Modular Architecture**: Each attack scenario is a self-contained, independently deployable module that can be enabled or disabled via boolean flags.
@@ -152,18 +380,25 @@ terraform output -json | jq '.single_account_privesc_one_hop_to_admin_iam_create
 
 ## Scenario Taxonomy
 
-Pathfinder Labs organizes attack scenarios into four main categories:
+Pathfinder Labs organizes attack scenarios into five main categories:
 
-### **One-Hop Privilege Escalation**
-Atomic privesc scenarios from one principal to another (of the first princpal granting themselves administrative access).
-These are single-account scenarios within the prod environment.
-These include scenarios where multiple distinct permissions are required
+### **Self-Escalation**
+Principal directly modifies itself to gain elevated privileges without traversing to another principal. This is the most direct form of privilege escalation where an entity grants itself additional permissions.
 
 **Examples:**
+- `Role → iam:PutRolePolicy (on self) → Admin`
 - `User → iam:PutUserPolicy (on self) → Admin`
-- `Role → iam:PutRolePolicy + sts:AssumeRole → AdminRole → Admin`
+- `User → iam:AddUserToGroup → AdminGroup → Admin`
+- `Role → iam:AttachRolePolicy (on self) → S3 Bucket Access`
+
+### **One-Hop Privilege Escalation**
+Single principal traversal scenarios where one principal gains access to another principal's privileges. These are single-account scenarios within the prod environment.
+
+**Examples:**
 - `Role → iam:CreateAccessKey → AdminUser → Admin`
 - `Role → iam:PassRole + lambda:CreateFunction → AdminRole → Admin`
+- `Role → lambda:UpdateFunctionCode → Lambda with Admin Role → Admin`
+- `Role → ssm:SendCommand → EC2 with Admin Role → Admin`
 
 ### **Multi-Hop Privilege Escalation**
 Multiple privilege escalation steps chaining through multiple principals. These are single-account scenarios within the prod environment.
@@ -202,81 +437,7 @@ Edge cases and scenarios designed to test detection engine capabilities. These s
 - `Complex condition keys that tools may misinterpret`
 - `Legitimate configurations that appear vulnerable`
 
----
-
-## Available Scenarios
-
-### One-Hop to Admin (14 scenarios)
-
-| Scenario | Attack Vector | Description |
-|----------|---------------|-------------|
-| `iam-putrolepolicy` | Self-modification | Role can modify its own inline policy to grant admin access |
-| `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself for escalation |
-| `iam-createpolicyversion` | Policy versioning | Role can create new policy versions with elevated permissions |
-| `iam-createaccesskey` | Credential creation | Role can create access keys for an admin user |
-| `iam-updateloginprofile` | Password reset | Role can reset console password for an admin user |
-| `sts-assumerole` | Direct assumption | Role can directly assume another role with admin permissions |
-| `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policy of admin role to grant access |
-| `iam-putuserpolicy` | User inline policy | Role can add inline admin policy directly to a user |
-| `iam-putgrouppolicy` | Group inline policy | Role can add inline admin policy to a group containing the user |
-| `iam-passrole+ec2-runinstances` | Compute privilege escalation | Role can pass admin role to EC2 instance and backdoor trust policy |
-| `iam-passrole+lambda-createfunction+lambda-invokefunction` | Lambda execution role | Role can create Lambda functions with admin role, invoke them to extract credentials |
-| `iam-passrole-cloudformation` | Service role passing | User passes admin role to CloudFormation to create escalated role |
-| `lambda-updatefunctioncode` | Lambda code modification | User can modify existing Lambda function code to execute malicious logic under privileged role |
-### One-Hop to Bucket (7 scenarios)
-
-| Scenario | Attack Vector | Description |
-|----------|---------------|-------------|
-| `iam-putrolepolicy` | Self-modification | Role can grant itself S3 bucket access via inline policy |
-| `iam-attachrolepolicy` | Self-modification | Role can attach S3 access policies to itself |
-| `iam-createaccesskey` | Credential creation | Role can create keys for user with bucket access |
-| `iam-createloginprofile` | Console credential creation | Role can create console password for user with bucket access |
-| `iam-updateassumerolepolicy` | Trust policy modification | Role can modify trust policies to assume bucket-access roles |
-| `iam-updateloginprofile` | Password reset | Role can reset console password for user with bucket access |
-| `sts-assumerole` | Direct assumption | Role can directly assume another role with bucket permissions |
-
-### Multi-Hop to Admin (2 scenarios)
-
-| Scenario | Hops | Description |
-|----------|------|-------------|
-| `multiple-paths-combined` | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
-| `putrolepolicy-on-other` | 2 | Role can modify another role's policy to gain admin access |
-
-### Multi-Hop to Bucket (1 scenario)
-
-| Scenario | Hops | Description |
-|----------|------|-------------|
-| `role-chain-to-s3` | 3 | Three-hop role assumption chain ending at S3 bucket |
-
-### Toxic Combo (1 scenario)
-
-| Scenario | Risk Level | Description |
-|----------|------------|-------------|
-| `public-lambda-with-admin` | 🔴 Critical | Publicly accessible Lambda function with administrative role |
-
-### Tool Testing (2 scenarios)
-
-| Scenario | Focus | Description |
-|----------|-------|-------------|
-| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
-| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
-
-### Cross-Account Dev-to-Prod (4 scenarios)
-
-| Scenario | Hops | Description |
-|----------|------|-------------|
-| `simple-role-assumption` | 1 | Direct cross-account role assumption from dev to prod |
-| `passrole-lambda-admin` | 1 | PassRole privilege escalation via Lambda across accounts |
-| `multi-hop-both-sides` | 3 | Privilege escalation in both accounts before crossing |
-| `lambda-invoke-update` | 2 | Lambda function code update to extract prod credentials |
-
-### Cross-Account Ops-to-Prod (1 scenario)
-
-| Scenario | Type | Description |
-|----------|------|-------------|
-| `simple-role-assumption` | 1 | Direct cross-account role assumption from ops to prod |
-
----
+--- 
 
 ## Configuration
 
@@ -419,18 +580,24 @@ pathfinder-labs/
 │   └── operations/           # Operations environment base resources
 │
 ├── modules/scenarios/        # Attack scenarios (opt-in via flags)
-│   ├── prod/
-│   │   ├── one-hop/
-│   │   │   ├── to-admin/    # Single-step privilege escalation to admin
-│   │   │   └── to-bucket/   # Single-step escalation to S3 access
-│   │   ├── multi-hop/
-│   │   │   ├── to-admin/    # Multi-step escalation to admin
-│   │   │   └── to-bucket/   # Multi-step escalation to S3 access
-│   │   └── toxic-combo/     # Attack paths with multiple conditions
+│   ├── single-account/
+│   │   ├── privesc-self-escalation/
+│   │   │   ├── to-admin/    # Principal modifies itself to gain admin
+│   │   │   └── to-bucket/   # Principal modifies itself for S3 access
+│   │   ├── privesc-one-hop/
+│   │   │   ├── to-admin/    # Single principal traversal to admin
+│   │   │   └── to-bucket/   # Single principal traversal to S3 access
+│   │   ├── privesc-multi-hop/
+│   │   │   ├── to-admin/    # Multiple principal traversals to admin
+│   │   │   └── to-bucket/   # Multiple principal traversals to S3 access
+│   │   └── toxic-combo/     # Multiple misconfigurations combined
 │   ├── tool-testing/         # Edge cases for testing detection engines
 │   └── cross-account/
 │       ├── dev-to-prod/     # Dev → Prod attack paths
+│       │   ├── one-hop/     # Single-hop cross-account escalation
+│       │   └── multi-hop/   # Multi-hop cross-account escalation
 │       └── ops-to-prod/     # Ops → Prod attack paths
+│           └── one-hop/     # Single-hop cross-account escalation
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario
@@ -565,7 +732,15 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **29 scenarios** available
+- ✅ **40 scenarios** available
+  - 8 Self-Escalation to Admin
+  - 2 Self-Escalation to Bucket
+  - 13 One-Hop to Admin
+  - 6 One-Hop to Bucket
+  - 2 Multi-Hop to Admin
+  - 3 Multi-Hop to Bucket
+  - 1 Toxic Combo
+  - 5 Cross-Account (4 dev-to-prod, 1 ops-to-prod)
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)

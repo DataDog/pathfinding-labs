@@ -33,14 +33,19 @@ enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy       
 enable_single_account_privesc_self_escalation_to_bucket_iam_attachrolepolicy       = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN
+enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole = false
+enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey = false
 enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey                 = false
 enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile              = false
+enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole = false
 enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile              = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances       = false
 enable_single_account_privesc_one_hop_to_admin_sts_assumerole                      = false
 enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy          = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation         = false
+enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole    = false
+enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
 
 enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode           = false
