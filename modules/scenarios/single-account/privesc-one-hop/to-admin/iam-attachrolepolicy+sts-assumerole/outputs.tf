@@ -1,11 +1,10 @@
-# Scenario-specific starting user outputs (dev account)
 output "starting_user_arn" {
-  description = "ARN of the scenario-specific starting user in dev account"
+  description = "ARN of the scenario-specific starting user"
   value       = aws_iam_user.starting_user.arn
 }
 
 output "starting_user_name" {
-  description = "Name of the scenario-specific starting user in dev account"
+  description = "Name of the scenario-specific starting user"
   value       = aws_iam_user.starting_user.name
 }
 
@@ -21,19 +20,17 @@ output "starting_user_secret_access_key" {
   sensitive   = true
 }
 
-# Target role outputs (prod account)
 output "target_role_arn" {
-  description = "ARN of the target admin role in prod account"
+  description = "ARN of the target role that will be escalated"
   value       = aws_iam_role.target_role.arn
 }
 
 output "target_role_name" {
-  description = "Name of the target admin role in prod account"
+  description = "Name of the target role"
   value       = aws_iam_role.target_role.name
 }
 
-# Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "dev:User (${aws_iam_user.starting_user.name}) → (AssumeRole) → prod:Role (${aws_iam_role.target_role.name}) → admin access in prod"
+  value       = "User (pl-prod-arpsar-to-admin-starting-user) → AttachRolePolicy (attach AdministratorAccess) → Target Role (pl-prod-arpsar-to-admin-target-role) → AssumeRole → Administrator Access"
 }

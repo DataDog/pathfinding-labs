@@ -1,10 +1,10 @@
 variable "dev_account_id" {
-  description = "AWS Dev Account ID"
+  description = "Dev AWS Account ID"
   type        = string
 }
 
 variable "prod_account_id" {
-  description = "AWS Prod Account ID"
+  description = "Prod AWS Account ID"
   type        = string
 }
 

@@ -2,8 +2,8 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.1.0"
-name: "simple-role-assumption"
-description: "User in dev account with sts:AssumeRole permission can assume an admin role in prod account that explicitly trusts the dev user"
+name: "iam-attachrolepolicy+sts-assumerole"
+description: "User with iam:AttachRolePolicy and sts:AssumeRole can attach admin policy to a role they can assume, then assume that role to gain admin access"
 cost_estimate: "free"
 
 # =============================================================================
@@ -11,10 +11,9 @@ cost_estimate: "free"
 # =============================================================================
 category: "Privilege Escalation"
 sub_category: "principal-lateral-movement"
-path_type: "cross-account"
+path_type: "one-hop"
 target: "to-admin"
 environments:
-  - "dev"
   - "prod"
 
 # =============================================================================
@@ -22,25 +21,31 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user"
-    - "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-arpsar-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-arpsar-to-admin-target-role"
 
-  summary: "dev:starting_user → (AssumeRole) → prod:target_role → admin access in prod"
+  summary: "starting_user → (iam:AttachRolePolicy) → target_role (attach AdministratorAccess) → (sts:AssumeRole) → target_role credentials → admin access"
 
 # =============================================================================
 # PERMISSIONS
 # =============================================================================
 permissions:
   required:
+    - permission: "iam:AttachRolePolicy"
+      resource: "arn:aws:iam::*:role/pl-prod-arpsar-to-admin-target-role"
+
     - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
+      resource: "arn:aws:iam::*:role/pl-prod-arpsar-to-admin-target-role"
 
   helpful:
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify current identity before and after role assumption"
-
     - permission: "iam:ListRoles"
-      purpose: "Discover assumable roles in the target account"
+      purpose: "Discover available roles that can be modified"
+
+    - permission: "iam:GetRole"
+      purpose: "View role trust policies to identify assumable roles"
+
+    - permission: "iam:ListAttachedRolePolicies"
+      purpose: "View current role permissions before and after modification"
 
 # =============================================================================
 # MITRE ATT&CK
@@ -48,13 +53,12 @@ permissions:
 mitre_attack:
   tactics:
     - "TA0004 - Privilege Escalation"
-    - "TA0008 - Lateral Movement"
   techniques:
-    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1098 - Account Manipulation"
 
 # =============================================================================
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
-  module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole"

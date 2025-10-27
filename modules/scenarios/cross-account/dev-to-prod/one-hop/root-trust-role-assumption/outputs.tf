@@ -34,6 +34,22 @@ output "target_role_name" {
 
 # Attack path description
 output "attack_path" {
-  description = "Description of the attack path"
-  value       = "dev:User (${aws_iam_user.starting_user.name}) → (AssumeRole) → prod:Role (${aws_iam_role.target_role.name}) → admin access in prod"
+  description = "Description of the cross-account attack path"
+  value       = "dev:User (${aws_iam_user.starting_user.name}) → sts:AssumeRole → prod:Role (${aws_iam_role.target_role.name}) with :root trust → Admin Access in Prod"
+}
+
+# Additional context outputs
+output "dev_account_id" {
+  description = "Dev account ID (for reference)"
+  value       = var.dev_account_id
+}
+
+output "prod_account_id" {
+  description = "Prod account ID (for reference)"
+  value       = var.prod_account_id
+}
+
+output "trust_principal" {
+  description = "The overly permissive trust principal used by the target role"
+  value       = "arn:aws:iam::${var.dev_account_id}:root"
 }
