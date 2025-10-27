@@ -2,8 +2,8 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.1.0"
-name: "simple-role-assumption"
-description: "User in dev account with sts:AssumeRole permission can assume an admin role in prod account that explicitly trusts the dev user"
+name: "root-trust-role-assumption"
+description: "User in dev account with sts:AssumeRole permission can assume an admin role in prod account that trusts the entire dev account via :root principal"
 cost_estimate: "free"
 
 # =============================================================================
@@ -22,10 +22,10 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user"
-    - "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
+    - "arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role"
 
-  summary: "dev:starting_user → (AssumeRole) → prod:target_role → admin access in prod"
+  summary: "dev:starting_user → (AssumeRole) → prod:target_role (trusts :root) → admin access in prod"
 
 # =============================================================================
 # PERMISSIONS
@@ -33,7 +33,7 @@ attack_path:
 permissions:
   required:
     - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
+      resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role"
 
   helpful:
     - permission: "sts:GetCallerIdentity"
@@ -56,5 +56,5 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
-  module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
+  variable_name: "enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption"

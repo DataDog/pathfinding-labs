@@ -338,6 +338,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   default     = false
 }
 
+variable "enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
+  description = "Enable: cross-account → dev-to-prod → one-hop → root-trust-role-assumption"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # CROSS-ACCOUNT OPS-TO-PROD SCENARIOS
 ##############################################################################

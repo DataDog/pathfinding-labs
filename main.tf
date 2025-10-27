@@ -541,10 +541,9 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
     aws.prod = aws.prod
     aws.dev  = aws.dev
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
-  resource_suffix       = random_string.resource_suffix.result
+  dev_account_id  = var.dev_account_id
+  prod_account_id = var.prod_account_id
+  resource_suffix = random_string.resource_suffix.result
 }
 
 module "cross_account_dev_to_prod_multi_hop_passrole_lambda_admin" {
@@ -584,6 +583,19 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   prod_account_id       = var.prod_account_id
   operations_account_id = var.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+}
+
+module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
+  count  = var.enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id  = var.dev_account_id
+  prod_account_id = var.prod_account_id
+  environment     = "cross-account"
+  resource_suffix = random_string.resource_suffix.result
 }
 
 ##############################################################################

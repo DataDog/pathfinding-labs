@@ -83,11 +83,6 @@ output "prod_multi_hop_to_bucket_role_chain_s3_bucket_name" {
   value       = var.enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 ? module.single_account_privesc_multi_hop_to_bucket_role_chain_to_s3[0].s3_bucket_name : null
 }
 
-output "cross_account_dev_to_prod_s3_bucket_name" {
-  description = "Name of the S3 bucket in cross-account dev-to-prod one-hop simple-role-assumption scenario"
-  value       = var.enable_cross_account_dev_to_prod_one_hop_simple_role_assumption ? module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].s3_bucket_name : null
-}
-
 output "prod_account_id" {
   description = "ID of the prod account"
   value       = var.prod_account_id
@@ -714,6 +709,38 @@ output "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
     s3_access_role_name             = module.single_account_privesc_multi_hop_to_bucket_role_chain_to_s3[0].s3_access_role_name
     chain_user_name                 = module.single_account_privesc_multi_hop_to_bucket_role_chain_to_s3[0].chain_user_name
     attack_path                     = module.single_account_privesc_multi_hop_to_bucket_role_chain_to_s3[0].attack_path
+  } : null
+  sensitive = true
+}
+
+##############################################################################
+# CROSS-ACCOUNT SCENARIO GROUPED OUTPUTS
+##############################################################################
+
+output "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
+  description = "All outputs for cross-account dev-to-prod simple-role-assumption scenario"
+  value = var.enable_cross_account_dev_to_prod_one_hop_simple_role_assumption ? {
+    starting_user_name              = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].starting_user_name
+    starting_user_arn               = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].starting_user_arn
+    starting_user_access_key_id     = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].starting_user_secret_access_key
+    target_role_arn                 = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].target_role_arn
+    target_role_name                = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].target_role_name
+    attack_path                     = module.cross_account_dev_to_prod_one_hop_simple_role_assumption[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
+  description = "All outputs for cross-account dev-to-prod root-trust-role-assumption scenario"
+  value = var.enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption ? {
+    starting_user_name              = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].starting_user_name
+    starting_user_arn               = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].starting_user_arn
+    starting_user_access_key_id     = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].starting_user_secret_access_key
+    target_role_name                = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_name
+    target_role_arn                 = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_arn
+    attack_path                     = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].attack_path
   } : null
   sensitive = true
 }

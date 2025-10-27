@@ -79,6 +79,7 @@ enable_single_account_toxic_combo_public_lambda_with_admin                      
 
 # CROSS-ACCOUNT DEV-TO-PROD
 enable_cross_account_dev_to_prod_one_hop_simple_role_assumption                    = false
+enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption                = false
 enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin                   = false
 enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides                    = false
 enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update                    = false
