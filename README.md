@@ -22,20 +22,22 @@ Pathfinder Labs helps security teams validate their Cloud Security Posture Manag
 
 ```mermaid
 graph LR
-    A[Select<br/>Scenarios] --> B{Deploy<br/>Infrastructure}
-    B -->|Blue Team| D[ Validate<br/>CSPM Detection]
-    B -->|Red Team| E[ Validate <br/>your tools<br>& skills]
+    A[Enable<br/>Scenarios<br/>&<br/>Deploy<br/>Vulnerable<br/>Infrastructure] 
+    A -->|Blue Team| D[ Validate<br/>CSPM Detection]
+    A -->|Red Team| E[ Validate <br/>your tools<br>& skills]
     D --> F[Measure<br/>Coverage Gaps]
     E --> G[Run Attack<br/>Demonstrations] 
-    F --> H[Cleanup<br/>Artifacts]
+    F --> H[Cleanup<br/>Demonstration<br/>Artifacts<br/>&<br/>Disable<br/>Scenarios]
     G --> H
 
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style D fill:#e8f5e9
+
+    style A fill:#e8f5e9
+    style D fill:#e1f5ff
     style E fill:#ffebee
-    style F fill:#f3e5f5
+    style F fill:#e1f5ff
     style G fill:#fce4ec
+    style H fill:#e8f5e9
+
 ```
 
 ##  Who Is This For?
@@ -70,6 +72,10 @@ graph LR
 <td align="center" colspan="4">
 
 **💀 Privilege Escalation Scenarios**
+
+Each privilege escalation scenario comes in two forms. 
+A scenario that leads **to admin**, and a scenario that leads **to a specific target bucket**. 
+The bucket scenarios exist to show you that you don't always need adminisraive permissions to access the mos sensitive data)
 </td>
 </tr>
 <tr>
@@ -77,7 +83,7 @@ graph LR
 
 **🎯 Self-Escalation**
 
-Principal modifies itself
+Principal modifies itself<br/>
 
 To Admin | To Bucket
 
@@ -158,7 +164,9 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
 
 ---
 
-## Available Scenarios - Single Account
+# Available Scenarios
+
+## Single Account
 
 All scenarios below deploy to a single AWS account (prod) and can be used with just one playground account.
 
@@ -196,8 +204,8 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | `iam-updateassumerolepolicy` | User modifies trust policy of admin role to grant access |
 | `iam-putrolepolicy+sts-assumerole` | User adds inline admin policy to assumable role then assumes it |
 | `iam-passrole+ec2-runinstances` | User passes admin role to EC2 instance for credential extraction |
-| `iam-passrole+lambda-createfunction+lambda-invokefunction` | User creates Lambda with admin role and invokes to extract credentials |
-| `iam-passrole+lambda-createfunction+<br>createeventsourcemapping-dynamodb` | User creates Lambda with admin role triggered by DynamoDB events |
+| `iam-passrole+lambda-createfunction+` <br/> `lambda-invokefunction` | User creates Lambda with admin role and invokes to extract credentials |
+| `iam-passrole+lambda-createfunction+` <br/> `createeventsourcemapping-dynamodb` | User creates Lambda with admin role triggered by DynamoDB events |
 | `iam-passrole-cloudformation` | User passes admin role to CloudFormation to create escalated resources |
 | `lambda-updatefunctioncode` | User modifies existing Lambda function code to execute under privileged role |
 | `ssm-sendcommand` | User executes commands on EC2 instances with admin roles to extract credentials |

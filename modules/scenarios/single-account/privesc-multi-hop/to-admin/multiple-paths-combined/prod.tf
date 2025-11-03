@@ -100,8 +100,7 @@ resource "aws_iam_policy" "prod_privesc_policy_with_multiple_paths" {
           "cloudformation:DescribeStacks",
           "ec2:RunInstances",
           "ec2:DescribeImages",
-          "ec2:CreateTags",
-          "iam:CreateLoginProfile"
+          "ec2:CreateTags"
         ]
         Resource = "*"
       }

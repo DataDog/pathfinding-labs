@@ -192,9 +192,31 @@ module "single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createa
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_apprunner_updateservice ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-updateservice"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+apprunner-createservice"
   providers = {
     aws.prod = aws.prod
   }
@@ -293,6 +315,28 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuild" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuild ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuild"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+sts-assumerole"
@@ -340,6 +384,28 @@ module "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
 module "single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-sendcommand"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuild"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuildbatch"
   providers = {
     aws.prod = aws.prod
   }
@@ -453,15 +519,6 @@ module "single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
 # PROD MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
-module "single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other" {
-  count  = var.enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-multi-hop/to-admin/putrolepolicy-on-other"
-  providers = {
-    aws.prod = aws.prod
-  }
-  prod_account_id = var.prod_account_id
-  resource_suffix = random_string.resource_suffix.result
-}
 
 module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   count  = var.enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined ? 1 : 0
@@ -589,12 +646,11 @@ module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   count  = var.enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption ? 1 : 0
   source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption"
   providers = {
-    aws.dev  = aws.dev
     aws.prod = aws.prod
+    aws.dev  = aws.dev
   }
   dev_account_id  = var.dev_account_id
   prod_account_id = var.prod_account_id
-  environment     = "cross-account"
   resource_suffix = random_string.resource_suffix.result
 }
 

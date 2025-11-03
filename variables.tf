@@ -130,6 +130,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_ia
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-updateservice"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
   type        = bool
@@ -150,6 +156,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-updateloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+apprunner-createservice"
   type        = bool
   default     = false
 }
@@ -184,6 +196,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudforma
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuild"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-putrolepolicy+sts-assumerole"
   type        = bool
@@ -210,6 +234,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctionco
 
 variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ssm-sendcommand"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuild"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuildbatch"
   type        = bool
   default     = false
 }
