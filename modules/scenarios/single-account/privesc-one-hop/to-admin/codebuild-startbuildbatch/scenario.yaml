@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "codebuild-startbuildbatch"
 description: "User with codebuild:StartBuildBatch can exploit existing CodeBuild project with privileged role by using buildspec-override to grant themselves admin access"
 cost_estimate: "free"
+pathfinding-cloud-id: "codebuild-003"
 
 # =============================================================================
 # CLASSIFICATION

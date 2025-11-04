@@ -139,6 +139,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
   name     = "pl-prod-ssc-to-bucket-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
+  # Ensure the EC2 instance is created before the policy references it
+  depends_on = [aws_instance.target]
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -157,7 +160,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "ssm:SendCommand"
         ]
-        Resource = "*"
+        Resource = [
+          aws_instance.target.arn,
+          "arn:aws:ssm:*:*:document/AWS-RunShellScript"
+        ]
       },
       {
         Sid    = "SSMHelpfulForDemo"

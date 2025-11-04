@@ -42,10 +42,13 @@ ls -la scenario.yaml
 Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 
 **Required Core Metadata:**
-- `schema_version`: "1.0.0"
+- `schema_version`: "1.2.0" (or "1.1.0", "1.0.0")
 - `name`: Scenario identifier
 - `description`: One-line description
 - `cost_estimate`: AWS cost estimate
+
+**Optional Core Metadata:**
+- `pathfinding-cloud-id`: Pathfinding.cloud path ID if one exists (e.g., "IAM-005", "IAM-002")
 
 **Required Classification:**
 - `category`: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
@@ -156,6 +159,7 @@ The README header should match scenario.yaml exactly:
 - Path Type value matches `scenario.yaml: path_type`
 - Target value matches `scenario.yaml: target`
 - Environments value matches `scenario.yaml: environments`
+- Pathfinding.cloud ID present in README if and only if `pathfinding-cloud-id` is present in scenario.yaml
 
 #### Validate Mermaid Diagram
 - Check that mermaid syntax is correct

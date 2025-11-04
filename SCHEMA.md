@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.1.0`
+### Current Version: `1.2.0`
 
 The schema follows semantic versioning:
 
@@ -57,8 +57,10 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.1.0 | 2025-01-21 | Added `cross-account` path_type; Changed `no-hop` to `self-escalation`; Added `privilege-chaining` and `cross-account-escalation` sub_categories; Added principal counting rules |
-| 1.0.0 | 2025-01-21 | Initial schema release |
+| 1.2.0 | 2025-11-03 | Added `pathfinding-cloud-id` to help map scenarios with Pathfinding.cloud paths when applicable. |
+| 1.1.0 | 2025-10-21 | Added `cross-account` path_type; Changed `no-hop` to `self-escalation`; Added `privilege-chaining` and `cross-account-escalation` sub_categories; Added principal counting rules |
+| 1.0.0 | 2025-10-21 | Initial schema release |
+
 
 ---
 
@@ -73,6 +75,7 @@ schema_version: "1.0.0"
 name: "iam-putuserpolicy"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
 cost_estimate: "free"
+pathfinding-cloud-id: IAM-005
 ```
 
 #### Fields
@@ -83,6 +86,7 @@ cost_estimate: "free"
 | `name` | string | ✅ Yes | Unique identifier for the scenario. Should match directory name. Use kebab-case. |
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
 | `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario on a monthly basis. Use `"free"` or actual cost like `"$5.00/month"` |
+| `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. | 
 
 #### Cost Estimate Examples
 
@@ -550,6 +554,7 @@ schema_version: "1.0.0"
 name: "iam-createaccesskey"
 description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
 cost_estimate: "free"
+pathfinding-cloud-id: "IAM-002"
 
 # =============================================================================
 # CLASSIFICATION
@@ -687,6 +692,7 @@ name: "putrolepolicy-on-other"
 description: "RoleA with iam:PutRolePolicy on RoleB can inject admin policy, then assume RoleB for admin access"
 cost_estimate: "free"
 
+
 # =============================================================================
 # CLASSIFICATION
 # =============================================================================
@@ -761,6 +767,7 @@ schema_version: "1.0.0"
 name: "ec2-hardcoded-credentials"
 description: "EC2 instance with hardcoded AWS credentials accessible via SSM"
 cost_estimate: "$5.00/month"
+
 
 # =============================================================================
 # CLASSIFICATION

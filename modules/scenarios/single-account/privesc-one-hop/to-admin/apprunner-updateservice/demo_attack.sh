@@ -92,9 +92,6 @@ echo ""
 
 # Step 5: Describe the existing App Runner service and backup configuration
 echo -e "${YELLOW}Step 5: Examining the existing App Runner service${NC}"
-echo "DEBUG: AWS_REGION=${AWS_REGION}"
-echo "DEBUG: TARGET_SERVICE_NAME=${TARGET_SERVICE_NAME}"
-echo "DEBUG: AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:0:10}..."
 
 # List services to find the service ARN
 SERVICE_ARN=$(aws apprunner list-services \

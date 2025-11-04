@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "codebuild-startbuild"
 description: "User with codebuild:StartBuild can exploit existing CodeBuild project with admin role by using buildspec-override to execute malicious commands"
 cost_estimate: "free"
+pathfinding-cloud-id: "codebuild-002"
 
 # =============================================================================
 # CLASSIFICATION

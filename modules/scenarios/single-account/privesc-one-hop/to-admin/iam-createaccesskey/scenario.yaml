@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-createaccesskey"
 description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-002"
 
 # =============================================================================
 # CLASSIFICATION

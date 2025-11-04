@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-updateloginprofile"
 description: "User with iam:UpdateLoginProfile can reset password for user with S3 bucket access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-006"
 
 # =============================================================================
 # CLASSIFICATION

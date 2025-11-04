@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "iam-passrole+apprunner-createservice"
 description: "User with apprunner:CreateService and iam:PassRole can create an App Runner service with a privileged role, using StartCommand override to grant themselves admin access"
 cost_estimate: "free"
+pathfinding-cloud-id: "apprunner-001"
 
 # =============================================================================
 # CLASSIFICATION

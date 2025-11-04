@@ -166,6 +166,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → iam-passrole+bedrockagentcore-codeinterpreter (Pathfinding.cloud: bedrock-001)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-runinstances"
   type        = bool
@@ -238,6 +250,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-startsession"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
   description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuild"
   type        = bool
@@ -246,6 +264,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
 
 variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
   description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-modifyinstanceattribute+stopinstances+startinstances"
   type        = bool
   default     = false
 }
@@ -290,6 +314,12 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile
 
 variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-startsession ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }

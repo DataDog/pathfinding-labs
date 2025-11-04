@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-addusertogroup"
 description: "User with iam:AddUserToGroup can add themselves to a group with admin permissions"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-013"
 
 # =============================================================================
 # CLASSIFICATION

@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-updateassumerolepolicy"
 description: "User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-012"
 
 # =============================================================================
 # CLASSIFICATION

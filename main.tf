@@ -225,6 +225,28 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createser
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+bedrockagentcore-codeinterpreter"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrockagentcore-startsession+invoke"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-runinstances"
@@ -392,6 +414,17 @@ module "single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_ssm_startsession" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_startsession ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-startsession"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuild"
@@ -406,6 +439,17 @@ module "single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
 module "single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuildbatch"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-modifyinstanceattribute+stopinstances+startinstances"
   providers = {
     aws.prod = aws.prod
   }
@@ -507,6 +551,17 @@ module "single_account_privesc_one_hop_to_bucket_iam_updateloginprofile" {
 module "single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
   count  = var.enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-sendcommand"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_bucket_ssm_startsession" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_ssm_startsession ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-startsession"
   providers = {
     aws.prod = aws.prod
   }

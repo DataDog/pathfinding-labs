@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-createloginprofile"
 description: "User with iam:CreateLoginProfile can set password for admin user to gain console access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-004"
 
 # =============================================================================
 # CLASSIFICATION

@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
 description: "User with codebuild:CreateProject, codebuild:StartBuildBatch, and iam:PassRole can create a CodeBuild project with a privileged role, execute buildspec to grant themselves admin access"
 cost_estimate: "free"
+pathfinding-cloud-id: "codebuild-004"
 
 # =============================================================================
 # CLASSIFICATION
