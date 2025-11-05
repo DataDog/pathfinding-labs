@@ -1,0 +1,53 @@
+schema_version: "1.2.0"
+name: "iam-passrole+datapipeline-pipeline"
+description: "User with iam:PassRole and datapipeline permissions can create a pipeline that executes commands with admin role, escalating privileges by attaching AdministratorAccess to themselves"
+cost_estimate: "$0.01/hour"
+pathfinding-cloud-id: "datapipeline-001"
+
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
+    - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+
+  summary: "starting_user → (datapipeline:CreatePipeline + PutPipelineDefinition + ActivatePipeline) → EC2 with admin role → (aws iam attach-user-policy AdministratorAccess) → admin access"
+
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
+    - permission: "datapipeline:CreatePipeline"
+      resource: "*"
+    - permission: "datapipeline:PutPipelineDefinition"
+      resource: "*"
+    - permission: "datapipeline:ActivatePipeline"
+      resource: "*"
+
+  helpful:
+    - permission: "datapipeline:DescribePipelines"
+      purpose: "Monitor pipeline status and verify activation"
+    - permission: "datapipeline:GetPipelineDefinition"
+      purpose: "View pipeline configuration for verification"
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles to pass"
+    - permission: "iam:GetUser"
+      purpose: "Verify policy attachment after escalation"
+
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_datapipeline_pipeline"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+datapipeline-pipeline"

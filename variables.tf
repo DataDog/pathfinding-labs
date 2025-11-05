@@ -268,8 +268,50 @@ variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbat
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ec2-modifyinstanceattribute+stopinstances+startinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-createtrigger ($0.10/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-startjobrun ($0.10/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-startjobrun ($0.10/month) (Pathfinding.cloud: glue-005)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-createtrigger ($0.10/month) (Pathfinding.cloud: glue-006)"
   type        = bool
   default     = false
 }
@@ -277,6 +319,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattri
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
+
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
 
 variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey"
@@ -311,6 +359,18 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
+
+variable "enable_single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
 
 variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"

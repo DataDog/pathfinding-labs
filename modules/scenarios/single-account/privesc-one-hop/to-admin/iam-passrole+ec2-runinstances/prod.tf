@@ -43,10 +43,10 @@ data "aws_ami" "amazon_linux_2023" {
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
   provider = aws.prod
-  name     = "pl-prod-one-hop-prec-starting-user"
+  name     = "pl-prod-prec-to-admin-starting-user"
 
   tags = {
-    Name        = "pl-prod-one-hop-prec-starting-user"
+    Name        = "pl-prod-prec-to-admin-starting-user"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-runinstances"
     Purpose     = "starting-user"
@@ -59,115 +59,11 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Minimal policy for the starting user (can assume both roles)
+# Policy for the starting user (can PassRole and launch EC2 instances)
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-one-hop-prec-starting-user-policy"
+  name     = "pl-prod-prec-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:AssumeRole"
-        ]
-        Resource = [
-          "arn:aws:iam::${var.account_id}:role/pl-prod-one-hop-prec-role",
-          "arn:aws:iam::${var.account_id}:role/pl-prod-one-hop-prec-admin-role"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Admin role (target of privilege escalation)
-# Initially only trusts ec2.amazonaws.com, will be backdoored by EC2 instance
-resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-prec-admin-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "pl-prod-one-hop-prec-admin-role"
-    Environment = var.environment
-    Scenario    = "iam-passrole+ec2-runinstances"
-    Purpose     = "admin-target"
-  }
-}
-
-# Attach administrator access to the admin role
-resource "aws_iam_role_policy_attachment" "admin_access" {
-  provider   = aws.prod
-  role       = aws_iam_role.admin_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-
-# Instance profile for the admin role
-resource "aws_iam_instance_profile" "admin_instance_profile" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-prec-instance-profile"
-  role     = aws_iam_role.admin_role.name
-
-  tags = {
-    Name        = "pl-prod-one-hop-prec-instance-profile"
-    Environment = var.environment
-    Scenario    = "iam-passrole+ec2-runinstances"
-    Purpose     = "admin-instance-profile"
-  }
-}
-
-# Role that can PassRole and launch EC2 instances (privilege escalation vector)
-resource "aws_iam_role" "privesc_role" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-prec-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          AWS = aws_iam_user.starting_user.arn
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "pl-prod-one-hop-prec-role"
-    Environment = var.environment
-    Scenario    = "iam-passrole+ec2-runinstances"
-    Purpose     = "vulnerable-role"
-  }
-}
-
-# Policy that allows PassRole and EC2 operations
-resource "aws_iam_policy" "privesc_policy" {
-  provider    = aws.prod
-  name        = "pl-prod-one-hop-passrole-ec2-policy"
-  description = "Allows PassRole on admin role and launching EC2 instances"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -186,34 +82,69 @@ resource "aws_iam_policy" "privesc_policy" {
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceStatus",
           "ec2:DescribeImages",
-           "ec2:DescribeVpcs",
-           "ec2:DescribeSubnets",
-           "ec2:CreateTags",
-           "iam:GetRole"
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:CreateTags",
+          "iam:GetRole"
         ]
         Resource = "*"
       }
     ]
   })
+}
+
+# Admin role (target of privilege escalation)
+# Initially only trusts ec2.amazonaws.com
+resource "aws_iam_role" "admin_role" {
+  provider = aws.prod
+  name     = "pl-prod-prec-to-admin-target-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 
   tags = {
-    Name        = "pl-prod-one-hop-passrole-ec2-policy"
+    Name        = "pl-prod-prec-to-admin-target-role"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-runinstances"
+    Purpose     = "admin-target"
   }
 }
 
-# Attach the policy to the privilege escalation role
-resource "aws_iam_role_policy_attachment" "privesc_policy_attachment" {
+# Attach administrator access to the admin role
+resource "aws_iam_role_policy_attachment" "admin_access" {
   provider   = aws.prod
-  role       = aws_iam_role.privesc_role.name
-  policy_arn = aws_iam_policy.privesc_policy.arn
+  role       = aws_iam_role.admin_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# Instance profile for the admin role
+resource "aws_iam_instance_profile" "admin_instance_profile" {
+  provider = aws.prod
+  name     = "pl-prod-prec-to-admin-instance-profile"
+  role     = aws_iam_role.admin_role.name
+
+  tags = {
+    Name        = "pl-prod-prec-to-admin-instance-profile"
+    Environment = var.environment
+    Scenario    = "iam-passrole+ec2-runinstances"
+    Purpose     = "admin-instance-profile"
+  }
 }
 
 # Security group for EC2 instances
 resource "aws_security_group" "ec2_sg" {
   provider    = aws.prod
-  name        = "pl-prod-one-hop-prec-security-group"
+  name        = "pl-prod-prec-to-admin-sg"
   description = "Security group for PassRole+EC2 privilege escalation scenario"
   vpc_id      = data.aws_vpc.default.id
 
@@ -236,7 +167,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   tags = {
-    Name        = "pl-prod-one-hop-prec-security-group"
+    Name        = "pl-prod-prec-to-admin-sg"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-runinstances"
     Purpose     = "ec2-security-group"
@@ -244,21 +175,22 @@ resource "aws_security_group" "ec2_sg" {
 }
 
 # NOTE: The actual EC2 instance will be launched by the demo script using user-data
-# The user-data script will:
-# 1. Use the admin role's credentials (from instance metadata)
-# 2. Update the admin role's trust policy to add the starting user
-# 3. Allow the starting user to directly assume the admin role
+# The starting user will:
+# 1. Use PassRole to assign the admin role to an EC2 instance
+# 2. Launch the EC2 instance with user-data script
+# 3. The user-data script will use the admin role's credentials to attach AdministratorAccess to the starting user
+# 4. The starting user then has admin permissions directly
 #
 # Example user-data script:
 # #!/bin/bash
-# STARTING_USER_ARN="arn:aws:iam::${var.account_id}:user/pl-prod-one-hop-prec-starting-user"
-# ADMIN_ROLE_NAME="pl-prod-one-hop-prec-admin-role"
+# STARTING_USER_NAME="pl-prod-prec-to-admin-starting-user"
 #
-# # Get current trust policy
-# aws iam get-role --role-name $ADMIN_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json > /tmp/policy.json
+# # Wait for IAM role to be available
+# sleep 10
 #
-# # Add starting user to trust policy
-# jq --arg arn "$STARTING_USER_ARN" '.Statement += [{"Effect": "Allow", "Principal": {"AWS": $arn}, "Action": "sts:AssumeRole"}]' /tmp/policy.json > /tmp/new-policy.json
+# # Attach AdministratorAccess policy to the starting user
+# aws iam attach-user-policy \
+#   --user-name $STARTING_USER_NAME \
+#   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 #
-# # Update the role's trust policy
-# aws iam update-assume-role-policy --role-name $ADMIN_ROLE_NAME --policy-document file:///tmp/new-policy.json
+# echo "AdministratorAccess attached to $STARTING_USER_NAME"

@@ -1,0 +1,76 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+glue-createjob+glue-createtrigger"
+pathfinding-cloud-id: "glue-004"
+description: "User with iam:PassRole, glue:CreateJob, and glue:CreateTrigger can pass privileged role to Glue Job and create trigger that grants starting user admin access"
+cost_estimate: "$0.10/month"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-gcj-ct-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-gcj-ct-to-admin-target-role"
+
+  summary: "starting_user → (iam:PassRole + glue:CreateJob) → Create job with admin role → (glue:CreateTrigger with --start-on-creation) → Trigger executes job → Job attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "*"
+
+    - permission: "glue:CreateJob"
+      resource: "*"
+
+    - permission: "glue:CreateTrigger"
+      resource: "*"
+
+  helpful:
+    - permission: "glue:GetJob"
+      purpose: "Retrieve job details and verify configuration"
+
+    - permission: "glue:GetTrigger"
+      purpose: "Monitor trigger state and verify activation"
+
+    - permission: "glue:GetJobRun"
+      purpose: "Get details about a specific job run"
+
+    - permission: "glue:GetJobRuns"
+      purpose: "List job runs to monitor execution status"
+
+    - permission: "iam:ListUsers"
+      purpose: "Verify admin access after privilege escalation"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1053 - Scheduled Task/Job"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createjob+glue-createtrigger"

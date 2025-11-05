@@ -1,3 +1,4 @@
+# Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
 output "starting_user_name" {
   description = "Name of the scenario-specific starting user"
   value       = aws_iam_user.starting_user.name
@@ -20,18 +21,9 @@ output "starting_user_secret_access_key" {
   sensitive   = true
 }
 
-output "starting_role_arn" {
-  description = "ARN of the starting role for this attack path"
-  value       = aws_iam_role.starting_role.arn
-}
-
-output "starting_role_name" {
-  description = "Name of the starting role"
-  value       = aws_iam_role.starting_role.name
-}
-
+# Target admin user outputs
 output "admin_user_arn" {
-  description = "ARN of the admin user"
+  description = "ARN of the admin user (target)"
   value       = aws_iam_user.admin_user.arn
 }
 
@@ -53,5 +45,5 @@ output "console_login_url" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-ulp-to-admin-starting-user) → AssumeRole → Role (pl-prod-ulp-to-admin-starting-role) → UpdateLoginProfile → Admin User (pl-prod-ulp-to-admin-target-user) → Console Access"
+  value       = "User (pl-prod-ulp-to-admin-starting-user) → iam:UpdateLoginProfile → Admin User (pl-prod-ulp-to-admin-target-user) → Console Access with Admin Privileges"
 }

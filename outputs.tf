@@ -261,14 +261,12 @@ output "single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
 }
 
 output "single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy" {
-  description = "All outputs for iam-updateassumerolepolicy one-hop scenario"
+  description = "All outputs for iam-updateassumerolepolicy one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy ? {
     starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_user_name
     starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_user_secret_access_key
-    starting_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_role_arn
-    starting_role_name              = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].starting_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].target_role_arn
     target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].target_role_name
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy[0].attack_path
@@ -318,8 +316,6 @@ output "single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
     starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].starting_user_secret_access_key
-    starting_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].starting_role_arn
-    starting_role_name              = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].starting_role_name
     admin_user_arn                  = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].admin_user_arn
     admin_user_name                 = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].admin_user_name
     original_password               = module.single_account_privesc_one_hop_to_admin_iam_updateloginprofile[0].original_password
@@ -350,11 +346,8 @@ output "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
     starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].starting_user_secret_access_key
-    role_arn                        = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].role_arn
-    role_name                       = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].role_name
     admin_user_name                 = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].admin_user_name
     admin_user_arn                  = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].admin_user_arn
-    policy_arn                      = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].policy_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_createaccesskey[0].attack_path
   } : null
   sensitive = true
@@ -411,15 +404,117 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
     starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].starting_user_secret_access_key
-    privesc_role_arn                = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].privesc_role_arn
-    privesc_role_name               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].privesc_role_name
     admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].admin_role_arn
     admin_role_name                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].admin_role_name
+    instance_profile_arn            = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].instance_profile_arn
     instance_profile_name           = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].instance_profile_name
     security_group_id               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].security_group_id
     default_subnet_id               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].default_subnet_id
     ami_id                          = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].ami_id
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint" {
+  description = "All outputs for iam-passrole+glue-createdevendpoint one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].target_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_glue_updatedevendpoint" {
+  description = "All outputs for glue-updatedevendpoint one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_glue_updatedevendpoint ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].target_role_arn
+    dev_endpoint_name               = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].dev_endpoint_name
+    dev_endpoint_arn                = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].dev_endpoint_arn
+    dev_endpoint_address            = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].dev_endpoint_address
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_glue_updatedevendpoint[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger" {
+  description = "All outputs for iam-passrole+glue-createjob+glue-createtrigger one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].target_role_arn
+    script_bucket_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].script_bucket_name
+    script_s3_path                  = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].script_s3_path
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun" {
+  description = "All outputs for iam-passrole+glue-createjob+glue-startjobrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].target_role_arn
+    script_bucket_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].script_bucket_name
+    script_s3_path                  = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].script_s3_path
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun" {
+  description = "All outputs for iam-passrole+glue-updatejob+glue-startjobrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].target_role_arn
+    initial_role_name               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].initial_role_name
+    initial_role_arn                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].initial_role_arn
+    glue_job_name                   = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].glue_job_name
+    script_bucket_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].script_bucket_name
+    benign_script_s3_path           = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].benign_script_s3_path
+    malicious_script_s3_path        = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].malicious_script_s3_path
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
+  description = "All outputs for iam-passrole+glue-updatejob+glue-createtrigger one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].target_role_arn
+    initial_role_name               = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].initial_role_name
+    initial_role_arn                = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].initial_role_arn
+    glue_job_name                   = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].glue_job_name
+    script_bucket_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].script_bucket_name
+    benign_script_s3_path           = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].benign_script_s3_path
+    malicious_script_s3_path        = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].malicious_script_s3_path
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger[0].attack_path
   } : null
   sensitive = true
 }
@@ -431,11 +526,9 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_lambda" {
     starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_secret_access_key
-    starting_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_role_arn
-    starting_role_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_role_name
-    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].admin_role_arn
-    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].admin_role_name
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].attack_path_description
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].target_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction[0].attack_path
   } : null
   sensitive = true
 }
@@ -664,6 +757,24 @@ output "single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey" {
+  description = "All outputs for ec2-instance-connect-sendsshpublickey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
+    ec2_instance_id                 = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
+    ec2_instance_arn                = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
+    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
+    ec2_admin_role_name             = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_name
+    ec2_admin_role_arn              = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_arn
+    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
   description = "All outputs for ec2-modifyinstanceattribute+stopinstances+startinstances one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances ? {
@@ -742,6 +853,45 @@ output "single_account_privesc_one_hop_to_bucket_iam_updateloginprofile" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey" {
+  description = "All outputs for ec2-instance-connect-sendsshpublickey one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
+    ec2_instance_id                 = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
+    ec2_instance_arn                = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
+    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
+    ec2_bucket_role_name            = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_name
+    ec2_bucket_role_arn             = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_arn
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].target_bucket_arn
+    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint" {
+  description = "All outputs for glue-updatedevendpoint one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].target_role_arn
+    dev_endpoint_name               = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].dev_endpoint_name
+    dev_endpoint_arn                = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].dev_endpoint_arn
+    dev_endpoint_address            = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].dev_endpoint_address
+    sensitive_bucket_name           = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].sensitive_bucket_name
+    sensitive_bucket_arn            = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].sensitive_bucket_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
   description = "All outputs for ssm-sendcommand one-hop to-bucket scenario"
   value = var.enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand ? {
@@ -774,6 +924,22 @@ output "single_account_privesc_one_hop_to_bucket_ssm_startsession" {
     target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_ssm_startsession[0].target_bucket_name
     target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_ssm_startsession[0].target_bucket_arn
     attack_path                     = module.single_account_privesc_one_hop_to_bucket_ssm_startsession[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint" {
+  description = "All outputs for iam-passrole+glue-createdevendpoint one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].target_role_arn
+    sensitive_bucket_name           = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].sensitive_bucket_name
+    sensitive_bucket_arn            = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].sensitive_bucket_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint[0].attack_path
   } : null
   sensitive = true
 }

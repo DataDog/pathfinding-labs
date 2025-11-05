@@ -22,8 +22,8 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-uarp-starting-user"
-    - "arn:aws:iam::{account_id}:role/pl-uarp-admin-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-uarp-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-uarp-to-admin-target-role"
 
   summary: "starting_user → (iam:UpdateAssumeRolePolicy) → modify admin role trust → (sts:AssumeRole) → admin access"
 
@@ -33,10 +33,10 @@ attack_path:
 permissions:
   required:
     - permission: "iam:UpdateAssumeRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-uarp-admin-role"
+      resource: "arn:aws:iam::*:role/pl-prod-uarp-to-admin-target-role"
 
     - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-uarp-admin-role"
+      resource: "arn:aws:iam::*:role/pl-prod-uarp-to-admin-target-role"
 
   helpful:
     - permission: "iam:ListRoles"

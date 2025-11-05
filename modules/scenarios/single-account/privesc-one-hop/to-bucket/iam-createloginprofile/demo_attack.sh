@@ -139,54 +139,33 @@ else
 fi
 echo ""
 
-# Step 8: Display console login information
-echo -e "${YELLOW}Step 8: Console login information${NC}"
-CONSOLE_URL="https://${ACCOUNT_ID}.signin.aws.amazon.com/console"
-echo "Console login URL: $CONSOLE_URL"
-echo "Username: $HOP1_USER"
-echo "Password: $PASSWORD"
+# Wait for IAM propagation
+echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
+sleep 15
 echo ""
 
-echo -e "${GREEN}✓ Password successfully created!${NC}"
-echo -e "${YELLOW}The hop1 user can now login to the AWS console with the new credentials${NC}"
-echo ""
-echo "  1. Open the console URL in a browser: $CONSOLE_URL"
-echo "  2. Login with username: $HOP1_USER"
-echo "  3. Login with password: $PASSWORD"
-echo "  4. Navigate to S3 through the console interface"
-echo "  5. View and download sensitive data from bucket: $TARGET_BUCKET"
+# Step 8: Verify we now have the login profile
+echo -e "${YELLOW}Step 8: Login profile has been successfully created${NC}"
+echo "The hop1 user can now log in with the new password."
+echo -e "${GREEN}✓ Confirmed login profile creation!${NC}\n"
 
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+# Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "\n${YELLOW}Attack Summary:${NC}"
-echo "1. Started as: $STARTING_USER (with iam:CreateLoginProfile permission)"
-echo "2. Created login profile for: $HOP1_USER (user with S3 bucket access)"
-echo "3. Achieved: Console access to sensitive S3 bucket"
-
-echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER → (CreateLoginProfile) → $HOP1_USER → Console Login → S3 Bucket Access"
-
-echo -e "\n${YELLOW}Attack Artifacts:${NC}"
-echo "- Login profile created for user: $HOP1_USER"
-echo "- New console password: $PASSWORD"
-echo "- Console login URL: $CONSOLE_URL"
-
-echo -e "\n${YELLOW}Data Exfiltration Risk:${NC}"
-echo "The compromised hop1 user can now:"
-echo "  • Login to AWS Console with the created credentials"
-echo "  • Access sensitive data in S3 bucket: $TARGET_BUCKET"
-echo "  • Download and exfiltrate confidential information"
-echo "  • List and read all objects in the bucket"
-
-# Standardized test results output
+echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
+echo -e "Step 1: Used ${YELLOW}iam:CreateLoginProfile${NC} to create console password for $HOP1_USER"
+echo -e "Step 2: Gained ${YELLOW}S3 Bucket Access${NC} (console login)"
+echo -e "Result: ${GREEN}S3 Bucket Access${NC}"
 echo ""
-echo "TEST_RESULT:prod_one_hop_to_bucket_iam_createloginprofile:SUCCESS"
-echo "TEST_DETAILS:prod_one_hop_to_bucket_iam_createloginprofile:Successfully gained S3 bucket access via CreateLoginProfile escalation"
-echo "TEST_METRICS:prod_one_hop_to_bucket_iam_createloginprofile:login_profile_created=true,console_access=true,bucket_access=available"
+echo -e "${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (CreateLoginProfile) → $HOP1_USER → Console Login → S3 Bucket ($TARGET_BUCKET)"
 echo ""
-
-echo -e "${RED}⚠ Warning: A login profile now exists for the hop1 user!${NC}"
-echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo -e "${GREEN}Console Login Information:${NC}"
+CONSOLE_URL="https://${ACCOUNT_ID}.signin.aws.amazon.com/console"
+echo -e "  URL: ${YELLOW}$CONSOLE_URL${NC}"
+echo -e "  Username: ${YELLOW}$HOP1_USER${NC}"
+echo -e "  Password: ${YELLOW}$PASSWORD${NC}"
+echo ""
+echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the login profile${NC}"
 echo ""

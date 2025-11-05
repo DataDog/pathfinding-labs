@@ -1,3 +1,4 @@
+# Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
 output "starting_user_arn" {
   description = "ARN of the scenario-specific starting user"
   value       = aws_iam_user.starting_user.arn
@@ -20,32 +21,19 @@ output "starting_user_secret_access_key" {
   sensitive   = true
 }
 
-output "starting_role_arn" {
-  description = "ARN of the privilege escalation role"
-  value       = aws_iam_role.privesc_role.arn
+# Target role outputs
+output "target_role_arn" {
+  description = "ARN of the admin target role"
+  value       = aws_iam_role.target_role.arn
 }
 
-output "starting_role_name" {
-  description = "Name of the privilege escalation role"
-  value       = aws_iam_role.privesc_role.name
+output "target_role_name" {
+  description = "Name of the admin target role"
+  value       = aws_iam_role.target_role.name
 }
 
-output "admin_role_arn" {
-  description = "ARN of the admin role target"
-  value       = aws_iam_role.admin_role.arn
-}
-
-output "admin_role_name" {
-  description = "Name of the admin role"
-  value       = aws_iam_role.admin_role.name
-}
-
-output "policy_arn" {
-  description = "ARN of the privilege escalation policy"
-  value       = aws_iam_policy.privesc_policy.arn
-}
-
-output "attack_path_description" {
+# Attack path description
+output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-one-hop-plcflif-starting-user) → AssumeRole → Role (pl-prod-one-hop-plcflif-role) → PassRole + CreateFunction + InvokeFunction → Role (pl-prod-one-hop-plcflif-admin-role) → Admin Access"
+  value       = "User (pl-prod-plcflif-to-admin-starting-user) → PassRole + lambda:CreateFunction → Lambda with admin role → lambda:InvokeFunction → extract admin credentials → Admin Access"
 }

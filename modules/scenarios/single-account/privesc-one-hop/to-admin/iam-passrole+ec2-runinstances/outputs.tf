@@ -20,16 +20,6 @@ output "starting_user_secret_access_key" {
   sensitive   = true
 }
 
-output "privesc_role_arn" {
-  description = "ARN of the privilege escalation role"
-  value       = aws_iam_role.privesc_role.arn
-}
-
-output "privesc_role_name" {
-  description = "Name of the privilege escalation role"
-  value       = aws_iam_role.privesc_role.name
-}
-
 output "admin_role_arn" {
   description = "ARN of the admin role (target)"
   value       = aws_iam_role.admin_role.arn
@@ -65,12 +55,7 @@ output "ami_id" {
   value       = data.aws_ami.amazon_linux_2023.id
 }
 
-output "policy_arn" {
-  description = "ARN of the privilege escalation policy"
-  value       = aws_iam_policy.privesc_policy.arn
-}
-
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-one-hop-prec-starting-user) → AssumeRole → Role (pl-prod-one-hop-prec-role) → PassRole + RunInstances → EC2 Instance (backdoors admin role) → AssumeRole → Admin Role (pl-prod-one-hop-prec-admin-role) → Administrator Access"
+  value       = "User (pl-prod-prec-to-admin-starting-user) → PassRole + RunInstances → EC2 Instance (attaches AdministratorAccess to user) → Administrator Access"
 }

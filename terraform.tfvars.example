@@ -61,8 +61,22 @@ enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild             
 enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch           = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN NON-FREE SCENARIOS
+# EC2 Instance Connect - SendSSHPublicKey privilege escalation (ec2-003) - $5/month
+enable_single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey = false
 # EC2 - ModifyInstanceAttribute privilege escalation (ec2-002) - $8/month
 enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances = false
+# Glue CreateDevEndpoint - $2.20/hour for Glue dev endpoint (glue-001)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint = false
+# Glue UpdateDevEndpoint - $2.20/hour for Glue dev endpoint (glue-002)
+enable_single_account_privesc_one_hop_to_admin_glue_updatedevendpoint              = false
+# Glue CreateJob + CreateTrigger - $0.10/month (glue-003)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger = false
+# Glue CreateJob + StartJobRun - $0.10/month (glue-004)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun = false
+# Glue UpdateJob + StartJobRun - $0.10/month (glue-005)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun = false
+# Glue UpdateJob + CreateTrigger - $0.10/month (glue-006)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger = false
 enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand                     = false
 enable_single_account_privesc_one_hop_to_admin_ssm_startsession                    = false
 
@@ -74,6 +88,12 @@ enable_single_account_privesc_one_hop_to_bucket_sts_assumerole                  
 enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile             = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
+# Glue CreateDevEndpoint to bucket - $2.20/hour for Glue dev endpoint (glue-001)
+enable_single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint = false
+# Glue UpdateDevEndpoint to bucket - $2.20/hour for Glue dev endpoint (glue-002)
+enable_single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint             = false
+# EC2 Instance Connect - SendSSHPublicKey to bucket (ec2-003) - $5/month
+enable_single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey = false
 enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand                    = false
 enable_single_account_privesc_one_hop_to_bucket_ssm_startsession                   = false
 

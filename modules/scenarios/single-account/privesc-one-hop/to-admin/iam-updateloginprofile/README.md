@@ -1,43 +1,54 @@
-# One-Hop Privilege Escalation: iam:UpdateLoginProfile
+# Privilege Escalation via iam:UpdateLoginProfile
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Password reset for admin user via iam:UpdateLoginProfile
+**Category:** Privilege Escalation
+**Sub-Category:** credential-access
+**Path Type:** one-hop
+**Target:** to-admin
+**Environments:** prod
+**Pathfinding.cloud ID:** iam-006
+**Technique:** Password reset for admin user to gain console access
 
 ## Overview
 
-This scenario demonstrates a privilege escalation vulnerability where a role has permission to update login profiles for an administrator user. The attacker can assume a role with `iam:UpdateLoginProfile` permission on an admin user who already has a console password, change that password to one they control, and then use those credentials to gain administrator access through the AWS Management Console.
+This scenario demonstrates a privilege escalation vulnerability where a user has permission to update the login profile (console password) of an administrator user. By using the `iam:UpdateLoginProfile` permission, an attacker can reset the console password of an existing admin user and then log into the AWS Console with full administrative privileges.
+
+This attack is particularly dangerous because it provides console access rather than just API access, enabling the attacker to use the AWS web interface with all its capabilities. Unlike creating access keys, which generates audit trails through API calls, console access can be harder to detect and monitor comprehensively. The attack only works against users who already have a console password (login profile) configured, making existing administrator accounts prime targets.
+
+In real-world environments, this vulnerability often occurs when security teams grant broad IAM permissions for user management without properly scoping them to specific resources or implementing condition-based restrictions. Organizations may inadvertently allow help desk staff or junior administrators to reset passwords for any user, including privileged accounts.
 
 ## Understanding the attack scenario
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-ulp-ursula`
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-ulp-admin`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ulp-to-admin-starting-user` (Scenario-specific starting user with UpdateLoginProfile permission)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ulp-to-admin-target-user` (Target admin user with console access)
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-ulp-ursula] -->|iam:UpdateLoginProfile| B[pl-ulp-admin]
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-ulp-to-admin-starting-user] -->|iam:UpdateLoginProfile| B[pl-prod-ulp-to-admin-target-user]
+    B -->|Console Login| C[Administrator Access]
+
+    style A fill:#ff9999,stroke:#333,stroke-width:2px
+    style B fill:#ffcc99,stroke:#333,stroke-width:2px
+    style C fill:#99ff99,stroke:#333,stroke-width:2px
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-ulp-ursula` to begin the scenario
-2. **Update Login Profile**: `pl-ulp-ursula` uses `iam:UpdateLoginProfile` to change the console password for the admin user `pl-ulp-admin`
-3. **Console Login**: Use the AWS Management Console with the newly set password to login as `pl-ulp-admin`
-4. **Verification**: Verify administrator access through both console and API
+1. **Initial Access**: Start as `pl-prod-ulp-to-admin-starting-user` (credentials provided via Terraform outputs)
+2. **Update Login Profile**: Use `iam:UpdateLoginProfile` to reset the console password for `pl-prod-ulp-to-admin-target-user`
+3. **Console Login**: Log into the AWS Console using the target username and newly set password
+4. **Verification**: Verify administrator access through the console or CLI
 
 ### Scenario specific resources created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-ulp-ursula` | Starting principal |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-updateloginprofile-policy` | Allows `iam:UpdateLoginProfile` on `pl-ulp-admin` only |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-ulp-admin` | Destination principal |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ulp-to-admin-starting-user` | Scenario-specific starting user with access keys and UpdateLoginProfile permission |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ulp-to-admin-target-user` | Target admin user with AdministratorAccess and existing login profile |
+| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-ulp-to-admin-starting-user-policy` | Inline policy allowing `iam:UpdateLoginProfile` on the target user |
 
 ## Executing the attack
 
@@ -53,14 +64,12 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprof
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Update the existing console password with a unique random suffix
-4. Display console login URL and new credentials
-5. Verify successful privilege escalation via API access
-6. Output standardized test results for automation
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
 
 ### Cleaning up the attack artifacts
 
-After demonstrating the attack, restore the original password for the admin user:
+After demonstrating the attack, clean up the modified login profile by restoring the original password:
 
 ```bash
 cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprofile
@@ -69,19 +78,21 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprof
 
 ## Detection and prevention
 
+
 ### MITRE ATT&CK Mapping
 
-- **Tactic**: Privilege Escalation, Persistence
+- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003)
 - **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: Modifying existing console login credentials for privileged accounts
+- **Sub-technique**: Modifying authentication credentials for privileged accounts
+
 
 ## Prevention recommendations
 
-- Avoid granting `iam:UpdateLoginProfile` permissions on privileged users
-- Use resource-based conditions to restrict which users can have login profiles updated
-- Implement SCPs to prevent login profile updates on admin users
-- Monitor CloudTrail for `UpdateLoginProfile` API calls on privileged accounts
-- Force password reset on next login after any UpdateLoginProfile event
-- Use IAM Access Analyzer to identify privilege escalation paths
-- Implement break-glass procedures with MFA for emergency access
-- Alert on any password changes for privileged accounts
+- Avoid granting `iam:UpdateLoginProfile` permissions on privileged users - use resource-based conditions to restrict which users can have their passwords updated
+- Implement Service Control Policies (SCPs) to prevent password updates on administrator accounts
+- Require MFA for the `iam:UpdateLoginProfile` action using condition keys like `aws:MultiFactorAuthPresent`
+- Monitor CloudTrail for `UpdateLoginProfile` API calls, especially on privileged accounts, and alert on unexpected password changes
+- Use IAM Access Analyzer to identify privilege escalation paths involving login profile manipulation
+- Implement separate break-glass accounts for emergency access rather than allowing password resets on production admin accounts
+- Enable AWS CloudTrail Insights to detect unusual patterns of IAM user credential modifications
+- Consider using AWS IAM Identity Center (formerly SSO) for console access instead of long-lived IAM user passwords
