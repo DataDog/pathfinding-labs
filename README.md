@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-40+-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-68-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -180,44 +180,65 @@ In these scenarios, an IAM principal has the permission to update their own perm
 
 | Scenario | Description |
 |----------|-------------|
-| `iam-putrolepolicy` | Role modifies its own inline policy to grant admin access |
-| `iam-attachrolepolicy` | Role attaches managed admin policies to itself |
-| `iam-createpolicyversion` | Role creates new policy versions with elevated permissions |
-| `iam-putuserpolicy` | User adds inline admin policy to themselves |
-| `iam-attachuserpolicy` | User attaches managed admin policies to themselves |
-| `iam-putgrouppolicy` | User modifies group inline policy to grant admin access |
-| `iam-attachgrouppolicy` | User attaches admin policies to their group |
-| `iam-addusertogroup` | User adds themselves to an admin group |
+| [`iam-addusertogroup`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-addusertogroup/README.md) | User adds themselves to an admin group |
+| [`iam-attachgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-attachgrouppolicy/README.md) | User attaches admin policies to their group |
+| [`iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-attachrolepolicy/README.md) | Role attaches managed admin policies to itself |
+| [`iam-attachuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-attachuserpolicy/README.md) | User attaches managed admin policies to themselves |
+| [`iam-createpolicyversion`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-createpolicyversion/README.md) | Role creates new policy versions with elevated permissions |
+| [`iam-putgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putgrouppolicy/README.md) | User modifies group inline policy to grant admin access |
+| [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
+| [`iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
 
-#### One-Hop to Admin (14 scenarios)
+#### One-Hop to Admin (36 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
 | Scenario | Description |
 |----------|-------------|
-| `iam-createaccesskey` | User creates access keys for an admin user |
-| `iam-createloginprofile` | User creates console password for an admin user |
-| `iam-updateloginprofile` | User resets console password for an admin user |
-| `iam-putuserpolicy+iam-createaccesskey` | User adds admin inline policy to target user and creates access keys for them |
-| `iam-attachuserpolicy+iam-createaccesskey` | User attaches AWS-managed AdministratorAccess to target user and creates access keys for them |
-| `sts-assumerole` | Role directly assumes another role with admin permissions |
-| `iam-updateassumerolepolicy` | User modifies trust policy of admin role to grant access |
-| `iam-putrolepolicy+sts-assumerole` | User adds inline admin policy to assumable role then assumes it |
-| `iam-passrole+ec2-runinstances` | User passes admin role to EC2 instance for credential extraction |
-| `iam-passrole+lambda-createfunction+` <br/> `lambda-invokefunction` | User creates Lambda with admin role and invokes to extract credentials |
-| `iam-passrole+lambda-createfunction+` <br/> `createeventsourcemapping-dynamodb` | User creates Lambda with admin role triggered by DynamoDB events |
-| `iam-passrole-cloudformation` | User passes admin role to CloudFormation to create escalated resources |
-| `lambda-updatefunctioncode` | User modifies existing Lambda function code to execute under privileged role |
-| `ssm-sendcommand` | User executes commands on EC2 instances with admin roles to extract credentials |
+| [`apprunner-updateservice`](modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-updateservice/README.md) | User updates AppRunner service configuration to use privileged role |
+| [`bedrockagentcore-startsession+invoke`](modules/scenarios/single-account/privesc-one-hop/to-admin/bedrockagentcore-startsession+invoke/README.md) | User starts Bedrock code interpreter session and invokes with admin role |
+| [`codebuild-startbuild`](modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuild/README.md) | User starts existing CodeBuild project with admin role |
+| [`codebuild-startbuildbatch`](modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuildbatch/README.md) | User starts CodeBuild batch build with admin role |
+| [`ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate/README.md) | User modifies existing launch template to use admin role |
+| [`ec2-instance-connect-sendsshpublickey`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-instance-connect-sendsshpublickey/README.md) | User sends SSH public key to EC2 instance with admin role |
+| [`ec2-modifyinstanceattribute+stopinstances+startinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-modifyinstanceattribute+stopinstances+startinstances/README.md) | User modifies EC2 instance role by stopping and starting instance |
+| [`glue-updatedevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-updatedevendpoint/README.md) | User updates existing Glue dev endpoint with admin role |
+| [`iam-attachrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole/README.md) | User attaches admin policy to assumable role then assumes it |
+| [`iam-attachuserpolicy+iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachuserpolicy+iam-createaccesskey/README.md) | User attaches AWS-managed AdministratorAccess to target user and creates access keys |
+| [`iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey/README.md) | User creates access keys for an admin user |
+| [`iam-createloginprofile`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createloginprofile/README.md) | User creates console password for an admin user |
+| [`iam-createpolicyversion+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createpolicyversion+sts-assumerole/README.md) | User creates new policy version with admin permissions then assumes role |
+| [`iam-deleteaccesskey+createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-deleteaccesskey+createaccesskey/README.md) | User deletes and recreates access keys for admin user |
+| [`iam-passrole-cloudformation`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation/README.md) | User passes admin role to CloudFormation to create escalated resources |
+| [`iam-passrole+apprunner-createservice`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+apprunner-createservice/README.md) | User creates AppRunner service with admin role |
+| [`iam-passrole+bedrockagentcore-codeinterpreter`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+bedrockagentcore-codeinterpreter/README.md) | User creates Bedrock code interpreter with admin role |
+| [`iam-passrole+codebuild-createproject+codebuild-startbuild`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuild/README.md) | User creates CodeBuild project with admin role and starts build |
+| [`iam-passrole+codebuild-createproject+codebuild-startbuildbatch`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuildbatch/README.md) | User creates CodeBuild project with admin role and starts batch build |
+| [`iam-passrole+ec2-requestspotinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-requestspotinstances/README.md) | User requests spot instances with admin role |
+| [`iam-passrole+ec2-runinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-runinstances/README.md) | User passes admin role to EC2 instance for credential extraction |
+| [`iam-passrole+glue-createdevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createdevendpoint/README.md) | User creates Glue dev endpoint with admin role |
+| [`iam-passrole+glue-createjob+glue-createtrigger`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createjob+glue-createtrigger/README.md) | User creates Glue job with admin role and trigger to execute it |
+| [`iam-passrole+glue-createjob+glue-startjobrun`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createjob+glue-startjobrun/README.md) | User creates Glue job with admin role and starts job run |
+| [`iam-passrole+glue-updatejob+glue-createtrigger`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-updatejob+glue-createtrigger/README.md) | User updates Glue job with admin role and creates trigger |
+| [`iam-passrole+glue-updatejob+glue-startjobrun`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-updatejob+glue-startjobrun/README.md) | User updates Glue job with admin role and starts job run |
+| [`iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb/README.md) | User creates Lambda with admin role triggered by DynamoDB events |
+| [`iam-passrole+lambda-createfunction+lambda-invokefunction`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+lambda-invokefunction/README.md) | User creates Lambda with admin role and invokes to extract credentials |
+| [`iam-putrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+sts-assumerole/README.md) | User adds inline admin policy to assumable role then assumes it |
+| [`iam-putuserpolicy+iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy+iam-createaccesskey/README.md) | User adds admin inline policy to target user and creates access keys |
+| [`iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateassumerolepolicy/README.md) | User modifies trust policy of admin role to grant access |
+| [`iam-updateloginprofile`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprofile/README.md) | User resets console password for an admin user |
+| [`lambda-updatefunctioncode`](modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode/README.md) | User modifies existing Lambda function code to execute under privileged role |
+| [`ssm-sendcommand`](modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-sendcommand/README.md) | User executes commands on EC2 instances with admin roles to extract credentials |
+| [`ssm-startsession`](modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-startsession/README.md) | User starts SSM session on EC2 instance with admin role |
+| [`sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/sts-assumerole/README.md) | Role directly assumes another role with admin permissions |
 
-#### Multi-Hop to Admin (2 scenarios)
+#### Multi-Hop to Admin (1 scenario)
 
-While everything above is consider an "atomic" privilege escalation path, these scenarios demonstrate what is commonly observed in AWS environments - multi-step paths that lead to administrative access. 
+While everything above is consider an "atomic" privilege escalation path, these scenarios demonstrate what is commonly observed in AWS environments - multi-step paths that lead to administrative access.
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
-| `multiple-paths-combined` | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
-| `putrolepolicy-on-other` | 2 | Role can modify another role's policy to gain admin access |
+| [`multiple-paths-combined`](modules/scenarios/single-account/privesc-multi-hop/to-admin/multiple-paths-combined/README.md) | 2-3 | Combines EC2, Lambda, and CloudFormation paths to admin |
 
 ---
 
@@ -230,39 +251,42 @@ The attacker uses the same privesc mechanisms as above, but the attacker never g
 
 | Scenario | Description |
 |----------|-------------|
-| `iam-putrolepolicy` | Role modifies its own inline policy to grant S3 bucket access |
-| `iam-attachrolepolicy` | Role attaches S3 access policies to itself |
+| [`iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-bucket/iam-attachrolepolicy/README.md) | Role attaches S3 access policies to itself |
+| [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-bucket/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant S3 bucket access |
 
 
-#### One-Hop to Bucket (6 scenarios)
+#### One-Hop to Bucket (11 scenarios)
 
 | Scenario | Description |
 |----------|-------------|
-| `iam-createaccesskey` | User creates keys for user with bucket access |
-| `iam-createloginprofile` | User creates console password for user with bucket access |
-| `iam-updateloginprofile` | User resets console password for user with bucket access |
-| `iam-updateassumerolepolicy` | User modifies trust policies to assume bucket-access roles |
-| `sts-assumerole` | Role directly assumes another role with bucket permissions |
-| `ssm-sendcommand` | User executes commands on EC2 instances with bucket access roles |
+| [`ec2-instance-connect-sendsshpublickey`](modules/scenarios/single-account/privesc-one-hop/to-bucket/ec2-instance-connect-sendsshpublickey/README.md) | User sends SSH public key to EC2 instance with bucket access role |
+| [`glue-updatedevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-updatedevendpoint/README.md) | User updates existing Glue dev endpoint with bucket access role |
+| [`iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-createaccesskey/README.md) | User creates keys for user with bucket access |
+| [`iam-createloginprofile`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-createloginprofile/README.md) | User creates console password for user with bucket access |
+| [`iam-deleteaccesskey+createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-deleteaccesskey+createaccesskey/README.md) | User deletes and recreates access keys for user with bucket access |
+| [`iam-passrole+glue-createdevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-passrole+glue-createdevendpoint/README.md) | User creates Glue dev endpoint with bucket access role |
+| [`iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-updateassumerolepolicy/README.md) | User modifies trust policies to assume bucket-access roles |
+| [`iam-updateloginprofile`](modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-updateloginprofile/README.md) | User resets console password for user with bucket access |
+| [`ssm-sendcommand`](modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-sendcommand/README.md) | User executes commands on EC2 instances with bucket access roles |
+| [`ssm-startsession`](modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-startsession/README.md) | User starts SSM session on EC2 instance with bucket access role |
+| [`sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-bucket/sts-assumerole/README.md) | Role directly assumes another role with bucket permissions |
 
-#### Multi-Hop to Bucket (3 scenarios)
+#### Multi-Hop to Bucket (1 scenario)
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
-| `role-chain-to-s3` | 3 | Three-hop role assumption chain ending at S3 bucket |
-| `resource-policy-bypass` | 2 | Bypass S3 bucket resource policy restrictions by assuming role with bucket access |
-| `exclusive-resource-policy` | 2 | Access S3 bucket with exclusive resource policy that denies all except specific role |
+| [`role-chain-to-s3`](modules/scenarios/single-account/privesc-multi-hop/to-bucket/role-chain-to-s3/README.md) | 3 | Three-hop role assumption chain ending at S3 bucket |
 
 
 ---
 
 ### Toxic Combinations (1 scenario)
 
-Toxic combinations are cases 
+Toxic combinations are cases where multiple security misconfigurations combine to create critical risks.
 
 | Scenario | Risk Level | Description |
 |----------|------------|-------------|
-| `public-lambda-with-admin` | 🔴 Critical | Publicly accessible Lambda function with administrative role |
+| [`public-lambda-with-admin`](modules/scenarios/single-account/toxic-combo/public-lambda-with-admin/README.md) | 🔴 Critical | Publicly accessible Lambda function with administrative role |
 
 ---
 
@@ -274,8 +298,8 @@ Edge cases and scenarios designed to test detection engine capabilities.
 
 | Scenario | Focus | Description |
 |----------|-------|-------------|
-| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
-| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
+| [`exclusive-resource-policy`](modules/scenarios/tool-testing/exclusive-resource-policy/README.md) | Policy parsing | Tests detection of exclusive resource policy configurations |
+| [`resource-policy-bypass`](modules/scenarios/tool-testing/resource-policy-bypass/README.md) | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
 
 ---
 
@@ -287,17 +311,17 @@ Privilege escalation paths that span multiple AWS accounts. These scenarios requ
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
-| `simple-role-assumption` | 1 | Direct cross-account role assumption from dev to prod |
-| `root-trust-role-assumption` | 1 | Cross-account role assumption exploiting :root trust (any dev principal can assume) |
-| `passrole-lambda-admin` | 1 | PassRole privilege escalation via Lambda across accounts |
-| `multi-hop-both-sides` | 3 | Privilege escalation in both accounts before crossing |
-| `lambda-invoke-update` | 2 | Lambda function code update to extract prod credentials |
+| [`simple-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from dev to prod |
+| [`root-trust-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption/README.md) | 1 | Cross-account role assumption exploiting :root trust (any dev principal can assume) |
+| [`passrole-lambda-admin`](modules/scenarios/cross-account/dev-to-prod/multi-hop/passrole-lambda-admin/README.md) | 2 | PassRole privilege escalation via Lambda across accounts |
+| [`multi-hop-both-sides`](modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides/README.md) | 3 | Privilege escalation in both accounts before crossing |
+| [`lambda-invoke-update`](modules/scenarios/cross-account/dev-to-prod/multi-hop/lambda-invoke-update/README.md) | 2 | Lambda function code update to extract prod credentials |
 
 #### Cross-Account Ops-to-Prod (1 scenario)
 
-| Scenario | Type | Description |
+| Scenario | Hops | Description |
 |----------|------|-------------|
-| `simple-role-assumption` | 1 | Direct cross-account role assumption from ops to prod |
+| [`simple-role-assumption`](modules/scenarios/cross-account/ops-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from ops to prod |
 
 ---
 
@@ -691,15 +715,16 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **40 scenarios** available
+- ✅ **68 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
-  - 13 One-Hop to Admin
-  - 6 One-Hop to Bucket
-  - 2 Multi-Hop to Admin
-  - 3 Multi-Hop to Bucket
+  - 36 One-Hop to Admin
+  - 11 One-Hop to Bucket
+  - 1 Multi-Hop to Admin
+  - 1 Multi-Hop to Bucket
   - 1 Toxic Combo
-  - 5 Cross-Account (4 dev-to-prod, 1 ops-to-prod)
+  - 2 Tool Testing
+  - 6 Cross-Account (5 dev-to-prod, 1 ops-to-prod)
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)
