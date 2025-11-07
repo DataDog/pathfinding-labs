@@ -1,8 +1,12 @@
 # Self-Escalation Privilege Escalation: iam:CreatePolicyVersion
 
-**Scenario Type:** Self-Escalation
-**Target:** Admin Access
-**Technique:** Self-modification via iam:CreatePolicyVersion
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-001
+* **Technique:** Self-modification via iam:CreatePolicyVersion
 
 ## Overview
 

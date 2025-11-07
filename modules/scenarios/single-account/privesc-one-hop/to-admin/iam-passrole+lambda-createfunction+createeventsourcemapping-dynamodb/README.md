@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:CreateEventSourceMapping (DynamoDB Stream)
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Pass privileged role to Lambda function, link to DynamoDB stream for passive execution without requiring InvokeFunction permission
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Pass privileged role to Lambda function, link to DynamoDB stream for passive execution without requiring InvokeFunction permission
 
 ## Overview
 

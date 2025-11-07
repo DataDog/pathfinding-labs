@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:InvokeFunction
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** lambda-001
-**Technique:** Creating Lambda function with admin role and invoking it to extract temporary credentials
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** lambda-001
+* **Technique:** Creating Lambda function with admin role and invoking it to extract temporary credentials
 
 ## Overview
 

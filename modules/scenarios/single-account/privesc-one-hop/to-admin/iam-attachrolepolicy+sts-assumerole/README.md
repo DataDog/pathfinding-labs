@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: iam:AttachRolePolicy + sts:AssumeRole
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Attaching administrator policy to an assumable role to gain admin access
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Attaching administrator policy to an assumable role to gain admin access
 
 ## Overview
 

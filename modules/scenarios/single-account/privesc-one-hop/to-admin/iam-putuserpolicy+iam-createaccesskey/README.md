@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: iam:PutUserPolicy + iam:CreateAccessKey
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** User-to-user lateral movement via policy modification and credential creation
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** User-to-user lateral movement via policy modification and credential creation
 
 ## Overview
 

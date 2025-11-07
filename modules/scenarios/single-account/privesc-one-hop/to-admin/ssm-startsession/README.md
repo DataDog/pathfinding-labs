@@ -1,12 +1,12 @@
 # One-Hop Privilege Escalation: ssm:StartSession to EC2 with Admin Role
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** ssm-001
-**Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ssm-001
+* **Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
 
 ## Overview
 

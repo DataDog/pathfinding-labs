@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: iam:AttachRolePolicy
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** iam:AttachRolePolicy on another role with S3 access
+* **Target:** S3 Bucket Access
+* **Technique:** iam:AttachRolePolicy on another role with S3 access
 
 ## Overview
 

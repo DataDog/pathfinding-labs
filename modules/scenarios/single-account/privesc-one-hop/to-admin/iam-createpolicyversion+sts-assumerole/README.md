@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:CreatePolicyVersion + sts:AssumeRole
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Modify customer-managed policy version to grant admin permissions, then assume role
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Modify customer-managed policy version to grant admin permissions, then assume role
 
 ## Overview
 

@@ -1,8 +1,12 @@
-# One-Hop Privilege Escalation: iam:AttachGroupPolicy
+# Self-Escalation Privilege Escalation: iam:AttachGroupPolicy
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Self-escalation via attaching admin policy to own group
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-010
+* **Technique:** Self-escalation via attaching admin policy to own group
 
 ## Overview
 

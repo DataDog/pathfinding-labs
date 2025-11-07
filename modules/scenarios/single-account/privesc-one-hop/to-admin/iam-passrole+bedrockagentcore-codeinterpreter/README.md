@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + Bedrock AgentCore Code Interpreter
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** bedrock-001
-**Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** bedrock-001
+* **Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
 
 ## Overview
 

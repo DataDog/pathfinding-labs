@@ -1,11 +1,11 @@
 # Privilege Escalation via codebuild:StartBuild on Existing Project
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Exploit existing CodeBuild project with privileged role using buildspec-override
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Exploit existing CodeBuild project with privileged role using buildspec-override
 
 ## Overview
 

@@ -1,11 +1,11 @@
 # Cross-Account Privilege Escalation: Dev to Prod Root Trust Role Assumption
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** cross-account
-**Target:** to-admin
-**Environments:** dev, prod
-**Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** dev, prod
+* **Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
 
 ## Overview
 

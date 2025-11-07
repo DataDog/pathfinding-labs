@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:PassRole + apprunner:CreateService
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Pass privileged role to App Runner service with command override
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Pass privileged role to App Runner service with command override
 
 ## Overview
 

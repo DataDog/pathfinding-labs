@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:CreateAccessKey
 
-**Category:** Privilege Escalation
-**Sub-Category:** credential-access
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** iam-002
-**Technique:** Creating access keys for privileged users to gain administrative access
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-002
+* **Technique:** Creating access keys for privileged users to gain administrative access
 
 ## Overview
 

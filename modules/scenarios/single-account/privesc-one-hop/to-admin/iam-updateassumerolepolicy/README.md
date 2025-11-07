@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:UpdateAssumeRolePolicy
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** iam-012
-**Technique:** Modifying admin role trust policy to grant self-access
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-012
+* **Technique:** Modifying admin role trust policy to grant self-access
 
 ## Overview
 

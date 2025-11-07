@@ -1,12 +1,12 @@
 # Privilege Escalation via Bedrock AgentCore: Accessing Existing Code Interpreters
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** bedrock-002
-**Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** bedrock-002
+* **Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
 
 ## Overview
 

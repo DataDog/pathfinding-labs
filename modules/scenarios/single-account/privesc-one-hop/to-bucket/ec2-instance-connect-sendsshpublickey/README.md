@@ -1,12 +1,12 @@
 # Privilege Escalation via ec2-instance-connect:SendSSHPublicKey to S3 Bucket
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Pathfinding.cloud ID:** ec2-003
-**Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ec2-003
+* **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
 
 ## Overview
 

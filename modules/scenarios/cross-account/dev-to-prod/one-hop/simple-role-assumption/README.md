@@ -1,11 +1,11 @@
 # Cross-Account Privilege Escalation: Dev to Prod Simple Role Assumption
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** cross-account
-**Target:** to-admin
-**Environments:** dev, prod
-**Technique:** Direct cross-account role assumption from dev user to prod admin role
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** dev, prod
+* **Technique:** Direct cross-account role assumption from dev user to prod admin role
 
 ## Overview
 

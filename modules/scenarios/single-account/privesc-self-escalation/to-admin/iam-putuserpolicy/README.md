@@ -1,8 +1,12 @@
-# One-Hop Privilege Escalation: iam:PutUserPolicy
+# Self-Escalation Privilege Escalation: iam:PutUserPolicy
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Self-modification via iam:PutUserPolicy to attach inline admin policy
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-007
+* **Technique:** Self-modification via iam:PutUserPolicy to attach inline admin policy
 
 ## Overview
 

@@ -1,8 +1,12 @@
 # Self-Escalation Privilege Escalation: iam:PutRolePolicy
 
-**Scenario Type:** Self-Escalation
-**Target:** Admin Access
-**Technique:** Self-modification via iam:PutRolePolicy
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-005
+* **Technique:** Self-modification via iam:PutRolePolicy
 
 ## Overview
 

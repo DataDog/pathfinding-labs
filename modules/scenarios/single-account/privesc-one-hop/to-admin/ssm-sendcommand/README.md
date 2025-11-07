@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: ssm:SendCommand to EC2 with Admin Role
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
 
 ## Overview
 

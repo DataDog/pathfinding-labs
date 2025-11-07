@@ -1,12 +1,12 @@
 # One-Hop Privilege Escalation: ssm:StartSession to EC2 with S3 Bucket Access
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Pathfinding.cloud ID:** ssm-001
-**Technique:** Start interactive shell sessions on EC2 instances with S3 access roles to extract credentials via IMDS and access sensitive buckets
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ssm-001
+* **Technique:** Start interactive shell sessions on EC2 instances with S3 access roles to extract credentials via IMDS and access sensitive buckets
 
 ## Overview
 

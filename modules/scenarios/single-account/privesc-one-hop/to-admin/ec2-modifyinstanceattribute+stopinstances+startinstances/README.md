@@ -1,12 +1,12 @@
 # One-Hop Privilege Escalation: ec2:ModifyInstanceAttribute + ec2:StopInstances + ec2:StartInstances
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** ec2-002
-**Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ec2-002
+* **Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
 
 ## Overview
 

@@ -1,12 +1,12 @@
 # One-Hop Privilege Escalation: iam:PassRole + ec2:RequestSpotInstances
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** ec2-005
-**Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ec2-005
+* **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
 
 ## Overview
 

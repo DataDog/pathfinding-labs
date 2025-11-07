@@ -1,11 +1,11 @@
 # Privilege Escalation via Launch Template Modification
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
 
 ## Overview
 

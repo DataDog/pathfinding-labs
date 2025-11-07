@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:UpdateLoginProfile
 
-**Category:** Privilege Escalation
-**Sub-Category:** credential-access
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** iam-006
-**Technique:** Password reset for admin user to gain console access
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-006
+* **Technique:** Password reset for admin user to gain console access
 
 ## Overview
 

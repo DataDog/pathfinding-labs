@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + Data Pipeline with Resource Policy Bypass
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Pathfinding.cloud ID:** datapipeline-001
-**Technique:** Create Data Pipeline with passed role to exfiltrate S3 data, bypassing IAM restrictions via overly permissive bucket resource policy
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** datapipeline-001
+* **Technique:** Create Data Pipeline with passed role to exfiltrate S3 data, bypassing IAM restrictions via overly permissive bucket resource policy
 
 ## Overview
 

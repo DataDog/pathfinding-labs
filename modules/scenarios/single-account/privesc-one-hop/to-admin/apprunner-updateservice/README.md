@@ -1,11 +1,11 @@
 # Privilege Escalation via apprunner:UpdateService
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Update existing App Runner service to execute privilege escalation commands
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Update existing App Runner service to execute privilege escalation commands
 
 ## Overview
 

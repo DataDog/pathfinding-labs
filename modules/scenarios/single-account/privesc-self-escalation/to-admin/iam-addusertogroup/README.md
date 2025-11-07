@@ -1,8 +1,12 @@
-# One-Hop Privilege Escalation: iam:AddUserToGroup
+# Self-Escalation Privilege Escalation: iam:AddUserToGroup
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Self-escalation via iam:AddUserToGroup to admin group
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-013
+* **Technique:** Self-escalation via iam:AddUserToGroup to admin group
 
 ## Overview
 

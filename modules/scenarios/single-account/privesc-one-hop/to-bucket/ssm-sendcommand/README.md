@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: ssm:SendCommand to EC2 with S3 Bucket Access
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
 
 ## Overview
 

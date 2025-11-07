@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:DeleteAccessKey + iam:CreateAccessKey
 
-**Category:** Privilege Escalation
-**Sub-Category:** credential-access
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** iam-003
-**Technique:** Bypassing AWS's 2-access-key limit by deleting an existing key before creating a new one for an admin user
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-003
+* **Technique:** Bypassing AWS's 2-access-key limit by deleting an existing key before creating a new one for an admin user
 
 ## Overview
 

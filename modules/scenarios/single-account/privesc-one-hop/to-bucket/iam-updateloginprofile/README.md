@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: iam:UpdateLoginProfile
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** Login profile modification for bucket-access user via iam:UpdateLoginProfile
+* **Target:** S3 Bucket Access
+* **Technique:** Login profile modification for bucket-access user via iam:UpdateLoginProfile
 
 ## Overview
 

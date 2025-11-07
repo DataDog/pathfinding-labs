@@ -1,8 +1,12 @@
 # Self-Escalation Privilege Escalation: iam:AttachUserPolicy
 
-**Scenario Type:** Self-Escalation
-**Target:** Admin Access
-**Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-008
+* **Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 
 ## Overview
 

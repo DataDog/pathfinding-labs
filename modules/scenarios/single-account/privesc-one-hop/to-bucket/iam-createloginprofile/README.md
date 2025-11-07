@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: iam:CreateLoginProfile
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** Console credential creation for bucket-access user via iam:CreateLoginProfile
+* **Target:** S3 Bucket Access
+* **Technique:** Console credential creation for bucket-access user via iam:CreateLoginProfile
 
 ## Overview
 

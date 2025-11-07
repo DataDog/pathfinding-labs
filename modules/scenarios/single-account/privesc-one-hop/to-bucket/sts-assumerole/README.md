@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: sts:AssumeRole
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** Direct role assumption via sts:AssumeRole
+* **Target:** S3 Bucket Access
+* **Technique:** Direct role assumption via sts:AssumeRole
 
 ## Overview
 

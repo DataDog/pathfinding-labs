@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: codebuild:StartBuildBatch
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Exploit existing CodeBuild project with buildspec-override to execute privileged commands
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Exploit existing CodeBuild project with buildspec-override to execute privileged commands
 
 ## Overview
 

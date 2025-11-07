@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + glue:CreateDevEndpoint
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Pathfinding.cloud ID:** glue-001
-**Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** glue-001
+* **Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
 
 ## Cost Warning
 

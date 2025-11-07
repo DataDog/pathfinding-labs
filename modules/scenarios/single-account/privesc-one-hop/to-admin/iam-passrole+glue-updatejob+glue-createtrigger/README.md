@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + glue:UpdateJob + glue:CreateTrigger
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** glue-006
-**Technique:** Update existing Glue job to use privileged role and malicious script, then create trigger for automated execution with persistence
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** glue-006
+* **Technique:** Update existing Glue job to use privileged role and malicious script, then create trigger for automated execution with persistence
 
 ## Overview
 

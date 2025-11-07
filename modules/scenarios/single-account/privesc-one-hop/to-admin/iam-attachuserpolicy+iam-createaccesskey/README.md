@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:AttachUserPolicy + iam:CreateAccessKey
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** User with AttachUserPolicy and CreateAccessKey on another user can attach AWS-managed AdministratorAccess policy, create access keys, and gain admin access
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** User with AttachUserPolicy and CreateAccessKey on another user can attach AWS-managed AdministratorAccess policy, create access keys, and gain admin access
 
 ## Overview
 

@@ -1,11 +1,11 @@
 # Privilege Escalation via CodeBuild Service Abuse
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Pass a privileged role to CodeBuild and execute buildspec to grant self admin access
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Pass a privileged role to CodeBuild and execute buildspec to grant self admin access
 
 ## Overview
 

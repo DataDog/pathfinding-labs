@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: iam:PassRole + cloudformation:CreateStack
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** CloudFormation stack creation with privileged service role to create escalated IAM roles
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** cloudformation-001
+* **Technique:** CloudFormation stack creation with privileged service role to create escalated IAM roles
 
 ## Overview
 

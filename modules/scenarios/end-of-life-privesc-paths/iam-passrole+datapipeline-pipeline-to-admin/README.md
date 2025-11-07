@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + AWS Data Pipeline
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** datapipeline-001
-**Technique:** Creating a Data Pipeline with an admin role to execute commands with elevated privileges
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** datapipeline-001
+* **Technique:** Creating a Data Pipeline with an admin role to execute commands with elevated privileges
 
 ## Overview
 

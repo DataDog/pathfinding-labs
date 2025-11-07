@@ -1,12 +1,12 @@
 # Privilege Escalation via glue:UpdateDevEndpoint
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Pathfinding.cloud ID:** glue-002
-**Technique:** Add SSH public key to existing Glue dev endpoint and access S3 buckets with the endpoint's attached role
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** glue-002
+* **Technique:** Add SSH public key to existing Glue dev endpoint and access S3 buckets with the endpoint's attached role
 
 ---
 

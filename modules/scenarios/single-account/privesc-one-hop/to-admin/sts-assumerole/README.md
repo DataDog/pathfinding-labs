@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: sts:AssumeRole
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Direct role assumption via sts:AssumeRole
+* **Category:** Privilege Escalation
+* **Sub-Category:** lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** sts-001
+* **Technique:** Direct role assumption via sts:AssumeRole
 
 ## Overview
 

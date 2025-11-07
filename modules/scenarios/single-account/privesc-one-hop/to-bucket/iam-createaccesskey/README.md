@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: iam:CreateAccessKey
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** Access key creation for bucket-access user via iam:CreateAccessKey
+* **Target:** S3 Bucket Access
+* **Technique:** Access key creation for bucket-access user via iam:CreateAccessKey
 
 ## Overview
 

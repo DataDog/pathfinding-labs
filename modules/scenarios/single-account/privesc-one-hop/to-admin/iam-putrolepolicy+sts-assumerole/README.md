@@ -1,11 +1,11 @@
 # One-Hop Privilege Escalation: iam:PutRolePolicy + sts:AssumeRole
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Modify another role's inline policy and assume it
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Modify another role's inline policy and assume it
 
 ## Overview
 

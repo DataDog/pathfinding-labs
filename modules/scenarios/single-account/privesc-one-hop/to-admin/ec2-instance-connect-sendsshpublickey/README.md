@@ -1,12 +1,12 @@
 # One-Hop Privilege Escalation: ec2-instance-connect:SendSSHPublicKey
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** ec2-003
-**Technique:** SSH into EC2 instance with privileged role and extract credentials via IMDS
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** ec2-003
+* **Technique:** SSH into EC2 instance with privileged role and extract credentials via IMDS
 
 ## Overview
 

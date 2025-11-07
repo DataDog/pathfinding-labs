@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:PassRole + glue:UpdateJob + glue:StartJobRun
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** glue-005
-**Technique:** Modify existing Glue Job to use privileged role and malicious script for privilege escalation
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** glue-005
+* **Technique:** Modify existing Glue Job to use privileged role and malicious script for privilege escalation
 
 ## Overview
 

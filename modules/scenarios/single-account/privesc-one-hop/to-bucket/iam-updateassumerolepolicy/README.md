@@ -1,8 +1,8 @@
 # One-Hop Privilege Escalation: iam:UpdateAssumeRolePolicy
 
 **Scenario Type:** One-Hop
-**Target:** S3 Bucket Access
-**Technique:** Trust policy modification via iam:UpdateAssumeRolePolicy
+* **Target:** S3 Bucket Access
+* **Technique:** Trust policy modification via iam:UpdateAssumeRolePolicy
 
 ## Overview
 

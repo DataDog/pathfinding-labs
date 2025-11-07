@@ -1,11 +1,11 @@
 # Privilege Escalation via lambda:UpdateFunctionCode
 
-**Category:** Privilege Escalation
-**Sub-Category:** access-resource
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Modifying existing Lambda function code to execute malicious logic under privileged execution role
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Modifying existing Lambda function code to execute malicious logic under privileged execution role
 
 ## Overview
 

@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:PassRole + glue:CreateJob + glue:CreateTrigger
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Pass privileged role to AWS Glue job and create trigger for automated execution with persistence
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Pass privileged role to AWS Glue job and create trigger for automated execution with persistence
 
 ## Overview
 

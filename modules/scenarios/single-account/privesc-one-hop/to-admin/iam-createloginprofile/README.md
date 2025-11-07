@@ -1,12 +1,12 @@
 # Privilege Escalation via iam:CreateLoginProfile
 
-**Category:** Privilege Escalation
-**Sub-Category:** credential-access
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** iam-004
-**Technique:** Creating console password for admin user to gain console access
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-004
+* **Technique:** Creating console password for admin user to gain console access
 
 ## Overview
 

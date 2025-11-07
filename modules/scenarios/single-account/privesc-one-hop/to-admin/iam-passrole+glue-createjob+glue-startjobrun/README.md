@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:PassRole + glue:CreateJob + glue:StartJobRun
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Pass privileged role to AWS Glue Job with inline Python script for privilege escalation
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Pass privileged role to AWS Glue Job with inline Python script for privilege escalation
 
 ## Overview
 
