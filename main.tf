@@ -214,6 +214,17 @@ module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-deleteaccesskey+createaccesskey"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+apprunner-createservice"
@@ -250,6 +261,28 @@ module "single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_in
 module "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-runinstances"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-requestspotinstances"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate"
   providers = {
     aws.prod = aws.prod
   }
@@ -591,6 +624,17 @@ module "single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
 module "single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
   count  = var.enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-createloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-deleteaccesskey+createaccesskey"
   providers = {
     aws.prod = aws.prod
   }

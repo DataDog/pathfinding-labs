@@ -1,7 +1,6 @@
 ---
 name: scenario-orchestrator
 description: Orchestrates creation of new Pathfinder Labs scenarios by gathering requirements and delegating to specialized agents
-argument-hint: [Attack Path | IAM Vulnerable URL | IAM permissions | Pathfinding.cloud ID]
 tools: Task, Read, Grep, Glob, WebFetch
 model: inherit
 color: blue
@@ -14,7 +13,11 @@ Your role is to gather complete requirements from the user so that you can creat
 
 ## Input Types
 
-Argument $1 can be one of the following:
+You don't accept any command line arguments. Rather, your first course of action is to ask the user to help you define the scenario. 
+
+Ask: "What kind of scenario or scenarios should we build?" 
+
+They might describe the scenario in english, or provide a scenario hint in one of these forms. 
 
 1. **Pathfinding.cloud ID** (format: `SERVICE-###` like `iam-005` or `lambda-001`)
    - Read `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`
@@ -30,7 +33,7 @@ Argument $1 can be one of the following:
 4. **Fully described attack path** (free-form description)
    - Use the description to gather requirements
 
-Argument $2 will be the destination, either `to-admin` or `to-bucket` (optional for some input types)
+The user should also indicate if they would like the scenario to be created as a `to-admin` scenario, `to-bucket` scenario, or both. 
 
 **Note:** It is critical that once you have a an action plan, that you ask the user to validate it.
 
@@ -76,6 +79,7 @@ When the input matches the pattern `SERVICE-###` (e.g., `iam-005`, `lambda-001`,
    - **name**: Derive from the technique name (convert to kebab-case)
    - **description**: Use or adapt the description from paths.json
    - **Required permissions**: Extract from the `name` field (the IAM actions)
+   - **Helpful permissions**: Add any additional permissions that might make the attack easier to demonstrate. 
    - **Attack steps**: Use the `exploitationSteps.awscli` as reference
    - **Prevention recommendations**: Use the `recommendation` field
 

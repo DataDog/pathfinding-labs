@@ -148,6 +148,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile"
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-deleteaccesskey+createaccesskey (Pathfinding.cloud: iam-003)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createpolicyversion+sts-assumerole"
   type        = bool
@@ -180,6 +186,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_starts
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-runinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-requestspotinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate ($0.01-0.05/hour for spot instances)"
   type        = bool
   default     = false
 }
@@ -334,6 +352,12 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
 
 variable "enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-deleteaccesskey+createaccesskey"
   type        = bool
   default     = false
 }

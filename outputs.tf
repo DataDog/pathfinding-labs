@@ -353,6 +353,22 @@ output "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
+  description = "All outputs for iam-deleteaccesskey+createaccesskey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].starting_user_secret_access_key
+    admin_user_name                 = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].admin_user_name
+    admin_user_arn                  = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].admin_user_arn
+    admin_user_existing_key_1_id    = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].admin_user_existing_key_1_id
+    admin_user_existing_key_2_id    = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].admin_user_existing_key_2_id
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
   description = "All outputs for iam-passrole+apprunner-createservice one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice ? {
@@ -412,6 +428,49 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
     default_subnet_id               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].default_subnet_id
     ami_id                          = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].ami_id
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances" {
+  description = "All outputs for iam-passrole+ec2-requestspotinstances one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].admin_role_name
+    instance_profile_arn            = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].instance_profile_arn
+    instance_profile_name           = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].instance_profile_name
+    security_group_id               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].security_group_id
+    default_subnet_id               = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].default_subnet_id
+    ami_id                          = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].ami_id
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
+  description = "All outputs for ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate ? {
+    starting_user_name                    = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].starting_user_name
+    starting_user_arn                     = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].starting_user_arn
+    starting_user_access_key_id           = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].starting_user_access_key_id
+    starting_user_secret_access_key       = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].starting_user_secret_access_key
+    lowpriv_role_arn                      = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].lowpriv_role_arn
+    lowpriv_role_name                     = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].lowpriv_role_name
+    lowpriv_instance_profile_arn          = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].lowpriv_instance_profile_arn
+    target_admin_role_arn                 = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].target_admin_role_arn
+    target_admin_role_name                = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].target_admin_role_name
+    target_admin_instance_profile_arn     = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].target_admin_instance_profile_arn
+    target_admin_instance_profile_name    = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].target_admin_instance_profile_name
+    victim_launch_template_id             = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].victim_launch_template_id
+    victim_launch_template_name           = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].victim_launch_template_name
+    victim_launch_template_latest_version = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].victim_launch_template_latest_version
+    victim_asg_name                       = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].victim_asg_name
+    victim_security_group_id              = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].victim_security_group_id
+    attack_path                           = module.single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate[0].attack_path
   } : null
   sensitive = true
 }
@@ -794,12 +853,12 @@ output "single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stop
 output "single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
   description = "All outputs for iam-createaccesskey one-hop to-bucket scenario"
   value = var.enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey ? {
-    privesc_user_name               = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_name
-    privesc_user_access_key_id      = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_access_key_id
-    privesc_user_secret_access_key  = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_secret_access_key
-    bucket_access_user_name         = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].bucket_access_user_name
-    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].target_bucket_name
-    attack_path                     = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].attack_path
+    privesc_user_name              = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_name
+    privesc_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_access_key_id
+    privesc_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].privesc_user_secret_access_key
+    bucket_access_user_name        = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].bucket_access_user_name
+    target_bucket_name             = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].target_bucket_name
+    attack_path                    = module.single_account_privesc_one_hop_to_bucket_iam_createaccesskey[0].attack_path
   } : null
   sensitive = true
 }
@@ -817,6 +876,24 @@ output "single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
     sensitive_bucket_arn            = module.single_account_privesc_one_hop_to_bucket_iam_createloginprofile[0].sensitive_bucket_arn
     console_login_url               = module.single_account_privesc_one_hop_to_bucket_iam_createloginprofile[0].console_login_url
     attack_path                     = module.single_account_privesc_one_hop_to_bucket_iam_createloginprofile[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey" {
+  description = "All outputs for iam-deleteaccesskey+createaccesskey one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].starting_user_secret_access_key
+    target_user_name                = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_user_name
+    target_user_arn                 = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_user_arn
+    target_user_key_1_id            = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_user_key_1_id
+    target_user_key_2_id            = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_user_key_2_id
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].target_bucket_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey[0].attack_path
   } : null
   sensitive = true
 }
@@ -976,16 +1053,16 @@ output "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
 output "tool_testing_exclusive_resource_policy" {
   description = "All outputs for exclusive-resource-policy tool testing scenario"
   value = var.enable_tool_testing_exclusive_resource_policy ? {
-    starting_user_name                      = module.tool_testing_exclusive_resource_policy[0].starting_user_name
-    starting_user_arn                       = module.tool_testing_exclusive_resource_policy[0].starting_user_arn
-    starting_user_access_key_id             = module.tool_testing_exclusive_resource_policy[0].starting_user_access_key_id
-    starting_user_secret_access_key         = module.tool_testing_exclusive_resource_policy[0].starting_user_secret_access_key
-    exclusive_bucket_access_role_name       = module.tool_testing_exclusive_resource_policy[0].exclusive_bucket_access_role_name
-    exclusive_bucket_access_role_arn        = module.tool_testing_exclusive_resource_policy[0].exclusive_bucket_access_role_arn
-    exclusive_sensitive_bucket_name         = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_name
-    exclusive_sensitive_bucket_arn          = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_arn
-    exclusive_sensitive_bucket_domain_name  = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_domain_name
-    attack_path                             = module.tool_testing_exclusive_resource_policy[0].attack_path
+    starting_user_name                     = module.tool_testing_exclusive_resource_policy[0].starting_user_name
+    starting_user_arn                      = module.tool_testing_exclusive_resource_policy[0].starting_user_arn
+    starting_user_access_key_id            = module.tool_testing_exclusive_resource_policy[0].starting_user_access_key_id
+    starting_user_secret_access_key        = module.tool_testing_exclusive_resource_policy[0].starting_user_secret_access_key
+    exclusive_bucket_access_role_name      = module.tool_testing_exclusive_resource_policy[0].exclusive_bucket_access_role_name
+    exclusive_bucket_access_role_arn       = module.tool_testing_exclusive_resource_policy[0].exclusive_bucket_access_role_arn
+    exclusive_sensitive_bucket_name        = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_name
+    exclusive_sensitive_bucket_arn         = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_arn
+    exclusive_sensitive_bucket_domain_name = module.tool_testing_exclusive_resource_policy[0].exclusive_sensitive_bucket_domain_name
+    attack_path                            = module.tool_testing_exclusive_resource_policy[0].attack_path
   } : null
   sensitive = true
 }

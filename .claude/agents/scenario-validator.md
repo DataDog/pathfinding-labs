@@ -222,6 +222,9 @@ Compare script variables to Terraform outputs:
 - No verification of initial lack of permissions
 - Missing error handling
 
+#### Validate permisisons used in demo script
+For any command used in the demo script, make sure that the princpial executing that command has those permissions in terraform. If the permission is missing, add it to the helpful permissions statement. 
+
 ### 4. Cleanup Script Validation
 
 #### Check File Existence and Permissions
