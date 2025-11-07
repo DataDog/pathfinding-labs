@@ -1,43 +1,58 @@
-# One-Hop Privilege Escalation: iam:CreateLoginProfile
+# Privilege Escalation via iam:CreateLoginProfile
 
-**Scenario Type:** One-Hop
-**Target:** Admin Access
-**Technique:** Console credential creation for admin user via iam:CreateLoginProfile
+**Category:** Privilege Escalation
+**Sub-Category:** credential-access
+**Path Type:** one-hop
+**Target:** to-admin
+**Environments:** prod
+**Pathfinding.cloud ID:** iam-004
+**Technique:** Creating console password for admin user to gain console access
 
 ## Overview
 
-This scenario demonstrates a privilege escalation vulnerability where a role has permission to create login profiles for an administrator user. The attacker can assume a role with `iam:CreateLoginProfile` permission on an admin user, create a new console password for that user, and then use those credentials to gain administrator access through the AWS Management Console.
+This scenario demonstrates a privilege escalation vulnerability where a role has permission to create login profiles (console passwords) for an administrator user. An attacker can assume a role with `iam:CreateLoginProfile` permission on an admin user who lacks a console password, create a login profile with a password they control, and then use those credentials to access the AWS Management Console with full administrator privileges.
+
+This attack vector is particularly dangerous because many organizations focus on protecting API access keys while overlooking console access. Admin users created for programmatic access often have the `AdministratorAccess` policy but no login profile, making them ideal targets for this technique. Once a login profile is created, the attacker gains interactive console access, which can bypass monitoring systems focused on API-based actions and provides a user-friendly interface for lateral movement and data exfiltration.
+
+The vulnerability commonly occurs when organizations grant broad IAM management permissions without restricting them to specific operations, or when least privilege principles are not applied to credential management permissions.
 
 ## Understanding the attack scenario
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-clp-clifford`
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-clp-admin`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-clp-to-admin-starting-user` (Scenario-specific starting user)
+- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-clp-to-admin-starting-role` (Vulnerable role with CreateLoginProfile permission)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-clp-to-admin-target-user` (Target admin user)
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-clp-clifford] -->|iam:CreateLoginProfile| B[pl-clp-admin]
-    B -->|Administrator Access| C[Effective Administrator]
+    A[pl-prod-clp-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-clp-to-admin-starting-role]
+    B -->|iam:CreateLoginProfile| C[pl-prod-clp-to-admin-target-user]
+    C -->|Console Login| D[Administrator Console Access]
+
+    style A fill:#ff9999,stroke:#333,stroke-width:2px
+    style B fill:#ffcc99,stroke:#333,stroke-width:2px
+    style C fill:#ffcc99,stroke:#333,stroke-width:2px
+    style D fill:#99ff99,stroke:#333,stroke-width:2px
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-clp-clifford` to begin the scenario
-2. **Create Login Profile**: `pl-clp-clifford` uses `iam:CreateLoginProfile` to create a console password for the admin user `pl-clp-admin`
-3. **Console Login**: Use the AWS Management Console with the newly created password to login as `pl-clp-admin`
-4. **Verification**: Verify administrator access through both console and API
+1. **Initial Access**: Start as `pl-prod-clp-to-admin-starting-user` (credentials provided via Terraform outputs)
+2. **Assume Role**: Assume the vulnerable role `pl-prod-clp-to-admin-starting-role`
+3. **Create Login Profile**: Use `iam:CreateLoginProfile` to set a console password for the admin user `pl-prod-clp-to-admin-target-user`
+4. **Console Login**: Access the AWS Management Console using the target user's username and newly created password
+5. **Verification**: Verify administrator access through the console or by testing admin permissions
 
 ### Scenario specific resources created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-clp-clifford` | Starting principal |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-createloginprofile-policy` | Allows `iam:CreateLoginProfile` on `pl-clp-admin` only |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-clp-admin` | Destination principal |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-clp-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-clp-to-admin-starting-role` | Vulnerable role with CreateLoginProfile permission on admin user |
+| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-clp-to-admin-target-user` | Target admin user with AdministratorAccess policy but no initial login profile |
 
 ## Executing the attack
 
@@ -53,10 +68,8 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createloginprof
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Create a console password with a unique random suffix
-4. Display console login URL and credentials
-5. Verify successful privilege escalation via API access
-6. Output standardized test results for automation
+3. Verify successful privilege escalation
+4. Output standardized test results for automation
 
 ### Cleaning up the attack artifacts
 
@@ -71,17 +84,17 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createloginprof
 
 ### MITRE ATT&CK Mapping
 
-- **Tactic**: Privilege Escalation, Persistence
+- **Tactic**: TA0004 - Privilege Escalation, TA0003 - Persistence
 - **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: Creating console login credentials for privileged accounts
+- **Sub-technique**: Creating console credentials for privileged accounts
 
 ## Prevention recommendations
 
-- Avoid granting `iam:CreateLoginProfile` permissions on privileged users
-- Use resource-based conditions to restrict which users can have login profiles created
-- Implement SCPs to prevent login profile creation on admin users
-- Monitor CloudTrail for `CreateLoginProfile` API calls on privileged accounts
-- Enable MFA requirements immediately upon login profile creation
-- Use IAM Access Analyzer to identify privilege escalation paths
-- Prefer role-based access over user-based access for administrative functions
-- Regularly audit IAM users for unexpected login profiles
+- Avoid granting `iam:CreateLoginProfile` permissions on privileged users - use resource-based conditions to restrict which users can have login profiles created
+- Implement Service Control Policies (SCPs) to prevent login profile creation on admin users across the organization
+- Monitor CloudTrail for `CreateLoginProfile` API calls, especially on privileged accounts, and alert on suspicious activity
+- Enforce MFA requirements for console access using IAM policies with `aws:MultiFactorAuthPresent` conditions
+- Use IAM Access Analyzer to identify and remediate privilege escalation paths involving credential manipulation
+- Regularly audit users with `AdministratorAccess` or other privileged policies to ensure login profiles exist only where necessary
+- Implement conditional policies that require console access to originate from trusted IP ranges or networks
+- Configure AWS Organizations to centrally manage console access policies and prevent unauthorized credential creation

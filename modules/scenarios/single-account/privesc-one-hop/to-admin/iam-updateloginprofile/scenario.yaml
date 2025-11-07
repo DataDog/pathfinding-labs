@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-updateloginprofile"
 description: "User with iam:UpdateLoginProfile can reset password for admin user to gain console access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-006"
 
 # =============================================================================
 # CLASSIFICATION
@@ -21,8 +22,8 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-ulp-starting-user"
-    - "arn:aws:iam::{account_id}:user/pl-ulp-admin"
+    - "arn:aws:iam::{account_id}:user/pl-prod-ulp-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-ulp-to-admin-target-user"
 
   summary: "starting_user → (iam:UpdateLoginProfile) → reset admin password → console login with admin access"
 
@@ -32,7 +33,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:UpdateLoginProfile"
-      resource: "arn:aws:iam::*:user/pl-ulp-admin"
+      resource: "arn:aws:iam::*:user/pl-prod-ulp-to-admin-target-user"
 
   helpful:
     - permission: "iam:ListUsers"

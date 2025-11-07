@@ -12,20 +12,20 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-cleanup-prod"
 LAMBDA_FUNCTION_NAME="pl-plcflif-credential-extractor"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}IAM PassRole + Lambda CreateFunction + InvokeFunction Demo Cleanup${NC}"
+echo -e "${GREEN}Cleanup: PassRole + Lambda CreateFunction + InvokeFunction${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 0: Get admin credentials from Terraform
+# Step 1: Get admin credentials and region from Terraform
 echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
-cd ../../../../../..  # Go to project root
+cd ../../../../../..  # Navigate to root of terraform project
 
 # Get admin cleanup user credentials from root terraform output
 ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
 ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
@@ -33,38 +33,35 @@ if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
-# Set admin credentials
-export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
-unset AWS_SESSION_TOKEN
-
-echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
-
-# Get region from Terraform
-CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
-
 if [ -z "$CURRENT_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
     CURRENT_REGION="us-east-1"
 fi
 
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_REGION="$CURRENT_REGION"
+unset AWS_SESSION_TOKEN
+
 echo "Region from Terraform: $CURRENT_REGION"
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+# Navigate back to scenario directory
+cd - > /dev/null
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
-
-cd - > /dev/null  # Return to scenario directory
 echo ""
 
-# Step 1: Delete the Lambda function
-echo -e "${YELLOW}Step 1: Deleting Lambda function${NC}"
+# Step 2: Delete the Lambda function
+echo -e "${YELLOW}Step 2: Deleting Lambda function${NC}"
 echo "Function name: $LAMBDA_FUNCTION_NAME"
 echo "Region: $CURRENT_REGION"
 
 # Check if the function exists
 if aws lambda get-function \
-     \
     --region $CURRENT_REGION \
     --function-name $LAMBDA_FUNCTION_NAME &> /dev/null; then
 
@@ -72,7 +69,6 @@ if aws lambda get-function \
 
     # Delete the function
     aws lambda delete-function \
-         \
         --region $CURRENT_REGION \
         --function-name $LAMBDA_FUNCTION_NAME
 
@@ -82,26 +78,31 @@ else
 fi
 echo ""
 
-# Step 2: Clean up local temporary files
-echo -e "${YELLOW}Step 2: Cleaning up local temporary files${NC}"
+# Step 3: Clean up local temporary files
+echo -e "${YELLOW}Step 3: Cleaning up local temporary files${NC}"
 LOCAL_FILES=("/tmp/lambda_function.py" "/tmp/lambda_function.zip" "/tmp/response.json")
 
+FILES_DELETED=false
 for FILE in "${LOCAL_FILES[@]}"; do
     if [ -f "$FILE" ]; then
         rm -f "$FILE"
         echo "Removed: $FILE"
+        FILES_DELETED=true
     fi
 done
+
+if [ "$FILES_DELETED" = false ]; then
+    echo "No local temporary files found"
+fi
 
 echo -e "${GREEN}✓ Cleaned up local files${NC}"
 echo ""
 
-# Step 3: Verify cleanup
-echo -e "${YELLOW}Step 3: Verifying cleanup${NC}"
+# Step 4: Verify cleanup
+echo -e "${YELLOW}Step 4: Verifying cleanup${NC}"
 
 # Check that the Lambda function no longer exists
 if aws lambda get-function \
-     \
     --region $CURRENT_REGION \
     --function-name $LAMBDA_FUNCTION_NAME &> /dev/null; then
     echo -e "${YELLOW}⚠ Warning: Lambda function $LAMBDA_FUNCTION_NAME still exists${NC}"

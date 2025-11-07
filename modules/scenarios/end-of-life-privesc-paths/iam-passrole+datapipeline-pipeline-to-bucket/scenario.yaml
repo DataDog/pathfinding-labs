@@ -1,0 +1,57 @@
+schema_version: "1.2.0"
+name: "iam-passrole+datapipeline-pipeline"
+description: "User with iam:PassRole and datapipeline permissions can create a pipeline that exfiltrates S3 data using read-only role, bypassing IAM via overly permissive bucket resource policy"
+cost_estimate: "$0.01/hour"
+pathfinding-cloud-id: "datapipeline-001"
+
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-bucket-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-bucket-pipeline-role"
+    - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+    - "arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}"
+    - "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}"
+
+  summary: "starting_user → (datapipeline:CreatePipeline + PutPipelineDefinition + ActivatePipeline) → EC2 with S3 read-only role → (aws s3 cp from sensitive bucket to exfil bucket) → resource policy allows write → starting_user reads exfiltrated data → bucket access"
+
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-bucket-pipeline-role"
+    - permission: "datapipeline:CreatePipeline"
+      resource: "*"
+    - permission: "datapipeline:PutPipelineDefinition"
+      resource: "*"
+    - permission: "datapipeline:ActivatePipeline"
+      resource: "*"
+    - permission: "s3:GetObject"
+      resource: "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}/*"
+
+  helpful:
+    - permission: "datapipeline:DescribePipelines"
+      purpose: "View pipeline status and configuration"
+    - permission: "datapipeline:GetPipelineDefinition"
+      purpose: "Retrieve pipeline definition for verification"
+    - permission: "s3:ListBucket"
+      purpose: "List objects in buckets for verification"
+
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+    - "TA0010 - Exfiltration"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+    - "T1530 - Data from Cloud Storage Object"
+
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-passrole+datapipeline-pipeline"

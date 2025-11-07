@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-createpolicyversion"
 description: "Role with iam:CreatePolicyVersion can create a new version of its attached managed policy with admin permissions"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-001"
 
 # =============================================================================
 # CLASSIFICATION

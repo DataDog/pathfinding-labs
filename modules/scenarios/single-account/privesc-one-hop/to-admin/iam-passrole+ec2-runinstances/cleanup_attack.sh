@@ -12,9 +12,9 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROFILE="pl-admin-cleanup-prod"
-ADMIN_ROLE="pl-prod-one-hop-prec-admin-role"
-DEMO_INSTANCE_TAG="pl-prec-demo-instance"
+STARTING_USER="pl-prod-prec-to-admin-starting-user"
+ADMIN_ROLE="pl-prod-prec-to-admin-target-role"
+DEMO_INSTANCE_TAG="pl-prec-to-admin-demo-instance"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + EC2 RunInstances Demo Cleanup${NC}"
@@ -114,43 +114,33 @@ else
 fi
 echo ""
 
-# Step 2: Restore admin role trust policy
-echo -e "${YELLOW}Step 2: Restoring admin role trust policy${NC}"
-echo "Resetting trust policy to only allow EC2 service..."
+# Step 2: Detach AdministratorAccess policy from starting user
+echo -e "${YELLOW}Step 2: Detaching AdministratorAccess policy from starting user${NC}"
+echo "Removing AdministratorAccess policy from: $STARTING_USER"
 
-# Create the original trust policy (only EC2 service)
-TRUST_POLICY='{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}'
+# Check if the policy is attached
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`].PolicyName' --output text 2>/dev/null || echo "")
 
-# Update the trust policy
-aws iam update-assume-role-policy \
-     \
-    --role-name $ADMIN_ROLE \
-    --policy-document "$TRUST_POLICY"
-
-echo -e "${GREEN}✓ Restored admin role trust policy${NC}"
+if [ "$ATTACHED_POLICIES" == "AdministratorAccess" ]; then
+    aws iam detach-user-policy \
+        --user-name $STARTING_USER \
+        --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+    echo -e "${GREEN}✓ Detached AdministratorAccess policy${NC}"
+else
+    echo -e "${YELLOW}AdministratorAccess policy not attached (may already be detached)${NC}"
+fi
 echo ""
 
 # Step 3: Verify cleanup
 echo -e "${YELLOW}Step 3: Verifying cleanup${NC}"
 
-# Check trust policy
-CURRENT_TRUST=$(aws iam get-role  --role-name $ADMIN_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
+# Check if AdministratorAccess is still attached
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`].PolicyName' --output text 2>/dev/null || echo "")
 
-if echo "$CURRENT_TRUST" | grep -q "ec2.amazonaws.com"; then
-    echo -e "${GREEN}✓ Trust policy verified - contains ec2.amazonaws.com${NC}"
+if [ -z "$ATTACHED_POLICIES" ]; then
+    echo -e "${GREEN}✓ AdministratorAccess policy successfully removed${NC}"
 else
-    echo -e "${RED}⚠ Warning: Trust policy may not be correct${NC}"
+    echo -e "${RED}⚠ Warning: AdministratorAccess policy may still be attached${NC}"
 fi
 
 # Check that no demo instances are running
@@ -173,7 +163,7 @@ echo -e "${GREEN}✅ CLEANUP COMPLETE${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
 echo "- Terminated all demo EC2 instances"
-echo "- Restored admin role trust policy"
+echo "- Detached AdministratorAccess policy from starting user"
 echo ""
 echo -e "${GREEN}The environment has been restored to its original state.${NC}"
 echo -e "${YELLOW}The infrastructure (users and roles) remains deployed${NC}"

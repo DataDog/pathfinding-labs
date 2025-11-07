@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-putuserpolicy"
 description: "User with iam:PutUserPolicy on itself can add inline admin policy to escalate privileges"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-007"
 
 # =============================================================================
 # CLASSIFICATION

@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-attachrolepolicy"
 description: "Role with iam:AttachRolePolicy on itself can attach managed admin policy to escalate privileges"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-009"
 
 # =============================================================================
 # CLASSIFICATION

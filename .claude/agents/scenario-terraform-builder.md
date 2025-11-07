@@ -30,7 +30,8 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
-- **permissions.required**: Required IAM permissions for the attack
+- **permissions.required**: Required IAM permissions for the attack in a statement called requiredPermissions
+- **permissions.helpful**: Add helpful additional permissions as a statement called helpfulAdditionalPermissions
 - **terraform.module_path**: Where to create the Terraform files
 - **name**: Scenario name
 

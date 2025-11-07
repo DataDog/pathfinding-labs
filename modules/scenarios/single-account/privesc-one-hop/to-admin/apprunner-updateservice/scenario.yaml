@@ -1,0 +1,65 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "apprunner-updateservice"
+description: "User with apprunner:UpdateService can exploit existing App Runner service with privileged role by updating the image and StartCommand to grant themselves admin access"
+cost_estimate: "$5/month"
+pathfinding-cloud-id: "apprunner-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "access-resource"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-aus-to-admin-starting-user"
+    - "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-aus-to-admin-target-service"
+    - "arn:aws:iam::{account_id}:role/pl-prod-aus-to-admin-target-role"
+
+  summary: "starting_user → (apprunner:UpdateService) → existing App Runner service → updates image to aws-cli and StartCommand → executes with admin role → grants admin to starting_user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "apprunner:UpdateService"
+      resource: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-aus-to-admin-target-service/*"
+
+  helpful:
+    - permission: "apprunner:DescribeService"
+      purpose: "View service configuration and role attached"
+
+    - permission: "apprunner:ListServices"
+      purpose: "Discover existing App Runner services to exploit"
+
+    - permission: "iam:ListUsers"
+      purpose: "Verify admin access after escalation"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1651 - Cloud Administration Command"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_apprunner_updateservice"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-updateservice"

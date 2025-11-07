@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-createloginprofile"
 description: "User with iam:CreateLoginProfile can set password for admin user to gain console access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-004"
 
 # =============================================================================
 # CLASSIFICATION
@@ -21,10 +22,11 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-clp-starting-user"
-    - "arn:aws:iam::{account_id}:user/pl-clp-admin"
+    - "arn:aws:iam::{account_id}:user/pl-prod-clp-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-clp-to-admin-starting-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-clp-to-admin-target-user"
 
-  summary: "starting_user → (iam:CreateLoginProfile) → set password for admin_user → console login with admin access"
+  summary: "starting_user → (AssumeRole) → starting_role → (iam:CreateLoginProfile) → set password for admin_user → console login with admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -32,7 +34,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:CreateLoginProfile"
-      resource: "arn:aws:iam::*:user/pl-clp-admin"
+      resource: "arn:aws:iam::*:user/pl-prod-clp-to-admin-target-user"
 
   helpful:
     - permission: "iam:ListUsers"

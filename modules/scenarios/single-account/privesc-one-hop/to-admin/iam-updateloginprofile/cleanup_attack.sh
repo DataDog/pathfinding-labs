@@ -18,21 +18,27 @@ NC='\033[0m' # No Color
 ADMIN_USER="pl-prod-ulp-to-admin-target-user"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}IAM UpdateLoginProfile Demo Cleanup${NC}"
+echo -e "${GREEN}Cleanup: IAM UpdateLoginProfile Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get admin credentials from Terraform output
+# Step 1: Get admin credentials and region from Terraform
 echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
-cd ../../../../../..  # Go to project root
+cd ../../../../../..  # Navigate to root of terraform project
 
 # Get admin cleanup user credentials from root terraform output
 ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
 ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
     echo "Make sure the admin cleanup user is deployed"
     exit 1
+fi
+
+if [ -z "$CURRENT_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    CURRENT_REGION="us-east-1"
 fi
 
 # Get the original password from terraform output
@@ -50,16 +56,23 @@ fi
 # Set admin credentials
 export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_REGION="$CURRENT_REGION"
 unset AWS_SESSION_TOKEN
 
+echo "Region from Terraform: $CURRENT_REGION"
 echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
-cd - > /dev/null  # Return to scenario directory
+# Navigate back to scenario directory
+cd - > /dev/null
 
 # Step 2: Verify admin identity
 echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"
 ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ADMIN_IDENTITY"
+
+# Get account ID
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Verified admin identity${NC}\n"
 
 # Step 3: Restore original password
@@ -70,6 +83,8 @@ if [ -z "$ORIGINAL_PASSWORD" ] || [ "$ORIGINAL_PASSWORD" == "null" ]; then
     echo -e "${YELLOW}You may need to manually reset the password or redeploy the scenario${NC}"
     exit 1
 fi
+
+echo "Restoring password to Terraform-managed value..."
 
 aws iam update-login-profile \
     --user-name $ADMIN_USER \
@@ -86,14 +101,18 @@ if [ -f "$SAVED_PASSWORD_FILE" ]; then
     rm -f "$SAVED_PASSWORD_FILE"
     echo -e "${GREEN}✓ Deleted $SAVED_PASSWORD_FILE${NC}"
 else
-    echo -e "${YELLOW}No saved password file found${NC}"
+    echo -e "${YELLOW}No saved password file found (may already be deleted)${NC}"
 fi
 
 echo ""
 
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CLEANUP COMPLETE${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cleanup Complete${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}The original password has been restored${NC}"
-echo -e "${YELLOW}The infrastructure (users, roles) remains deployed${NC}"
+echo -e "\n${YELLOW}Summary:${NC}"
+echo "- Restored original password for $ADMIN_USER"
+echo "- Removed temporary files"
+echo ""
+echo -e "${GREEN}The environment has been restored to its original state.${NC}"
+echo -e "${YELLOW}The infrastructure (users and roles) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"

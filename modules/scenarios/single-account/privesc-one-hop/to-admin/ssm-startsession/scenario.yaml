@@ -1,0 +1,65 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "ssm-startsession"
+description: "Principal with ssm:StartSession can remotely access EC2 instance with admin role to exfiltrate credentials via IMDS"
+cost_estimate: "$5/month"
+pathfinding-cloud-id: "ssm-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "access-resource"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sss-to-admin-starting-user"
+    - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sss-to-admin-ec2-role"
+
+  summary: "starting_user → (ssm:StartSession) → EC2 instance → (curl IMDS) → EC2 instance role credentials → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "ssm:StartSession"
+      resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id} and arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell"
+
+  helpful:
+    - permission: "ec2:DescribeInstances"
+      purpose: "Discover target EC2 instances"
+
+    - permission: "ssm:DescribeInstanceInformation"
+      purpose: "Identify SSM-enabled instances"
+
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify credentials after exfiltration"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ssm_startsession"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-startsession"

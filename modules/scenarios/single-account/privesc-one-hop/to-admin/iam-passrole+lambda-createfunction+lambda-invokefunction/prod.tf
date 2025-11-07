@@ -1,3 +1,12 @@
+# PassRole + Lambda CreateFunction + InvokeFunction privilege escalation scenario
+#
+# This scenario demonstrates how a user with iam:PassRole, lambda:CreateFunction,
+# and lambda:InvokeFunction can escalate to admin by creating a Lambda function
+# with an admin execution role and invoking it to extract temporary credentials.
+
+# Resource naming convention: pl-prod-plcflif-to-admin-{resource-type}
+# plcflif = PassRole + Lambda CreateFunction + Lambda InvokeFunction
+
 terraform {
   required_providers {
     aws = {
@@ -8,13 +17,13 @@ terraform {
   }
 }
 
-# Scenario-specific starting user
+# Scenario-specific starting user with privilege escalation permissions
 resource "aws_iam_user" "starting_user" {
   provider = aws.prod
-  name     = "pl-prod-one-hop-plcflif-starting-user"
+  name     = "pl-prod-plcflif-to-admin-starting-user"
 
   tags = {
-    Name        = "pl-prod-one-hop-plcflif-starting-user"
+    Name        = "pl-prod-plcflif-to-admin-starting-user"
     Environment = var.environment
     Scenario    = "iam-passrole+lambda-createfunction+lambda-invokefunction"
     Purpose     = "starting-user"
@@ -27,38 +36,11 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Minimal policy for the starting user (just enough to assume the role)
-resource "aws_iam_user_policy" "starting_user_policy" {
-  provider = aws.prod
-  name     = "pl-prod-one-hop-plcflif-starting-user-policy"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:AssumeRole"
-        ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-one-hop-plcflif-role"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
 # Admin role (target of privilege escalation)
-# Trusts lambda.amazonaws.com so it can be passed to Lambda functions
-resource "aws_iam_role" "admin_role" {
+# This role trusts lambda.amazonaws.com so it can be passed to Lambda functions
+resource "aws_iam_role" "target_role" {
   provider = aws.prod
-  name     = "pl-prod-one-hop-plcflif-admin-role"
+  name     = "pl-prod-plcflif-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -74,51 +56,25 @@ resource "aws_iam_role" "admin_role" {
   })
 
   tags = {
-    Name        = "pl-prod-one-hop-plcflif-admin-role"
+    Name        = "pl-prod-plcflif-to-admin-target-role"
     Environment = var.environment
     Scenario    = "iam-passrole+lambda-createfunction+lambda-invokefunction"
     Purpose     = "admin-target"
   }
 }
 
-# Attach administrator access to the admin role
-resource "aws_iam_role_policy_attachment" "admin_access" {
+# Attach administrator access to the target role
+resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   provider   = aws.prod
-  role       = aws_iam_role.admin_role.name
+  role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# Role that can PassRole and manage Lambda functions (privilege escalation vector)
-resource "aws_iam_role" "privesc_role" {
+# Policy attached directly to the starting user granting privilege escalation permissions
+resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-one-hop-plcflif-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          AWS = aws_iam_user.starting_user.arn
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "pl-prod-one-hop-plcflif-role"
-    Environment = var.environment
-    Scenario    = "iam-passrole+lambda-createfunction+lambda-invokefunction"
-    Purpose     = "vulnerable-role"
-  }
-}
-
-# Policy that allows PassRole on the admin role and Lambda operations
-resource "aws_iam_policy" "privesc_policy" {
-  provider    = aws.prod
-  name        = "pl-prod-one-hop-passrole-lambda-policy"
-  description = "Allows PassRole on admin role and creating/invoking Lambda functions"
+  name     = "pl-prod-plcflif-to-admin-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -128,7 +84,7 @@ resource "aws_iam_policy" "privesc_policy" {
         Action = [
           "iam:PassRole"
         ]
-        Resource = aws_iam_role.admin_role.arn
+        Resource = aws_iam_role.target_role.arn
         Condition = {
           StringEquals = {
             "iam:PassedToService" = "lambda.amazonaws.com"
@@ -139,25 +95,21 @@ resource "aws_iam_policy" "privesc_policy" {
         Effect = "Allow"
         Action = [
           "lambda:CreateFunction",
-          "lambda:InvokeFunction",
+          "lambda:InvokeFunction"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity",
+          "iam:GetRole",
+          "iam:ListRoles",
           "lambda:GetFunction",
-          "iam:GetRole"
+          "lambda:DeleteFunction"
         ]
         Resource = "*"
       }
     ]
   })
-
-  tags = {
-    Name        = "pl-prod-one-hop-passrole-lambda-policy"
-    Environment = var.environment
-    Scenario    = "iam-passrole+lambda-createfunction+lambda-invokefunction"
-  }
-}
-
-# Attach the policy to the privilege escalation role
-resource "aws_iam_role_policy_attachment" "privesc_policy_attachment" {
-  provider   = aws.prod
-  role       = aws_iam_role.privesc_role.name
-  policy_arn = aws_iam_policy.privesc_policy.arn
 }

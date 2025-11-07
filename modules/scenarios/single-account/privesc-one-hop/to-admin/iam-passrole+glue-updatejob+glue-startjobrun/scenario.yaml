@@ -1,0 +1,272 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+glue-updatejob+glue-startjobrun"
+pathfinding-cloud-id: "glue-005"
+description: "User with iam:PassRole, glue:UpdateJob, and glue:StartJobRun can update existing Glue Job to use privileged role and malicious script, then execute it to grant admin access"
+cost_estimate: "$0.10/month"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-guj-sjr-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-guj-sjr-to-admin-target-role"
+
+  summary: "starting_user → (glue:UpdateJob) → Update existing job to use admin role and malicious script → (glue:StartJobRun) → Job attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::{account_id}:role/pl-prod-guj-sjr-to-admin-target-role"
+      purpose: "Pass the admin role to the Glue job during update"
+
+    - permission: "glue:UpdateJob"
+      resource: "*"
+      purpose: "Update existing Glue job to use admin role and malicious script"
+
+    - permission: "glue:StartJobRun"
+      resource: "*"
+      purpose: "Execute the updated Glue job with admin privileges"
+
+  helpful:
+    - permission: "glue:GetJob"
+      purpose: "Retrieve job details and verify configuration"
+
+    - permission: "glue:GetJobRun"
+      purpose: "Get details about a specific job run"
+
+    - permission: "glue:GetJobRuns"
+      purpose: "List job runs to monitor execution status"
+
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify current identity and account ID"
+
+    - permission: "iam:ListUsers"
+      purpose: "Verify admin access after privilege escalation"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1565.001 - Data Manipulation: Stored Data Manipulation"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun"
+  module_name: "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-updatejob+glue-startjobrun"
+
+  resources:
+    users:
+      - name: "pl-prod-guj-sjr-to-admin-starting-user"
+        purpose: "Starting user with permissions to update and run Glue jobs"
+        has_access_keys: true
+
+    roles:
+      - name: "pl-prod-guj-sjr-to-admin-initial-role"
+        purpose: "Initial non-privileged role that the job starts with"
+        trusted_by: ["glue.amazonaws.com"]
+        policies:
+          - "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+
+      - name: "pl-prod-guj-sjr-to-admin-target-role"
+        purpose: "Admin role that will be passed during job update"
+        trusted_by: ["glue.amazonaws.com"]
+        policies:
+          - "arn:aws:iam::aws:policy/AdministratorAccess"
+          - "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+
+    s3_buckets:
+      - name: "pl-glue-scripts-guj-sjr-{account_id}-{random_suffix}"
+        purpose: "Store benign and malicious Python scripts"
+        public_access_blocked: true
+        objects:
+          - key: "benign_script.py"
+            content: "print('Benign job execution complete')"
+          - key: "escalation_script.py"
+            content: "Python script that attaches AdministratorAccess to starting user"
+
+    glue_jobs:
+      - name: "pl-guj-sjr-to-admin-job"
+        purpose: "Pre-created Glue job that will be updated during attack"
+        role: "pl-prod-guj-sjr-to-admin-initial-role"
+        script_location: "s3://pl-glue-scripts-guj-sjr-{account_id}-{random_suffix}/benign_script.py"
+        command_name: "pythonshell"
+        python_version: "3.9"
+        max_capacity: 0.0625
+        timeout: 5
+
+# =============================================================================
+# DEMO SCRIPT
+# =============================================================================
+demo_script:
+  steps:
+    - step: 1
+      description: "Retrieve scenario configuration from Terraform"
+      actions:
+        - "Navigate to project root"
+        - "Get grouped module output from terraform"
+        - "Extract credentials and region"
+
+    - step: 2
+      description: "Configure AWS CLI with starting user credentials"
+      actions:
+        - "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION"
+        - "Unset AWS_SESSION_TOKEN"
+        - "Verify identity with get-caller-identity"
+
+    - step: 3
+      description: "Get account ID"
+      actions:
+        - "aws sts get-caller-identity"
+
+    - step: 4
+      description: "Verify lack of admin permissions"
+      actions:
+        - "Attempt to list IAM users (should fail)"
+
+    - step: 5
+      description: "Retrieve pre-uploaded script locations from Terraform"
+      actions:
+        - "Get benign script S3 path"
+        - "Get malicious script S3 path"
+        - "Display attacker bucket simulation note"
+
+    - step: 6
+      description: "Get pre-created job name from Terraform"
+      actions:
+        - "Retrieve job name from terraform output"
+
+    - step: 7
+      description: "Show current job configuration"
+      actions:
+        - "aws glue get-job to display current role and script"
+
+    - step: 8
+      description: "Update Glue job with admin role and malicious script"
+      actions:
+        - "aws glue update-job with target admin role and escalation script"
+        - "Pass admin role using iam:PassRole"
+
+    - step: 9
+      description: "Start the updated Glue job run"
+      actions:
+        - "aws glue start-job-run"
+        - "Capture job run ID"
+
+    - step: 10
+      description: "Wait for Glue job to complete"
+      actions:
+        - "Poll job status every 5 seconds with aws glue get-job-run"
+        - "Show clean one-line status updates with elapsed time"
+        - "Handle SUCCEEDED, FAILED, STOPPED, ERROR states"
+        - "Timeout after 300 seconds (5 minutes)"
+
+    - step: 11
+      description: "Wait for IAM policy to propagate"
+      actions:
+        - "Sleep 15 seconds for policy propagation"
+
+    - step: 12
+      description: "Verify administrator access"
+      actions:
+        - "aws iam list-users to confirm admin access"
+
+# =============================================================================
+# CLEANUP SCRIPT
+# =============================================================================
+cleanup_script:
+  uses_admin_credentials: true
+  steps:
+    - step: 1
+      description: "Get admin cleanup credentials from Terraform"
+      actions:
+        - "Retrieve prod_admin_user_for_cleanup credentials"
+        - "Set AWS credentials with admin keys"
+
+    - step: 2
+      description: "Restore Glue job to original configuration"
+      actions:
+        - "aws glue update-job to restore initial role and benign script"
+
+    - step: 3
+      description: "Detach AdministratorAccess from starting user"
+      actions:
+        - "Check if AdministratorAccess is attached"
+        - "aws iam detach-user-policy if attached"
+
+    - step: 4
+      description: "Verify cleanup"
+      actions:
+        - "Verify job is restored to original configuration"
+        - "Verify AdministratorAccess is detached"
+
+# =============================================================================
+# DETECTION
+# =============================================================================
+detection:
+  cloudtrail_events:
+    - event: "UpdateJob"
+      suspicious_indicators:
+        - "Role parameter changed to highly privileged role"
+        - "Script location changed to external or suspicious S3 bucket"
+        - "Job updated by non-standard user"
+
+    - event: "StartJobRun"
+      suspicious_indicators:
+        - "Job run started immediately after UpdateJob"
+        - "Job executed by user without typical Glue usage patterns"
+
+    - event: "AttachUserPolicy"
+      suspicious_indicators:
+        - "AdministratorAccess attached during Glue job execution"
+        - "Policy attached by Glue service role"
+        - "User received elevated permissions unexpectedly"
+
+  cspm_rules:
+    - rule: "IAM user can modify Glue jobs and pass privileged roles"
+      severity: "HIGH"
+      description: "User has both glue:UpdateJob and iam:PassRole on admin roles"
+
+    - rule: "Glue job role changed to administrative role"
+      severity: "CRITICAL"
+      description: "Glue job updated to use role with AdministratorAccess"
+
+    - rule: "Privilege escalation path via Glue UpdateJob"
+      severity: "CRITICAL"
+      description: "User can update jobs, pass roles, and execute jobs"
+
+# =============================================================================
+# REFERENCES
+# =============================================================================
+references:
+  - title: "AWS Glue UpdateJob API"
+    url: "https://docs.aws.amazon.com/glue/latest/webapi/API_UpdateJob.html"
+
+  - title: "IAM PassRole Permission"
+    url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html"
+
+  - title: "Rhino Security Labs - AWS IAM Privilege Escalation"
+    url: "https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/"

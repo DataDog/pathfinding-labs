@@ -1,0 +1,71 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+apprunner-createservice"
+description: "User with apprunner:CreateService and iam:PassRole can create an App Runner service with a privileged role, using StartCommand override to grant themselves admin access"
+cost_estimate: "free"
+pathfinding-cloud-id: "apprunner-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-arcs-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-arcs-to-admin-target-role"
+
+  summary: "starting_user → (apprunner:CreateService + iam:PassRole) → App Runner service with target_role → StartCommand override executes with admin role → grants admin to starting_user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "apprunner:CreateService"
+      resource: "*"
+
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-arcs-to-admin-target-role"
+
+    - permission: "iam:CreateServiceLinkedRole"
+      resource: "arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
+      note: "Required only for the first App Runner service in the account"
+
+  helpful:
+    - permission: "apprunner:ListServices"
+      purpose: "List App Runner services to verify service creation"
+
+    - permission: "apprunner:DescribeService"
+      purpose: "Check service status and configuration"
+
+    - permission: "iam:ListUsers"
+      purpose: "Verify admin access after escalation"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1651 - Cloud Administration Command"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+apprunner-createservice"

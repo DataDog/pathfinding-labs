@@ -56,6 +56,7 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 **Path Type:** {self-escalation|one-hop|multi-hop|cross-account}
 **Target:** {to-admin|to-bucket}
 **Environments:** {prod|dev|operations}
+**Pathfinding.cloud ID:** {path-id} *(optional, only if present in scenario.yaml)*
 **Technique:** {Brief description of the exploit}
 
 ## Overview
@@ -152,6 +153,7 @@ cd modules/scenarios/{path-to-scenario}
 - **Path Type**: "self-escalation", "one-hop", "multi-hop", or "cross-account" from scenario.yaml
 - **Target**: "to-admin" or "to-bucket" from scenario.yaml
 - **Environments**: List environments from scenario.yaml (e.g., "prod" or "dev, prod")
+- **Pathfinding.cloud ID**: Include this line ONLY if `pathfinding-cloud-id` is present in scenario.yaml (e.g., "IAM-005", "IAM-002"). If not present, omit this line entirely.
 - **Technique**: Brief one-line description of the exploit
 
 ### Overview Section

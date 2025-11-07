@@ -9,6 +9,16 @@ terraform {
 }
 
 
+# Service-Linked Role for Auto Scaling (required for ASG scenarios)
+resource "aws_iam_service_linked_role" "autoscaling" {
+  aws_service_name = "autoscaling.amazonaws.com"
+}
+
+# Service-Linked Role for EC2 Spot Instances (required for spot instance scenarios)
+resource "aws_iam_service_linked_role" "spot" {
+  aws_service_name = "spot.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   name = "pl-admin-user-for-cleanup-scripts"

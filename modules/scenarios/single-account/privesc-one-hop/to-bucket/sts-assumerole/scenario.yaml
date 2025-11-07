@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "sts-assumerole"
 description: "User with sts:AssumeRole can directly assume role with S3 bucket access"
 cost_estimate: "free"
+pathfinding-cloud-id: "sts-001"
 
 # =============================================================================
 # CLASSIFICATION

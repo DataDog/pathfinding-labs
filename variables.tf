@@ -130,6 +130,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_ia
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-updateservice"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
   type        = bool
@@ -138,6 +144,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-deleteaccesskey+createaccesskey (Pathfinding.cloud: iam-003)"
   type        = bool
   default     = false
 }
@@ -154,8 +166,38 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile"
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+apprunner-createservice"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → iam-passrole+bedrockagentcore-codeinterpreter (Pathfinding.cloud: bedrock-001)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-runinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-requestspotinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate ($0.01-0.05/hour for spot instances)"
   type        = bool
   default     = false
 }
@@ -180,6 +222,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuild"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
   type        = bool
   default     = false
 }
@@ -214,9 +268,81 @@ variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-startsession"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuild"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-modifyinstanceattribute+stopinstances+startinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-createtrigger ($0.10/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-startjobrun ($0.10/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-startjobrun ($0.10/month) (Pathfinding.cloud: glue-005)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-createtrigger ($0.10/month) (Pathfinding.cloud: glue-006)"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
+
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
 
 variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey"
@@ -226,6 +352,12 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
 
 variable "enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createloginprofile"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-deleteaccesskey+createaccesskey"
   type        = bool
   default     = false
 }
@@ -252,8 +384,26 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
 
+variable "enable_single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
   description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-startsession ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }

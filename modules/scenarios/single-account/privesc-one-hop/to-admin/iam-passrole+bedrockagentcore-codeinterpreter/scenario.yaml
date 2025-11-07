@@ -1,0 +1,73 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+bedrockagentcore-codeinterpreter"
+description: "Principal with iam:PassRole and Bedrock AgentCore permissions can create a code interpreter with a privileged role and extract credentials from the MicroVM Metadata Service"
+cost_estimate: "free"
+pathfinding-cloud-id: "bedrock-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-bci-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-bci-to-admin-target-role"
+
+  summary: "starting_user → (PassRole + CreateCodeInterpreter) → code interpreter with admin role → (StartSession + InvokeCodeInterpreter) → extract credentials from MMDS at 169.254.169.254 → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-bci-to-admin-target-role"
+
+    - permission: "bedrock-agentcore:CreateCodeInterpreter"
+      resource: "*"
+
+    - permission: "bedrock-agentcore:StartCodeInterpreterSession"
+      resource: "*"
+
+    - permission: "bedrock-agentcore:InvokeCodeInterpreter"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles to pass"
+
+    - permission: "iam:GetRole"
+      purpose: "View role trust policies and attached permissions"
+
+    - permission: "bedrock-agentcore:GetCodeInterpreter"
+      purpose: "Verify code interpreter creation and configuration"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+bedrockagentcore-codeinterpreter"

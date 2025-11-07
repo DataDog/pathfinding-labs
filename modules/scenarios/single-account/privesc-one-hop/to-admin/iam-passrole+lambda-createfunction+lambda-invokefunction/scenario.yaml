@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-passrole+lambda-createfunction+lambda-invokefunction"
 description: "User with iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction can escalate by creating Lambda with admin role"
 cost_estimate: "free"
+pathfinding-cloud-id: "lambda-001"
 
 # =============================================================================
 # CLASSIFICATION
@@ -21,8 +22,8 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pcl-starting-user"
-    - "arn:aws:iam::{account_id}:role/pl-pcl-admin-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-plcflif-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-plcflif-to-admin-target-role"
 
   summary: "starting_user → (PassRole + lambda:CreateFunction) → Lambda with admin role → (lambda:InvokeFunction) → extract admin credentials → admin access"
 
@@ -32,7 +33,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-pcl-admin-role"
+      resource: "arn:aws:iam::*:role/pl-prod-plcflif-to-admin-target-role"
 
     - permission: "lambda:CreateFunction"
       resource: "*"

@@ -21,13 +21,14 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateLoginProfile Demo Cleanup${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get admin credentials from Terraform output
+# Step 1: Get admin credentials and region from Terraform
 echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
-cd ../../../../../..  # Go to project root
+cd ../../../../../..  # Navigate to root of terraform project
 
 # Get admin cleanup user credentials from root terraform output
 ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
 ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
 if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
@@ -35,14 +36,22 @@ if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+if [ -z "$CURRENT_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    CURRENT_REGION="us-east-1"
+fi
+
 # Set admin credentials
 export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+export AWS_REGION="$CURRENT_REGION"
 unset AWS_SESSION_TOKEN
 
+echo "Region from Terraform: $CURRENT_REGION"
 echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
-cd - > /dev/null  # Return to scenario directory
+# Navigate back to scenario directory
+cd - > /dev/null
 
 # Step 2: Verify admin identity
 echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"

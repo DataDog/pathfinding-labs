@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-createaccesskey"
 description: "User with iam:CreateAccessKey can create credentials for user with S3 bucket access"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-002"
 
 # =============================================================================
 # CLASSIFICATION

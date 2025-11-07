@@ -1,15 +1,15 @@
 variable "account_id" {
-  description = "The AWS account ID where resources will be created"
+  description = "AWS Account ID"
   type        = string
 }
 
 variable "environment" {
-  description = "Environment name (prod, dev, ops)"
+  description = "Environment name (prod, dev, operations)"
   type        = string
   default     = "prod"
 }
 
 variable "resource_suffix" {
-  description = "Random suffix for globally namespaced resources to prevent conflicts"
+  description = "Random suffix for globally unique resources"
   type        = string
 }

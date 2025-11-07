@@ -1,6 +1,6 @@
 # IAM UpdateLoginProfile privilege escalation to admin scenario
 #
-# This scenario demonstrates how a role with iam:UpdateLoginProfile permission
+# This scenario demonstrates how a user with iam:UpdateLoginProfile permission
 # can escalate to administrative privileges by changing the console password
 # of an existing admin user who already has a login profile.
 
@@ -33,8 +33,8 @@ resource "aws_iam_access_key" "starting_user" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Basic policy for starting user
-resource "aws_iam_user_policy" "starting_user_basic" {
+# Policy that allows updating login profiles for the admin user (privilege escalation vector)
+resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-ulp-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
@@ -43,19 +43,22 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowUpdateLoginProfile"
         Effect = "Allow"
         Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
+          "iam:UpdateLoginProfile"
         ]
-        Resource = "*"
+        Resource = "arn:aws:iam::${var.account_id}:user/pl-prod-ulp-to-admin-target-user"
       },
       {
+        Sid    = "AllowHelpfulActions"
         Effect = "Allow"
-        Action = [
-          "sts:AssumeRole"
+        Action = [          
+          "iam:GetUser",
+          "iam:GetLoginProfile",
+          "iam:ListAttachedUserPolicies"
         ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-ulp-to-admin-starting-role"
+        Resource = "*"
       }
     ]
   })
@@ -96,61 +99,4 @@ resource "aws_iam_user_login_profile" "admin_login_profile" {
       pgp_key
     ]
   }
-}
-
-# Starting role that can update login profiles (privilege escalation vector)
-resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-ulp-to-admin-starting-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          AWS = aws_iam_user.starting_user.arn
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "pl-prod-ulp-to-admin-starting-role"
-    Environment = var.environment
-    Scenario    = "iam-updateloginprofile"
-    Purpose     = "starting-role"
-  }
-}
-
-# Policy that allows updating login profiles for the admin user
-resource "aws_iam_role_policy" "starting_role_policy" {
-  provider = aws.prod
-  name     = "UpdateLoginProfilePermission"
-  role     = aws_iam_role.starting_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowUpdateLoginProfile"
-        Effect = "Allow"
-        Action = [
-          "iam:UpdateLoginProfile",
-          "iam:GetLoginProfile" # To check if login profile exists
-        ]
-        Resource = aws_iam_user.admin_user.arn
-      },
-      {
-        Sid    = "AllowSelfIdentification"
-        Effect = "Allow"
-        Action = [
-          "iam:GetUser",          # To get user details
-          "sts:GetCallerIdentity" # For identity verification
-        ]
-        Resource = "*"
-      }
-    ]
-  })
 }

@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-putgrouppolicy"
 description: "User in a group with iam:PutGroupPolicy can add inline admin policy to their group"
 cost_estimate: "free"
+pathfinding-cloud-id: "iam-011"
 
 # =============================================================================
 # CLASSIFICATION

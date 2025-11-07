@@ -1,10 +1,11 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.2.0"
 name: "iam-passrole+ec2-runinstances"
 description: "User with iam:PassRole and ec2:RunInstances can escalate by launching EC2 with admin instance profile"
 cost_estimate: "free"
+pathfinding-cloud-id: "ec2-001"
 
 # =============================================================================
 # CLASSIFICATION
@@ -21,11 +22,10 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-per-starting-user"
-    - "arn:aws:iam::{account_id}:role/pl-prod-per-starting-role"
-    - "arn:aws:iam::{account_id}:role/pl-EC2Admin"
+    - "arn:aws:iam::{account_id}:user/pl-prod-prec-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-prec-to-admin-target-role"
 
-  summary: "starting_user → (AssumeRole) → starting_role → (PassRole + ec2:RunInstances) → EC2 with admin profile → admin access"
+  summary: "starting_user → (PassRole + ec2:RunInstances) → EC2 with admin profile → (AttachUserPolicy AdministratorAccess) → admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -33,7 +33,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-EC2Admin"
+      resource: "arn:aws:iam::*:role/pl-prod-prec-to-admin-target-role"
 
     - permission: "ec2:RunInstances"
       resource: "*"
