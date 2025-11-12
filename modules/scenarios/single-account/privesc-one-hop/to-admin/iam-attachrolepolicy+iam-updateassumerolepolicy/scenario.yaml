@@ -1,0 +1,67 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-attachrolepolicy+iam-updateassumerolepolicy"
+description: "User with iam:AttachRolePolicy and iam:UpdateAssumeRolePolicy can attach admin policy to a role, update that role's trust policy to allow assumption, then assume the role to gain admin access"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-lateral-movement"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-arpuar-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-arpuar-to-admin-target-role"
+
+  summary: "starting_user → (iam:AttachRolePolicy) → target_role (attach AdministratorAccess) → (iam:UpdateAssumeRolePolicy) → target_role trust policy (allow starting_user) → (sts:AssumeRole) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:AttachRolePolicy"
+      resource: "arn:aws:iam::*:role/pl-prod-arpuar-to-admin-target-role"
+
+    - permission: "iam:UpdateAssumeRolePolicy"
+      resource: "arn:aws:iam::*:role/pl-prod-arpuar-to-admin-target-role"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available roles that can be modified"
+
+    - permission: "iam:GetRole"
+      purpose: "View role trust policies and attached policies"
+
+    - permission: "iam:ListAttachedRolePolicies"
+      purpose: "View current role permissions before and after modification"
+
+    - permission: "iam:GetUserPolicy"
+      purpose: "Verify starting user does not have sts:AssumeRole permission"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098 - Account Manipulation"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_iam_updateassumerolepolicy"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+iam-updateassumerolepolicy"

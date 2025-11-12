@@ -99,9 +99,8 @@ The cleanup script will:
 
 A properly configured Cloud Security Posture Management (CSPM) tool should identify:
 - **High-Risk Permission Combination**: User/role with both `apprunner:CreateService` and `iam:PassRole` permissions
-- **Service-Linked Role Creation**: The `iam:CreateServiceLinkedRole` permission for App Runner (required for first service in account)
 - **Overly Permissive Instance Role**: App Runner service role with IAM modification permissions (`iam:AttachUserPolicy`, `iam:PutUserPolicy`, `iam:AttachRolePolicy`)
-- **Service Principal Trust**: IAM roles trusting `apprunner.amazonaws.com` with sensitive permissions
+- **Service Principal Trust**: IAM roles trusting `tasks.apprunner.amazonaws.com` with sensitive permissions
 - **Privilege Escalation Path**: Detection of the one-hop path from starting user through App Runner to admin access
 - **Command Override Risk**: App Runner services with `StartCommand` overrides that could execute arbitrary code
 

@@ -1,0 +1,103 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice"
+description: "User with ecs:CreateCluster, iam:PassRole, ecs:RegisterTaskDefinition, and ecs:CreateService can escalate privileges by creating ECS cluster and service with admin role that grants starting user admin access"
+cost_estimate: "$0.02/hour"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-precccs-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-precccs-to-admin-target-role"
+
+  summary: "starting_user → (ecs:CreateCluster) → (ecs:RegisterTaskDefinition with admin role) → (ecs:CreateService on Fargate) → ECS service launches task that attaches admin policy to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "ecs:CreateCluster"
+      resource: "*"
+
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-precccs-to-admin-target-role"
+
+    - permission: "ecs:RegisterTaskDefinition"
+      resource: "*"
+
+    - permission: "ecs:CreateService"
+      resource: "*"
+
+  helpful:
+    - permission: "ec2:DescribeVpcs"
+      purpose: "Find default VPC for ECS service network configuration"
+
+    - permission: "ec2:DescribeSubnets"
+      purpose: "Find subnet in default VPC for ECS service network configuration"
+
+    - permission: "ecs:DescribeServices"
+      purpose: "Monitor service status and verify service creation"
+
+    - permission: "ecs:DescribeTasks"
+      purpose: "Monitor task execution status and verify task completion"
+
+    - permission: "ecs:ListTasks"
+      purpose: "List tasks in the cluster to get task ARN for monitoring"
+
+    - permission: "ecs:UpdateService"
+      purpose: "Scale down service during cleanup"
+
+    - permission: "ecs:DeleteService"
+      purpose: "Clean up ECS service after demonstration"
+
+    - permission: "ecs:StopTask"
+      purpose: "Stop running tasks during cleanup"
+
+    - permission: "ecs:DeregisterTaskDefinition"
+      purpose: "Clean up task definition after demonstration"
+
+    - permission: "ecs:DeleteCluster"
+      purpose: "Clean up ECS cluster after demonstration"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+    - permission: "iam:ListUsers"
+      purpose: "Verify administrator access by listing IAM users"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1610 - Deploy Container"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice"

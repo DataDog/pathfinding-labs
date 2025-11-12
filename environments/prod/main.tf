@@ -19,6 +19,11 @@ resource "aws_iam_service_linked_role" "spot" {
   aws_service_name = "spot.amazonaws.com"
 }
 
+# Service-Linked Role for App Runner (required for App Runner scenarios)
+resource "aws_iam_service_linked_role" "apprunner" {
+  aws_service_name = "apprunner.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   name = "pl-admin-user-for-cleanup-scripts"

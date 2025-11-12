@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-68-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-73-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -189,7 +189,7 @@ In these scenarios, an IAM principal has the permission to update their own perm
 | [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
 | [`iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
 
-#### One-Hop to Admin (36 scenarios)
+#### One-Hop to Admin (40 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
@@ -203,6 +203,7 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`ec2-instance-connect-sendsshpublickey`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-instance-connect-sendsshpublickey/README.md) | User sends SSH public key to EC2 instance with admin role |
 | [`ec2-modifyinstanceattribute+stopinstances+startinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-modifyinstanceattribute+stopinstances+startinstances/README.md) | User modifies EC2 instance role by stopping and starting instance |
 | [`glue-updatedevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-updatedevendpoint/README.md) | User updates existing Glue dev endpoint with admin role |
+| [`iam-attachrolepolicy+iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+iam-updateassumerolepolicy/README.md) | User attaches admin policy to role and modifies trust policy to assume it |
 | [`iam-attachrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole/README.md) | User attaches admin policy to assumable role then assumes it |
 | [`iam-attachuserpolicy+iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachuserpolicy+iam-createaccesskey/README.md) | User attaches AWS-managed AdministratorAccess to target user and creates access keys |
 | [`iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey/README.md) | User creates access keys for an admin user |
@@ -216,6 +217,8 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`iam-passrole+codebuild-createproject+codebuild-startbuildbatch`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuildbatch/README.md) | User creates CodeBuild project with admin role and starts batch build |
 | [`iam-passrole+ec2-requestspotinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-requestspotinstances/README.md) | User requests spot instances with admin role |
 | [`iam-passrole+ec2-runinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ec2-runinstances/README.md) | User passes admin role to EC2 instance for credential extraction |
+| [`iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask/README.md) | User creates ECS cluster, registers task definition with admin role, and runs task to extract credentials |
+| [`iam-passrole+ecs-registertaskdefinition+ecs-starttask`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-registertaskdefinition+ecs-starttask/README.md) | User registers ECS task definition with admin role and starts task |
 | [`iam-passrole+glue-createdevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createdevendpoint/README.md) | User creates Glue dev endpoint with admin role |
 | [`iam-passrole+glue-createjob+glue-createtrigger`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createjob+glue-createtrigger/README.md) | User creates Glue job with admin role and trigger to execute it |
 | [`iam-passrole+glue-createjob+glue-startjobrun`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-createjob+glue-startjobrun/README.md) | User creates Glue job with admin role and starts job run |
@@ -223,6 +226,7 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`iam-passrole+glue-updatejob+glue-startjobrun`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-updatejob+glue-startjobrun/README.md) | User updates Glue job with admin role and starts job run |
 | [`iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb/README.md) | User creates Lambda with admin role triggered by DynamoDB events |
 | [`iam-passrole+lambda-createfunction+lambda-invokefunction`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+lambda-invokefunction/README.md) | User creates Lambda with admin role and invokes to extract credentials |
+| [`iam-putrolepolicy+iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+iam-updateassumerolepolicy/README.md) | User adds inline admin policy to role and updates trust policy to allow assumption |
 | [`iam-putrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+sts-assumerole/README.md) | User adds inline admin policy to assumable role then assumes it |
 | [`iam-putuserpolicy+iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy+iam-createaccesskey/README.md) | User adds admin inline policy to target user and creates access keys |
 | [`iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateassumerolepolicy/README.md) | User modifies trust policy of admin role to grant access |
@@ -715,10 +719,10 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **68 scenarios** available
+- ✅ **73 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
-  - 36 One-Hop to Admin
+  - 40 One-Hop to Admin
   - 11 One-Hop to Bucket
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket

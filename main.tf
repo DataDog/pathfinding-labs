@@ -170,6 +170,17 @@ module "single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy" {
 # PROD ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
+module "single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_iam_updateassumerolepolicy" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+iam-updateassumerolepolicy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole"
@@ -291,6 +302,61 @@ module "single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_runtask ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-registertaskdefinition+ecs-runtask"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_starttask" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_starttask ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-registertaskdefinition+ecs-starttask"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-registertaskdefinition+ecs-createservice"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sts-assumerole"
@@ -316,6 +382,17 @@ module "single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy" {
 module "single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createloginprofile"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_createpolicyversion_iam_updateassumerolepolicy" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createpolicyversion+iam-updateassumerolepolicy"
   providers = {
     aws.prod = aws.prod
   }
@@ -384,6 +461,17 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createpro
 module "single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_putrolepolicy_iam_updateassumerolepolicy" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_iam_updateassumerolepolicy ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+iam-updateassumerolepolicy"
   providers = {
     aws.prod = aws.prod
   }

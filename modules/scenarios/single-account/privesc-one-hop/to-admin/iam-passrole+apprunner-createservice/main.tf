@@ -64,18 +64,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
       {
         Effect = "Allow"
         Action = [
-          "iam:CreateServiceLinkedRole"
-        ]
-        Resource = "arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
-        Condition = {
-          StringLike = {
-            "iam:AWSServiceName" = "apprunner.amazonaws.com"
-          }
-        }
-      },
-      {
-        Effect = "Allow"
-        Action = [
           "iam:ListRoles"
         ]
         Resource = "*"

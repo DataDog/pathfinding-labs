@@ -118,6 +118,12 @@ variable "enable_single_account_privesc_self_escalation_to_bucket_iam_attachrole
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachrolepolicy+iam-updateassumerolepolicy"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachrolepolicy+sts-assumerole"
   type        = bool
@@ -150,6 +156,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile"
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-deleteaccesskey+createaccesskey (Pathfinding.cloud: iam-003)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createpolicyversion+iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
@@ -202,6 +214,36 @@ variable "enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplat
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_starttask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-starttask ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → sts-assumerole"
   type        = bool
@@ -234,6 +276,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putrolepolicy+iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
