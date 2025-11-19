@@ -1,0 +1,177 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "test-effective-permissions-evaluation"
+description: "Comprehensive tool testing scenario with 40 principals (15 isAdmin, 24 notAdmin) testing admin access patterns, denies, boundaries, and multi-policy edge cases to validate effective permissions evaluation"
+cost_estimate: "free"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    # Starting user
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-starting-user"
+
+    # isAdmin Users - Single Policy (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-awsmanaged"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-customermanaged"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-inline"
+
+    # isAdmin Users - Group Membership (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-awsmanaged"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-customermanaged"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-inline"
+
+    # isAdmin Users - Multi-Policy (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-split-iam-and-notiam"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-split-s3-and-nots3"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-many-services-combined"
+
+    # notAdmin Users - Single Deny (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-denynotaction-ec2only"
+
+    # notAdmin Users - Multi-Deny (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-plus-denyall"
+
+    # notAdmin Users - Single Boundary (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-boundary-allows-nothing"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-ec2only"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-boundary-na-ec2only"
+
+    # notAdmin Users - Multi-Policy with Boundary (3 users)
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-boundary-allows-nothing"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-boundary-ec2only"
+    - "arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-boundary-mismatch"
+
+    # isAdmin Roles - Single Policy (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-awsmanaged"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-customermanaged"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-inline"
+
+    # isAdmin Roles - Multi-Policy (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-split-iam-and-notiam"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-split-s3-and-nots3"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-many-services-combined"
+
+    # notAdmin Roles - Single Deny (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction-ec2only"
+
+    # notAdmin Roles - Multi-Deny (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-incremental"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-plus-denyall"
+
+    # notAdmin Roles - Single Boundary (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-admin-plus-boundary-allows-nothing"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-ec2only"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only"
+
+    # notAdmin Roles - Multi-Policy with Boundary (3 roles)
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-boundary-allows-nothing"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-boundary-ec2only"
+    - "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-boundary-mismatch"
+
+    # Target Resource
+    - "arn:aws:s3:::pl-sensitive-data-epe-{account_id}-{suffix}"
+
+  summary: "Starting user → 39 test principals (15 isAdmin: single policy, group membership, multi-policy; 24 notAdmin: single deny, multi-deny, single boundary, multi-policy with boundary) → S3 bucket access test → comprehensive effective permissions evaluation"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    # isAdmin - Full wildcard permissions
+    - permission: "*"
+      resource: "*"
+      notes: "15 principals have effective admin access via various policy mechanisms (AWS managed, customer managed, inline, group membership, split policies, many services combined)"
+
+    # notAdmin - Admin with denies or boundaries
+    - permission: "*"
+      resource: "*"
+      notes: "24 principals have AdministratorAccess policy but are blocked by explicit denies or permissions boundaries"
+
+  helpful:
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify assumed identity"
+
+    - permission: "sts:AssumeRole"
+      purpose: "Starting user assumes test roles"
+
+# =============================================================================
+# ADMIN DEFINITION
+# =============================================================================
+admin_definition: "You have * on * without any IAM denies (ignoring resource denies)"
+
+# =============================================================================
+# TEST GROUPS
+# =============================================================================
+test_groups:
+  isAdmin:
+    total: 15
+    users: 9
+    roles: 6
+    categories:
+      - name: "Single Policy"
+        count: 6
+        description: "AWS managed, customer managed, or inline policy granting * on *"
+      - name: "Group Membership"
+        count: 3
+        description: "Users in groups with admin policies"
+      - name: "Multi-Policy"
+        count: 6
+        description: "Split policies (iam:* + NotAction iam:*, s3:* + NotAction s3:*) or many services that together equal * on *"
+
+  notAdmin:
+    total: 24
+    users: 12
+    roles: 12
+    categories:
+      - name: "Single Deny"
+        count: 6
+        description: "AdministratorAccess + Deny * on * (some use NotAction with exceptions)"
+      - name: "Multi-Deny"
+        count: 6
+        description: "AdministratorAccess + multiple denies that together block everything"
+      - name: "Single Boundary"
+        count: 6
+        description: "AdministratorAccess + boundary that allows nothing or only ec2:DescribeInstances"
+      - name: "Multi-Policy with Boundary"
+        count: 6
+        description: "Split allow policies + boundary that blocks, or policy-boundary mismatch"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_effective_permissions_evaluation"
+  module_path: "modules/scenarios/tool-testing/test-effective-permissions-evaluation"

@@ -486,14 +486,32 @@ variable "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
 # TOOL TESTING SCENARIOS
 ##############################################################################
 
+variable "enable_tool_testing_exclusive_resource_policy" {
+  description = "Enable: tool-testing → exclusive-resource-policy (tests detection of exclusive resource policy configurations)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_tool_testing_resource_policy_bypass" {
   description = "Enable: tool-testing → resource-policy-bypass (tests detection of resource policies that bypass IAM)"
   type        = bool
   default     = false
 }
 
-variable "enable_tool_testing_exclusive_resource_policy" {
-  description = "Enable: tool-testing → exclusive-resource-policy (tests detection of exclusive resource policy configurations)"
+variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-direct-and-indirect-through-admin"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-direct-and-indirect-to-bucket"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_effective_permissions_evaluation" {
+  description = "Enable: tool-testing → test-effective-permissions-evaluation"
   type        = bool
   default     = false
 }

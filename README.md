@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-73-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-74-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -298,12 +298,15 @@ Toxic combinations are cases where multiple security misconfigurations combine t
 
 Edge cases and scenarios designed to test detection engine capabilities.
 
-#### Tool Testing (2 scenarios)
+#### Tool Testing (5 scenarios)
 
 | Scenario | Focus | Description |
 |----------|-------|-------------|
 | [`exclusive-resource-policy`](modules/scenarios/tool-testing/exclusive-resource-policy/README.md) | Policy parsing | Tests detection of exclusive resource policy configurations |
 | [`resource-policy-bypass`](modules/scenarios/tool-testing/resource-policy-bypass/README.md) | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
+| [`test-effective-permissions-evaluation`](modules/scenarios/tool-testing/test-effective-permissions-evaluation/README.md) | Permissions evaluation | Comprehensive scenario with 25+ principals testing admin access patterns, denies, boundaries, and edge cases |
+| [`test-reverse-blast-radius-direct-and-indirect-through-admin`](modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-through-admin/README.md) | Reverse blast radius | Tests detection of direct S3 access and indirect access via admin role |
+| [`test-reverse-blast-radius-direct-and-indirect-to-bucket`](modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-to-bucket/README.md) | Reverse blast radius | Tests detection of direct and indirect S3 bucket access paths |
 
 ---
 
@@ -719,7 +722,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **73 scenarios** available
+- ✅ **76 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
   - 40 One-Hop to Admin
@@ -727,7 +730,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket
   - 1 Toxic Combo
-  - 2 Tool Testing
+  - 5 Tool Testing
   - 6 Cross-Account (5 dev-to-prod, 1 ops-to-prod)
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)

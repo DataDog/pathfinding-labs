@@ -840,6 +840,18 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
+module "tool_testing_exclusive_resource_policy" {
+  count  = var.enable_tool_testing_exclusive_resource_policy ? 1 : 0
+  source = "./modules/scenarios/tool-testing/exclusive-resource-policy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  dev_account_id        = var.dev_account_id
+  prod_account_id       = var.prod_account_id
+  operations_account_id = var.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+}
+
 module "tool_testing_resource_policy_bypass" {
   count  = var.enable_tool_testing_resource_policy_bypass ? 1 : 0
   source = "./modules/scenarios/tool-testing/resource-policy-bypass"
@@ -852,16 +864,37 @@ module "tool_testing_resource_policy_bypass" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
-module "tool_testing_exclusive_resource_policy" {
-  count  = var.enable_tool_testing_exclusive_resource_policy ? 1 : 0
-  source = "./modules/scenarios/tool-testing/exclusive-resource-policy"
+module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-through-admin"
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
-  resource_suffix       = random_string.resource_suffix.result
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-to-bucket"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_effective_permissions_evaluation" {
+  count  = var.enable_tool_testing_test_effective_permissions_evaluation ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-effective-permissions-evaluation"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
 }
 
 ##############################################################################
