@@ -504,6 +504,7 @@ Before considering your work done:
 5. Confirm outputs include all necessary information for demo scripts
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
+8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", "helpfulAdditionalPermissions1", etc.
 
 ## Output Format
 

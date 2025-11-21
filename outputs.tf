@@ -756,6 +756,40 @@ output "single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
+  description = "All outputs for cloudformation-updatestack one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].starting_user_secret_access_key
+    stack_name                      = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].stack_name
+    stack_role_arn                  = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].stack_role_arn
+    escalated_role_name             = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].escalated_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_cloudformation_updatestack[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset" {
+  description = "All outputs for iam-passrole-cloudformation-updatestackset one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].starting_user_secret_access_key
+    stackset_name                   = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].stackset_name
+    stackset_id                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].stackset_id
+    execution_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].execution_role_name
+    execution_role_arn              = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].execution_role_arn
+    administration_role_name        = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].administration_role_name
+    administration_role_arn         = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].administration_role_arn
+    escalated_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].escalated_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   description = "All outputs for iam-passrole-cloudformation one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation ? {
@@ -767,6 +801,23 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
     admin_role_name                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].admin_role_name
     escalated_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].escalated_role_name
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
+  description = "All outputs for iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].starting_user_secret_access_key
+    execution_role_arn              = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].execution_role_arn
+    execution_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].execution_role_name
+    administration_role_arn         = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].administration_role_arn
+    administration_role_name        = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].administration_role_name
+    escalated_role_name             = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].escalated_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].attack_path
   } : null
   sensitive = true
 }
@@ -1260,144 +1311,144 @@ output "tool_testing_test_effective_permissions_evaluation" {
     scenario_summary                = module.tool_testing_test_effective_permissions_evaluation[0].scenario_summary
 
     # isAdmin Users (9 users)
-    user_isadmin_awsmanaged_name                 = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_name
-    user_isadmin_awsmanaged_arn                  = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_arn
-    user_isadmin_awsmanaged_access_key_id        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_access_key_id
-    user_isadmin_awsmanaged_secret_access_key    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_secret_access_key
-    user_isadmin_customermanaged_name            = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_name
-    user_isadmin_customermanaged_arn             = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_arn
-    user_isadmin_customermanaged_access_key_id   = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_access_key_id
-    user_isadmin_customermanaged_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_secret_access_key
-    user_isadmin_inline_name                     = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_name
-    user_isadmin_inline_arn                      = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_arn
-    user_isadmin_inline_access_key_id            = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_access_key_id
-    user_isadmin_inline_secret_access_key        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_secret_access_key
-    user_isadmin_via_group_awsmanaged_name       = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_name
-    user_isadmin_via_group_awsmanaged_arn        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_arn
-    user_isadmin_via_group_awsmanaged_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_access_key_id
-    user_isadmin_via_group_awsmanaged_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_secret_access_key
-    user_isadmin_via_group_customermanaged_name  = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_name
-    user_isadmin_via_group_customermanaged_arn   = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_arn
-    user_isadmin_via_group_customermanaged_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_access_key_id
+    user_isadmin_awsmanaged_name                             = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_name
+    user_isadmin_awsmanaged_arn                              = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_arn
+    user_isadmin_awsmanaged_access_key_id                    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_access_key_id
+    user_isadmin_awsmanaged_secret_access_key                = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_awsmanaged_secret_access_key
+    user_isadmin_customermanaged_name                        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_name
+    user_isadmin_customermanaged_arn                         = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_arn
+    user_isadmin_customermanaged_access_key_id               = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_access_key_id
+    user_isadmin_customermanaged_secret_access_key           = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_customermanaged_secret_access_key
+    user_isadmin_inline_name                                 = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_name
+    user_isadmin_inline_arn                                  = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_arn
+    user_isadmin_inline_access_key_id                        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_access_key_id
+    user_isadmin_inline_secret_access_key                    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_inline_secret_access_key
+    user_isadmin_via_group_awsmanaged_name                   = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_name
+    user_isadmin_via_group_awsmanaged_arn                    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_arn
+    user_isadmin_via_group_awsmanaged_access_key_id          = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_access_key_id
+    user_isadmin_via_group_awsmanaged_secret_access_key      = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_awsmanaged_secret_access_key
+    user_isadmin_via_group_customermanaged_name              = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_name
+    user_isadmin_via_group_customermanaged_arn               = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_arn
+    user_isadmin_via_group_customermanaged_access_key_id     = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_access_key_id
     user_isadmin_via_group_customermanaged_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_customermanaged_secret_access_key
-    user_isadmin_via_group_inline_name           = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_name
-    user_isadmin_via_group_inline_arn            = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_arn
-    user_isadmin_via_group_inline_access_key_id  = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_access_key_id
-    user_isadmin_via_group_inline_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_secret_access_key
-    user_isadmin_split_iam_and_notiam_name       = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_name
-    user_isadmin_split_iam_and_notiam_arn        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_arn
-    user_isadmin_split_iam_and_notiam_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_access_key_id
-    user_isadmin_split_iam_and_notiam_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_secret_access_key
-    user_isadmin_split_s3_and_nots3_name         = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_name
-    user_isadmin_split_s3_and_nots3_arn          = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_arn
-    user_isadmin_split_s3_and_nots3_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_access_key_id
-    user_isadmin_split_s3_and_nots3_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_secret_access_key
-    user_isadmin_many_services_combined_name     = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_name
-    user_isadmin_many_services_combined_arn      = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_arn
-    user_isadmin_many_services_combined_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_access_key_id
-    user_isadmin_many_services_combined_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_secret_access_key
+    user_isadmin_via_group_inline_name                       = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_name
+    user_isadmin_via_group_inline_arn                        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_arn
+    user_isadmin_via_group_inline_access_key_id              = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_access_key_id
+    user_isadmin_via_group_inline_secret_access_key          = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_via_group_inline_secret_access_key
+    user_isadmin_split_iam_and_notiam_name                   = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_name
+    user_isadmin_split_iam_and_notiam_arn                    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_arn
+    user_isadmin_split_iam_and_notiam_access_key_id          = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_access_key_id
+    user_isadmin_split_iam_and_notiam_secret_access_key      = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_iam_and_notiam_secret_access_key
+    user_isadmin_split_s3_and_nots3_name                     = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_name
+    user_isadmin_split_s3_and_nots3_arn                      = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_arn
+    user_isadmin_split_s3_and_nots3_access_key_id            = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_access_key_id
+    user_isadmin_split_s3_and_nots3_secret_access_key        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_split_s3_and_nots3_secret_access_key
+    user_isadmin_many_services_combined_name                 = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_name
+    user_isadmin_many_services_combined_arn                  = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_arn
+    user_isadmin_many_services_combined_access_key_id        = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_access_key_id
+    user_isadmin_many_services_combined_secret_access_key    = module.tool_testing_test_effective_permissions_evaluation[0].user_isadmin_many_services_combined_secret_access_key
 
     # isAdmin Roles (6 roles)
-    role_isadmin_awsmanaged_name                 = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_awsmanaged_name
-    role_isadmin_awsmanaged_arn                  = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_awsmanaged_arn
-    role_isadmin_customermanaged_name            = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_customermanaged_name
-    role_isadmin_customermanaged_arn             = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_customermanaged_arn
-    role_isadmin_inline_name                     = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_inline_name
-    role_isadmin_inline_arn                      = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_inline_arn
-    role_isadmin_split_iam_and_notiam_name       = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_iam_and_notiam_name
-    role_isadmin_split_iam_and_notiam_arn        = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_iam_and_notiam_arn
-    role_isadmin_split_s3_and_nots3_name         = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_s3_and_nots3_name
-    role_isadmin_split_s3_and_nots3_arn          = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_s3_and_nots3_arn
-    role_isadmin_many_services_combined_name     = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_many_services_combined_name
-    role_isadmin_many_services_combined_arn      = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_many_services_combined_arn
+    role_isadmin_awsmanaged_name             = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_awsmanaged_name
+    role_isadmin_awsmanaged_arn              = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_awsmanaged_arn
+    role_isadmin_customermanaged_name        = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_customermanaged_name
+    role_isadmin_customermanaged_arn         = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_customermanaged_arn
+    role_isadmin_inline_name                 = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_inline_name
+    role_isadmin_inline_arn                  = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_inline_arn
+    role_isadmin_split_iam_and_notiam_name   = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_iam_and_notiam_name
+    role_isadmin_split_iam_and_notiam_arn    = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_iam_and_notiam_arn
+    role_isadmin_split_s3_and_nots3_name     = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_s3_and_nots3_name
+    role_isadmin_split_s3_and_nots3_arn      = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_split_s3_and_nots3_arn
+    role_isadmin_many_services_combined_name = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_many_services_combined_name
+    role_isadmin_many_services_combined_arn  = module.tool_testing_test_effective_permissions_evaluation[0].role_isadmin_many_services_combined_arn
 
     # notAdmin Users - Single Deny (3 users)
-    user_notadmin_adminpolicy_plus_denyall_name  = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_name
-    user_notadmin_adminpolicy_plus_denyall_arn   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_arn
-    user_notadmin_adminpolicy_plus_denyall_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_access_key_id
-    user_notadmin_adminpolicy_plus_denyall_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_secret_access_key
-    user_notadmin_adminpolicy_plus_denynotaction_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_name
-    user_notadmin_adminpolicy_plus_denynotaction_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_arn
-    user_notadmin_adminpolicy_plus_denynotaction_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_access_key_id
-    user_notadmin_adminpolicy_plus_denynotaction_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_secret_access_key
-    user_notadmin_adminpolicy_plus_denynotaction_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_name
-    user_notadmin_adminpolicy_plus_denynotaction_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_arn
-    user_notadmin_adminpolicy_plus_denynotaction_ec2only_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_access_key_id
+    user_notadmin_adminpolicy_plus_denyall_name                            = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_name
+    user_notadmin_adminpolicy_plus_denyall_arn                             = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_arn
+    user_notadmin_adminpolicy_plus_denyall_access_key_id                   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_access_key_id
+    user_notadmin_adminpolicy_plus_denyall_secret_access_key               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denyall_secret_access_key
+    user_notadmin_adminpolicy_plus_denynotaction_name                      = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_name
+    user_notadmin_adminpolicy_plus_denynotaction_arn                       = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_arn
+    user_notadmin_adminpolicy_plus_denynotaction_access_key_id             = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_access_key_id
+    user_notadmin_adminpolicy_plus_denynotaction_secret_access_key         = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_secret_access_key
+    user_notadmin_adminpolicy_plus_denynotaction_ec2only_name              = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_name
+    user_notadmin_adminpolicy_plus_denynotaction_ec2only_arn               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_arn
+    user_notadmin_adminpolicy_plus_denynotaction_ec2only_access_key_id     = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_access_key_id
     user_notadmin_adminpolicy_plus_denynotaction_ec2only_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_denynotaction_ec2only_secret_access_key
 
     # notAdmin Roles - Single Deny (3 roles)
-    role_notadmin_adminpolicy_plus_denyall_name  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denyall_name
-    role_notadmin_adminpolicy_plus_denyall_arn   = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denyall_arn
-    role_notadmin_adminpolicy_plus_denynotaction_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_name
-    role_notadmin_adminpolicy_plus_denynotaction_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_arn
+    role_notadmin_adminpolicy_plus_denyall_name               = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denyall_name
+    role_notadmin_adminpolicy_plus_denyall_arn                = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denyall_arn
+    role_notadmin_adminpolicy_plus_denynotaction_name         = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_name
+    role_notadmin_adminpolicy_plus_denynotaction_arn          = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_arn
     role_notadmin_adminpolicy_plus_denynotaction_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_ec2only_name
-    role_notadmin_adminpolicy_plus_denynotaction_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_ec2only_arn
+    role_notadmin_adminpolicy_plus_denynotaction_ec2only_arn  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_denynotaction_ec2only_arn
 
     # notAdmin Users - Multi-Deny (3 users)
-    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_name
-    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn
-    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_access_key_id
+    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_name              = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_name
+    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn
+    user_notadmin_adminpolicy_plus_deny_split_iam_notiam_access_key_id     = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_access_key_id
     user_notadmin_adminpolicy_plus_deny_split_iam_notiam_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_split_iam_notiam_secret_access_key
-    user_notadmin_adminpolicy_plus_deny_incremental_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_name
-    user_notadmin_adminpolicy_plus_deny_incremental_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_arn
-    user_notadmin_adminpolicy_plus_deny_incremental_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_access_key_id
-    user_notadmin_adminpolicy_plus_deny_incremental_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_secret_access_key
-    user_notadmin_split_allow_plus_denyall_name  = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_name
-    user_notadmin_split_allow_plus_denyall_arn   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_arn
-    user_notadmin_split_allow_plus_denyall_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_access_key_id
-    user_notadmin_split_allow_plus_denyall_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_secret_access_key
+    user_notadmin_adminpolicy_plus_deny_incremental_name                   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_name
+    user_notadmin_adminpolicy_plus_deny_incremental_arn                    = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_arn
+    user_notadmin_adminpolicy_plus_deny_incremental_access_key_id          = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_access_key_id
+    user_notadmin_adminpolicy_plus_deny_incremental_secret_access_key      = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_deny_incremental_secret_access_key
+    user_notadmin_split_allow_plus_denyall_name                            = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_name
+    user_notadmin_split_allow_plus_denyall_arn                             = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_arn
+    user_notadmin_split_allow_plus_denyall_access_key_id                   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_access_key_id
+    user_notadmin_split_allow_plus_denyall_secret_access_key               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_plus_denyall_secret_access_key
 
     # notAdmin Roles - Multi-Deny (3 roles)
     role_notadmin_adminpolicy_plus_deny_split_iam_notiam_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_split_iam_notiam_name
-    role_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn
-    role_notadmin_adminpolicy_plus_deny_incremental_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_incremental_name
-    role_notadmin_adminpolicy_plus_deny_incremental_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_incremental_arn
-    role_notadmin_split_allow_plus_denyall_name  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_plus_denyall_name
-    role_notadmin_split_allow_plus_denyall_arn   = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_plus_denyall_arn
+    role_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_split_iam_notiam_arn
+    role_notadmin_adminpolicy_plus_deny_incremental_name      = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_incremental_name
+    role_notadmin_adminpolicy_plus_deny_incremental_arn       = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_deny_incremental_arn
+    role_notadmin_split_allow_plus_denyall_name               = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_plus_denyall_name
+    role_notadmin_split_allow_plus_denyall_arn                = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_plus_denyall_arn
 
     # notAdmin Users - Single Boundary (3 users)
-    user_notadmin_adminpolicy_plus_boundary_allows_nothing_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_name
-    user_notadmin_adminpolicy_plus_boundary_allows_nothing_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_arn
-    user_notadmin_adminpolicy_plus_boundary_allows_nothing_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_access_key_id
-    user_notadmin_adminpolicy_plus_boundary_allows_nothing_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_secret_access_key
-    user_notadmin_adminpolicy_plus_boundary_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_name
-    user_notadmin_adminpolicy_plus_boundary_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_arn
-    user_notadmin_adminpolicy_plus_boundary_ec2only_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_access_key_id
-    user_notadmin_adminpolicy_plus_boundary_ec2only_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_secret_access_key
-    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name
-    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn
-    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_access_key_id
+    user_notadmin_adminpolicy_plus_boundary_allows_nothing_name                 = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_name
+    user_notadmin_adminpolicy_plus_boundary_allows_nothing_arn                  = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_arn
+    user_notadmin_adminpolicy_plus_boundary_allows_nothing_access_key_id        = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_access_key_id
+    user_notadmin_adminpolicy_plus_boundary_allows_nothing_secret_access_key    = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_allows_nothing_secret_access_key
+    user_notadmin_adminpolicy_plus_boundary_ec2only_name                        = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_name
+    user_notadmin_adminpolicy_plus_boundary_ec2only_arn                         = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_arn
+    user_notadmin_adminpolicy_plus_boundary_ec2only_access_key_id               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_access_key_id
+    user_notadmin_adminpolicy_plus_boundary_ec2only_secret_access_key           = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_ec2only_secret_access_key
+    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name              = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name
+    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn
+    user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_access_key_id     = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_access_key_id
     user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_adminpolicy_plus_boundary_notaction_ec2only_secret_access_key
 
     # notAdmin Roles - Single Boundary (3 roles)
-    role_notadmin_adminpolicy_plus_boundary_allows_nothing_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_allows_nothing_name
-    role_notadmin_adminpolicy_plus_boundary_allows_nothing_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_allows_nothing_arn
-    role_notadmin_adminpolicy_plus_boundary_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_ec2only_name
-    role_notadmin_adminpolicy_plus_boundary_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_ec2only_arn
+    role_notadmin_adminpolicy_plus_boundary_allows_nothing_name    = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_allows_nothing_name
+    role_notadmin_adminpolicy_plus_boundary_allows_nothing_arn     = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_allows_nothing_arn
+    role_notadmin_adminpolicy_plus_boundary_ec2only_name           = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_ec2only_name
+    role_notadmin_adminpolicy_plus_boundary_ec2only_arn            = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_ec2only_arn
     role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_name
-    role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn
+    role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_adminpolicy_plus_boundary_notaction_ec2only_arn
 
     # notAdmin Users - Multi-Policy + Boundary (3 users)
-    user_notadmin_split_allow_boundary_allows_nothing_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_name
-    user_notadmin_split_allow_boundary_allows_nothing_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_arn
-    user_notadmin_split_allow_boundary_allows_nothing_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_access_key_id
+    user_notadmin_split_allow_boundary_allows_nothing_name              = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_name
+    user_notadmin_split_allow_boundary_allows_nothing_arn               = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_arn
+    user_notadmin_split_allow_boundary_allows_nothing_access_key_id     = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_access_key_id
     user_notadmin_split_allow_boundary_allows_nothing_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_allows_nothing_secret_access_key
-    user_notadmin_split_allow_boundary_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_name
-    user_notadmin_split_allow_boundary_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_arn
-    user_notadmin_split_allow_boundary_ec2only_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_access_key_id
-    user_notadmin_split_allow_boundary_ec2only_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_secret_access_key
-    user_notadmin_split_boundary_mismatch_name   = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_name
-    user_notadmin_split_boundary_mismatch_arn    = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_arn
-    user_notadmin_split_boundary_mismatch_access_key_id = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_access_key_id
-    user_notadmin_split_boundary_mismatch_secret_access_key = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_secret_access_key
+    user_notadmin_split_allow_boundary_ec2only_name                     = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_name
+    user_notadmin_split_allow_boundary_ec2only_arn                      = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_arn
+    user_notadmin_split_allow_boundary_ec2only_access_key_id            = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_access_key_id
+    user_notadmin_split_allow_boundary_ec2only_secret_access_key        = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_allow_boundary_ec2only_secret_access_key
+    user_notadmin_split_boundary_mismatch_name                          = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_name
+    user_notadmin_split_boundary_mismatch_arn                           = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_arn
+    user_notadmin_split_boundary_mismatch_access_key_id                 = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_access_key_id
+    user_notadmin_split_boundary_mismatch_secret_access_key             = module.tool_testing_test_effective_permissions_evaluation[0].user_notadmin_split_boundary_mismatch_secret_access_key
 
     # notAdmin Roles - Multi-Policy + Boundary (3 roles)
     role_notadmin_split_allow_boundary_allows_nothing_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_allows_nothing_name
-    role_notadmin_split_allow_boundary_allows_nothing_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_allows_nothing_arn
-    role_notadmin_split_allow_boundary_ec2only_name = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_ec2only_name
-    role_notadmin_split_allow_boundary_ec2only_arn = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_ec2only_arn
-    role_notadmin_split_boundary_mismatch_name   = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_name
-    role_notadmin_split_boundary_mismatch_arn    = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_arn
+    role_notadmin_split_allow_boundary_allows_nothing_arn  = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_allows_nothing_arn
+    role_notadmin_split_allow_boundary_ec2only_name        = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_ec2only_name
+    role_notadmin_split_allow_boundary_ec2only_arn         = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_ec2only_arn
+    role_notadmin_split_boundary_mismatch_name             = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_name
+    role_notadmin_split_boundary_mismatch_arn              = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_arn
   } : null
   sensitive = true
 }

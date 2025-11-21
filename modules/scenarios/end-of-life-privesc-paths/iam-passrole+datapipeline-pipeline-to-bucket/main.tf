@@ -141,9 +141,9 @@ resource "aws_s3_bucket_public_access_block" "exfil_bucket" {
   bucket   = aws_s3_bucket.exfil_bucket.id
 
   block_public_acls       = true
-  block_public_policy     = false  # Must be false to allow resource policy
+  block_public_policy     = false # Must be false to allow resource policy
   ignore_public_acls      = true
-  restrict_public_buckets = false  # Must be false to allow resource policy
+  restrict_public_buckets = false # Must be false to allow resource policy
 }
 
 # CRITICAL: Overly permissive bucket policy allowing any principal to write

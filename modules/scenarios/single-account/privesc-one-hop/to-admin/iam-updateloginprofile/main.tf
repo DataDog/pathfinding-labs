@@ -53,7 +53,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
       {
         Sid    = "AllowHelpfulActions"
         Effect = "Allow"
-        Action = [          
+        Action = [
           "iam:GetUser",
           "iam:GetLoginProfile",
           "iam:ListAttachedUserPolicies"

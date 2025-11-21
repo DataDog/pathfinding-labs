@@ -436,9 +436,42 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-updatestack"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation-updatestackset"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
   providers = {
     aws.prod = aws.prod
   }

@@ -742,15 +742,15 @@ output "target_bucket_arn" {
 output "scenario_summary" {
   description = "Summary of the test scenario"
   value = {
-    total_principals           = 40
-    starting_user              = 1
-    isadmin_users              = 9
-    isadmin_roles              = 6
-    notadmin_deny_users        = 6
-    notadmin_deny_roles        = 6
-    notadmin_boundary_users    = 6
-    notadmin_boundary_roles    = 6
-    admin_definition           = "You have * on * without any IAM denies (ignoring resource denies)"
-    purpose                    = "Test CSPM tools' ability to evaluate effective permissions across admin patterns, denies, boundaries, and edge cases"
+    total_principals        = 40
+    starting_user           = 1
+    isadmin_users           = 9
+    isadmin_roles           = 6
+    notadmin_deny_users     = 6
+    notadmin_deny_roles     = 6
+    notadmin_boundary_users = 6
+    notadmin_boundary_roles = 6
+    admin_definition        = "You have * on * without any IAM denies (ignoring resource denies)"
+    purpose                 = "Test CSPM tools' ability to evaluate effective permissions across admin patterns, denies, boundaries, and edge cases"
   }
 }

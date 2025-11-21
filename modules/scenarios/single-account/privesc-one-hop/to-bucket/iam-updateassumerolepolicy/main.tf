@@ -139,21 +139,21 @@ resource "aws_iam_role_policy" "starting_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowUpdateAssumeRolePolicy"
-        Effect = "Allow"
-        Action = ["iam:UpdateAssumeRolePolicy", "iam:GetRole"]
+        Sid      = "AllowUpdateAssumeRolePolicy"
+        Effect   = "Allow"
+        Action   = ["iam:UpdateAssumeRolePolicy", "iam:GetRole"]
         Resource = aws_iam_role.target_role.arn
       },
       {
-        Sid    = "AllowAssumeTargetRole"
-        Effect = "Allow"
-        Action = ["sts:AssumeRole"]
+        Sid      = "AllowAssumeTargetRole"
+        Effect   = "Allow"
+        Action   = ["sts:AssumeRole"]
         Resource = aws_iam_role.target_role.arn
       },
       {
-        Sid    = "AllowSelfIdentification"
-        Effect = "Allow"
-        Action = ["sts:GetCallerIdentity"]
+        Sid      = "AllowSelfIdentification"
+        Effect   = "Allow"
+        Action   = ["sts:GetCallerIdentity"]
         Resource = "*"
       }
     ]

@@ -65,7 +65,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
       {
         Effect = "Allow"
         Action = [
-          "iam:ListRoles"        ]
+        "iam:ListRoles"]
         Resource = "*"
       },
       {
@@ -115,8 +115,8 @@ resource "aws_iam_role_policy" "target_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "*"
+        Effect   = "Allow"
+        Action   = "*"
         Resource = "*"
       },
       {

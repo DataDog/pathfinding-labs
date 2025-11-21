@@ -262,8 +262,26 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-updatestack"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation-updatestackset"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
   type        = bool
   default     = false
 }

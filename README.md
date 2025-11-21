@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-74-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-79-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -189,7 +189,7 @@ In these scenarios, an IAM principal has the permission to update their own perm
 | [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
 | [`iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
 
-#### One-Hop to Admin (40 scenarios)
+#### One-Hop to Admin (43 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
@@ -197,6 +197,8 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 |----------|-------------|
 | [`apprunner-updateservice`](modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-updateservice/README.md) | User updates AppRunner service configuration to use privileged role |
 | [`bedrockagentcore-startsession+invoke`](modules/scenarios/single-account/privesc-one-hop/to-admin/bedrockagentcore-startsession+invoke/README.md) | User starts Bedrock code interpreter session and invokes with admin role |
+| [`cloudformation-updatestack`](modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-updatestack/README.md) | User modifies existing CloudFormation stack to create admin role using stack's elevated service role |
+| [`iam-passrole-cloudformation-updatestackset`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation-updatestackset/README.md) | User with iam:PassRole + cloudformation:UpdateStackSet modifies existing StackSet to create admin role |
 | [`codebuild-startbuild`](modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuild/README.md) | User starts existing CodeBuild project with admin role |
 | [`codebuild-startbuildbatch`](modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-startbuildbatch/README.md) | User starts CodeBuild batch build with admin role |
 | [`ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate/README.md) | User modifies existing launch template to use admin role |
@@ -211,6 +213,7 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`iam-createpolicyversion+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createpolicyversion+sts-assumerole/README.md) | User creates new policy version with admin permissions then assumes role |
 | [`iam-deleteaccesskey+createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-deleteaccesskey+createaccesskey/README.md) | User deletes and recreates access keys for admin user |
 | [`iam-passrole-cloudformation`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole-cloudformation/README.md) | User passes admin role to CloudFormation to create escalated resources |
+| [`iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances/README.md) | User passes admin role to CloudFormation StackSet execution role to create escalated resources |
 | [`iam-passrole+apprunner-createservice`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+apprunner-createservice/README.md) | User creates AppRunner service with admin role |
 | [`iam-passrole+bedrockagentcore-codeinterpreter`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+bedrockagentcore-codeinterpreter/README.md) | User creates Bedrock code interpreter with admin role |
 | [`iam-passrole+codebuild-createproject+codebuild-startbuild`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+codebuild-createproject+codebuild-startbuild/README.md) | User creates CodeBuild project with admin role and starts build |
@@ -722,10 +725,10 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **76 scenarios** available
+- ✅ **79 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
-  - 40 One-Hop to Admin
+  - 43 One-Hop to Admin
   - 11 One-Hop to Bucket
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket
