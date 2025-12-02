@@ -1,5 +1,12 @@
 # Prod Role with Multiple Privilege Escalation Paths Module
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** privilege-chaining
+* **Path Type:** multi-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin
+
 This module creates a role with multiple privilege escalation paths and three separate service-trusting admin roles for EC2, Lambda, and CloudFormation.
 
 ## Access Path

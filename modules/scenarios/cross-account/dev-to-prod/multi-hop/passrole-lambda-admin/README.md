@@ -1,5 +1,12 @@
 # Cross-Account PassRole to Lambda Admin
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** privilege-chaining
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** dev, prod
+* **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
+
 This module demonstrates a multi-hop cross-account privilege escalation attack where a dev user can escalate to admin privileges through a chain of role assumptions, ultimately using `iam:PassRole` permission to create Lambda functions with admin roles.
 
 ## Attack Path Overview

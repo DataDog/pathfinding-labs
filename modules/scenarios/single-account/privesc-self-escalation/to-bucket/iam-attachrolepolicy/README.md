@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: iam:AttachRolePolicy
 
-**Scenario Type:** One-Hop
-* **Target:** S3 Bucket Access
-* **Technique:** iam:AttachRolePolicy on another role with S3 access
+* **Category:** Privilege Escalation
+* **Sub-Category:** self-escalation
+* **Path Type:** self-escalation
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-009
+* **Technique:** Role with iam:AttachRolePolicy on itself can attach policy granting S3 bucket access
 
 ## Overview
 

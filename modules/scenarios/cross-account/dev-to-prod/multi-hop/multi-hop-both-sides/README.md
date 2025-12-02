@@ -1,5 +1,12 @@
 # Multi-Hop Cross-Account Privilege Escalation (Both Sides)
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** privilege-chaining
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** dev, prod
+* **Technique:** Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation
+
 This module demonstrates a complex multi-hop privilege escalation attack that spans both dev and prod accounts, using login profile manipulation to escalate privileges across account boundaries.
 
 ## Attack Path Overview

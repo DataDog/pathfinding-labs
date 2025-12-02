@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: iam:UpdateAssumeRolePolicy
 
-**Scenario Type:** One-Hop
-* **Target:** S3 Bucket Access
-* **Technique:** Trust policy modification via iam:UpdateAssumeRolePolicy
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-012
+* **Technique:** User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access
 
 ## Overview
 

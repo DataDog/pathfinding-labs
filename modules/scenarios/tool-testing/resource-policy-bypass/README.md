@@ -1,5 +1,12 @@
 # S3 Bucket Access Through Resource Policy
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** multi-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Bypass S3 bucket resource policy restrictions by assuming role with bucket access
+
 This module demonstrates how a role with minimal IAM permissions can access an S3 bucket through a resource-based policy, bypassing traditional IAM permission restrictions.
 
 ## Attack Path Overview

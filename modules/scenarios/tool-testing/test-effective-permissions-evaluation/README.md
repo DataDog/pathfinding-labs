@@ -1,11 +1,11 @@
 # Comprehensive Effective Permissions Evaluation Testing
 
-**Category:** Tool Testing
-**Sub-Category:** edge-case-detection
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
+* **Category:** Tool Testing
+* **Sub-Category:** edge-case-detection
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 
 ## Overview
 

@@ -1,5 +1,12 @@
 # Cross-Account Lambda Function Code Update Attack
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** privilege-chaining
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** dev, prod
+* **Technique:** Cross-account Lambda function code injection to extract admin credentials
+
 This module demonstrates a cross-account privilege escalation attack where a dev role can update and invoke a prod Lambda function to extract credentials from the Lambda execution role.
 
 ## Attack Path Overview

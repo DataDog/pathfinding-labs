@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:PassRole + cloudformation:CreateStackSet + cloudformation:CreateStackInstances
 
-**Category:** Privilege Escalation
-**Sub-Category:** service-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Passing administrative execution role to CloudFormation StackSet to create escalated IAM resources
+* **Category:** Privilege Escalation
+* **Sub-Category:** service-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Passing administrative execution role to CloudFormation StackSet to create escalated IAM resources
 
 ## Overview
 

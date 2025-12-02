@@ -256,6 +256,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepol
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-addpermission"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
   type        = bool
@@ -324,6 +330,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
 
 variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
   description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode+lambda-addpermission"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode+lambda-invokefunction"
   type        = bool
   default     = false
 }

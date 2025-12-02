@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: iam:CreateAccessKey
 
-**Scenario Type:** One-Hop
-* **Target:** S3 Bucket Access
-* **Technique:** Access key creation for bucket-access user via iam:CreateAccessKey
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-002
+* **Technique:** User with iam:CreateAccessKey can create credentials for user with S3 bucket access
 
 ## Overview
 

@@ -1,5 +1,12 @@
 # Cross-Account from Operations to Prod Simple Role Assumption
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** cross-account-escalation
+* **Path Type:** cross-account
+* **Target:** to-admin
+* **Environments:** operations, prod
+* **Technique:** Cross-account role assumption from operations to prod
+
 This module demonstrates cross-account role trust relationships between operations and production accounts, allowing simple role assumption from operations to prod.
 
 ## Access Path Diagram

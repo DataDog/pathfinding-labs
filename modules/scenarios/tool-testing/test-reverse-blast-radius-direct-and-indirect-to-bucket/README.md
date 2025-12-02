@@ -1,11 +1,11 @@
 # Tool Testing: Reverse Blast Radius Query Detection (Direct and Indirect S3 Access)
 
-**Category:** Tool Testing
-**Sub-Category:** reverse-blast-radius
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
+* **Category:** Tool Testing
+* **Sub-Category:** reverse-blast-radius
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
 
 ## Overview
 

@@ -687,6 +687,20 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  description = "All outputs for iam-passrole+lambda-createfunction+lambda-addpermission one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_iam_passrole_lambda" {
   description = "All outputs for iam-passrole+lambda one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? {
@@ -920,6 +934,38 @@ output "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
     target_lambda_function_name     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_lambda_function_name
     target_lambda_function_arn      = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].target_lambda_function_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission" {
+  description = "All outputs for lambda-updatefunctioncode+lambda-addpermission one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_secret_access_key
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].target_lambda_function_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].target_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction" {
+  description = "All outputs for lambda-updatefunctioncode+lambda-invokefunction one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_secret_access_key
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_lambda_function_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].attack_path
   } : null
   sensitive = true
 }

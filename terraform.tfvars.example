@@ -66,6 +66,7 @@ enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefi
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice = false
 enable_single_account_privesc_one_hop_to_admin_sts_assumerole                      = false
 enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy          = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation         = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances = false
@@ -76,7 +77,9 @@ enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole 
 enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
 
-enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode           = false
+enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode                   = false
+enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission = false
+enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild                = false
 enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch           = false
 

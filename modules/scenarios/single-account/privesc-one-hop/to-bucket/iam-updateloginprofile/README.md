@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: iam:UpdateLoginProfile
 
-**Scenario Type:** One-Hop
-* **Target:** S3 Bucket Access
-* **Technique:** Login profile modification for bucket-access user via iam:UpdateLoginProfile
+* **Category:** Privilege Escalation
+* **Sub-Category:** credential-access
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** iam-006
+* **Technique:** User with iam:UpdateLoginProfile can reset password for user with S3 bucket access
 
 ## Overview
 

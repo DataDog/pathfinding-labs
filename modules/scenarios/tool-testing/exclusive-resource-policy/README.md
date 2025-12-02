@@ -1,5 +1,12 @@
 # Exclusive S3 Bucket Access Through Restrictive Resource Policy
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** multi-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Access S3 bucket with exclusive resource policy that denies all except specific role
+
 This module demonstrates how a role with minimal IAM permissions can access an S3 bucket through a restrictive resource-based policy that explicitly denies access to everyone else, creating an exclusive access scenario.
 
 ## Attack Path Overview

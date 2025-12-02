@@ -1,8 +1,12 @@
 # One-Hop Privilege Escalation: sts:AssumeRole
 
-**Scenario Type:** One-Hop
-* **Target:** S3 Bucket Access
-* **Technique:** Direct role assumption via sts:AssumeRole
+* **Category:** Privilege Escalation
+* **Sub-Category:** access-resource
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Pathfinding.cloud ID:** sts-001
+* **Technique:** User with sts:AssumeRole can directly assume role with S3 bucket access
 
 ## Overview
 

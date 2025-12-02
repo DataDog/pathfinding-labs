@@ -1,5 +1,12 @@
 # dev_lambda_admin
 
+* **Category:** Toxic Combination
+* **Sub-Category:** Publicly-accessible
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Publicly accessible Lambda function with administrative IAM role
+
 Lambda admin access patterns in dev environment.
 
 ## Overview

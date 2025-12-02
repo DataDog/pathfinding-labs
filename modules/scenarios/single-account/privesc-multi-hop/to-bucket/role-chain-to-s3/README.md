@@ -1,5 +1,12 @@
 # prod_simple_explicit_role_assumption_chain
 
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** multi-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Three-hop role assumption chain to reach S3 bucket access
+
 A 3-hop role assumption chain in the production environment with an S3 bucket destination.
 
 ## Overview

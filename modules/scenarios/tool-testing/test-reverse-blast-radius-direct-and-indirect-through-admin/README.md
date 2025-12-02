@@ -1,11 +1,11 @@
 # Reverse Blast Radius: Direct and Indirect S3 Access Through Admin
 
-**Category:** Tool Testing
-**Sub-Category:** reverse-blast-radius
-**Path Type:** one-hop
-**Target:** to-bucket
-**Environments:** prod
-**Technique:** Validating security tool detection of both direct and indirect S3 bucket access via administrative permissions
+* **Category:** Tool Testing
+* **Sub-Category:** reverse-blast-radius
+* **Path Type:** one-hop
+* **Target:** to-bucket
+* **Environments:** prod
+* **Technique:** Validating security tool detection of both direct and indirect S3 bucket access via administrative permissions
 
 ## Overview
 

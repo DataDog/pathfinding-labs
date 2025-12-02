@@ -1,11 +1,11 @@
 # Privilege Escalation via iam:CreatePolicyVersion + iam:UpdateAssumeRolePolicy
 
-**Category:** Privilege Escalation
-**Sub-Category:** principal-lateral-movement
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Modify customer-managed policy permissions and role trust policy to gain admin access
+* **Category:** Privilege Escalation
+* **Sub-Category:** principal-lateral-movement
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Technique:** Modify customer-managed policy permissions and role trust policy to gain admin access
 
 ## Overview
 

@@ -423,7 +423,16 @@ module "single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
   resource_suffix = random_string.resource_suffix.result
 }
 
-
+module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+lambda-addpermission"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
 
 module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction ? 1 : 0
@@ -549,6 +558,28 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
 module "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode+lambda-addpermission"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode+lambda-invokefunction"
   providers = {
     aws.prod = aws.prod
   }
