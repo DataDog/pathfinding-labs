@@ -770,6 +770,20 @@ output "single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset" {
+  description = "All outputs for cloudformation-createchangeset+executechangeset one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].starting_user_secret_access_key
+    stack_name                      = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].stack_name
+    stack_role_arn                  = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].stack_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
   description = "All outputs for cloudformation-updatestack one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack ? {
@@ -966,6 +980,84 @@ output "single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda
     target_role_name                = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance" {
+  description = "All outputs for iam-passrole+sagemaker-createnotebookinstance one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].starting_user_secret_access_key
+    passable_role_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].passable_role_name
+    passable_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].passable_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob" {
+  description = "All outputs for iam-passrole+sagemaker-createprocessingjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].starting_user_secret_access_key
+    passable_role_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].passable_role_name
+    passable_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].passable_role_arn
+    bucket_name                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].bucket_name
+    bucket_arn                      = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].bucket_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl" {
+  description = "All outputs for sagemaker-createpresignednotebookinstanceurl one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].starting_user_secret_access_key
+    notebook_instance_name          = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].notebook_instance_name
+    notebook_instance_arn           = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].notebook_instance_arn
+    notebook_execution_role_name    = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].notebook_execution_role_name
+    notebook_execution_role_arn     = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].notebook_execution_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config" {
+  description = "All outputs for sagemaker-updatenotebook-lifecycle-config one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].starting_user_secret_access_key
+    notebook_instance_name          = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].notebook_instance_name
+    notebook_instance_arn           = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].notebook_instance_arn
+    notebook_execution_role_arn     = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].notebook_execution_role_arn
+    notebook_execution_role_name    = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].notebook_execution_role_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob" {
+  description = "All outputs for iam-passrole+sagemaker-createtrainingjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].starting_user_secret_access_key
+    passable_role_name              = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].passable_role_name
+    passable_role_arn               = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].passable_role_arn
+    bucket_name                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].bucket_name
+    bucket_arn                      = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].bucket_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob[0].attack_path
   } : null
   sensitive = true
 }

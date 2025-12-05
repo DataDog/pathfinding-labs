@@ -236,7 +236,8 @@ resource "aws_iam_policy" "boundary_ec2only" {
   }
 }
 
-# Boundary policy - NotAction EC2 (allows only EC2 DescribeInstances)
+# Boundary policy - NotAction edge case (NotAction "*" = allows nothing)
+# Tests if tools can correctly parse NotAction = ["*"] which means "allow everything except everything"
 resource "aws_iam_policy" "boundary_notaction_ec2only" {
   provider = aws.prod
   name     = "pl-prod-epe-boundary-notaction-ec2only"
@@ -246,7 +247,7 @@ resource "aws_iam_policy" "boundary_notaction_ec2only" {
     Statement = [
       {
         Effect    = "Allow"
-        NotAction = ["ec2:DescribeInstances"]
+        NotAction = ["*"]
         Resource  = "*"
       }
     ]
@@ -968,14 +969,14 @@ resource "aws_iam_user_policy_attachment" "notadmin_boundary_ec2only_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# 18. User with admin policy + boundary notaction ec2only
+# 18. User with admin policy + boundary NotAction edge case (NotAction "*" = allows nothing)
 resource "aws_iam_user" "notadmin_adminpolicy_plus_boundary_notaction_ec2only" {
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-admin-plus-boundary-na-ec2only"
   permissions_boundary = aws_iam_policy.boundary_notaction_ec2only.arn
 
   tags = {
-    Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-notaction-ec2only"
+    Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-notaction-edge-case"
     Environment = var.environment
     Scenario    = "test-effective-permissions-evaluation"
     TestResult  = "not-admin"
@@ -1712,7 +1713,7 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_boundary_ec2only_admin"
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# 36. Role with admin policy + boundary notaction ec2only
+# 36. Role with admin policy + boundary NotAction edge case (NotAction "*" = allows nothing)
 resource "aws_iam_role" "notadmin_adminpolicy_plus_boundary_notaction_ec2only" {
   provider             = aws.prod
   name                 = "pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only"
@@ -1732,7 +1733,7 @@ resource "aws_iam_role" "notadmin_adminpolicy_plus_boundary_notaction_ec2only" {
   })
 
   tags = {
-    Name        = "pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-notaction-ec2only"
+    Name        = "pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-notaction-edge-case"
     Environment = var.environment
     Scenario    = "test-effective-permissions-evaluation"
     TestResult  = "not-admin"

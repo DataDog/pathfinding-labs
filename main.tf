@@ -445,6 +445,17 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfuncti
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-createchangeset+executechangeset"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-updatestack"
@@ -712,6 +723,61 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue
 module "single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+glue-updatejob+glue-createtrigger"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+sagemaker-createnotebookinstance"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+sagemaker-createprocessingjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+sagemaker-createtrainingjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-createpresignednotebookinstanceurl"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-updatenotebook-lifecycle-config"
   providers = {
     aws.prod = aws.prod
   }

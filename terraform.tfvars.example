@@ -50,6 +50,7 @@ enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack       
 enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestackset       = false
 # Bedrock AgentCore - Access existing code interpreter (bedrock-002)
 enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances       = false
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances = false
 # EC2 Launch Template Version + Modify Launch Template - $0.01-0.05/hour for spot instances
@@ -100,6 +101,16 @@ enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun = false
 # Glue UpdateJob + CreateTrigger - $0.10/month (glue-006)
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger = false
+# SageMaker PassRole + CreateNotebookInstance - $5/month (sagemaker-001)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance = false
+# SageMaker PassRole + CreateProcessingJob - $5/month (sagemaker-003)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob = false
+# SageMaker PassRole + CreateTrainingJob - $5/month (sagemaker-002)
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob = false
+# SageMaker CreatePresignedNotebookInstanceUrl - $5/month (sagemaker-004)
+enable_single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl = false
+# SageMaker UpdateNotebookInstance Lifecycle Config - $5/month
+enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config = false
 enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand                     = false
 enable_single_account_privesc_one_hop_to_admin_ssm_startsession                    = false
 

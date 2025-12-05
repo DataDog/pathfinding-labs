@@ -268,6 +268,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_cre
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-createchangeset+executechangeset"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
   description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-updatestack"
   type        = bool
@@ -414,6 +420,40 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updat
 
 variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-createtrigger ($0.10/month) (Pathfinding.cloud: glue-006)"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
+##############################################################################
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createnotebookinstance ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createprocessingjob ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createtrainingjob ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-createpresignednotebookinstanceurl ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-updatenotebook-lifecycle-config ($5/month)"
   type        = bool
   default     = false
 }

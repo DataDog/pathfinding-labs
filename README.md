@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-79-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-80-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -189,7 +189,7 @@ In these scenarios, an IAM principal has the permission to update their own perm
 | [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
 | [`iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
 
-#### One-Hop to Admin (45 scenarios)
+#### One-Hop to Admin (47 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
@@ -233,10 +233,14 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`iam-passrole+lambda-createfunction+lambda-invokefunction`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+lambda-createfunction+lambda-invokefunction/README.md) | User creates Lambda with admin role and invokes to extract credentials |
 | [`iam-putrolepolicy+iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+iam-updateassumerolepolicy/README.md) | User adds inline admin policy to role and updates trust policy to allow assumption |
 | [`iam-putrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+sts-assumerole/README.md) | User adds inline admin policy to assumable role then assumes it |
+| [`iam-passrole+sagemaker-createnotebookinstance`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+sagemaker-createnotebookinstance/README.md) | User creates SageMaker notebook with admin role and accesses Jupyter terminal to execute commands |
+| [`iam-passrole+sagemaker-createtrainingjob`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+sagemaker-createtrainingjob/README.md) | User creates SageMaker training job with admin role and malicious script to escalate privileges |
 | [`iam-putuserpolicy+iam-createaccesskey`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy+iam-createaccesskey/README.md) | User adds admin inline policy to target user and creates access keys |
 | [`iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateassumerolepolicy/README.md) | User modifies trust policy of admin role to grant access |
 | [`iam-updateloginprofile`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-updateloginprofile/README.md) | User resets console password for an admin user |
 | [`lambda-updatefunctioncode`](modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-updatefunctioncode/README.md) | User modifies existing Lambda function code to execute under privileged role |
+| [`sagemaker-createpresignednotebookinstanceurl`](modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-createpresignednotebookinstanceurl/README.md) | User generates presigned URL to access existing SageMaker notebook with admin role and execute commands |
+| [`sagemaker-updatenotebook-lifecycle-config`](modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-updatenotebook-lifecycle-config/README.md) | User injects malicious lifecycle config into existing SageMaker notebook to execute code with notebook's admin role |
 | [`ssm-sendcommand`](modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-sendcommand/README.md) | User executes commands on EC2 instances with admin roles to extract credentials |
 | [`ssm-startsession`](modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-startsession/README.md) | User starts SSM session on EC2 instance with admin role |
 | [`sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/sts-assumerole/README.md) | Role directly assumes another role with admin permissions |
@@ -727,10 +731,10 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **80 scenarios** available
+- ✅ **81 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
-  - 44 One-Hop to Admin
+  - 45 One-Hop to Admin
   - 11 One-Hop to Bucket
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket
