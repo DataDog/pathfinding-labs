@@ -16,7 +16,7 @@ This scenario demonstrates privilege escalation where an attacker with `iam:Upda
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-updateassumerolepolicy-privesc-role`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-updateassumerolepolicy-bucket-access-role`
 - `arn:aws:s3:::pl-prod-one-hop-updateassumerolepolicy-bucket-SUFFIX`
@@ -33,7 +33,7 @@ graph LR
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-updateassumerolepolicy-privesc-role` to begin the scenario
+1. **Scaffolding aka Initial Access**: `pl-pathfinding-starting-user-prod` assumes the role `pl-prod-one-hop-updateassumerolepolicy-privesc-role` to begin the scenario
 2. **Modify Trust Policy**: Use `iam:UpdateAssumeRolePolicy` to update the trust policy of `pl-prod-one-hop-updateassumerolepolicy-bucket-access-role` to allow the privesc role to assume it
 3. **Assume Bucket Access Role**: Assume the `pl-prod-one-hop-updateassumerolepolicy-bucket-access-role` which has S3 permissions
 4. **Access S3 Bucket**: Read and download sensitive data from the target bucket

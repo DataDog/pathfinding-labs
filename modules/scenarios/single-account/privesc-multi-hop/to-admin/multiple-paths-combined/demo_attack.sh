@@ -90,7 +90,7 @@ aws iam create-role --role-name "privesc-demo-ec2-admin-role" --assume-role-poli
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::${ACCOUNT_ID}:user/pl-pathfinder-starting-user-prod"
+        "AWS": "arn:aws:iam::${ACCOUNT_ID}:user/pl-pathfinding-starting-user-prod"
       },
       "Action": "sts:AssumeRole"
     }
@@ -155,7 +155,7 @@ def lambda_handler(event, context):
                     {
                         "Effect": "Allow",
                         "Principal": {
-                            "AWS": f"arn:aws:iam::{context.invoked_function_arn.split(':')[4]}:user/pl-pathfinder-starting-user-prod"
+                            "AWS": f"arn:aws:iam::{context.invoked_function_arn.split(':')[4]}:user/pl-pathfinding-starting-user-prod"
                         },
                         "Action": "sts:AssumeRole"
                     }
@@ -229,7 +229,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::\${AWS::AccountId}:user/pl-pathfinder-starting-user-prod'
+              AWS: !Sub 'arn:aws:iam::\${AWS::AccountId}:user/pl-pathfinding-starting-user-prod'
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
@@ -264,21 +264,21 @@ sleep 15
 echo "Checking for created admin roles..."
 
 # # Check for EC2 created role
-# if aws --region us-west-2 iam get-role --role-name "privesc-demo-ec2-admin-role" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
+# if aws --region us-west-2 iam get-role --role-name "privesc-demo-ec2-admin-role" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
 #     echo -e "${GREEN}✓ EC2 created admin role: privesc-demo-ec2-admin-role${NC}"
 # else
 #     echo -e "${YELLOW}⚠ EC2 admin role not found (may still be creating)${NC}"
 # fi
 
 # # Check for Lambda created role
-# if aws --region us-west-2 iam get-role --role-name "privesc-demo-lambda-admin-role" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
+# if aws --region us-west-2 iam get-role --role-name "privesc-demo-lambda-admin-role" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
 #     echo -e "${GREEN}✓ Lambda created admin role: privesc-demo-lambda-admin-role${NC}"
 # else
 #     echo -e "${YELLOW}⚠ Lambda admin role not found${NC}"
 # fi
 
 # # Check for CloudFormation created role
-# if aws --region us-west-2 iam get-role --role-name "privesc-demo-cf-admin-role" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
+# if aws --region us-west-2 iam get-role --role-name "privesc-demo-cf-admin-role" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
 #     echo -e "${GREEN}✓ CloudFormation created admin role: privesc-demo-cf-admin-role${NC}"
 # else
 #     echo -e "${YELLOW}⚠ CloudFormation admin role not found${NC}"
@@ -291,8 +291,8 @@ echo -e "${YELLOW}Step 8: Testing admin role access${NC}"
 # Test EC2 admin role
 echo "Testing EC2 admin role..."
 EC2_ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/privesc-demo-ec2-admin-role"
-if aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "test-ec2-admin" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
-    EC2_CREDS=$(aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "test-ec2-admin" --profile pl-pathfinder-starting-user-prod)
+if aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "test-ec2-admin" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
+    EC2_CREDS=$(aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "test-ec2-admin" --profile pl-pathfinding-starting-user-prod)
     export AWS_ACCESS_KEY_ID=$(echo "$EC2_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$EC2_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$EC2_CREDS" | jq -r '.Credentials.SessionToken')
@@ -314,8 +314,8 @@ fi
 # Test Lambda admin role
 echo "Testing Lambda admin role..."
 LAMBDA_ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/privesc-demo-lambda-admin-role"
-if aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "test-lambda-admin" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
-    LAMBDA_CREDS=$(aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "test-lambda-admin" --profile pl-pathfinder-starting-user-prod)
+if aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "test-lambda-admin" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
+    LAMBDA_CREDS=$(aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "test-lambda-admin" --profile pl-pathfinding-starting-user-prod)
     export AWS_ACCESS_KEY_ID=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.SessionToken')
@@ -337,8 +337,8 @@ fi
 # Test CloudFormation admin role
 echo "Testing CloudFormation admin role..."
 CF_ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/privesc-demo-cf-admin-role"
-if aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test-cf-admin" --profile pl-pathfinder-starting-user-prod &> /dev/null; then
-    CF_CREDS=$(aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test-cf-admin" --profile pl-pathfinder-starting-user-prod)
+if aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test-cf-admin" --profile pl-pathfinding-starting-user-prod &> /dev/null; then
+    CF_CREDS=$(aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test-cf-admin" --profile pl-pathfinding-starting-user-prod)
     export AWS_ACCESS_KEY_ID=$(echo "$CF_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$CF_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$CF_CREDS" | jq -r '.Credentials.SessionToken')

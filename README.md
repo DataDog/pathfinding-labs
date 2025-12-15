@@ -1,6 +1,6 @@
 <div align="center">
 
-# Pathfinder Labs
+# Pathfinding Labs
 
 
 
@@ -15,10 +15,10 @@
 
 ---
 
-Pathfinder Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
+Pathfinding Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
 
 
-### How Pathfinder Labs Works
+### How Pathfinding Labs Works
 
 ```mermaid
 graph LR
@@ -143,8 +143,8 @@ To Admin | To Bucket
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/DataDog/pathfinder-labs.git
-cd pathfinder-labs
+git clone https://github.com/DataDog/pathfinding-labs.git
+cd pathfinding-labs
 
 # 2. Copy and configure your settings
 cp terraform.tfvars.example terraform.tfvars
@@ -379,7 +379,7 @@ terraform output -json | jq '.single_account_privesc_one_hop_to_admin_iam_create
 
 ## Scenario Taxonomy
 
-Pathfinder Labs organizes attack scenarios into five main categories:
+Pathfinding Labs organizes attack scenarios into five main categories:
 
 ### **Self-Escalation**
 Principal directly modifies itself to gain elevated privileges without traversing to another principal. This is the most direct form of privilege escalation where an entity grants itself additional permissions.
@@ -466,7 +466,7 @@ enable_prod_multi_hop_to_bucket_role_chain_to_s3 = false
 
 ### Single Account Mode
 
-**You only need ONE AWS account to use most of Pathfinder Labs!**
+**You only need ONE AWS account to use most of Pathfinding Labs!**
 
 All single-account scenarios deploy to the `prod` account. The `dev` and `ops` accounts are only required for cross-account scenarios.
 
@@ -516,9 +516,9 @@ The demo scripts provide:
 
 Each environment has a dedicated starting user with **minimal permissions**:
 
-- **`pl-pathfinder-starting-user-prod`** - Production starting point
-- **`pl-pathfinder-starting-user-dev`** - Development starting point  
-- **`pl-pathfinder-starting-user-operations`** - Operations starting point
+- **`pl-pathfinding-starting-user-prod`** - Production starting point
+- **`pl-pathfinding-starting-user-dev`** - Development starting point  
+- **`pl-pathfinding-starting-user-operations`** - Operations starting point
 
 **Permissions:**
 ```json
@@ -552,7 +552,7 @@ All resources follow a consistent naming pattern:
 pl-{resource-description}-{context}
 
 Examples:
-- pl-pathfinder-starting-user-prod
+- pl-pathfinding-starting-user-prod
 - pl-cak-admin (CreateAccessKey Admin)
 - pl-prod-one-hop-putrolepolicy-role
 ```
@@ -572,7 +572,7 @@ Example:
 ### Directory Structure
 
 ```
-pathfinder-labs/
+pathfinding-labs/
 ├── environments/              # Base infrastructure (always deployed)
 │   ├── prod/                 # Production environment base resources
 │   ├── dev/                  # Development environment base resources

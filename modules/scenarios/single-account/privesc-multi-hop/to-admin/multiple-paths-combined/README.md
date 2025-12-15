@@ -12,7 +12,7 @@ This module creates a role with multiple privilege escalation paths and three se
 ## Access Path
 
 The attack paths are:
-1. `pl-pathfinder_starting_user_prod` assumes `pl-prod-role-with-multiple-privesc-paths`
+1. `pl-pathfinding_starting_user_prod` assumes `pl-prod-role-with-multiple-privesc-paths`
 2. The role can then use multiple methods to escalate privileges:
    - **EC2 Path**: Create EC2 instance with admin role → EC2 creates new admin role
    - **Lambda Path**: Create Lambda function with admin role → Lambda creates new admin role  
@@ -22,7 +22,7 @@ The attack paths are:
 
 ```mermaid
 graph LR
-    A[prod:iam:user:pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-prod-role-with-multiple-privesc-paths]
+    A[prod:iam:user:pl-pathfinding-starting-user-prod] -->|sts:AssumeRole| B[prod:iam:role:pl-prod-role-with-multiple-privesc-paths]
     B -->|ec2:RunInstances + iam:PassRole| C[prod:ec2:instance:admin-instance]
     B -->|lambda:CreateFunction + iam:PassRole| D[prod:lambda:function:admin-function]
     B -->|cloudformation:CreateStack + iam:PassRole| E[prod:cloudformation:stack:admin-stack]
@@ -36,7 +36,7 @@ graph LR
 
 ### Privilege Escalation Role
 - **Role**: `pl-prod-role-with-multiple-privesc-paths`
-  - Trusts: `pl-pathfinder-starting-user-prod` user
+  - Trusts: `pl-pathfinding-starting-user-prod` user
   - Permissions: `iam:PassRole`, `lambda:CreateFunction`, `cloudformation:CreateStack`, `ec2:RunInstances`, `iam:CreateLoginProfile`
 
 ### Service Admin Roles

@@ -16,7 +16,7 @@ This scenario demonstrates privilege escalation where an attacker can attach man
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-privesc-role`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-attachrolepolicy-bucket-access-role`
 - `arn:aws:s3:::pl-prod-one-hop-attachrolepolicy-bucket-ACCOUNT_ID-SUFFIX`
@@ -33,7 +33,7 @@ graph LR
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-attachrolepolicy-bucket-privesc-role` to begin the scenario
+1. **Scaffolding aka Initial Access**: `pl-pathfinding-starting-user-prod` assumes the role `pl-prod-one-hop-attachrolepolicy-bucket-privesc-role` to begin the scenario
 2. **Attach Managed Policy**: Use `iam:AttachRolePolicy` to attach the AWS-managed AmazonS3FullAccess policy to `pl-prod-one-hop-attachrolepolicy-bucket-access-role`
 3. **Assume Bucket Access Role**: Assume the `pl-prod-one-hop-attachrolepolicy-bucket-access-role` which now has S3 full access
 4. **Access S3 Bucket**: Read and download sensitive data from the target bucket

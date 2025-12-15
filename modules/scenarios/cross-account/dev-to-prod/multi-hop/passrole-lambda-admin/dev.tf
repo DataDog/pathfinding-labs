@@ -19,7 +19,7 @@ resource "aws_iam_role" "lambda_prod_updater" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-pathfinder-starting-user-dev"
+          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-pathfinding-starting-user-dev"
         }
         Action = "sts:AssumeRole"
       }

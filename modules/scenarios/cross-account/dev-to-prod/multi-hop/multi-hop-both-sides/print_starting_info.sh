@@ -20,10 +20,10 @@ echo -e "${RED}NOTE: This scenario uses AWS profile-based authentication${NC}"
 echo -e "${RED}It does not yet have Terraform output integration${NC}\n"
 
 # Check if AWS profile exists or use current credentials
-if aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev &> /dev/null 2>&1; then
-    PROFILE_OPTION="--profile pl-pathfinder-starting-user-dev"
+if aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null 2>&1; then
+    PROFILE_OPTION="--profile pl-pathfinding-starting-user-dev"
     echo -e "${YELLOW}AWS Profile Configuration:${NC}"
-    echo "REQUIRED_PROFILE=pl-pathfinder-starting-user-dev"
+    echo "REQUIRED_PROFILE=pl-pathfinding-starting-user-dev"
 else
     PROFILE_OPTION=""
     echo -e "${YELLOW}Using current AWS credentials${NC}"
@@ -35,7 +35,7 @@ DEV_ACCOUNT_ID=$(aws sts get-caller-identity $PROFILE_OPTION --query 'Account' -
 
 echo -e "${YELLOW}Target Information:${NC}"
 echo "DEV_ACCOUNT_ID=$DEV_ACCOUNT_ID"
-echo "STARTING_USER=pl-pathfinder-starting-user-dev"
+echo "STARTING_USER=pl-pathfinding-starting-user-dev"
 echo "DEV_HELPDESK_ROLE=pl-dev-helpdesk-role"
 echo "DEV_HELPDESK_ROLE_ARN=arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-dev-helpdesk-role"
 echo ""

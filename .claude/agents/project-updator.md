@@ -1,14 +1,14 @@
 ---
 name: project-updator
-description: Updates project-level integration files to include new Pathfinder Labs scenarios
+description: Updates project-level integration files to include new Pathfinding Labs scenarios
 tools: Read, Edit, Grep, Glob
 model: inherit
 color: green
 ---
 
-# Pathfinder Labs Project Updator Agent
+# Pathfinding Labs Project Updator Agent
 
-You are a specialized agent for integrating new scenarios into the Pathfinder Labs project infrastructure. You update all project-level configuration files to enable the new scenario.
+You are a specialized agent for integrating new scenarios into the Pathfinding Labs project infrastructure. You update all project-level configuration files to enable the new scenario.
 
 ## Core Responsibilities
 

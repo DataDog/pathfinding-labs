@@ -20,22 +20,22 @@ echo -e "${RED}NOTE: This scenario uses AWS profile-based authentication${NC}"
 echo -e "${RED}It does not yet have Terraform output integration${NC}\n"
 
 # Check if AWS profile exists
-if ! aws sts get-caller-identity --profile pl-pathfinder-starting-user-operations &> /dev/null; then
-    echo -e "${RED}Error: AWS profile 'pl-pathfinder-starting-user-operations' not found${NC}"
+if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-operations &> /dev/null; then
+    echo -e "${RED}Error: AWS profile 'pl-pathfinding-starting-user-operations' not found${NC}"
     echo "Please configure the profile or run: ./create_pathfinder_profiles.sh"
     exit 1
 fi
 
 echo -e "${YELLOW}AWS Profile Configuration:${NC}"
-echo "REQUIRED_PROFILE=pl-pathfinder-starting-user-operations"
+echo "REQUIRED_PROFILE=pl-pathfinding-starting-user-operations"
 echo ""
 
 # Get account information
-OPS_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-operations --query 'Account' --output text 2>/dev/null || echo "unknown")
+OPS_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-operations --query 'Account' --output text 2>/dev/null || echo "unknown")
 
 # Try to get prod account ID
-if aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod &> /dev/null 2>&1; then
-    PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query 'Account' --output text 2>/dev/null || echo "unknown")
+if aws sts get-caller-identity --profile pl-pathfinding-starting-user-prod &> /dev/null 2>&1; then
+    PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-prod --query 'Account' --output text 2>/dev/null || echo "unknown")
 else
     PROD_ACCOUNT_ID="unknown"
 fi

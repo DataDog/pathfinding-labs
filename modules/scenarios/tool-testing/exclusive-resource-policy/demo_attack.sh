@@ -63,8 +63,8 @@ echo ""
 
 # Check if we're running as the pathfinder starting user
 CURRENT_USER=$(echo "$CURRENT_IDENTITY" | jq -r '.Arn' | cut -d'/' -f2)
-if [ "$CURRENT_USER" != "pl-pathfinder-starting-user-prod" ]; then
-    echo -e "${YELLOW}Note: This demo should be run as the pl-pathfinder-starting-user-prod user for full effect${NC}"
+if [ "$CURRENT_USER" != "pl-pathfinding-starting-user-prod" ]; then
+    echo -e "${YELLOW}Note: This demo should be run as the pl-pathfinding-starting-user-prod user for full effect${NC}"
     echo "Current user: $CURRENT_USER"
     echo ""
 fi

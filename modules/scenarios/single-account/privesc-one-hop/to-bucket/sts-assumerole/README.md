@@ -16,7 +16,7 @@ This scenario demonstrates a simple but common privilege escalation pattern wher
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-assumerole-bucket-access-role`
 - `arn:aws:s3:::pl-prod-one-hop-assumerole-bucket-ACCOUNT_ID-SUFFIX`
 
@@ -24,14 +24,14 @@ This scenario demonstrates a simple but common privilege escalation pattern wher
 
 ```mermaid
 graph LR
-    A[pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[pl-prod-one-hop-assumerole-bucket-access-role]
+    A[pl-pathfinding-starting-user-prod] -->|sts:AssumeRole| B[pl-prod-one-hop-assumerole-bucket-access-role]
     B -->|s3:GetObject, s3:PutObject| C[pl-prod-one-hop-assumerole-bucket]
     C -->|Access Sensitive Data| D[Sensitive Bucket Access]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-assumerole-bucket-access-role` to begin the scenario
+1. **Scaffolding aka Initial Access**: `pl-pathfinding-starting-user-prod` assumes the role `pl-prod-one-hop-assumerole-bucket-access-role` to begin the scenario
 2. **Access S3 Bucket**: The assumed role has `s3:ListBucket`, `s3:GetObject`, and `s3:PutObject` permissions on the target bucket
 3. **Verification**: Access and download sensitive data from the bucket
 

@@ -9,17 +9,17 @@ variable "aws_region" {
 
 variable "dev_account_aws_profile" {
   description = "AWS profile for dev environment"
-  default     = "pl-pathfinder-starting-user-dev"
+  default     = "pl-pathfinding-starting-user-dev"
 }
 
 variable "operations_account_aws_profile" {
   description = "AWS profile for operations account"
-  default     = "pl-pathfinder-starting-user-operations"
+  default     = "pl-pathfinding-starting-user-operations"
 }
 
 variable "prod_account_aws_profile" {
   description = "AWS profile for prod account"
-  default     = "pl-pathfinder-starting-user-prod"
+  default     = "pl-pathfinding-starting-user-prod"
 }
 
 variable "prod_account_id" {

@@ -2,7 +2,7 @@
 
 # Cross-Account PassRole to Lambda Admin Attack Cleanup
 # This script removes any Lambda functions created during the multi-hop attack demo
-# Path: pl-pathfinder-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
+# Path: pl-pathfinding-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
 
 set -e
 

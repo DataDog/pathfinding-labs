@@ -48,7 +48,7 @@ data "archive_file" "hello_world_zip" {
 def lambda_handler(event, context):
     return {
         'statusCode': 200,
-        'body': 'Hello from Pathfinder Labs!'
+        'body': 'Hello from Pathfinding Labs!'
     }
 EOF
     filename = "hello_world.py"

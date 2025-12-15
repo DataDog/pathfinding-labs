@@ -1,26 +1,26 @@
 # Outputs for pathfinder starting users
-output "dev_pathfinder_starting_user_access_key_id" {
+output "dev_pathfinding_starting_user_access_key_id" {
   description = "Access key ID for the pathfinder starting user in dev environment"
-  value       = module.dev_environment.pathfinder_starting_user_access_key_id
+  value       = module.dev_environment.pathfinding_starting_user_access_key_id
   sensitive   = true
 }
 
-output "dev_pathfinder_starting_user_secret_access_key" {
+output "dev_pathfinding_starting_user_secret_access_key" {
   description = "Secret access key for the pathfinder starting user in dev environment"
-  value       = module.dev_environment.pathfinder_starting_user_secret_access_key
+  value       = module.dev_environment.pathfinding_starting_user_secret_access_key
   sensitive   = true
 }
 
 
-output "operations_pathfinder_starting_user_access_key_id" {
+output "operations_pathfinding_starting_user_access_key_id" {
   description = "Access key ID for the pathfinder starting user in operations environment"
-  value       = module.ops_environment.pathfinder_starting_user_access_key_id
+  value       = module.ops_environment.pathfinding_starting_user_access_key_id
   sensitive   = true
 }
 
-output "operations_pathfinder_starting_user_secret_access_key" {
+output "operations_pathfinding_starting_user_secret_access_key" {
   description = "Secret access key for the pathfinder starting user in operations environment"
-  value       = module.ops_environment.pathfinder_starting_user_secret_access_key
+  value       = module.ops_environment.pathfinding_starting_user_secret_access_key
   sensitive   = true
 }
 

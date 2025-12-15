@@ -9,13 +9,13 @@ terraform {
 }
 
 # Pathfinder starting user for dev environment
-resource "aws_iam_user" "pathfinder_starting_user" {
-  name = "pl-pathfinder-starting-user-dev"
+resource "aws_iam_user" "pathfinding_starting_user" {
+  name = "pl-pathfinding-starting-user-dev"
 }
 
 # Access key for the pathfinder starting user
-resource "aws_iam_access_key" "pathfinder_starting_user" {
-  user = aws_iam_user.pathfinder_starting_user.name
+resource "aws_iam_access_key" "pathfinding_starting_user" {
+  user = aws_iam_user.pathfinding_starting_user.name
 }
 
 # Create admin user for cleanup scripts
@@ -35,9 +35,9 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
 }
 
 # Basic policy for the pathfinder starting user (minimal permissions)
-resource "aws_iam_user_policy" "pathfinder_starting_user_basic" {
-  name = "pl-pathfinder-starting-user-basic-policy"
-  user = aws_iam_user.pathfinder_starting_user.name
+resource "aws_iam_user_policy" "pathfinding_starting_user_basic" {
+  name = "pl-pathfinding-starting-user-basic-policy"
+  user = aws_iam_user.pathfinding_starting_user.name
 
   policy = jsonencode({
     Version = "2012-10-17"

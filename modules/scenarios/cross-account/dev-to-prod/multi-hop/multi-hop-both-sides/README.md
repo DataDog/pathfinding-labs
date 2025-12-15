@@ -18,7 +18,7 @@ The attack path shows how a dev user can escalate to admin privileges across bot
 ```mermaid
 graph LR
     %% Nodes
-    Pathfinder[dev:user:pl-pathfinder-starting-user-dev]
+    Pathfinder[dev:user:pl-pathfinding-starting-user-dev]
     Helpdesk[dev:role:pl-helpdesk]
     Josh[dev:user:pl-Josh]
     TrustsDev[prod:role:pl-trustsdev]
@@ -44,7 +44,7 @@ graph LR
 
 ## Attack Steps
 
-1. **Initial State**: Dev user `pl-pathfinder-starting-user-dev` has `sts:AssumeRole` permission on `pl-helpdesk` role
+1. **Initial State**: Dev user `pl-pathfinding-starting-user-dev` has `sts:AssumeRole` permission on `pl-helpdesk` role
 2. **First Hop**: Dev user assumes the `pl-helpdesk` role in dev account
 3. **Login Profile Creation**: Helpdesk role creates a login profile for `pl-Josh` user (admin in dev)
 4. **Second Hop**: Josh user (now with login profile) assumes the `pl-trustsdev` role in prod account

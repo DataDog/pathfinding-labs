@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Pathfinder Labs** is a modular platform for deploying intentionally vulnerable AWS configurations to validate Cloud Security Posture Management (CSPM) tools and train security teams. Think of it as "Stratus Red Team for CSPM validation."
+**Pathfinding Labs** is a modular platform for deploying intentionally vulnerable AWS configurations to validate Cloud Security Posture Management (CSPM) tools and train security teams. Think of it as "Stratus Red Team for CSPM validation."
 
 ### Purpose
 - **Validate CSPM Detection**: Does your security tooling detect all vulnerable configurations?
@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Directory Structure
 
 ```
-pathfinder-labs/
+pathfinding-labs/
 ├── environments/              # Base infrastructure (always deployed)
 │   ├── prod/                 # Production environment base resources
 │   ├── dev/                  # Development environment base resources (optional)
@@ -112,8 +112,8 @@ pathfinder-labs/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/pathfinder-labs.git
-cd pathfinder-labs
+git clone https://github.com/your-org/pathfinding-labs.git
+cd pathfinding-labs
 
 # 2. Copy and configure your settings
 cp terraform.tfvars.example terraform.tfvars
@@ -395,10 +395,10 @@ Cleanup scripts should:
 
 All resources follow a consistent naming pattern:
 
-- **Prefix**: `pl-` (Pathfinder Labs)
+- **Prefix**: `pl-` (Pathfinding Labs)
 - **Format**: `pl-{resource-description}-{context}`
 - **Examples**:
-  - `pl-pathfinder-starting-user-prod`
+  - `pl-pathfinding-starting-user-prod`
   - `pl-cak-admin` (CreateAccessKey Admin)
   - `pl-prod-one-hop-putrolepolicy-role`
 
@@ -462,9 +462,9 @@ enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
 The project creates standardized starting users for each environment to serve as initial access points:
 
 ### Available Users
-- `pl-pathfinder-starting-user-dev` - Development environment
-- `pl-pathfinder-starting-user-prod` - Production environment
-- `pl-pathfinder-starting-user-operations` - Operations environment
+- `pl-pathfinding-starting-user-dev` - Development environment
+- `pl-pathfinding-starting-user-prod` - Production environment
+- `pl-pathfinding-starting-user-operations` - Operations environment
 
 ### Permissions
 Each pathfinder starting user has minimal permissions:
@@ -478,7 +478,7 @@ Each pathfinder starting user has minimal permissions:
 
 ## Attack Path Types
 
-Pathfinder Labs supports diverse attack scenarios:
+Pathfinding Labs supports diverse attack scenarios:
 
 ### One-Hop Paths
 ```

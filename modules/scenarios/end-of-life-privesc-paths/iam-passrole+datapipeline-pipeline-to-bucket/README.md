@@ -177,7 +177,7 @@ This scenario is based on privilege escalation techniques documented by:
    - Use IAM Access Analyzer to identify resources shared with external entities or with overly broad access
    - Audit all principals with `iam:PassRole` permissions and validate necessity
    - Review roles that can be passed to compute services for least privilege compliance
-   - Test for resource policy bypass vulnerabilities using tools like Pathfinder Labs
+   - Test for resource policy bypass vulnerabilities using tools like Pathfinding Labs
 
 7. **Implement SCPs for Organizational Guardrails**:
    ```json

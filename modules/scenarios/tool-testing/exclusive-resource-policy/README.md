@@ -18,7 +18,7 @@ The attack path shows how a user can assume a role with only `s3:ListAllMyBucket
 ```mermaid
 graph LR
     %% Nodes
-    User[prod:user:pl-pathfinder-starting-user-prod]
+    User[prod:user:pl-pathfinding-starting-user-prod]
     Role[prod:role:pl-exclusive-bucket-access-role]
     Bucket[prod:s3:pl-exclusive-sensitive-data-bucket]
     Data[prod:s3:highly-sensitive-data]
@@ -46,7 +46,7 @@ graph LR
 
 ## Attack Steps
 
-1. **Initial State**: User `pl-pathfinder-starting-user-prod` has permission to assume the `pl-exclusive-bucket-access-role`
+1. **Initial State**: User `pl-pathfinding-starting-user-prod` has permission to assume the `pl-exclusive-bucket-access-role`
 2. **Role Assumption**: User assumes the role which only has `s3:ListAllMyBuckets` permission
 3. **Bucket Discovery**: Role uses its limited permission to list all S3 buckets
 4. **Restrictive Resource Policy Access**: The exclusive sensitive bucket has a resource policy that:

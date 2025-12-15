@@ -16,20 +16,20 @@ This scenario demonstrates a simple but critical privilege escalation vulnerabil
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-assumerole-admin-role`
 
 ### Attack Path Diagram
 
 ```mermaid
 graph LR
-    A[pl-pathfinder-starting-user-prod] -->|sts:AssumeRole| B[pl-prod-one-hop-assumerole-admin-role]
+    A[pl-pathfinding-starting-user-prod] -->|sts:AssumeRole| B[pl-prod-one-hop-assumerole-admin-role]
     B -->|AdministratorAccess Policy| C[Effective Administrator]
 ```
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-assumerole-admin-role` to begin the scenario
+1. **Scaffolding aka Initial Access**: `pl-pathfinding-starting-user-prod` assumes the role `pl-prod-one-hop-assumerole-admin-role` to begin the scenario
 2. **Assume Admin Role**: The user directly assumes `pl-prod-one-hop-assumerole-admin-role` which has AdministratorAccess attached
 3. **Verification**: Verify administrator access with the assumed role
 

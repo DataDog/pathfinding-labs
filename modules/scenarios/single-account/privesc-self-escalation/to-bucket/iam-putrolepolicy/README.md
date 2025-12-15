@@ -16,7 +16,7 @@ This scenario demonstrates privilege escalation where an attacker can modify ano
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod`
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-privesc-role`
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-one-hop-putrolepolicy-bucket-access-role`
 - `arn:aws:s3:::pl-prod-one-hop-putrolepolicy-bucket-ACCOUNT_ID-SUFFIX`
@@ -33,7 +33,7 @@ graph LR
 
 ### Attack Steps
 
-1. **Scaffolding aka Initial Access**: `pl-pathfinder-starting-user-prod` assumes the role `pl-prod-one-hop-putrolepolicy-bucket-privesc-role` to begin the scenario
+1. **Scaffolding aka Initial Access**: `pl-pathfinding-starting-user-prod` assumes the role `pl-prod-one-hop-putrolepolicy-bucket-privesc-role` to begin the scenario
 2. **Modify Target Role Trust Policy**: Use `iam:PutRolePolicy` to add an inline policy to `pl-prod-one-hop-putrolepolicy-bucket-access-role` allowing the privesc role to assume it
 3. **Assume Bucket Access Role**: Assume the `pl-prod-one-hop-putrolepolicy-bucket-access-role` which has S3 permissions
 4. **Access S3 Bucket**: Read and download sensitive data from the target bucket

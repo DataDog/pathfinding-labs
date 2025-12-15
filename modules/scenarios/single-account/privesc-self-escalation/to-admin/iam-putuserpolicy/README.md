@@ -16,7 +16,7 @@ This scenario demonstrates a privilege escalation vulnerability where a principa
 
 ### Principals in the attack path
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinder-starting-user-prod` (starting point)
+- `arn:aws:iam::PROD_ACCOUNT:user/pl-pathfinding-starting-user-prod` (starting point)
 - `arn:aws:iam::PROD_ACCOUNT:role/pl-pup-adam` (role variant)
 - `arn:aws:iam::PROD_ACCOUNT:user/pl-pup-user` (user variant)
 
@@ -31,7 +31,7 @@ graph LR
 ### Attack Steps
 
 1. **Scaffolding aka Initial Access**: Either:
-   - `pl-pathfinder-starting-user-prod` assumes the role `pl-pup-adam` to begin the scenario, OR
+   - `pl-pathfinding-starting-user-prod` assumes the role `pl-pup-adam` to begin the scenario, OR
    - Use the access keys for `pl-pup-user` directly
 2. **Attach Inline Policy**: Use `iam:PutUserPolicy` to attach an inline policy granting AdministratorAccess to the current user
 3. **Immediate Escalation**: The inline policy takes effect immediately, granting admin access

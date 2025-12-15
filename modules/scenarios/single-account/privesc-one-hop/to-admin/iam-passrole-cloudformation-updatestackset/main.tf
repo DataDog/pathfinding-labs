@@ -180,7 +180,7 @@ data "aws_region" "current" {
 resource "aws_cloudformation_stack_set" "vulnerable_stackset" {
   provider                = aws.prod
   name                    = "pl-prod-prcuss-to-admin-stackset"
-  description             = "Pathfinder Labs - CloudFormation UpdateStackSet privilege escalation scenario"
+  description             = "Pathfinding Labs - CloudFormation UpdateStackSet privilege escalation scenario"
   permission_model        = "SELF_MANAGED"
   administration_role_arn = aws_iam_role.stackset_admin_role.arn
   execution_role_name     = aws_iam_role.stackset_execution_role.name

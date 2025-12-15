@@ -35,7 +35,7 @@ graph LR
 ### Attack Steps
 
 1. **Scaffolding aka Initial Access**: Either:
-   - `pl-pathfinder-starting-user-prod` assumes the role `pl-aup-adam` to begin the scenario, OR
+   - `pl-pathfinding-starting-user-prod` assumes the role `pl-aup-adam` to begin the scenario, OR
    - Use the access keys for `pl-aup-user` directly
 2. **Attach Managed Policy**: Use `iam:AttachUserPolicy` to attach the `arn:aws:iam::aws:policy/AdministratorAccess` managed policy to the current user
 3. **Immediate Escalation**: The managed policy takes effect immediately, granting full administrative access

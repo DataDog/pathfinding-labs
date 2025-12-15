@@ -18,7 +18,7 @@ The attack path shows how a dev role with Lambda invoke and update permissions c
 ```mermaid
 graph LR
     %% Nodes
-    DevUser[dev:iam:pl-pathfinder-starting-user-dev]
+    DevUser[dev:iam:pl-pathfinding-starting-user-dev]
     DevRole[dev:iam:pl-dev-lambda-invoke-role]
     ProdLambda[prod:lambda:pl-prod-hello-world]
     LambdaRole[prod:iam:pl-prod-lambda-execution-role]
@@ -46,7 +46,7 @@ graph LR
 
 ## Attack Steps
 
-1. **Initial State**: Dev user `pl-pathfinder-starting-user-dev` can assume the `pl-dev-lambda-invoke-role`
+1. **Initial State**: Dev user `pl-pathfinding-starting-user-dev` can assume the `pl-dev-lambda-invoke-role`
 2. **Role Assumption**: Dev user assumes the dev Lambda invoke role
 3. **Function Update**: The dev role uses `lambda:UpdateFunctionCode` to replace the prod Lambda function with malicious code
 4. **Function Invocation**: The dev role uses `lambda:InvokeFunction` to execute the malicious code

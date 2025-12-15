@@ -19,7 +19,7 @@ resource "aws_iam_role" "dev_lambda_invoke_role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-pathfinder-starting-user-dev"
+          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-pathfinding-starting-user-dev"
         }
         Action = "sts:AssumeRole"
       }

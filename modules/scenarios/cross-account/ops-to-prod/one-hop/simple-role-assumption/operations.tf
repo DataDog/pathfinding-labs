@@ -8,7 +8,7 @@ resource "aws_iam_role" "ops_role_with_assumeRole_star" {
       {
         Effect = "Allow",
         Principal = {
-          AWS = "arn:aws:iam::${var.operations_account_id}:user/pl-pathfinder-starting-user-operations"
+          AWS = "arn:aws:iam::${var.operations_account_id}:user/pl-pathfinding-starting-user-operations"
         },
         Action = "sts:AssumeRole"
       }

@@ -25,7 +25,7 @@ echo "📋 Checking for existing profiles..."
 existing_profiles=()
 for env in "dev" "prod" "operations"; do
     # Check starting user profiles
-    profile_name="pl-pathfinder-starting-user-${env}"
+    profile_name="pl-pathfinding-starting-user-${env}"
     if profile_exists "$profile_name"; then
         existing_profiles+=("$profile_name")
         echo "   ⚠️  $profile_name already exists"
@@ -77,10 +77,10 @@ create_profile() {
     local profile_type=$2  # "starting" or "admin"
     
     if [ "$profile_type" = "starting" ]; then
-        local profile_name="pl-pathfinder-starting-user-${env}"
-        local user_name="pl-pathfinder-starting-user-${env}"
-        local access_key_var="${env}_pathfinder_starting_user_access_key_id"
-        local secret_key_var="${env}_pathfinder_starting_user_secret_access_key"
+        local profile_name="pl-pathfinding-starting-user-${env}"
+        local user_name="pl-pathfinding-starting-user-${env}"
+        local access_key_var="${env}_pathfinding_starting_user_access_key_id"
+        local secret_key_var="${env}_pathfinding_starting_user_secret_access_key"
     elif [ "$profile_type" = "admin" ]; then
         local profile_name="pl-admin-cleanup-${env}"
         local user_name="pl-admin-user-for-cleanup-scripts"
@@ -177,9 +177,9 @@ echo ""
 echo "📋 Available profiles:"
 echo ""
 echo "🔓 Starting User Profiles (minimal permissions for privilege escalation demos):"
-echo "   - pl-pathfinder-starting-user-dev        (Development environment)"
-echo "   - pl-pathfinder-starting-user-prod       (Production environment)"
-echo "   - pl-pathfinder-starting-user-operations (Operations environment)"
+echo "   - pl-pathfinding-starting-user-dev        (Development environment)"
+echo "   - pl-pathfinding-starting-user-prod       (Production environment)"
+echo "   - pl-pathfinding-starting-user-operations (Operations environment)"
 echo ""
 echo "🔑 Admin Cleanup Profiles (full permissions for cleanup scripts):"
 echo "   - pl-admin-cleanup-dev                   (Development environment)"
@@ -188,7 +188,7 @@ echo "   - pl-admin-cleanup-operations            (Operations environment)"
 echo ""
 echo "💡 Usage examples:"
 echo "   # Demo scripts (use starting user profiles):"
-echo "   aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod"
+echo "   aws sts get-caller-identity --profile pl-pathfinding-starting-user-prod"
 echo ""
 echo "   # Cleanup scripts (use admin cleanup profiles):"
 echo "   aws sts get-caller-identity --profile pl-admin-cleanup-prod"

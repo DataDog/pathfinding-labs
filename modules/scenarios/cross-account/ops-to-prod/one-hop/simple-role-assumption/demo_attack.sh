@@ -21,10 +21,10 @@ echo "This demo shows how operations roles can assume roles in prod accounts."
 echo ""
 
 # --- Configuration ---
-OPS_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-operations --query Account --output text)
-PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-prod --query Account --output text)
+OPS_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-operations --query Account --output text)
+PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-prod --query Account --output text)
 
-OPS_STARTING_USER_PROFILE="pl-pathfinder-starting-user-operations"
+OPS_STARTING_USER_PROFILE="pl-pathfinding-starting-user-operations"
 OPS_ROLE_NAME="pl-x-account-ops-role-with-assume-role-star"
 PROD_ROLE_1_NAME="pl-x-account-prod-role-trusts-operations"
 PROD_ROLE_2_NAME="pl-x-account-prod-admin-role-trusts-operations"

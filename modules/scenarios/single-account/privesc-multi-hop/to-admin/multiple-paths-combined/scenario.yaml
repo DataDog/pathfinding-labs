@@ -21,7 +21,7 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
     - "arn:aws:iam::{account_id}:role/pl-prod-role-with-multiple-privesc-paths"
     - "arn:aws:iam::{account_id}:role/pl-EC2Admin"
 

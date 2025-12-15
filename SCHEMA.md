@@ -1,4 +1,4 @@
-# Pathfinder Labs Scenario Schema Documentation
+# Pathfinding Labs Scenario Schema Documentation
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-Each Pathfinder Labs scenario includes a `scenario.yaml` file that provides structured metadata about the attack path, required permissions, classification, and integration details. This file serves multiple purposes:
+Each Pathfinding Labs scenario includes a `scenario.yaml` file that provides structured metadata about the attack path, required permissions, classification, and integration details. This file serves multiple purposes:
 
 - **Documentation**: Human-readable description of the scenario
 - **Automation**: Machine-parsable data for CLI tools and orchestration
@@ -261,13 +261,13 @@ principals:
 
 # Scenario with EC2 instance
 principals:
-  - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+  - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
   - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
   - "arn:aws:iam::{account_id}:user/pl-admin-hardcoded-victim"
 
 # Multi-hop with S3 bucket
 principals:
-  - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+  - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
   - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
   - "arn:aws:iam::{account_id}:role/pl-prod-role-b"
   - "arn:aws:s3:::pl-prod-admin-demo-bucket-{account_id}"
@@ -708,7 +708,7 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
     - "arn:aws:iam::{account_id}:role/pl-prod-role-a-non-admin"
     - "arn:aws:iam::{account_id}:role/pl-prod-role-b-admin"
     - "arn:aws:s3:::pl-prod-admin-demo-bucket-{account_id}"
@@ -784,7 +784,7 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinder-starting-user-prod"
+    - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
     - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
     - "arn:aws:iam::{account_id}:user/pl-admin-hardcoded-victim"
 
@@ -837,7 +837,7 @@ terraform:
 - Match the directory name exactly
 
 **Principal Names:**
-- Prefix: `pl-` (Pathfinder Labs)
+- Prefix: `pl-` (Pathfinding Labs)
 - Include scenario abbreviation: `pl-cak-` (CreateAccessKey)
 - Descriptive suffix: `pl-cak-starting-user`, `pl-cak-admin`
 

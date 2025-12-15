@@ -226,7 +226,7 @@ This attack path is significant because:
 
 ## Deployment Instructions
 
-This scenario is deployed as part of the Pathfinder Labs framework. To enable it:
+This scenario is deployed as part of the Pathfinding Labs framework. To enable it:
 
 1. **Edit terraform.tfvars**:
    ```hcl

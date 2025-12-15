@@ -20,18 +20,18 @@ echo -e "${RED}NOTE: This scenario uses AWS profile-based authentication${NC}"
 echo -e "${RED}It does not yet have Terraform output integration${NC}\n"
 
 # Check if AWS profile exists
-if ! aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev &> /dev/null; then
-    echo -e "${RED}Error: AWS profile 'pl-pathfinder-starting-user-dev' not found${NC}"
+if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null; then
+    echo -e "${RED}Error: AWS profile 'pl-pathfinding-starting-user-dev' not found${NC}"
     echo "Please configure the profile or run: ./create_pathfinder_profiles.sh"
     exit 1
 fi
 
 echo -e "${YELLOW}AWS Profile Configuration:${NC}"
-echo "REQUIRED_PROFILE=pl-pathfinder-starting-user-dev"
+echo "REQUIRED_PROFILE=pl-pathfinding-starting-user-dev"
 echo ""
 
 # Get account information
-DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev --query 'Account' --output text 2>/dev/null || echo "unknown")
+DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text 2>/dev/null || echo "unknown")
 
 echo -e "${YELLOW}Target Information:${NC}"
 echo "DEV_ACCOUNT_ID=$DEV_ACCOUNT_ID"

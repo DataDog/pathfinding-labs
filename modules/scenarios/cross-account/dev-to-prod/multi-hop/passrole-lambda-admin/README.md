@@ -12,7 +12,7 @@ This module demonstrates a multi-hop cross-account privilege escalation attack w
 ## Attack Path Overview
 
 The attack path shows how a dev user can escalate to admin privileges through multi-hop role assumption and PassRole permission abuse:
-1. `pl-pathfinder-starting-user-dev` (user) → `pl-lambda-prod-updater` (dev role)
+1. `pl-pathfinding-starting-user-dev` (user) → `pl-lambda-prod-updater` (dev role)
 2. `pl-lambda-prod-updater` (dev role) → `pl-lambda-updater` (prod role)  
 3. `pl-lambda-updater` (prod role) → `pl-Lambda-admin` (via PassRole to Lambda service)
 
@@ -21,7 +21,7 @@ The attack path shows how a dev user can escalate to admin privileges through mu
 ```mermaid
 graph LR
     %% Nodes
-    StartingUser[dev:iam:pl-pathfinder-starting-user-dev]
+    StartingUser[dev:iam:pl-pathfinding-starting-user-dev]
     DevRole[dev:iam:pl-lambda-prod-updater]
     ProdRole[prod:iam:pl-lambda-updater]
     LambdaAdmin[prod:iam:pl-Lambda-admin]
@@ -48,7 +48,7 @@ graph LR
 
 ## Attack Steps
 
-1. **Initial State**: Dev user `pl-pathfinder-starting-user-dev` has `sts:AssumeRole` permission on dev role `pl-lambda-prod-updater`
+1. **Initial State**: Dev user `pl-pathfinding-starting-user-dev` has `sts:AssumeRole` permission on dev role `pl-lambda-prod-updater`
 2. **First Role Assumption**: Dev user assumes the dev role `pl-lambda-prod-updater`
 3. **Cross-Account Assumption**: Dev role assumes the prod role `pl-lambda-updater` 
 4. **PassRole Abuse**: The prod role has `iam:PassRole` permission and can pass admin roles to services
@@ -58,7 +58,7 @@ graph LR
 ## Resources Created
 
 ### Dev Environment (`dev.tf`)
-- **Lambda Prod Updater Role** (`pl-lambda-prod-updater`): Role that can be assumed by `pl-pathfinder-starting-user-dev` and has permission to assume prod role
+- **Lambda Prod Updater Role** (`pl-lambda-prod-updater`): Role that can be assumed by `pl-pathfinding-starting-user-dev` and has permission to assume prod role
 - **Role Policy**: Policy that grants `sts:AssumeRole` permission specifically on the prod lambda-updater role
 
 ### Prod Environment (`prod.tf`)
@@ -70,7 +70,7 @@ graph LR
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- The dev user `pl-pathfinder-starting-user-dev` must have permission to assume the dev role `pl-lambda-prod-updater`
+- The dev user `pl-pathfinding-starting-user-dev` must have permission to assume the dev role `pl-lambda-prod-updater`
 - The dev role must have permission to assume the prod role `pl-lambda-updater`
 - The prod role must have `iam:PassRole` permission
 - The Lambda admin role must exist and be assumable by Lambda service

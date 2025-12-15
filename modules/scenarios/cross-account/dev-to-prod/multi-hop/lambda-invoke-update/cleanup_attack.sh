@@ -15,8 +15,8 @@ if ! command -v aws &> /dev/null; then
 fi
 
 # Check if we have the required profile
-if ! aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev &> /dev/null; then
-    echo "❌ AWS profile 'pl-pathfinder-starting-user-dev' not found"
+if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null; then
+    echo "❌ AWS profile 'pl-pathfinding-starting-user-dev' not found"
     echo "Please run: ./create_pathfinder_profiles.sh"
     exit 1
 fi
@@ -26,14 +26,14 @@ echo "✅ AWS CLI and profile configured"
 # Step 1: Assume the dev Lambda invoke role
 echo ""
 echo "📋 Step 1: Assuming dev Lambda invoke role..."
-DEV_ROLE_ARN=$(aws sts get-caller-identity --profile pl-pathfinder-starting-user-dev --query 'Account' --output text)
+DEV_ROLE_ARN=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text)
 DEV_ROLE_ARN="arn:aws:iam::${DEV_ROLE_ARN}:role/pl-dev-lambda-invoke-role"
 
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
 TEMP_CREDS=$(aws sts assume-role \
-    --profile pl-pathfinder-starting-user-dev \
+    --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
     --role-session-name "lambda-cleanup-demo" \
     --output json)
@@ -76,7 +76,7 @@ cat > /tmp/hello_world.py << 'EOF'
 def lambda_handler(event, context):
     return {
         'statusCode': 200,
-        'body': 'Hello from Pathfinder Labs!'
+        'body': 'Hello from Pathfinding Labs!'
     }
 EOF
 
