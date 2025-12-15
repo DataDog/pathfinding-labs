@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Configuration
 STARTING_USER="pl-prod-eic-to-admin-starting-user"
 EC2_ADMIN_ROLE="pl-prod-eic-to-admin-ec2-admin-role"
-SSH_KEY_PATH="/tmp/pathfinder_eic_key"
+SSH_KEY_PATH="/tmp/pathfinding_eic_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect Privilege Escalation Demo${NC}"
@@ -156,7 +156,7 @@ echo "Creating RSA key pair for EC2 Instance Connect..."
 rm -f ${SSH_KEY_PATH} ${SSH_KEY_PATH}.pub
 
 # Generate new key pair
-ssh-keygen -t rsa -f ${SSH_KEY_PATH} -N "" -C "pathfinder-eic-demo" > /dev/null 2>&1
+ssh-keygen -t rsa -f ${SSH_KEY_PATH} -N "" -C "pathfinding-eic-demo" > /dev/null 2>&1
 
 if [ ! -f "${SSH_KEY_PATH}.pub" ]; then
     echo -e "${RED}Error: Failed to generate SSH key pair${NC}"

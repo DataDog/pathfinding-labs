@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Pathfinder-labs Cleanup Runner
+# Pathfinding-labs Cleanup Runner
 # Runs all cleanup scripts and reports the results
 
 set -e
@@ -34,7 +34,7 @@ SUMMARY_FILE="$CLEANUP_RESULTS_DIR/cleanup_summary_$TIMESTAMP.txt"
 # Create results directory
 mkdir -p "$CLEANUP_RESULTS_DIR"
 
-echo -e "${BLUE}=== Pathfinder-labs Cleanup Runner ===${NC}"
+echo -e "${BLUE}=== Pathfinding-labs Cleanup Runner ===${NC}"
 echo "Timestamp: $TIMESTAMP"
 echo "Results will be saved to: $RESULTS_FILE"
 echo ""
@@ -170,7 +170,7 @@ generate_json_report() {
 # Function to generate summary report
 generate_summary_report() {
     {
-        echo "Pathfinder-labs Cleanup Results Summary"
+        echo "Pathfinding-labs Cleanup Results Summary"
         echo "======================================"
         echo "Timestamp: $TIMESTAMP"
         echo ""

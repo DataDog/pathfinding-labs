@@ -16,7 +16,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== Pathfinder-labs Cross-Account Operations to Prod Role Assumption Demo ===${NC}"
+echo -e "${BLUE}=== Pathfinding-labs Cross-Account Operations to Prod Role Assumption Demo ===${NC}"
 echo "This demo shows how operations roles can assume roles in prod accounts."
 echo ""
 

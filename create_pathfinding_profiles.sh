@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script to create AWS profiles for Pathfinder-labs project using pathfinder starting users
+# Script to create AWS profiles for Pathfinding-labs project using pathfinding starting users
 # This script should be run after terraform apply to get the access keys
 
 set -e  # Exit on any error
 
-echo "🔧 Creating Pathfinder-labs AWS profiles for all environments..."
+echo "🔧 Creating Pathfinding-labs AWS profiles for all environments..."
 echo "============================================================="
 
 # Function to check if profile exists
@@ -146,7 +146,7 @@ create_profile() {
 
 # Check if we're in the right directory
 if [ ! -f "main.tf" ]; then
-    echo "❌ This script must be run from the Pathfinder-labs project root directory"
+    echo "❌ This script must be run from the Pathfinding-labs project root directory"
     exit 1
 fi
 
@@ -171,7 +171,7 @@ for env in "dev" "prod" "operations"; do
 done
 
 echo ""
-echo "🎉 All Pathfinder-labs profiles created successfully!"
+echo "🎉 All Pathfinding-labs profiles created successfully!"
 echo "=================================================="
 echo ""
 echo "📋 Available profiles:"

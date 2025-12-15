@@ -20,3 +20,8 @@ output "admin_user_for_cleanup_secret_access_key" {
   value       = aws_iam_access_key.admin_user_for_cleanup.secret
   sensitive   = true
 }
+
+output "apprunner_service_linked_role_id" {
+  description = "ID of the App Runner service-linked role"
+  value       = aws_iam_service_linked_role.apprunner.id
+}

@@ -457,7 +457,7 @@ enable_tool_testing_exclusive_resource_policy = true
 enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
 ```
 
-## Pathfinder Starting Users
+## Pathfinding Starting Users
 
 The project creates standardized starting users for each environment to serve as initial access points:
 
@@ -467,14 +467,14 @@ The project creates standardized starting users for each environment to serve as
 - `pl-pathfinding-starting-user-operations` - Operations environment
 
 ### Permissions
-Each pathfinder starting user has minimal permissions:
+Each pathfinding starting user has minimal permissions:
 - `sts:GetCallerIdentity` - Can identify themselves
 - `iam:GetUser` - Can get their own user information
 
 ### Usage in Scenarios
-- **User-based scenarios**: Use the pathfinder starting user directly
-- **Role-based scenarios**: Initial roles trust the pathfinder starting user instead of `:root`
-- **Cross-account scenarios**: Each environment's pathfinder user can assume trusted roles
+- **User-based scenarios**: Use the pathfinding starting user directly
+- **Role-based scenarios**: Initial roles trust the pathfinding starting user instead of `:root`
+- **Cross-account scenarios**: Each environment's pathfinding user can assume trusted roles
 
 ## Attack Path Types
 

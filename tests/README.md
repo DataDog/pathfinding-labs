@@ -1,6 +1,6 @@
-# Pathfinder-labs Testing Framework
+# Pathfinding-labs Testing Framework
 
-This directory contains the testing framework for Pathfinder-labs privilege escalation modules.
+This directory contains the testing framework for Pathfinding-labs privilege escalation modules.
 
 ## Quick Start
 

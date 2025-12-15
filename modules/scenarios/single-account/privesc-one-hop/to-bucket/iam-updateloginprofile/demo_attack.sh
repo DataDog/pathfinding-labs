@@ -54,7 +54,7 @@ echo -e "${GREEN}✓ Successfully extracted and configured credentials${NC}\n"
 
 # Generate a random password suffix (8 characters)
 RANDOM_SUFFIX=$(openssl rand -hex 4)  # Generates 8 hex characters
-NEW_PASSWORD="PathfinderLabs123!${RANDOM_SUFFIX}"  # New password with random suffix
+NEW_PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"  # New password with random suffix
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"

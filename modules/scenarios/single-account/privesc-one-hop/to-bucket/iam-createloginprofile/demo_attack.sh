@@ -17,7 +17,7 @@ HOP1_USER="pl-prod-clp-bucket-hop1"
 
 # Generate a random password suffix (8 characters)
 RANDOM_SUFFIX=$(openssl rand -hex 4)
-PASSWORD="PathfinderLabs123!${RANDOM_SUFFIX}"
+PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateLoginProfile to S3 Bucket Access Demo${NC}"

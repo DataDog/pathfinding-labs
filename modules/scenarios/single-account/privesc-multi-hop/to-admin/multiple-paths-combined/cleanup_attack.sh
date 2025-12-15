@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}=== Pathfinder-labs Multiple Privilege Escalation Cleanup ===${NC}"
+echo -e "${YELLOW}=== Pathfinding-labs Multiple Privilege Escalation Cleanup ===${NC}"
 echo "This script cleans up all changes made by the demo_attack.sh script"
 echo ""
 

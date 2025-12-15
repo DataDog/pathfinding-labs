@@ -506,13 +506,13 @@ The demo scripts provide:
 
 **How it works:** Demo scripts automatically read credentials from Terraform's grouped outputs, so you can run them immediately after `terraform apply` without any additional setup.
 
-**Optional:** If you want to configure AWS CLI profiles for manual testing, you can run `./create_pathfinder_profiles.sh` to create profiles for the pathfinder starting users.
+**Optional:** If you want to configure AWS CLI profiles for manual testing, you can run `./create_pathfinding_profiles.sh` to create profiles for the pathfinding starting users.
 
 ---
 
 ## Security Practices
 
-### Pathfinder Starting Users
+### Pathfinding Starting Users
 
 Each environment has a dedicated starting user with **minimal permissions**:
 

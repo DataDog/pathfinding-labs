@@ -47,7 +47,7 @@ enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createserv
 # Bedrock AgentCore Code Interpreter privilege escalation (bedrock-001)
 enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter = false
 enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack          = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestackset       = false
+enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset = false
 # Bedrock AgentCore - Access existing code interpreter (bedrock-002)
 enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke = false
 enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset = false

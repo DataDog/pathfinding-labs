@@ -1,6 +1,6 @@
-# Pathfinder-labs Testing Framework
+# Pathfinding-labs Testing Framework
 
-This testing framework provides automated testing capabilities for all Pathfinder-labs privilege escalation modules.
+This testing framework provides automated testing capabilities for all Pathfinding-labs privilege escalation modules.
 
 ## Overview
 

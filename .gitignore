@@ -45,4 +45,5 @@ AGENTS.md
 
 
 test_results/
+tests/cleanup_results/
 *.backup

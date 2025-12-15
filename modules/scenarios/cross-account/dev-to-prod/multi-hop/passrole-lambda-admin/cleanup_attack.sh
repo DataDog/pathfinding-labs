@@ -18,7 +18,7 @@ fi
 # Check if we have the required admin cleanup profile
 if ! aws sts get-caller-identity --profile pl-admin-cleanup-prod &> /dev/null; then
     echo "❌ AWS profile 'pl-admin-cleanup-prod' not found"
-    echo "Please run: ./create_pathfinder_profiles.sh"
+    echo "Please run: ./create_pathfinding_profiles.sh"
     exit 1
 fi
 

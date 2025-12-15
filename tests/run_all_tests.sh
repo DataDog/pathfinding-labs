@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Pathfinder-labs Test Harness
+# Pathfinding-labs Test Harness
 # Runs all demo scripts and parses standardized output for pass/fail reporting
 
 set -e
@@ -34,7 +34,7 @@ SUMMARY_FILE="$TEST_RESULTS_DIR/test_summary_$TIMESTAMP.txt"
 # Create results directory
 mkdir -p "$TEST_RESULTS_DIR"
 
-echo -e "${BLUE}=== Pathfinder-labs Test Harness ===${NC}"
+echo -e "${BLUE}=== Pathfinding-labs Test Harness ===${NC}"
 echo "Timestamp: $TIMESTAMP"
 echo "Results will be saved to: $RESULTS_FILE"
 echo ""
@@ -190,7 +190,7 @@ generate_json_report() {
 # Function to generate summary report
 generate_summary_report() {
     {
-        echo "Pathfinder-labs Test Results Summary"
+        echo "Pathfinding-labs Test Results Summary"
         echo "===================================="
         echo "Timestamp: $TIMESTAMP"
         echo ""

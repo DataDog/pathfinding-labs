@@ -61,7 +61,7 @@ echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
 echo ""
 
-# Check if we're running as the pathfinder starting user
+# Check if we're running as the pathfinding starting user
 CURRENT_USER=$(echo "$CURRENT_IDENTITY" | jq -r '.Arn' | cut -d'/' -f2)
 if [ "$CURRENT_USER" != "pl-pathfinding-starting-user-prod" ]; then
     echo -e "${YELLOW}Note: This demo should be run as the pl-pathfinding-starting-user-prod user for full effect${NC}"

@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-SSH_KEY_PATH="/tmp/pathfinder_eic_key"
+SSH_KEY_PATH="/tmp/pathfinding_eic_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect Demo Cleanup${NC}"

@@ -357,7 +357,7 @@ Resource names should be consistent across:
 **Fix**: Add missing tags (Name, Environment, Scenario, Purpose)
 
 ### Issue: Wrong trust policy
-**Symptom**: Role trusts `:root` instead of pathfinder starting user
+**Symptom**: Role trusts `:root` instead of pathfinding starting user
 **Fix**: Update trust policy to reference `pl-{environment}-{scenario-shorthand}-starting-user`
 
 ### Issue: Missing outputs

@@ -1,21 +1,21 @@
 output "pathfinding_starting_user_name" {
-  description = "Name of the pathfinder starting user for operations environment"
+  description = "Name of the pathfinding starting user for operations environment"
   value       = aws_iam_user.pathfinding_starting_user.name
 }
 
 output "pathfinding_starting_user_arn" {
-  description = "ARN of the pathfinder starting user for operations environment"
+  description = "ARN of the pathfinding starting user for operations environment"
   value       = aws_iam_user.pathfinding_starting_user.arn
 }
 
 output "pathfinding_starting_user_access_key_id" {
-  description = "Access key ID for the pathfinder starting user in operations environment"
+  description = "Access key ID for the pathfinding starting user in operations environment"
   value       = aws_iam_access_key.pathfinding_starting_user.id
   sensitive   = true
 }
 
 output "pathfinding_starting_user_secret_access_key" {
-  description = "Secret access key for the pathfinder starting user in operations environment"
+  description = "Secret access key for the pathfinding starting user in operations environment"
   value       = aws_iam_access_key.pathfinding_starting_user.secret
   sensitive   = true
 }

@@ -18,14 +18,14 @@ The attack path shows how a dev user can escalate to admin privileges across bot
 ```mermaid
 graph LR
     %% Nodes
-    Pathfinder[dev:user:pl-pathfinding-starting-user-dev]
+    Pathfinding[dev:user:pl-pathfinding-starting-user-dev]
     Helpdesk[dev:role:pl-helpdesk]
     Josh[dev:user:pl-Josh]
     TrustsDev[prod:role:pl-trustsdev]
     Jeremy[prod:user:pl-Jeremy]
     
     %% Edges
-    Pathfinder -->|sts:AssumeRole| Helpdesk
+    Pathfinding -->|sts:AssumeRole| Helpdesk
     Helpdesk -->|iam:CreateLoginProfile| Josh
     Josh -->|sts:AssumeRole| TrustsDev
     TrustsDev -->|iam:UpdateLoginProfile| Jeremy
@@ -35,7 +35,7 @@ graph LR
     classDef roleNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     classDef adminNode fill:#ffebee,stroke:#c62828,stroke-width:2px
     
-    class Pathfinder userNode
+    class Pathfinding userNode
     class Helpdesk roleNode
     class Josh adminNode
     class TrustsDev roleNode
@@ -56,7 +56,7 @@ graph LR
 ### Dev Environment (`dev.tf`)
 - **Josh User** (`pl-Josh`): Admin user in dev environment
 - **Josh Admin Policy**: Full admin policy attached to Josh user
-- **Helpdesk Role** (`pl-helpdesk`): Role that trusts pathfinder starting user
+- **Helpdesk Role** (`pl-helpdesk`): Role that trusts pathfinding starting user
 - **Helpdesk Policy**: Policy with `iam:CreateLoginProfile` and related permissions
 
 ### Prod Environment (`prod.tf`)
@@ -68,7 +68,7 @@ graph LR
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- The pathfinder starting user must have permission to assume the helpdesk role
+- The pathfinding starting user must have permission to assume the helpdesk role
 - The helpdesk role must have `iam:CreateLoginProfile` permission
 - Josh user must have permission to assume the trustsdev role
 - The trustsdev role must have `iam:UpdateLoginProfile` permission

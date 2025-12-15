@@ -59,7 +59,7 @@ This module demonstrates multiple privilege escalation techniques where a role c
 2. Create Lambda functions with admin privileges
 3. Create CloudFormation stacks with admin privileges
 
-Each service can then create new admin roles that trust the pathfinder starting user, proving the escalation worked.
+Each service can then create new admin roles that trust the pathfinding starting user, proving the escalation worked.
 
 ## Demo Scripts
 

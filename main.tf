@@ -209,9 +209,13 @@ module "single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id                        = var.prod_account_id
+  environment                       = "prod"
+  resource_suffix                   = random_string.resource_suffix.result
+  apprunner_service_linked_role_id  = module.prod_environment.apprunner_service_linked_role_id
+
+  # Ensure service-linked role is created first and destroyed last
+  depends_on = [module.prod_environment]
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {

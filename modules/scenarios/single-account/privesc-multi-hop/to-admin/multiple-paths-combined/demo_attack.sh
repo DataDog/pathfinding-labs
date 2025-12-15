@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}=== Pathfinder-labs Multiple Privilege Escalation Paths Demo ===${NC}"
+echo -e "${YELLOW}=== Pathfinding-labs Multiple Privilege Escalation Paths Demo ===${NC}"
 echo "This demo shows multiple ways to escalate privileges using different AWS services"
 echo ""
 

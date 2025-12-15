@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-SSH_KEY_FILE="/tmp/pathfinder_eic_key"
+SSH_KEY_FILE="/tmp/pathfinding_eic_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect to S3 Bucket Demo Cleanup${NC}"

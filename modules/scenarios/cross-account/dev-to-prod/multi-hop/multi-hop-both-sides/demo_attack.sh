@@ -35,7 +35,7 @@ echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
 echo ""
 
-# Check if we're running as the pathfinder starting user
+# Check if we're running as the pathfinding starting user
 CURRENT_USER=$(echo "$CURRENT_IDENTITY" | jq -r '.Arn' | cut -d'/' -f2)
 if [ "$CURRENT_USER" != "pl-pathfinding-starting-user-dev" ]; then
     echo -e "${YELLOW}Note: This demo should be run as the pl-pathfinding-starting-user-dev user for full effect${NC}"
@@ -213,7 +213,7 @@ else
     echo "Error: $HELPDESK_CREDENTIALS"
     echo ""
     echo "This could be because:"
-    echo "1. The pathfinder starting user doesn't have permission to assume the helpdesk role"
+    echo "1. The pathfinding starting user doesn't have permission to assume the helpdesk role"
     echo "2. The helpdesk role doesn't exist in the dev account"
     echo "3. There's a trust policy issue"
     echo ""

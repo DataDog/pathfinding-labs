@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Configuration
 STARTING_USER="pl-prod-eic-to-bucket-starting-user"
 EC2_BUCKET_ROLE="pl-prod-eic-to-bucket-ec2-bucket-role"
-SSH_KEY_FILE="/tmp/pathfinder_eic_key"
+SSH_KEY_FILE="/tmp/pathfinding_eic_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect to S3 Bucket Privilege Escalation Demo${NC}"
@@ -158,7 +158,7 @@ echo "Creating RSA key pair for EC2 Instance Connect..."
 rm -f ${SSH_KEY_FILE} ${SSH_KEY_FILE}.pub
 
 # Generate new RSA key pair
-ssh-keygen -t rsa -f ${SSH_KEY_FILE} -N '' -C "pathfinder-eic-demo" > /dev/null 2>&1
+ssh-keygen -t rsa -f ${SSH_KEY_FILE} -N '' -C "pathfinding-eic-demo" > /dev/null 2>&1
 
 if [ ! -f "${SSH_KEY_FILE}.pub" ]; then
     echo -e "${RED}Error: Failed to generate SSH key pair${NC}"

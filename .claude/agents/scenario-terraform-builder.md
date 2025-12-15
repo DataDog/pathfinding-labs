@@ -462,7 +462,7 @@ For multi-hop paths, create intermediate roles:
 resource "aws_iam_role" "starting_role" {
   provider = aws.prod
   name     = "pl-prod-multi-hop-{scenario}-role"
-  # ... trust policy for pathfinder user
+  # ... trust policy for pathfinding user
 }
 
 # Intermediate role (hop 2)

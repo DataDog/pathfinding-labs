@@ -21,7 +21,7 @@ ADMIN_USER="pl-prod-clp-to-admin-target-user"
 
 # Generate a random password suffix (8 characters)
 RANDOM_SUFFIX=$(openssl rand -hex 4)
-PASSWORD="PathfinderLabs123!${RANDOM_SUFFIX}"
+PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM CreateLoginProfile Privilege Escalation Demo${NC}"

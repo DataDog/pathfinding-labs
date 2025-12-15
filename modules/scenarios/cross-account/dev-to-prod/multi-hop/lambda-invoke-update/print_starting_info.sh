@@ -22,7 +22,7 @@ echo -e "${RED}It does not yet have Terraform output integration${NC}\n"
 # Check if AWS profile exists
 if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null; then
     echo -e "${RED}Error: AWS profile 'pl-pathfinding-starting-user-dev' not found${NC}"
-    echo "Please configure the profile or run: ./create_pathfinder_profiles.sh"
+    echo "Please configure the profile or run: ./create_pathfinding_profiles.sh"
     exit 1
 fi
 

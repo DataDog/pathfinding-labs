@@ -23,7 +23,7 @@ ADMIN_USER="pl-prod-ulp-to-admin-target-user"
 
 # Generate a new random password for the admin user
 RANDOM_SUFFIX=$(openssl rand -hex 4)
-NEW_PASSWORD="PathfinderLabs456!${RANDOM_SUFFIX}"
+NEW_PASSWORD="PathfindingLabs456!${RANDOM_SUFFIX}"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM UpdateLoginProfile Privilege Escalation Demo${NC}"
