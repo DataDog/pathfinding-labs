@@ -584,6 +584,23 @@ output "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_e
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_ecs_executecommand" {
+  description = "All outputs for ecs-executecommand one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ecs_executecommand ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].target_role_arn
+    ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].ecs_cluster_name
+    ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].ecs_cluster_arn
+    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].ecs_service_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_executecommand[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint" {
   description = "All outputs for iam-passrole+glue-createdevendpoint one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint ? {
