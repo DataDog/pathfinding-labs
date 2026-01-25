@@ -361,6 +361,17 @@ module "single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_e
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_ecs_executecommand" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_executecommand ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-executecommand"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = var.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sts-assumerole"

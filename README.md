@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-80-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-81-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -189,7 +189,7 @@ In these scenarios, an IAM principal has the permission to update their own perm
 | [`iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
 | [`iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
 
-#### One-Hop to Admin (47 scenarios)
+#### One-Hop to Admin (48 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
@@ -204,6 +204,7 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate/README.md) | User modifies existing launch template to use admin role |
 | [`ec2-instance-connect-sendsshpublickey`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-instance-connect-sendsshpublickey/README.md) | User sends SSH public key to EC2 instance with admin role |
 | [`ec2-modifyinstanceattribute+stopinstances+startinstances`](modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-modifyinstanceattribute+stopinstances+startinstances/README.md) | User modifies EC2 instance role by stopping and starting instance |
+| [`ecs-executecommand`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-executecommand/README.md) | User shells into running ECS task with admin role to extract credentials |
 | [`glue-updatedevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-updatedevendpoint/README.md) | User updates existing Glue dev endpoint with admin role |
 | [`iam-attachrolepolicy+iam-updateassumerolepolicy`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+iam-updateassumerolepolicy/README.md) | User attaches admin policy to role and modifies trust policy to assume it |
 | [`iam-attachrolepolicy+sts-assumerole`](modules/scenarios/single-account/privesc-one-hop/to-admin/iam-attachrolepolicy+sts-assumerole/README.md) | User attaches admin policy to assumable role then assumes it |

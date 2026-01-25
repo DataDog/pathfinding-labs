@@ -244,6 +244,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_create
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_executecommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-executecommand ($0.04/hour)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → sts-assumerole"
   type        = bool
