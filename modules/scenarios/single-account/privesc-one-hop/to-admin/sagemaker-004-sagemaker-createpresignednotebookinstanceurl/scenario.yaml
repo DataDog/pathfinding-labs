@@ -11,7 +11,7 @@ pathfinding-cloud-id: "sagemaker-004"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "access-resource"
+sub_category: "existing-passrole"
 path_type: "one-hop"
 target: "to-admin"
 environments:

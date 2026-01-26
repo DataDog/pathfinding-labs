@@ -11,7 +11,7 @@ pathfinding-cloud-id: "iam-019"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "principal-lateral-movement"
+sub_category: "principal-access"
 path_type: "one-hop"
 target: "to-admin"
 environments:

@@ -1,7 +1,7 @@
 # One-Hop Privilege Escalation: ssm:SendCommand to EC2 with Admin Role
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** access-resource
+* **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

@@ -1,7 +1,7 @@
 # Exclusive S3 Bucket Access Through Restrictive Resource Policy
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Environments:** prod

@@ -1,7 +1,7 @@
 # Privilege Escalation via lambda:UpdateFunctionCode + lambda:AddPermission
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** access-resource
+* **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

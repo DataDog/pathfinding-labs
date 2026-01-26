@@ -77,7 +77,7 @@ Check that the classification makes sense:
 - If `path_type` is "self-escalation", `sub_category` must be "self-escalation"
 - If `sub_category` is "self-escalation", `path_type` must be "self-escalation"
 - If `path_type` is "cross-account", `sub_category` should be "cross-account-escalation"
-- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-lateral-movement, service-passrole, access-resource, credential-access, privilege-chaining, cross-account-escalation
+- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-access, new-passrole, existing-passrole, credential-access, privilege-chaining, cross-account-escalation
 - If `category` is "Toxic Combination" or "Regular Finding", `sub_category` should be one of: Publicly-accessible, sensitive-data, contains-vulnerability, overly-permissive
 
 ### 1. Terraform Validation

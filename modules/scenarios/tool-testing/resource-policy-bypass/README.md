@@ -1,7 +1,7 @@
 # S3 Bucket Access Through Resource Policy
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Environments:** prod

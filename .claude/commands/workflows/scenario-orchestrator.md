@@ -62,16 +62,16 @@ When the input matches the pattern `SERVICE-###` (e.g., `iam-005`, `lambda-001`,
 2. **Extract the path data** by matching the `id` field:
    - `id`: The pathfinding.cloud ID (e.g., "iam-005")
    - `name`: The technique name (e.g., "iam:PutRolePolicy")
-   - `category`: Category type (e.g., "self-escalation", "lateral-movement", "service-passrole", "access-resource")
+   - `category`: Category type (e.g., "self-escalation", "principal-access", "new-passrole", "existing-passrole")
    - `description`: Detailed explanation of the technique
    - `exploitationSteps.awscli`: Array of AWS CLI commands and steps
    - `recommendation`: Prevention recommendations
 
 3. **Map the category to scenario classification**:
    - `"self-escalation"` → path_type: "self-escalation", sub_category: "self-escalation"
-   - `"lateral-movement"` → path_type: "one-hop", sub_category: "principal-lateral-movement"
-   - `"service-passrole"` → path_type: "one-hop", sub_category: "service-passrole"
-   - `"access-resource"` → path_type: "one-hop", sub_category: "access-resource"
+   - `"principal-access"` → path_type: "one-hop", sub_category: "principal-access"
+   - `"new-passrole"` → path_type: "one-hop", sub_category: "new-passrole"
+   - `"existing-passrole"` → path_type: "one-hop", sub_category: "existing-passrole"
    - `"credential-access"` → path_type: "one-hop", sub_category: "credential-access"
 
 4. **Use the extracted data to auto-populate**:
@@ -199,9 +199,9 @@ environments:
 | Value | Description | Example Techniques |
 |-------|-------------|-------------------|
 | `"self-escalation"` | Principal modifies its own permissions | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
-| `"principal-lateral-movement"` | One principal accesses another principal | `sts:AssumeRole`, `iam:createaccesskey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
-| `"service-passrole"` | Pass privileged role to AWS service | `iam:PassRole` + `lambda:CreateFunction` |
-| `"access-resource"` | Access existing resources, mostly workloads | `ssm:startSession` to existing EC2 with to admin role, `lambda:UpdateFunctionCode` to existing Lambda |
+| `"principal-access"` | One principal accesses another principal | `sts:AssumeRole`, `iam:createaccesskey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
+| `"new-passrole"` | Pass privileged role to AWS service | `iam:PassRole` + `lambda:CreateFunction` |
+| `"existing-passrole"` | Access existing resources, mostly workloads | `ssm:startSession` to existing EC2 with to admin role, `lambda:UpdateFunctionCode` to existing Lambda |
 | `"credential-access"` | Access to hardcoded credentials with a resource | `lambda:Listfunctions` to a function with creds in environment variables, `ssm:startSession` or SSH to an EC2 with hardcoded credentials on filesytem |
 
 **For `category: "Toxic Combination"` or `"Regular Finding"`:**
@@ -516,7 +516,7 @@ When reading `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`, 
 
 **Category Mapping Reference:**
 - `"self-escalation"` → `path_type: "self-escalation"`, `sub_category: "self-escalation"`
-- `"lateral-movement"` → `path_type: "one-hop"`, `sub_category: "principal-lateral-movement"`
-- `"service-passrole"` → `path_type: "one-hop"`, `sub_category: "service-passrole"`
-- `"access-resource"` → `path_type: "one-hop"`, `sub_category: "access-resource"`
+- `"principal-access"` → `path_type: "one-hop"`, `sub_category: "principal-access"`
+- `"new-passrole"` → `path_type: "one-hop"`, `sub_category: "new-passrole"`
+- `"existing-passrole"` → `path_type: "one-hop"`, `sub_category: "existing-passrole"`
 - `"credential-access"` → `path_type: "one-hop"`, `sub_category: "credential-access"`

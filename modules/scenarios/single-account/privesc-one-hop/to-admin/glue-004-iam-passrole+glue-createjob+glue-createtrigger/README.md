@@ -1,7 +1,7 @@
 # Privilege Escalation via iam:PassRole + glue:CreateJob + glue:CreateTrigger
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** service-passrole
+* **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

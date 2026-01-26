@@ -34,7 +34,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **name**: Scenario identifier
 - **description**: One-line scenario description
 - **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
+- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
@@ -60,7 +60,7 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 # {Scenario Title}
 
 **Category:** {Privilege Escalation|Regular Finding|Toxic Combination}
-**Sub-Category:** {self-escalation|principal-lateral-movement|service-passrole|access-resource|credential-access|privilege-chaining|cross-account-escalation}
+**Sub-Category:** {self-escalation|principal-access|new-passrole|existing-passrole|credential-access|privilege-chaining|cross-account-escalation}
 **Path Type:** {self-escalation|one-hop|multi-hop|cross-account}
 **Target:** {to-admin|to-bucket}
 **Environments:** {prod|dev|operations}
@@ -157,7 +157,7 @@ cd modules/scenarios/{path-to-scenario}
 ### Title and Metadata
 - Title should be human-readable (e.g., "Privilege Escalation via iam:CreateAccessKey")
 - **Category**: Use exact values from scenario.yaml ("Privilege Escalation", "Regular Finding", "Toxic Combination")
-- **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-lateral-movement", "privilege-chaining", "cross-account-escalation")
+- **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-access", "privilege-chaining", "cross-account-escalation")
 - **Path Type**: "self-escalation", "one-hop", "multi-hop", or "cross-account" from scenario.yaml
 - **Target**: "to-admin" or "to-bucket" from scenario.yaml
 - **Environments**: List environments from scenario.yaml (e.g., "prod" or "dev, prod")
@@ -292,13 +292,13 @@ Provide 4-6 specific, actionable recommendations:
 **self-escalation**: Principal modifies its own permissions
 - Examples: iam:PutUserPolicy on self, iam:AttachRolePolicy on self
 
-**principal-lateral-movement**: One principal accesses another
+**principal-access**: One principal accesses another
 - Examples: sts:AssumeRole, iam:CreateAccessKey for another user
 
-**service-passrole**: Pass privileged role to AWS service
+**new-passrole**: Pass privileged role to AWS service
 - Examples: iam:PassRole + lambda:CreateFunction, iam:PassRole + ec2:RunInstances
 
-**access-resource**: Access existing resources/workloads
+**existing-passrole**: Access existing resources/workloads
 - Examples: ssm:StartSession to EC2, lambda:UpdateFunctionCode on existing Lambda
 
 **credential-access**: Access hardcoded credentials in resources

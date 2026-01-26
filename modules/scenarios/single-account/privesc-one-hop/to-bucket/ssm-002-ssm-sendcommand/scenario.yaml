@@ -5,7 +5,7 @@ cost_estimate: "$5/month"
 pathfinding-cloud-id: "ssm-002"
 
 category: "Privilege Escalation"
-sub_category: "access-resource"
+sub_category: "existing-passrole"
 path_type: "one-hop"
 target: "to-bucket"
 environments:

@@ -27,7 +27,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
 - **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
+- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])

@@ -1,7 +1,7 @@
 # One-Hop Privilege Escalation: iam:AttachRolePolicy + sts:AssumeRole
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

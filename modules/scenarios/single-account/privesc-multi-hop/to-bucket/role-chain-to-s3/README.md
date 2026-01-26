@@ -1,7 +1,7 @@
 # prod_simple_explicit_role_assumption_chain
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Environments:** prod

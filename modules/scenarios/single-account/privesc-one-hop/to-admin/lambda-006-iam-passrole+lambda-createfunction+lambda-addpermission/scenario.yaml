@@ -11,7 +11,7 @@ pathfinding-cloud-id: "lambda-006"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "service-passrole"
+sub_category: "new-passrole"
 path_type: "one-hop"
 target: "to-admin"
 environments:

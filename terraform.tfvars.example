@@ -19,125 +19,98 @@ operations_account_aws_profile = "pl-ops.AWSAdministratorAccess"
 ##############################################################################
 
 # SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN
-enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy   = false
-enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy        = false
 enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion     = false
-enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy   = false
-enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy  = false
-enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup  = false
-enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy = false
-enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy = false
+enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy           = false
+enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy           = false
+enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy        = false
+enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy        = false
+enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy       = false
+enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy          = false
+enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup          = false
 
 # SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET
 enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy         = false
 enable_single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolepolicy      = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN
-enable_single_account_privesc_one_hop_to_admin_iam_019_iam_attachrolepolicy_iam_updateassumerolepolicy = false
-enable_single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole = false
-enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey = false
+enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice = false
 enable_single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice = false
+enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter = false
+enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset = false
+enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset = false
+enable_single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild = false
+enable_single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild  = false
+enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch = false
+enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch = false
+enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances = false
+enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances = false
+enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate = false
+enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice = false
+enable_single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask = false
+enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice = false
+enable_single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask = false
+enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask = false
+enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand          = false
 enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey         = false
 enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey = false
 enable_single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile      = false
-enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy = false
-enable_single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_sts_assumerole = false
 enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile      = false
-# App Runner PassRole privilege escalation (apprunner-001)
-enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice = false
-# Bedrock AgentCore Code Interpreter privilege escalation (bedrock-001)
-enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset = false
-# Bedrock AgentCore - Access existing code interpreter (bedrock-002)
-enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset = false
-enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances       = false
-enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances = false
-# EC2 Launch Template Version + Modify Launch Template - $0.01-0.05/hour for spot instances
-enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate = false
-# ECS PassRole + CreateCluster + RegisterTaskDefinition + RunTask - $0.01/hour
-enable_single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask = false
-# ECS PassRole + RegisterTaskDefinition + RunTask - $0.01/hour
-enable_single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask = false
-# ECS PassRole + RegisterTaskDefinition + StartTask - $5/month (ecs-005)
-enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask = false
-# ECS PassRole + RegisterTaskDefinition + CreateService - $0.02/hour
-enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice = false
-# ECS PassRole + CreateCluster + RegisterTaskDefinition + CreateService - $0.02/hour
-enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice = false
-# ECS ExecuteCommand - $0.04/hour
-enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand          = false
-enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole              = false
 enable_single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepolicy  = false
-enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission = false
-enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation = false
-enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances = false
-enable_single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild = false
-enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch = false
-enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy = false
+enable_single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole = false
+enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey = false
+enable_single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_sts_assumerole = false
 enable_single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole = false
 enable_single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey = false
+enable_single_account_privesc_one_hop_to_admin_iam_019_iam_attachrolepolicy_iam_updateassumerolepolicy = false
+enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy = false
+enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy = false
+enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb = false
-
-enable_single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctioncode        = false
-enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission = false
+enable_single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctioncode = false
 enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction = false
-enable_single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild                = false
-enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch           = false
+enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission = false
+enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission = false
+enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole              = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN NON-FREE SCENARIOS
-# EC2 Instance Connect - SendSSHPublicKey privilege escalation (ec2-003) - $5/month
-enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey = false
-# EC2 - ModifyInstanceAttribute privilege escalation (ec2-002) - $8/month
 enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances = false
-# Glue CreateDevEndpoint - $2.20/hour for Glue dev endpoint (glue-001)
+enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey = false
 enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint = false
-# Glue UpdateDevEndpoint - $2.20/hour for Glue dev endpoint (glue-002)
-enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint              = false
-# Glue CreateJob + CreateTrigger - $0.10/month (glue-003)
-enable_single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger = false
-# Glue CreateJob + StartJobRun - $0.10/month (glue-004)
+enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint     = false
 enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun = false
-# Glue UpdateJob + StartJobRun - $0.10/month (glue-005)
+enable_single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger = false
 enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun = false
-# Glue UpdateJob + CreateTrigger - $0.10/month (glue-006)
 enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger = false
-# SageMaker PassRole + CreateNotebookInstance - $5/month (sagemaker-001)
 enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance = false
-# SageMaker PassRole + CreateProcessingJob - $5/month (sagemaker-003)
-enable_single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob = false
-# SageMaker PassRole + CreateTrainingJob - $5/month (sagemaker-002)
 enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob = false
-# SageMaker CreatePresignedNotebookInstanceUrl - $5/month (sagemaker-004)
+enable_single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob = false
 enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl = false
-# SageMaker UpdateNotebookInstance Lifecycle Config - $5/month
 enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config = false
-enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand             = false
 enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession            = false
+enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand             = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET
 enable_single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey        = false
-enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile     = false
 enable_single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_createaccesskey = false
+enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile     = false
+enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile     = false
 enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy = false
 enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole             = false
-enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile    = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET NON-FREE SCENARIOS
-# Glue CreateDevEndpoint to bucket - $2.20/hour for Glue dev endpoint (glue-001)
-enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint = false
-# Glue UpdateDevEndpoint to bucket - $2.20/hour for Glue dev endpoint (glue-002)
-enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint             = false
-# EC2 Instance Connect - SendSSHPublicKey to bucket (ec2-003) - $5/month
 enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey = false
-enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand           = false
-enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession             = false
+enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint = false
+enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint    = false
+enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession           = false
+enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand            = false
 
 # SINGLE-ACCOUNT MULTI-HOP TO-ADMIN
-enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other            = false
 enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined           = false
+enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other            = false
 
 # SINGLE-ACCOUNT MULTI-HOP TO-BUCKET
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3                 = false
@@ -145,19 +118,19 @@ enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3              
 # TOOL TESTING
 enable_tool_testing_exclusive_resource_policy                                      = false
 enable_tool_testing_resource_policy_bypass                                         = false
+enable_tool_testing_test_effective_permissions_evaluation                          = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin    = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket        = false
-enable_tool_testing_test_effective_permissions_evaluation                          = false
 
 # SINGLE-ACCOUNT TOXIC-COMBO
 enable_single_account_toxic_combo_public_lambda_with_admin                         = false
 
 # CROSS-ACCOUNT DEV-TO-PROD
-enable_cross_account_dev_to_prod_one_hop_simple_role_assumption                    = false
-enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption                = false
-enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin                   = false
-enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides                    = false
 enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update                    = false
+enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides                    = false
+enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin                   = false
+enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption                = false
+enable_cross_account_dev_to_prod_one_hop_simple_role_assumption                    = false
 
 # CROSS-ACCOUNT OPS-TO-PROD
 enable_cross_account_ops_to_prod_one_hop_simple_role_assumption                    = false

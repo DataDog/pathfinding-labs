@@ -1,7 +1,7 @@
 # Privilege Escalation via ecs:ExecuteCommand
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** access-resource
+* **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
@@ -11,7 +11,7 @@
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permission to execute commands in running ECS containers (`ecs:ExecuteCommand`). When a container is running with a privileged task role attached, an attacker can shell into the container and retrieve the role's temporary credentials from the container metadata service, gaining administrative access.
 
-Unlike service-passrole scenarios where attackers create new resources and pass roles to them, this attack exploits access to an **existing** running ECS task that already has an admin role attached. This represents a common real-world scenario where ECS Exec is enabled for debugging purposes on tasks that run with elevated privileges. The attacker doesn't need to create anything - they simply access what's already running.
+Unlike new-passrole scenarios where attackers create new resources and pass roles to them, this attack exploits access to an **existing** running ECS task that already has an admin role attached. This represents a common real-world scenario where ECS Exec is enabled for debugging purposes on tasks that run with elevated privileges. The attacker doesn't need to create anything - they simply access what's already running.
 
 The attack works by using `ecs:ExecuteCommand` (powered by AWS Systems Manager Session Manager) to establish an interactive shell session in the running container. Once inside, the attacker queries the container metadata service at `169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` to retrieve the temporary credentials for the task role. These credentials can then be used outside the container to perform administrative actions. This technique is particularly dangerous because ECS Exec is commonly enabled for legitimate troubleshooting purposes, but the security implications of combining it with privileged task roles are often overlooked.
 

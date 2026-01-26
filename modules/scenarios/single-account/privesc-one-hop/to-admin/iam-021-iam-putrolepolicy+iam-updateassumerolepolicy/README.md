@@ -1,7 +1,7 @@
 # Privilege Escalation via iam:PutRolePolicy + iam:UpdateAssumeRolePolicy
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

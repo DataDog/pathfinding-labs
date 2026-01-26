@@ -180,14 +180,14 @@ In these scenarios, an IAM principal has the permission to update their own perm
 
 | Scenario | Description |
 |----------|-------------|
-| [`iam-013-iam-addusertogroup`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam-addusertogroup/README.md) | User adds themselves to an admin group |
-| [`iam-010-iam-attachgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-010-iam-attachgrouppolicy/README.md) | User attaches admin policies to their group |
-| [`iam-009-iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-009-iam-attachrolepolicy/README.md) | Role attaches managed admin policies to itself |
-| [`iam-008-iam-attachuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-008-iam-attachuserpolicy/README.md) | User attaches managed admin policies to themselves |
 | [`iam-001-iam-createpolicyversion`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-001-iam-createpolicyversion/README.md) | Role creates new policy versions with elevated permissions |
-| [`iam-011-iam-putgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-011-iam-putgrouppolicy/README.md) | User modifies group inline policy to grant admin access |
 | [`iam-005-iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-005-iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant admin access |
 | [`iam-007-iam-putuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-007-iam-putuserpolicy/README.md) | User adds inline admin policy to themselves |
+| [`iam-008-iam-attachuserpolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-008-iam-attachuserpolicy/README.md) | User attaches managed admin policies to themselves |
+| [`iam-009-iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-009-iam-attachrolepolicy/README.md) | Role attaches managed admin policies to itself |
+| [`iam-010-iam-attachgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-010-iam-attachgrouppolicy/README.md) | User attaches admin policies to their group |
+| [`iam-011-iam-putgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-011-iam-putgrouppolicy/README.md) | User modifies group inline policy to grant admin access |
+| [`iam-013-iam-addusertogroup`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam-addusertogroup/README.md) | User adds themselves to an admin group |
 
 #### One-Hop to Admin (57 scenarios)
 
@@ -272,8 +272,8 @@ The attacker uses the same privesc mechanisms as above, but the attacker never g
 
 | Scenario | Description |
 |----------|-------------|
-| [`iam-009-iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-bucket/iam-009-iam-attachrolepolicy/README.md) | Role attaches S3 access policies to itself |
 | [`iam-005-iam-putrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-bucket/iam-005-iam-putrolepolicy/README.md) | Role modifies its own inline policy to grant S3 bucket access |
+| [`iam-009-iam-attachrolepolicy`](modules/scenarios/single-account/privesc-self-escalation/to-bucket/iam-009-iam-attachrolepolicy/README.md) | Role attaches S3 access policies to itself |
 
 
 #### One-Hop to Bucket (11 scenarios)
@@ -335,11 +335,11 @@ Privilege escalation paths that span multiple AWS accounts. These scenarios requ
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
-| [`simple-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from dev to prod |
-| [`root-trust-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption/README.md) | 1 | Cross-account role assumption exploiting :root trust (any dev principal can assume) |
-| [`passrole-lambda-admin`](modules/scenarios/cross-account/dev-to-prod/multi-hop/passrole-lambda-admin/README.md) | 2 | PassRole privilege escalation via Lambda across accounts |
-| [`multi-hop-both-sides`](modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides/README.md) | 3 | Privilege escalation in both accounts before crossing |
 | [`lambda-invoke-update`](modules/scenarios/cross-account/dev-to-prod/multi-hop/lambda-invoke-update/README.md) | 2 | Lambda function code update to extract prod credentials |
+| [`multi-hop-both-sides`](modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides/README.md) | 3 | Privilege escalation in both accounts before crossing |
+| [`passrole-lambda-admin`](modules/scenarios/cross-account/dev-to-prod/multi-hop/passrole-lambda-admin/README.md) | 2 | PassRole privilege escalation via Lambda across accounts |
+| [`root-trust-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption/README.md) | 1 | Cross-account role assumption exploiting :root trust (any dev principal can assume) |
+| [`simple-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from dev to prod |
 
 #### Cross-Account Ops-to-Prod (1 scenario)
 

@@ -1,7 +1,7 @@
 # One-Hop Privilege Escalation: iam:PassRole + ec2:RunInstances
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** service-passrole
+* **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod

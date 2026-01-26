@@ -1,7 +1,7 @@
 # One-Hop Privilege Escalation: iam:UpdateAssumeRolePolicy
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod

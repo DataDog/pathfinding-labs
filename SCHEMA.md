@@ -136,9 +136,9 @@ environments:
 | Value | Description | Example Techniques |
 |-------|-------------|-------------------|
 | `"self-escalation"` | Principal modifies its own permissions (path_type: self-escalation only) | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
-| `"principal-lateral-movement"` | One principal accesses another principal (one-hop or multi-hop) | `iam:PutRolePolicy` on another role, single technique used across hops |
-| `"service-passrole"` | Pass privileged role to AWS service (one-hop or multi-hop) | `iam:PassRole` + `lambda:CreateFunction`, `iam:PassRole` + `ec2:RunInstances` |
-| `"access-resource"` | Access existing resources, mostly workloads (one-hop) | `sts:AssumeRole` to admin role, `ssm:StartSession` to EC2 with admin role |
+| `"principal-access"` | One principal accesses another principal (one-hop or multi-hop) | `iam:PutRolePolicy` on another role, single technique used across hops |
+| `"new-passrole"` | Pass privileged role to AWS service (one-hop or multi-hop) | `iam:PassRole` + `lambda:CreateFunction`, `iam:PassRole` + `ec2:RunInstances` |
+| `"existing-passrole"` | Access existing resources, mostly workloads (one-hop) | `sts:AssumeRole` to admin role, `ssm:StartSession` to EC2 with admin role |
 | `"credential-access"` | Access to hardcoded credentials with a resource (one-hop or multi-hop) | `ssm:StartSession` to EC2 with hardcoded creds, `lambda:GetFunction` with creds in environment |
 | `"privilege-chaining"` | Multiple escalation techniques chained together (multi-hop only) | Mixed techniques like PassRole → PutRolePolicy → AssumeRole |
 | `"cross-account-escalation"` | Privilege escalation spanning AWS accounts (cross-account only) | Any technique that crosses account boundaries |
@@ -626,7 +626,7 @@ cost_estimate: "free"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "service-passrole"
+sub_category: "new-passrole"
 path_type: "one-hop"
 target: "to-admin"
 environments:
@@ -697,7 +697,7 @@ cost_estimate: "free"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "principal-lateral-movement"
+sub_category: "principal-access"
 path_type: "multi-hop"
 target: "to-admin"
 environments:
@@ -988,9 +988,9 @@ category: "Privilege Escalation"
 
 **3. Wrong sub_category for category**
 ```yaml
-# ❌ Bad - "service-passrole" doesn't apply to Toxic Combination
+# ❌ Bad - "new-passrole" doesn't apply to Toxic Combination
 category: "Toxic Combination"
-sub_category: "service-passrole"
+sub_category: "new-passrole"
 
 # ✅ Good
 category: "Toxic Combination"

@@ -1,7 +1,7 @@
 # One-Hop Privilege Escalation: iam:PutRolePolicy + sts:AssumeRole
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** principal-lateral-movement
+* **Sub-Category:** principal-access
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
@@ -11,7 +11,7 @@
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permission to modify inline policies on a role (`iam:PutRolePolicy`) AND can assume that same role (`sts:AssumeRole`). This combination creates a powerful privilege escalation path because the attacker can add an administrative inline policy to the target role, then assume it to gain full admin access.
 
-Unlike self-escalation scenarios where a role modifies itself, this is a **principal-lateral-movement** attack where a USER modifies a ROLE and then assumes it. The target role may initially have minimal or no permissions, but the ability to modify its inline policies and then assume it makes it equivalent to having direct admin access.
+Unlike self-escalation scenarios where a role modifies itself, this is a **principal-access** attack where a USER modifies a ROLE and then assumes it. The target role may initially have minimal or no permissions, but the ability to modify its inline policies and then assume it makes it equivalent to having direct admin access.
 
 This scenario specifically uses **inline policies** via `PutRolePolicy`. While similar in outcome to the `iam-attachrolepolicy+sts-assumerole` scenario (which uses managed policies), inline policies are often overlooked in security reviews because they're embedded directly in the role rather than being standalone policy objects.
 
