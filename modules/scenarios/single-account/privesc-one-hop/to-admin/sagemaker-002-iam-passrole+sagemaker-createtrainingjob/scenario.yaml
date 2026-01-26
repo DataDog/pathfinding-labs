@@ -1,0 +1,78 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+sagemaker-createtrainingjob"
+description: "User with PassRole and CreateTrainingJob can create training job with malicious script and admin role to execute code with elevated privileges"
+cost_estimate: "$5/month"
+pathfinding-cloud-id: "sagemaker-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sagemaker-002-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sagemaker-002-to-admin-passable-role"
+    - "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-{account_id}-{suffix}"
+    - "arn:aws:sagemaker:{region}:{account_id}:training-job/pl-prod-sagemaker-002-to-admin-training-job"
+
+  summary: "starting_user → (upload malicious script to S3) → (PassRole + CreateTrainingJob) → training job executes with admin role → script grants admin access to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-sagemaker-002-to-admin-passable-role"
+
+    - permission: "sagemaker:CreateTrainingJob"
+      resource: "*"
+
+    - permission: "s3:PutObject"
+      resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
+
+    - permission: "s3:GetObject"
+      resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles to pass"
+
+    - permission: "iam:GetRole"
+      purpose: "Verify role has administrative permissions"
+
+    - permission: "sagemaker:DescribeTrainingJob"
+      purpose: "Monitor training job status and execution"
+
+    - permission: "s3:ListBucket"
+      purpose: "Verify S3 bucket access and list contents"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-002-iam-passrole+sagemaker-createtrainingjob"

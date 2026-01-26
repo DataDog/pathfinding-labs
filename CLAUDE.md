@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Multi-Account Support**: Optional dev/ops accounts for cross-account scenarios
 - **Modular Architecture**: Enable/disable individual scenarios via boolean flags
 - **Granular Control**: Each scenario is independently deployable
-- **20 Scenarios Available**: Covering one-hop, multi-hop, toxic combinations, and cross-account paths
+- **93 Scenarios Available**: Covering self-escalation, one-hop, multi-hop, toxic combinations, and cross-account paths
 
 ## Architecture
 
@@ -120,7 +120,7 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your prod account ID and AWS profile
 
 # 3. Enable specific scenarios (edit terraform.tfvars)
-enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
 
 # 4. Deploy
 terraform init
@@ -128,7 +128,7 @@ terraform plan
 terraform apply
 
 # 5. Run demo scripts (credentials are automatically read from terraform outputs)
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
 ./demo_attack.sh
 ```
 
@@ -154,7 +154,7 @@ Each scenario includes demonstration scripts:
 
 ```bash
 # Navigate to a specific scenario
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey
+cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
 
 # Run the demonstration
 ./demo_attack.sh
@@ -187,55 +187,78 @@ terraform state list
 
 ## Available Scenarios
 
-### One-Hop to Admin (4 scenarios)
-| Scenario | Attack Vector | Description |
-|----------|---------------|-------------|
-| `iam-putrolepolicy` | Self-modification | Role can modify its own inline policy |
-| `iam-attachrolepolicy` | Self-modification | Role can attach managed policies to itself |
-| `iam-createpolicyversion` | Policy versioning | Role can create new policy versions |
-| `iam-createaccesskey` | Credential creation | Role can create access keys for admin user |
+Scenarios use pathfinding.cloud IDs for consistent naming (e.g., `iam-002`, `ecs-006`).
 
-### One-Hop to Bucket (5 scenarios)
-| Scenario | Attack Vector | Description |
-|----------|---------------|-------------|
-| `iam-putrolepolicy` | Self-modification | Role grants itself S3 bucket access |
-| `iam-attachrolepolicy` | Self-modification | Role attaches S3 access policies |
-| `iam-createaccesskey` | Credential creation | Create keys for user with bucket access |
-| `iam-updateassumerolepolicy` | Trust policy modification | Modify trust to assume bucket-access roles |
-| `sts-assumerole` | Direct assumption | Directly assume role with bucket permissions |
+### Self-Escalation to Admin (8 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `iam-001-iam-createpolicyversion` | Role creates new policy versions with elevated permissions |
+| `iam-005-iam-putrolepolicy` | Role modifies its own inline policy to grant admin access |
+| `iam-007-iam-putuserpolicy` | User adds inline admin policy to themselves |
+| `iam-008-iam-attachuserpolicy` | User attaches managed admin policies to themselves |
+| `iam-009-iam-attachrolepolicy` | Role attaches managed admin policies to itself |
+| `iam-010-iam-attachgrouppolicy` | User attaches admin policies to their group |
+| `iam-011-iam-putgrouppolicy` | User modifies group inline policy to grant admin access |
+| `iam-013-iam-addusertogroup` | User adds themselves to an admin group |
 
-### Multi-Hop to Admin (2 scenarios)
-| Scenario | Hops | Description |
-|----------|------|-------------|
-| `multiple-paths-combined` | 2-3 | EC2, Lambda, CloudFormation paths to admin |
-| `putrolepolicy-on-other` | 2 | Modify another role's policy for admin access |
+### One-Hop to Admin (57 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `iam-002-iam-createaccesskey` | Create access keys for admin user |
+| `iam-003-iam-deleteaccesskey+createaccesskey` | Delete and recreate access keys for admin user |
+| `iam-004-iam-createloginprofile` | Create console password for admin user |
+| `iam-006-iam-updateloginprofile` | Reset console password for admin user |
+| `iam-012-iam-updateassumerolepolicy` | Modify trust policy of admin role |
+| `sts-001-sts-assumerole` | Directly assume role with admin permissions |
+| ... and 51 more scenarios covering Lambda, EC2, ECS, Glue, CodeBuild, CloudFormation, SageMaker, SSM, AppRunner, Bedrock |
 
-### Multi-Hop to Bucket (3 scenarios)
-| Scenario | Hops | Description |
-|----------|------|-------------|
-| `resource-policy-bypass` | 2 | Access via resource policy bypassing IAM |
-| `exclusive-resource-policy` | 2 | Exclusive bucket access via resource policy |
-| `role-chain-to-s3` | 3 | Three-hop role assumption chain to S3 |
+### Self-Escalation to Bucket (2 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `iam-005-iam-putrolepolicy` | Role modifies its own policy for S3 access |
+| `iam-009-iam-attachrolepolicy` | Role attaches S3 access policies to itself |
+
+### One-Hop to Bucket (11 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `iam-002-iam-createaccesskey` | Create keys for user with bucket access |
+| `iam-012-iam-updateassumerolepolicy` | Modify trust to assume bucket-access roles |
+| `sts-001-sts-assumerole` | Directly assume role with bucket permissions |
+| ... and 8 more scenarios |
+
+### Multi-Hop to Admin (1 scenario)
+| Scenario | Description |
+|----------|-------------|
+| `multiple-paths-combined` | EC2, Lambda, CloudFormation paths to admin |
+
+### Multi-Hop to Bucket (1 scenario)
+| Scenario | Description |
+|----------|-------------|
+| `role-chain-to-s3` | Three-hop role assumption chain to S3 |
 
 ### Toxic Combo (1 scenario)
-| Scenario | Risk Level | Description |
-|----------|------------|-------------|
-| `public-lambda-with-admin` | Critical | Public Lambda with administrative role |
+| Scenario | Description |
+|----------|-------------|
+| `public-lambda-with-admin` | Public Lambda with administrative role |
 
-### Tool Testing (2 scenarios)
-| Scenario | Focus | Description |
-|----------|-------|-------------|
-| `resource-policy-bypass` | Edge case detection | Tests detection of resource policies that bypass IAM restrictions |
-| `exclusive-resource-policy` | Policy parsing | Tests detection of exclusive resource policy configurations |
+### Tool Testing (5 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `resource-policy-bypass` | Tests resource policies that bypass IAM restrictions |
+| `exclusive-resource-policy` | Tests exclusive resource policy configurations |
+| `test-effective-permissions-evaluation` | Tests admin access patterns, denies, boundaries |
+| `test-reverse-blast-radius-direct-and-indirect-through-admin` | Tests direct and indirect S3 access via admin |
+| `test-reverse-blast-radius-direct-and-indirect-to-bucket` | Tests direct and indirect S3 bucket access |
 
-### Cross-Account (5 scenarios)
-| Scenario | Type | Description |
-|----------|------|-------------|
-| `dev-to-prod/simple-role-assumption` | One-hop | Direct cross-account role assumption |
-| `dev-to-prod/passrole-lambda-admin` | Multi-hop | PassRole escalation via Lambda |
-| `dev-to-prod/multi-hop-both-sides` | Multi-hop | Escalation in both accounts |
-| `dev-to-prod/lambda-invoke-update` | Multi-hop | Lambda code update for credential extraction |
-| `ops-to-prod/simple-role-assumption` | One-hop | Ops to prod role assumption |
+### Cross-Account (6 scenarios)
+| Scenario | Description |
+|----------|-------------|
+| `dev-to-prod/simple-role-assumption` | Direct cross-account role assumption |
+| `dev-to-prod/root-trust-role-assumption` | Cross-account via :root trust |
+| `dev-to-prod/passrole-lambda-admin` | PassRole escalation via Lambda |
+| `dev-to-prod/multi-hop-both-sides` | Escalation in both accounts |
+| `dev-to-prod/lambda-invoke-update` | Lambda code update for credential extraction |
+| `ops-to-prod/simple-role-assumption` | Ops to prod role assumption |
 
 ## Development Guidelines
 
@@ -313,8 +336,8 @@ scenario-name/
 
 8. **Add boolean variable** to root `variables.tf`:
    ```hcl
-   variable "enable_prod_one_hop_to_admin_scenario_name" {
-     description = "Enable: prod → one-hop → to-admin → scenario-name"
+   variable "enable_single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario" {
+     description = "Enable: single-account → privesc-one-hop → to-admin → iam-099-iam-newscenario"
      type        = bool
      default     = false
    }
@@ -322,9 +345,9 @@ scenario-name/
 
 9. **Add module instantiation** to root `main.tf`:
    ```hcl
-   module "prod_one_hop_to_admin_scenario_name" {
-     count  = var.enable_prod_one_hop_to_admin_scenario_name ? 1 : 0
-     source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/scenario-name"
+   module "single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario" {
+     count  = var.enable_single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario ? 1 : 0
+     source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-099-iam-newscenario"
 
      providers = {
        aws = aws.prod
@@ -338,14 +361,14 @@ scenario-name/
 
 10. **Add grouped output** to root `outputs.tf`:
    ```hcl
-   output "single_account_privesc_one_hop_to_admin_scenario_name" {
-     description = "All outputs for scenario-name one-hop to-admin scenario"
-     value = var.enable_single_account_privesc_one_hop_to_admin_scenario_name ? {
-       starting_user_name              = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_name
-       starting_user_arn               = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_arn
-       starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_access_key_id
-       starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_scenario_name[0].starting_user_secret_access_key
-       attack_path                     = module.single_account_privesc_one_hop_to_admin_scenario_name[0].attack_path
+   output "single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario" {
+     description = "All outputs for iam-099-iam-newscenario one-hop to-admin scenario"
+     value = var.enable_single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario ? {
+       starting_user_name              = module.single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario[0].starting_user_name
+       starting_user_arn               = module.single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario[0].starting_user_arn
+       starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario[0].starting_user_access_key_id
+       starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario[0].starting_user_secret_access_key
+       attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_099_iam_newscenario[0].attack_path
      } : null
      sensitive = true
    }
@@ -418,13 +441,13 @@ Configure these in `terraform.tfvars`:
 prod_account_id          = "111111111111"
 prod_account_aws_profile = "my-playground-account"
 
-# Enable specific scenarios
-enable_prod_one_hop_to_admin_iam_putrolepolicy = true
-enable_prod_one_hop_to_admin_iam_createaccesskey = true
-enable_prod_toxic_combo_public_lambda_with_admin = true
+# Enable specific scenarios (use pathfinding.cloud IDs)
+enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
+enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
+enable_single_account_toxic_combo_public_lambda_with_admin = true
 
 # Keep everything else disabled
-enable_prod_multi_hop_to_bucket_role_chain_to_s3 = false
+enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = false
 # ... etc
 ```
 
@@ -446,14 +469,15 @@ enable_cross_account_dev_to_prod_simple_role_assumption = true
 
 ### Boolean Variable Convention
 
-Each scenario has a corresponding boolean variable:
+Each scenario has a corresponding boolean variable using pathfinding.cloud IDs:
 
 ```hcl
-# Format: enable_{account}_{category}_{target}_{technique}
-enable_prod_one_hop_to_admin_iam_putrolepolicy = true
-enable_prod_multi_hop_to_bucket_role_chain_to_s3 = true
+# Format: enable_single_account_privesc_{category}_to_{target}_{path_id}_{technique}
+# Note: Use underscores in variable names (not hyphens)
+enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
+enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
+enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = true
 enable_tool_testing_resource_policy_bypass = true
-enable_tool_testing_exclusive_resource_policy = true
 enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
 ```
 
@@ -527,7 +551,7 @@ Each scenario documents what a properly configured CSPM should detect:
 ### 1. CSPM Validation
 Deploy known vulnerabilities and verify your CSPM detects them:
 ```bash
-enable_prod_toxic_combo_public_lambda_with_admin = true
+enable_single_account_toxic_combo_public_lambda_with_admin = true
 terraform apply
 # Check if CSPM alerts on: Lambda function publicly accessible + administrative permissions
 ```
@@ -535,18 +559,18 @@ terraform apply
 ### 2. Red Team Training
 Practice exploitation techniques:
 ```bash
-enable_prod_one_hop_to_admin_iam_putrolepolicy = true
+enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
 terraform apply
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy
+cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-005-iam-putrolepolicy
 ./demo_attack.sh
 ```
 
 ### 3. Security Tool Testing
 Deploy multiple scenarios and test if your tooling finds all paths:
 ```bash
-enable_prod_one_hop_to_admin_iam_putrolepolicy = true
-enable_prod_one_hop_to_admin_iam_createaccesskey = true
-enable_prod_multi_hop_to_admin_multiple_paths_combined = true
+enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
+enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
+enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined = true
 terraform apply
 # Test your security tools against these scenarios
 ```

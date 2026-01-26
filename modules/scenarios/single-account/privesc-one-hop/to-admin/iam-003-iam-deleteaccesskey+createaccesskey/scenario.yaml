@@ -1,0 +1,69 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-deleteaccesskey+createaccesskey"
+description: "User with iam:DeleteAccessKey and iam:CreateAccessKey can delete an existing access key and create a new one for an admin user (bypassing the 2-key limit) to gain admin access"
+cost_estimate: "free"
+pathfinding-cloud-id: "iam-003"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "credential-access"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-admin-target-user"
+
+  summary: "starting_user → (iam:ListAccessKeys) → list existing keys → (iam:DeleteAccessKey) → delete one key → (iam:CreateAccessKey) → create new key for admin_user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:DeleteAccessKey"
+      resource: "arn:aws:iam::*:user/pl-prod-iam-003-to-admin-target-user"
+
+    - permission: "iam:CreateAccessKey"
+      resource: "arn:aws:iam::*:user/pl-prod-iam-003-to-admin-target-user"
+
+  helpful:
+    - permission: "iam:ListAccessKeys"
+      purpose: "List existing access keys to identify which one to delete"
+
+    - permission: "iam:ListUsers"
+      purpose: "Discover privileged users to target"
+
+    - permission: "iam:GetUser"
+      purpose: "View user details and attached policies"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Identify users with admin permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-003-iam-deleteaccesskey+createaccesskey"

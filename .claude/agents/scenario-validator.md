@@ -104,7 +104,16 @@ If validation fails, read the error and fix the issues.
 
 #### Check Resource Names
 Read `main.tf` and verify:
-- Resource names follow pattern: `pl-{environment}-{scenario-shorthand}-{type}`
+
+**For self-escalation and one-hop scenarios:**
+- Resource names follow pattern: `pl-{environment}-{path-id}-to-{target}-{purpose}`
+- Example: `pl-prod-iam-002-to-admin-starting-user`
+
+**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account):**
+- Resource names follow pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
+- Example: `pl-prod-multi-hop-role-chain-starting-user`
+
+**All scenarios:**
 - Provider is correctly specified (aws.prod, aws.dev, etc.)
 - Trust policies reference correct principals
 - IAM policies have proper permissions
@@ -326,15 +335,27 @@ Resource names should be consistent across:
 - cleanup_attack.sh variables
 
 #### Profile Usage Consistency
-- demo_attack.sh should use: `pl-{environment}-{scenario-shorthand}-starting-user`
-- cleanup_attack.sh should use: `pl-admin-cleanup-prod`
-- README should reference these profiles
+
+**For self-escalation and one-hop scenarios:**
+- demo_attack.sh should reference: `pl-{environment}-{path-id}-to-{target}-starting-user`
+- Example: `pl-prod-iam-002-to-admin-starting-user`
+
+**For other scenarios:**
+- demo_attack.sh should reference: `pl-{environment}-{scenario-shorthand}-starting-user`
+
+**All scenarios:**
+- cleanup_attack.sh should use admin credentials from Terraform outputs
+- README should reference the correct starting user names
 
 ## Common Issues and Fixes
 
 ### Issue: Resource name mismatch
 **Symptom**: demo_attack.sh references role that doesn't exist in Terraform
 **Fix**: Update demo_attack.sh to use correct resource name from Terraform outputs
+
+### Issue: Missing or incorrect path ID in naming
+**Symptom**: Self-escalation or one-hop scenario uses old naming pattern without path ID
+**Fix**: Update resource names to use `pl-{env}-{path-id}-to-{target}-{purpose}` pattern (e.g., `pl-prod-iam-002-to-admin-starting-user`)
 
 ### Issue: Missing permissions verification
 **Symptom**: demo_attack.sh doesn't verify lack of permissions before escalation

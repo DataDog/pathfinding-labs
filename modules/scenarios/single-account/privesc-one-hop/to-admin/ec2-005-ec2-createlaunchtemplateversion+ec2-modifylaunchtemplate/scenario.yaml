@@ -1,0 +1,77 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate"
+description: "User with CreateLaunchTemplateVersion and ModifyLaunchTemplate can update existing template to launch instances with admin role"
+cost_estimate: "$0.01-0.05/hour (spot instances)"
+pathfinding-cloud-id: "ec2-005"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "access-resource"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ec2-005-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-lowpriv-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-target-role"
+
+  summary: "starting_user → (CreateLaunchTemplateVersion with existing admin role + malicious user data) → (ModifyLaunchTemplate default version) → Next instance launch uses admin role → User data adds AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "ec2:CreateLaunchTemplateVersion"
+      resource: "*"
+
+    - permission: "ec2:ModifyLaunchTemplate"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles already configured in existing templates"
+
+    - permission: "ec2:DescribeLaunchTemplates"
+      purpose: "Discover existing launch templates to target"
+
+    - permission: "ec2:DescribeLaunchTemplateVersions"
+      purpose: "View existing template configuration before modification"
+
+    - permission: "autoscaling:DescribeAutoScalingGroups"
+      purpose: "Identify which ASGs use the target launch template"
+
+    - permission: "ec2:DescribeInstances"
+      purpose: "Monitor instance launch and verify user data execution"
+
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify privilege escalation was successful"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-005-ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate"

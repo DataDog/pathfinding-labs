@@ -8,7 +8,15 @@ color: yellow
 
 # Pathfinding Labs README Creator Agent
 
-You are a specialized agent for creating comprehensive README.md documentation for Pathfinding Labs attack scenarios. You follow the canonical structure from `modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey/README.md`.
+You are a specialized agent for creating comprehensive README.md documentation for Pathfinding Labs attack scenarios. You follow the canonical structure from `modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey/README.md`.
+
+## Important: Naming Conventions
+
+**For self-escalation and one-hop scenarios**, resource names use pathfinding.cloud IDs:
+- Directory: `{path-id}-{scenario-name}/` (e.g., `iam-002-iam-createaccesskey/`)
+- Resources: `pl-{env}-{path-id}-to-{target}-{purpose}` (e.g., `pl-prod-iam-002-to-admin-starting-user`)
+
+**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account)**, use descriptive shorthand without path IDs.
 
 ## Core Responsibility
 
@@ -164,7 +172,16 @@ Write 2-3 paragraphs that:
 
 ### Principals Section
 List ALL principals involved in the attack path:
-- **Always start with the scenario-specific starting user**: `pl-{environment}-{scenario-shorthand}-starting-user`
+
+**For self-escalation and one-hop scenarios (use path IDs):**
+- **Starting user**: `pl-{environment}-{path-id}-to-{target}-starting-user` (e.g., `pl-prod-iam-002-to-admin-starting-user`)
+- **Starting role** (if applicable): `pl-{environment}-{path-id}-to-{target}-starting-role`
+- **Target**: `pl-{environment}-{path-id}-to-{target}-target-role` or `pl-{environment}-{path-id}-to-{target}-target-user`
+
+**For other scenarios (no path IDs):**
+- **Starting user**: `pl-{environment}-{scenario-shorthand}-starting-user`
+
+Always:
 - Include all intermediate roles (if applicable)
 - Include the target resource (role, user, or bucket)
 - Use placeholder `PROD_ACCOUNT` for account IDs

@@ -1,0 +1,65 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-createaccesskey"
+description: "User with iam:CreateAccessKey can create credentials for user with S3 bucket access"
+cost_estimate: "free"
+pathfinding-cloud-id: "iam-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "credential-access"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-bucket-privesc-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-bucket-access-user"
+    - "arn:aws:s3:::pl-prod-iam-002-to-bucket-{account_id}"
+
+  summary: "starting_user → (iam:CreateAccessKey) → bucket_user credentials → S3 bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:CreateAccessKey"
+      resource: "arn:aws:iam::*:user/pl-prod-iam-002-to-bucket-access-user"
+
+  helpful:
+    - permission: "iam:ListUsers"
+      purpose: "Discover users with S3 access"
+
+    - permission: "iam:GetUserPolicy"
+      purpose: "View user's inline policies"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Identify users with S3 permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-002-iam-createaccesskey"

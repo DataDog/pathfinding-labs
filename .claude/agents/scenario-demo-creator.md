@@ -63,8 +63,11 @@ cd - > /dev/null
 
 **Example for specific scenario**:
 ```bash
-# For iam-createaccesskey to-admin scenario
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createaccesskey.value // empty')
+# For iam-002-iam-createaccesskey to-admin scenario (self-escalation and one-hop use path IDs)
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey.value // empty')
+
+# For multi-hop or other scenarios (no path IDs)
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_admin_role_chain.value // empty')
 ```
 
 ### Step 2: Export to Environment (REQUIRED PATTERN)

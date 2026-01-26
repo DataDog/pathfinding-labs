@@ -1,0 +1,68 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "cloudformation-updatestack"
+description: "User with cloudformation:UpdateStack can modify existing stack to create admin role using stack's elevated service role"
+cost_estimate: "free"
+pathfinding-cloud-id: "cloudformation-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "access-resource"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-002-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-002-to-admin-stack-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-002-to-admin-escalated-role"
+
+  summary: "starting_user → (cloudformation:UpdateStack) → stack (with admin service role) → creates escalated admin role → (sts:AssumeRole) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "cloudformation:UpdateStack"
+      resource: "arn:aws:cloudformation:*:*:stack/pl-prod-cloudformation-002-to-admin-stack/*"
+
+  helpful:
+    - permission: "cloudformation:DescribeStacks"
+      purpose: "View stack details and verify stack configuration"
+
+    - permission: "cloudformation:GetTemplate"
+      purpose: "Retrieve current stack template for modification"
+
+    - permission: "iam:GetRole"
+      purpose: "Verify the escalated role was created by the stack update"
+
+    - permission: "sts:AssumeRole"
+      purpose: "Assume the escalated role created by stack update"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-002-cloudformation-updatestack"

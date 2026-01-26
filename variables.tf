@@ -50,50 +50,50 @@ variable "github_repo" {
 # SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS
 ##############################################################################
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-005-iam-putrolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachrolepolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-009-iam-attachrolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_createpolicyversion" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-createpolicyversion"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-001-iam-createpolicyversion"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-007-iam-putuserpolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putgrouppolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-011-iam-putgrouppolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_addusertogroup" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-addusertogroup"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-013-iam-addusertogroup"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachuserpolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachuserpolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-008-iam-attachuserpolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachgrouppolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-attachgrouppolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-010-iam-attachgrouppolicy"
   type        = bool
   default     = false
 }
@@ -102,14 +102,14 @@ variable "enable_single_account_privesc_self_escalation_to_admin_iam_attachgroup
 # SINGLE-ACCOUNT SELF-ESCALATION TO-BUCKET SCENARIOS
 ##############################################################################
 
-variable "enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-putrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-005 (iam-putrolepolicy)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_self_escalation_to_bucket_iam_attachrolepolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-attachrolepolicy"
+variable "enable_single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolepolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-bucket → iam-009-iam-attachrolepolicy"
   type        = bool
   default     = false
 }
@@ -118,314 +118,314 @@ variable "enable_single_account_privesc_self_escalation_to_bucket_iam_attachrole
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_iam_updateassumerolepolicy" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachrolepolicy+iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_019_iam_attachrolepolicy_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-019-iam-attachrolepolicy+iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_attachrolepolicy_sts_assumerole" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachrolepolicy+sts-assumerole"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-014-iam-attachrolepolicy+sts-assumerole"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_attachuserpolicy_iam_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-attachuserpolicy+iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-015-iam-attachuserpolicy+iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_apprunner_updateservice" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-updateservice"
+variable "enable_single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-002-apprunner-updateservice"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-002-iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_createloginprofile" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createloginprofile"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-004-iam-createloginprofile (Pathfinding.cloud: iam-004)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_deleteaccesskey_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-deleteaccesskey+createaccesskey (Pathfinding.cloud: iam-003)"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-003-iam-deleteaccesskey+createaccesskey (Pathfinding.cloud: iam-003)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_iam_updateassumerolepolicy" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createpolicyversion+iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-020-iam-createpolicyversion+iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_createpolicyversion_sts_assumerole" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createpolicyversion+sts-assumerole"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-016 → iam-createpolicyversion+sts-assumerole"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_updateloginprofile" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-updateloginprofile"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-006-iam-updateloginprofile"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_apprunner_createservice" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+apprunner-createservice"
+variable "enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-001-iam-passrole+apprunner-createservice (Pathfinding.cloud: apprunner-001)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_bedrockagentcore_codeinterpreter" {
-  description = "Enable: single-account → privesc → one-hop → to-admin → iam-passrole+bedrockagentcore-codeinterpreter (Pathfinding.cloud: bedrock-001)"
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → bedrock-001-iam-passrole+bedrockagentcore-codeinterpreter (Pathfinding.cloud: bedrock-001)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_bedrockagentcore_startsession_invoke" {
-  description = "Enable: single-account → privesc → one-hop → to-admin → bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke" {
+  description = "Enable: single-account → privesc → one-hop → to-admin → bedrock-002-bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_runinstances" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-runinstances"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-001-iam-passrole+ec2-runinstances"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ec2_requestspotinstances" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ec2-requestspotinstances"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-004-iam-passrole+ec2-requestspotinstances"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate ($0.01-0.05/hour for spot instances)"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-005 → ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate ($0.01-0.05/hour for spot instances)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-002-iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-004-iam-passrole+ecs-registertaskdefinition+ecs-runtask ($0.01/hour)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_starttask" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-starttask ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask ($5/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-003-iam-passrole+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-001-iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice ($0.02/hour)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ecs_executecommand" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-executecommand ($0.04/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-006-ecs-executecommand ($0.04/hour)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_sts_assumerole" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → sts-assumerole"
+variable "enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sts-001-sts-assumerole"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_updateassumerolepolicy" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-012-iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_addpermission" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-addpermission"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-006-iam-passrole+lambda-createfunction+lambda-addpermission"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_lambda_invokefunction" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+lambda-invokefunction"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_createchangeset_executechangeset" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-createchangeset+executechangeset"
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-005-cloudformation-createchangeset+executechangeset"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_updatestack" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-updatestack"
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-002-cloudformation-updatestack"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_updatestackset" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation-updatestackset"
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-004-iam-passrole+cloudformation-updatestackset"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole-cloudformation"
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-001-iam-passrole-cloudformation"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
+variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-003-iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuild" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuild"
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-001-iam-passrole+codebuild-createproject+codebuild-startbuild"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_iam_updateassumerolepolicy" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putrolepolicy+iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-021-iam-putrolepolicy+iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_putrolepolicy_sts_assumerole" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putrolepolicy+sts-assumerole"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-017-iam-putrolepolicy+sts-assumerole"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_putuserpolicy_iam_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-putuserpolicy+iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-018-iam-putuserpolicy+iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-002-iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctioncode" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-003-lambda-updatefunctioncode"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_addpermission" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode+lambda-addpermission"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-005-lambda-updatefunctioncode+lambda-addpermission"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_lambda_updatefunctioncode_lambda_invokefunction" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-updatefunctioncode+lambda-invokefunction"
+variable "enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → lambda-004-lambda-updatefunctioncode+lambda-invokefunction"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ssm_sendcommand" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-sendcommand"
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-002-ssm-sendcommand"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ssm_startsession" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-startsession"
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-001-ssm-startsession"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuild" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuild"
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-002-codebuild-startbuild"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_codebuild_startbuildbatch" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-startbuildbatch"
+variable "enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-003-codebuild-startbuildbatch"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ec2_instance_connect_sendsshpublickey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ec2_modifyinstanceattribute_stopinstances_startinstances" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-modifyinstanceattribute+stopinstances+startinstances"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-002 → ec2-modifyinstanceattribute+stopinstances+startinstances"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createdevendpoint" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+variable "enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-001-iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_glue_updatedevendpoint" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+variable "enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-002-glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_createtrigger" {
+variable "enable_single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-createtrigger ($0.10/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_createjob_glue_startjobrun" {
+variable "enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {
   description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-createjob+glue-startjobrun ($0.10/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_startjobrun" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-startjobrun ($0.10/month) (Pathfinding.cloud: glue-005)"
+variable "enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-005-iam-passrole+glue-updatejob+glue-startjobrun ($0.10/month) (Pathfinding.cloud: glue-005)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updatejob_glue_createtrigger" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+glue-updatejob+glue-createtrigger ($0.10/month) (Pathfinding.cloud: glue-006)"
+variable "enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → glue-006-iam-passrole+glue-updatejob+glue-createtrigger ($0.10/month) (Pathfinding.cloud: glue-006)"
   type        = bool
   default     = false
 }
@@ -434,32 +434,32 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_glue_updat
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
 ##############################################################################
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createnotebookinstance" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createnotebookinstance ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-001 → iam-passrole+sagemaker-createnotebookinstance ($5/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createprocessingjob" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createprocessingjob ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-003 → iam-passrole+sagemaker-createprocessingjob ($5/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_iam_passrole_sagemaker_createtrainingjob" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-passrole+sagemaker-createtrainingjob ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-002-iam-passrole+sagemaker-createtrainingjob ($5/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_createpresignednotebookinstanceurl" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-createpresignednotebookinstanceurl ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-004-sagemaker-createpresignednotebookinstanceurl ($5/month)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenotebook_lifecycle_config" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-updatenotebook-lifecycle-config ($5/month)"
+variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-005-sagemaker-updatenotebook-lifecycle-config ($5/month)"
   type        = bool
   default     = false
 }
@@ -468,44 +468,44 @@ variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_updatenoteboo
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS
 ##############################################################################
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_passrole_glue_createdevendpoint" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
+variable "enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → glue-001 → iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-002-iam-createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_createloginprofile" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-createloginprofile"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-004-iam-createloginprofile"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_deleteaccesskey_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-deleteaccesskey+createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-003-iam-deleteaccesskey+createaccesskey"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateassumerolepolicy" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-updateassumerolepolicy"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-012-iam-updateassumerolepolicy"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_sts_assumerole" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → sts-assumerole"
+variable "enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → sts-001-sts-assumerole"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-updateloginprofile"
+variable "enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → iam-006-iam-updateloginprofile"
   type        = bool
   default     = false
 }
@@ -514,26 +514,26 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_updateloginprofile
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
 
-variable "enable_single_account_privesc_one_hop_to_bucket_ec2_instance_connect_sendsshpublickey" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_glue_updatedevendpoint" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
+variable "enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → glue-002-glue-updatedevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_ssm_sendcommand" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-sendcommand ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-002-ssm-sendcommand ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_bucket_ssm_startsession" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-startsession ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ssm-001-ssm-startsession ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }

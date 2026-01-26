@@ -1,0 +1,69 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+ec2-requestspotinstances"
+description: "User with iam:PassRole and ec2:RequestSpotInstances can escalate by launching spot instance with admin instance profile"
+cost_estimate: "free"
+pathfinding-cloud-id: "ec2-004"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role"
+
+  summary: "starting_user → (PassRole + RequestSpotInstances) → Spot instance with admin profile → (AttachUserPolicy AdministratorAccess) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role"
+
+    - permission: "ec2:RequestSpotInstances"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles"
+
+    - permission: "ec2:DescribeInstances"
+      purpose: "Verify instance launch and get connection details"
+
+    - permission: "iam:ListInstanceProfiles"
+      purpose: "Find instance profiles with privileged roles"
+
+    - permission: "ec2:DescribeSpotInstanceRequests"
+      purpose: "Verify spot instance request and get instance details"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-004-iam-passrole+ec2-requestspotinstances"

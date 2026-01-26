@@ -1,0 +1,70 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+lambda-createfunction+lambda-invokefunction"
+description: "User with iam:PassRole, lambda:CreateFunction, and lambda:InvokeFunction can escalate by creating Lambda with admin role"
+cost_estimate: "free"
+pathfinding-cloud-id: "lambda-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "service-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role"
+
+  summary: "starting_user → (PassRole + lambda:CreateFunction) → Lambda with admin role → (lambda:InvokeFunction) → extract admin credentials → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role"
+
+    - permission: "lambda:CreateFunction"
+      resource: "*"
+
+    - permission: "lambda:InvokeFunction"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles"
+
+    - permission: "lambda:GetFunction"
+      purpose: "Verify function creation"
+
+    - permission: "lambda:DeleteFunction"
+      purpose: "Clean up attack artifacts"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1648 - Serverless Execution"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction"

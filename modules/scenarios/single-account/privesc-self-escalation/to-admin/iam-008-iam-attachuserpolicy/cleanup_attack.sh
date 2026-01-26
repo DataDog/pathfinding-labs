@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Cleanup script for iam:AttachUserPolicy privilege escalation demo
+# This script removes the managed policy attached during the demo
+
+set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+MANAGED_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
+STARTING_USER="pl-prod-iam-008-to-admin-starting-user"
+
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}IAM AttachUserPolicy Demo Cleanup${NC}"
+echo -e "${GREEN}========================================${NC}\n"
+
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
+
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
+
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+
+echo -e "${GREEN}✓ Retrieved admin cleanup credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify admin access
+echo -e "${YELLOW}Step 2: Verifying admin access${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin access${NC}\n"
+
+# Step 3: Check if policy is attached
+echo -e "${YELLOW}Step 3: Checking for attached AdministratorAccess policy${NC}"
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[?PolicyArn==`'$MANAGED_POLICY_ARN'`].PolicyName' --output text)
+
+if [ -z "$ATTACHED_POLICIES" ]; then
+    echo -e "${GREEN}✓ No AdministratorAccess policy attached (already clean)${NC}\n"
+    echo -e "${GREEN}Cleanup complete - nothing to do${NC}"
+    exit 0
+fi
+
+echo "Found attached policy: $ATTACHED_POLICIES"
+echo -e "${GREEN}✓ Policy found${NC}\n"
+
+# Step 4: Detach the policy
+echo -e "${YELLOW}Step 4: Detaching AdministratorAccess policy from $STARTING_USER${NC}"
+aws iam detach-user-policy \
+    --user-name $STARTING_USER \
+    --policy-arn $MANAGED_POLICY_ARN
+
+echo -e "${GREEN}✓ Successfully detached AdministratorAccess policy${NC}\n"
+
+# Step 5: Verify cleanup
+echo -e "${YELLOW}Step 5: Verifying cleanup${NC}"
+REMAINING_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
+
+if echo "$REMAINING_POLICIES" | grep -q "AdministratorAccess"; then
+    echo -e "${RED}✗ Warning: AdministratorAccess policy still attached${NC}"
+    exit 1
+else
+    echo -e "${GREEN}✓ Confirmed policy removed${NC}\n"
+fi
+
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Cleanup Complete${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo "The user $STARTING_USER has been restored to its original permissions"
+echo ""
