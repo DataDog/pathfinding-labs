@@ -1,0 +1,64 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "glue-updatedevendpoint"
+description: "User with glue:UpdateDevEndpoint can add SSH key to existing Glue dev endpoint and access sensitive S3 buckets with the endpoint's role"
+cost_estimate: "$2.20/hour"
+pathfinding-cloud-id: "glue-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-bucket-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-bucket-target-role"
+    - "arn:aws:s3:::pl-sensitive-data-glue-002-{account_id}-{suffix}"
+
+  summary: "starting_user → (glue:UpdateDevEndpoint) → Add SSH key to existing dev endpoint → SSH access → (aws s3 cp) → sensitive bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "glue:UpdateDevEndpoint"
+      resource: "*"
+
+  helpful:
+    - permission: "glue:GetDevEndpoint"
+      purpose: "Retrieve endpoint details including address for SSH connection"
+
+    - permission: "glue:GetDevEndpoints"
+      purpose: "List existing endpoints to identify targets with privileged roles"
+
+    - permission: "s3:ListBuckets"
+      purpose: "Discover target buckets after escalation"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1021.004 - Remote Services: SSH"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-002-glue-updatedevendpoint"

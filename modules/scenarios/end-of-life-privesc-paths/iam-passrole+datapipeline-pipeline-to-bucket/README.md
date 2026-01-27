@@ -1,7 +1,7 @@
 # Privilege Escalation via iam:PassRole + Data Pipeline with Resource Policy Bypass
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** service-passrole
+* **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod

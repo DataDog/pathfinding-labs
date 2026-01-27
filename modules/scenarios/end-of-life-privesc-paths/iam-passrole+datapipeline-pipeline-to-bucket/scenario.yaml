@@ -5,7 +5,7 @@ cost_estimate: "$0.01/hour"
 pathfinding-cloud-id: "datapipeline-001"
 
 category: "Privilege Escalation"
-sub_category: "service-passrole"
+sub_category: "new-passrole"
 path_type: "one-hop"
 target: "to-bucket"
 environments:

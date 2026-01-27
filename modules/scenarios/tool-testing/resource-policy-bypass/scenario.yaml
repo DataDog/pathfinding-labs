@@ -10,7 +10,7 @@ cost_estimate: "free"
 # CLASSIFICATION
 # =============================================================================
 category: "Privilege Escalation"
-sub_category: "principal-lateral-movement"
+sub_category: "principal-access"
 path_type: "multi-hop"
 target: "to-bucket"
 environments:

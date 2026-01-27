@@ -27,7 +27,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
 - **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
+- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
@@ -49,20 +49,21 @@ Location: `/variables.tf`
 
 **IMPORTANT**: Use the exact variable name from `scenario.yaml` field `terraform.variable_name`. The orchestrator has already constructed the correct name following this pattern:
 
-**Single-Account Format**: `enable_single_account_privesc_{path_type}_to_{target}_{technique}`
+**For self-escalation and one-hop scenarios (include pathfinding.cloud ID with underscores):**
+Format: `enable_single_account_privesc_{path_type}_to_{target}_{path_id}_{technique}`
 
-**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
+Note: Path IDs use underscores in variable names (e.g., `iam_002` not `iam-002`)
 
-**Tool Testing Format**: `enable_tool_testing_{technique}`
+Examples:
+- `enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy` (self-escalation)
+- `enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy` (self-escalation)
+- `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey` (one-hop)
+- `enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction` (one-hop)
 
-Examples from scenario.yaml:
-- `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
-- `enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
-- `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey` (one-hop)
+**For other scenarios (no path IDs):**
 - `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
 - `enable_single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
 - `enable_tool_testing_resource_policy_bypass` (tool testing)
-- `enable_tool_testing_exclusive_resource_policy` (tool testing)
 - `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
 
 #### Variable Format
@@ -126,16 +127,16 @@ Location: `/main.tf`
 
 #### Module Naming Pattern
 
-Derive from the variable name by removing the `enable_` prefix:
+Derive from the variable name by removing the `enable_` prefix.
 
-**Single-Account**: `single_account_privesc_{path_type}_to_{target}_{scenario_name}`
-
-**Cross-Account**: `cross_account_{source}_to_{dest}_{hop_type}_{scenario_name}`
-
+**For self-escalation and one-hop scenarios (include path ID):**
 Examples:
-- `single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy` (self-escalation)
-- `single_account_privesc_self_escalation_to_admin_iam_putuserpolicy` (self-escalation)
-- `single_account_privesc_one_hop_to_admin_iam_createaccesskey` (one-hop)
+- `single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy` (self-escalation)
+- `single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy` (self-escalation)
+- `single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey` (one-hop)
+- `single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction` (one-hop)
+
+**For other scenarios (no path IDs):**
 - `single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
 - `single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
 - `cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
@@ -362,19 +363,19 @@ Find the appropriate table based on scenario type and add a new row.
 
 **IMPORTANT**: Always use the exact variable name and module path from scenario.yaml. These examples show the expected patterns:
 
-### Self-Escalation Scenario
+### Self-Escalation Scenario (uses pathfinding.cloud ID)
 ```hcl
 # variables.tf
-variable "enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
-  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy"
+variable "enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy" {
+  description = "Enable: single-account → privesc-self-escalation → to-admin → iam-007-iam-putuserpolicy"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
-  count  = var.enable_single_account_privesc_self_escalation_to_admin_iam_putuserpolicy ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putuserpolicy"
+module "single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy" {
+  count  = var.enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-007-iam-putuserpolicy"
 
   providers = {
     aws.prod = aws.prod
@@ -386,19 +387,19 @@ module "single_account_privesc_self_escalation_to_admin_iam_putuserpolicy" {
 }
 ```
 
-### Standard One-Hop Scenario
+### Standard One-Hop Scenario (uses pathfinding.cloud ID)
 ```hcl
 # variables.tf
-variable "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey"
+variable "enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → iam-002-iam-createaccesskey"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "single_account_privesc_one_hop_to_admin_iam_createaccesskey" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-createaccesskey"
+module "single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey"
 
   providers = {
     aws.prod = aws.prod

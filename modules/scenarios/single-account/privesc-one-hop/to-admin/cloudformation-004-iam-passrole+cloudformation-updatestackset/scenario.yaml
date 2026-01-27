@@ -1,0 +1,80 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole-cloudformation-updatestackset"
+description: "User with iam:PassRole and cloudformation:UpdateStackSet can modify existing StackSet to create admin role using StackSet's elevated execution role"
+cost_estimate: "free"
+pathfinding_cloud_id: "cloudformation-004"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-004-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-stackset-execution-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role"
+
+  summary: "starting_user → (iam:PassRole + cloudformation:UpdateStackSet) → StackSet (with admin execution role) → creates escalated admin role → (sts:AssumeRole) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-cloudformation-004-to-admin-stackset-admin-role"
+
+    - permission: "cloudformation:UpdateStackSet"
+      resource: "arn:aws:cloudformation:*:*:stackset/pl-prod-cloudformation-004-to-admin-stackset:*"
+
+  helpful:
+    - permission: "cloudformation:DescribeStackSet"
+      purpose: "View StackSet details and verify configuration"
+
+    - permission: "cloudformation:DescribeStackSetOperation"
+      purpose: "Monitor StackSet update operation progress"
+
+    - permission: "cloudformation:GetTemplate"
+      purpose: "Retrieve current StackSet template for modification"
+
+    - permission: "cloudformation:CreateStackInstances"
+      purpose: "Create new stack instances if needed"
+
+    - permission: "cloudformation:DeleteStackInstances"
+      purpose: "Remove stack instances if needed"
+
+    - permission: "iam:GetRole"
+      purpose: "Verify the escalated role was created by the StackSet update"
+
+    - permission: "sts:AssumeRole"
+      purpose: "Assume the escalated role created by StackSet update"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-004-iam-passrole+cloudformation-updatestackset"

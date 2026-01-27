@@ -1,0 +1,77 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+sagemaker-createnotebookinstance"
+description: "User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges"
+cost_estimate: "$5/month"
+pathfinding-cloud-id: "sagemaker-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sagemaker-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sagemaker-001-to-admin-passable-role"
+    - "arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-001-to-admin-notebook"
+
+  summary: "starting_user → (PassRole + CreateNotebookInstance) → new notebook with admin role → (CreatePresignedNotebookInstanceUrl) → access Jupyter terminal → execute commands with admin role → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-sagemaker-001-to-admin-passable-role"
+
+    - permission: "sagemaker:CreateNotebookInstance"
+      resource: "*"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles to pass"
+
+    - permission: "iam:GetRole"
+      purpose: "Verify role has administrative permissions"
+
+    - permission: "sagemaker:CreatePresignedNotebookInstanceUrl"
+      purpose: "Generate presigned URL for notebook access (can also access directly via console)"
+
+    - permission: "sagemaker:DescribeNotebookInstance"
+      purpose: "Check notebook status and wait for InService state"
+
+    - permission: "sagemaker:ListNotebookInstances"
+      purpose: "Verify notebook was created successfully"
+
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify current identity and get account ID"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-001-iam-passrole+sagemaker-createnotebookinstance"

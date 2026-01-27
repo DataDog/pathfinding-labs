@@ -62,16 +62,16 @@ When the input matches the pattern `SERVICE-###` (e.g., `iam-005`, `lambda-001`,
 2. **Extract the path data** by matching the `id` field:
    - `id`: The pathfinding.cloud ID (e.g., "iam-005")
    - `name`: The technique name (e.g., "iam:PutRolePolicy")
-   - `category`: Category type (e.g., "self-escalation", "lateral-movement", "service-passrole", "access-resource")
+   - `category`: Category type (e.g., "self-escalation", "principal-access", "new-passrole", "existing-passrole")
    - `description`: Detailed explanation of the technique
    - `exploitationSteps.awscli`: Array of AWS CLI commands and steps
    - `recommendation`: Prevention recommendations
 
 3. **Map the category to scenario classification**:
    - `"self-escalation"` → path_type: "self-escalation", sub_category: "self-escalation"
-   - `"lateral-movement"` → path_type: "one-hop", sub_category: "principal-lateral-movement"
-   - `"service-passrole"` → path_type: "one-hop", sub_category: "service-passrole"
-   - `"access-resource"` → path_type: "one-hop", sub_category: "access-resource"
+   - `"principal-access"` → path_type: "one-hop", sub_category: "principal-access"
+   - `"new-passrole"` → path_type: "one-hop", sub_category: "new-passrole"
+   - `"existing-passrole"` → path_type: "one-hop", sub_category: "existing-passrole"
    - `"credential-access"` → path_type: "one-hop", sub_category: "credential-access"
 
 4. **Use the extracted data to auto-populate**:
@@ -199,9 +199,9 @@ environments:
 | Value | Description | Example Techniques |
 |-------|-------------|-------------------|
 | `"self-escalation"` | Principal modifies its own permissions | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
-| `"principal-lateral-movement"` | One principal accesses another principal | `sts:AssumeRole`, `iam:createaccesskey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
-| `"service-passrole"` | Pass privileged role to AWS service | `iam:PassRole` + `lambda:CreateFunction` |
-| `"access-resource"` | Access existing resources, mostly workloads | `ssm:startSession` to existing EC2 with to admin role, `lambda:UpdateFunctionCode` to existing Lambda |
+| `"principal-access"` | One principal accesses another principal | `sts:AssumeRole`, `iam:createaccesskey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
+| `"new-passrole"` | Pass privileged role to AWS service | `iam:PassRole` + `lambda:CreateFunction` |
+| `"existing-passrole"` | Access existing resources, mostly workloads | `ssm:startSession` to existing EC2 with to admin role, `lambda:UpdateFunctionCode` to existing Lambda |
 | `"credential-access"` | Access to hardcoded credentials with a resource | `lambda:Listfunctions` to a function with creds in environment variables, `ssm:startSession` or SSH to an EC2 with hardcoded credentials on filesytem |
 
 **For `category: "Toxic Combination"` or `"Regular Finding"`:**
@@ -261,10 +261,19 @@ Before delegating, determine and document:
 
 ### 1. Directory Path
 Based on classification:
-- Self-escalation to admin: `modules/scenarios/single-account/privesc-self-escalation/to-admin/{scenario-name}/`
-- Self-escalation to bucket: `modules/scenarios/single-account/privesc-self-escalation/to-bucket/{scenario-name}/`
-- One-hop to admin: `modules/scenarios/single-account/privesc-one-hop/to-admin/{scenario-name}/`
-- One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/{scenario-name}/`
+
+**For self-escalation and one-hop scenarios (use pathfinding.cloud IDs):**
+- Self-escalation to admin: `modules/scenarios/single-account/privesc-self-escalation/to-admin/{path-id}-{scenario-name}/`
+- Self-escalation to bucket: `modules/scenarios/single-account/privesc-self-escalation/to-bucket/{path-id}-{scenario-name}/`
+- One-hop to admin: `modules/scenarios/single-account/privesc-one-hop/to-admin/{path-id}-{scenario-name}/`
+- One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/{path-id}-{scenario-name}/`
+
+Examples with path IDs:
+- `modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-005-iam-putrolepolicy/`
+- `modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey/`
+- `modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction/`
+
+**For other scenarios (no path IDs required):**
 - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/{scenario-name}/`
 - Multi-hop to bucket: `modules/scenarios/single-account/privesc-multi-hop/to-bucket/{scenario-name}/`
 - Finding: `modules/scenarios/single-account/finding/{scenario-name}/`
@@ -273,72 +282,98 @@ Based on classification:
 - Cross-account: `modules/scenarios/cross-account/{source}-to-{target}/{one-hop|multi-hop}/{scenario-name}/`
 
 ### 2. Resource Naming Convention
-Pattern: `pl-{environment}-{scenarioshorthand}-{target(}-{principal_purpose}-{resource-type}`
+
+**For self-escalation and one-hop scenarios (use pathfinding.cloud IDs):**
+Pattern: `pl-{environment}-{path-id}-to-{target}-{principal_purpose}`
 
 Examples:
-- Starting user: `pl-prod-cak-to-admin-starting-user`, `pl-prod-cak-to-bucket-starting-user` where cak is short for createAccessKey
-- Admin role: `pl-prod-agp-to-admin-target-role`, `pl-prod-agp-to-bucket-target-role` where agp is short for attachGroupPolicy
-- Target bucket: `pl-sensitive-data-{scenario}-${account_id}-${random_suffix}`
-- Intermediary principals should use scenario short names, like `pl-prod-aug-to-admin-hop1` or `pl-prod-aug-to-bucket-hop1`for AddUsersToGroup, or `pl-prod-cak-to-admin-hop1` `pl-prod-cak-to-bucket-hop1` for createacesskey.  
+- Starting user: `pl-prod-iam-002-to-admin-starting-user`, `pl-prod-iam-002-to-bucket-starting-user`
+- Starting role: `pl-prod-iam-005-to-admin-starting-role`
+- Admin role: `pl-prod-lambda-001-to-admin-admin-role`
+- Target bucket: `pl-prod-iam-002-to-bucket-target-bucket-${account_id}-${random_suffix}`
+
+**For other scenarios (no path IDs):**
+Pattern: `pl-{environment}-{scenarioshorthand}-{target}-{principal_purpose}`
+
+Examples:
+- Starting user: `pl-prod-multi-hop-role-chain-starting-user`
+- Intermediary: `pl-prod-multi-hop-role-chain-hop1`
+- Target bucket: `pl-sensitive-data-${account_id}-${random_suffix}`  
 
 ### 3. Variable Naming
 
-**Single-Account Format**: `enable_single_account_privesc_{path_type}_to_{target}_{technique}`
+**For self-escalation and one-hop scenarios (include path ID with underscores):**
+Format: `enable_single_account_privesc_{path_type}_to_{target}_{path_id}_{technique}`
 
-**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
+Note: Path IDs use underscores in variable names (e.g., `iam_002` not `iam-002`)
 
-**Tool Testing Format**: `enable_tool_testing_{technique}`
+Examples:
+- Self-escalation: `enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy`
+- One-hop: `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
+- One-hop: `enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
 
-**Examples:**
-- Self-escalation: `enable_single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
-- One-hop: `enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey`
+**For other scenarios (no path IDs):**
 - Multi-hop: `enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
 - Toxic combo: `enable_single_account_toxic_combo_public_lambda_with_admin`
 - Tool testing: `enable_tool_testing_resource_policy_bypass`
-- Tool testing: `enable_tool_testing_exclusive_resource_policy`
 - Cross-account: `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 4. Module Naming
 
-**Single-Account Format**: `single_account_privesc_{path_type}_to_{target}_{technique}`
+Same pattern as variables, just remove the `enable_` prefix.
 
-**Cross-Account Format**: `cross_account_{source_to_dest}_{hop_type}_{technique}`
+**For self-escalation and one-hop scenarios (include path ID):**
+Examples:
+- Self-escalation: `single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy`
+- One-hop: `single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
+- One-hop: `single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
 
-**Tool Testing Format**: `tool_testing_{technique}`
-
-**Examples:**
-- Self-escalation: `single_account_privesc_self_escalation_to_admin_iam_putgrouppolicy`
-- One-hop: `single_account_privesc_one_hop_to_admin_iam_createaccesskey`
+**For other scenarios (no path IDs):**
 - Multi-hop: `single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
 - Toxic combo: `single_account_toxic_combo_public_lambda_with_admin`
 - Tool testing: `tool_testing_resource_policy_bypass`
-- Tool testing: `tool_testing_exclusive_resource_policy`
 - Cross-account: `cross_account_dev_to_prod_one_hop_simple_role_assumption`
 
 ### 5. Attack Path Design Rules
 
-**When the attack path needs to start from an AWS IAM user**, create a new user for the scenario: pl-[env]-[type]-[scenarioshorthand]-[target]-starting-user
-Then design the attack path so that this user can get to the destination. 
-AddUserToGroup example: `pl-prod-aug-to-admin-starting-user` -> adds themselves to the admin group -> admin
+**For self-escalation and one-hop scenarios (use path IDs in resource names):**
 
-**When the the attack path needs to flow through a role**, create a new user and a new role for the scenario. The user is simply used to assume the role, then the scenario can start. 
+**When the attack path needs to start from an AWS IAM user**, create a new user for the scenario: `pl-{env}-{path-id}-to-{target}-starting-user`
+Then design the attack path so that this user can get to the destination.
+AddUserToGroup example: `pl-prod-iam-013-to-admin-starting-user` -> adds themselves to the admin group -> admin
 
-PutRolePolicy on self example: `pl-prod-prp-to-admin-starting-user` -> assumes the starting role `pl-prod-prp-to-admin-starting-role` > putsrolepolicy on self > admin
-In this case `pl-prod-prp-to-admin-starting-user` is only the starting user because the real attack needs to start from a role. 
+**When the attack path needs to flow through a role**, create a new user and a new role for the scenario. The user is simply used to assume the role, then the scenario can start.
+
+PutRolePolicy on self example: `pl-prod-iam-005-to-admin-starting-user` -> assumes the starting role `pl-prod-iam-005-to-admin-starting-role` -> putsrolepolicy on self -> admin
+In this case `pl-prod-iam-005-to-admin-starting-user` is only the starting user because the real attack needs to start from a role.
 
 **When the attack path can start from either a role or a user, just stick with the user**
 
-UpdateConsoleLogin example: `pl-prod-ucl-to-bucket-starting-user` -> updatesconsolelogin -> `pl-prod-ucl-to-bucket-hop1` -> logs in as user -> access to bucket
+CreateAccessKey example: `pl-prod-iam-002-to-admin-starting-user` -> iam:CreateAccessKey -> `pl-prod-iam-002-to-admin-target-user` -> admin access
+
+**For other scenarios (no path IDs):**
+Use descriptive shorthand instead of path IDs:
+- Multi-hop: `pl-prod-multi-hop-role-chain-starting-user`
+- Toxic combo: `pl-prod-toxic-public-lambda-starting-user`
+- Cross-account: `pl-dev-cross-account-simple-starting-user`
 
 
 ### 6. Attack Path Diagram Structure
 
-
-Document the complete path with principals and actions:
+**For self-escalation and one-hop (with path IDs):**
 ```
-pl-prod-[scenarioshorthand]-[target]-starting-user
+pl-prod-{path-id}-to-{target}-starting-user
   → [sts:AssumeRole]
-  → pl-prod-scenarioshorthand-hop1
+  → pl-prod-{path-id}-to-{target}-starting-role
+  → [{attack-action}]
+  → {target}
+```
+
+**For other scenarios:**
+```
+pl-prod-{scenario-shorthand}-starting-user
+  → [sts:AssumeRole]
+  → pl-prod-{scenario-shorthand}-hop1
   → [{attack-action}]
   → {target}
 ```
@@ -405,17 +440,20 @@ Orchestrator:
 1. "I'll help create that scenario. Let me ask a few questions:
    - Is this self-escalation (modifying own permissions), one-hop, or multi-hop?
    - Does it escalate to admin access or S3 bucket access?
-   - What is the complete attack path?"
+   - What is the complete attack path?
+   - What is the pathfinding.cloud ID for this technique? (e.g., iam-011)"
 
-User provides details...
+User provides details (e.g., self-escalation, to-admin, path ID is iam-011)...
 
 Orchestrator:
 2. "Perfect! I have everything needed. Here's what I'm creating:
    - Category: Privilege Escalation
    - Sub-Category: self-escalation
    - Path Type: self-escalation
+   - Pathfinding.cloud ID: iam-011
    - Path: user → iam:PutGroupPolicy → modify group policy → admin access
-   - Location: modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-putgrouppolicy/
+   - Location: modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-011-iam-putgrouppolicy/
+   - Resource naming: pl-prod-iam-011-to-admin-*
 
    I'm now delegating to 4 specialized agents to build this concurrently..."
 
@@ -478,7 +516,7 @@ When reading `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`, 
 
 **Category Mapping Reference:**
 - `"self-escalation"` → `path_type: "self-escalation"`, `sub_category: "self-escalation"`
-- `"lateral-movement"` → `path_type: "one-hop"`, `sub_category: "principal-lateral-movement"`
-- `"service-passrole"` → `path_type: "one-hop"`, `sub_category: "service-passrole"`
-- `"access-resource"` → `path_type: "one-hop"`, `sub_category: "access-resource"`
+- `"principal-access"` → `path_type: "one-hop"`, `sub_category: "principal-access"`
+- `"new-passrole"` → `path_type: "one-hop"`, `sub_category: "new-passrole"`
+- `"existing-passrole"` → `path_type: "one-hop"`, `sub_category: "existing-passrole"`
 - `"credential-access"` → `path_type: "one-hop"`, `sub_category: "credential-access"`

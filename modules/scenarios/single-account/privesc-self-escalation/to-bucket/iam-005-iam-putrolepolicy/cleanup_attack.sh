@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Cleanup script for iam:PutRolePolicy to S3 bucket demo
+# This script removes the escalated inline policy from the starting role
+
+set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+STARTING_ROLE="pl-prod-iam-005-to-bucket-starting-role"
+POLICY_NAME="EscalatedS3Access"
+
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}IAM PutRolePolicy Demo Cleanup${NC}"
+echo -e "${GREEN}========================================${NC}\n"
+
+# Step 1: Get admin credentials from Terraform output
+echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
+cd ../../../../../..  # Go to project root
+
+# Get admin cleanup user credentials from root terraform output
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    echo "Make sure the admin cleanup user is deployed"
+    exit 1
+fi
+
+# Set admin credentials
+export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+unset AWS_SESSION_TOKEN
+
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+
+cd - > /dev/null  # Return to scenario directory
+
+# Step 2: Verify admin identity
+echo -e "${YELLOW}Step 2: Verifying admin identity${NC}"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "Current identity: $ADMIN_IDENTITY"
+echo -e "${GREEN}✓ Verified admin identity${NC}\n"
+
+# Step 3: Remove the escalated inline policy
+echo -e "${YELLOW}Step 3: Removing escalated inline policy from $STARTING_ROLE${NC}"
+echo "Deleting policy: $POLICY_NAME"
+
+# Check if the policy exists first
+if aws iam get-role-policy --role-name "$STARTING_ROLE" --policy-name "$POLICY_NAME" &> /dev/null; then
+    aws iam delete-role-policy \
+        --role-name "$STARTING_ROLE" \
+        --policy-name "$POLICY_NAME"
+    echo -e "${GREEN}✓ Successfully removed escalated policy${NC}\n"
+else
+    echo -e "${YELLOW}Policy $POLICY_NAME not found on role $STARTING_ROLE (may have been already cleaned up)${NC}\n"
+fi
+
+# Step 4: Remove local temporary files
+echo -e "${YELLOW}Step 4: Removing local temporary files${NC}"
+DOWNLOAD_FILE="/tmp/iam-005-sensitive-data.txt"
+
+if [ -f "$DOWNLOAD_FILE" ]; then
+    rm -f "$DOWNLOAD_FILE"
+    echo -e "${GREEN}✓ Deleted $DOWNLOAD_FILE${NC}"
+else
+    echo -e "${YELLOW}No downloaded file found at $DOWNLOAD_FILE${NC}"
+fi
+
+echo ""
+
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Cleanup Complete${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}The escalated inline policy has been removed${NC}"
+echo -e "${YELLOW}The infrastructure (bucket, roles, sensitive-data.txt) remains deployed${NC}"
+echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"

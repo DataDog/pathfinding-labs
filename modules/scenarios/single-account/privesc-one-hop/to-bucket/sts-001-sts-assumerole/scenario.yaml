@@ -1,0 +1,65 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "sts-assumerole"
+description: "User with sts:AssumeRole can directly assume role with S3 bucket access"
+cost_estimate: "free"
+pathfinding-cloud-id: "sts-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role"
+    - "arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}"
+
+  summary: "starting_user → (sts:AssumeRole) → bucket_role → S3 bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/pl-prod-sts-001-to-bucket-access-role"
+
+  helpful:
+    - permission: "iam:ListRoles"
+      purpose: "Discover available roles to assume"
+
+    - permission: "iam:GetRole"
+      purpose: "View role permissions and trust policy"
+
+    - permission: "s3:ListBucket"
+      purpose: "Verify S3 access after role assumption"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/sts-001-sts-assumerole"

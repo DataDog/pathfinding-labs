@@ -1,0 +1,66 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "cloudformation-createchangeset+executechangeset"
+description: "Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role"
+cost_estimate: "free"
+pathfinding-cloud-id: "cloudformation-005"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-005-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-stack-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role"
+
+  summary: "starting_user → (cloudformation:CreateChangeSet + ExecuteChangeSet on target_stack) → stack updates with admin service role → creates escalated_role with admin access → admin privileges"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "cloudformation:CreateChangeSet"
+      resource: "*"
+
+    - permission: "cloudformation:ExecuteChangeSet"
+      resource: "*"
+
+  helpful:
+    - permission: "cloudformation:DescribeChangeSet"
+      purpose: "View change set details and verify creation"
+
+    - permission: "cloudformation:DescribeStacks"
+      purpose: "Discover existing CloudFormation stacks to target"
+
+    - permission: "cloudformation:DescribeStackResource"
+      purpose: "View stack resources and service role information"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098.003 - Account Manipulation: Additional Cloud Roles"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-005-cloudformation-createchangeset+executechangeset"

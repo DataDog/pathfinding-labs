@@ -10,6 +10,21 @@ color: cyan
 
 You are a specialized agent for creating Terraform infrastructure code for Pathfinding Labs attack scenarios. You create main.tf, variables.tf, and outputs.tf files following strict standards.
 
+## Important: Naming Conventions
+
+**For self-escalation and one-hop scenarios**, resource names use pathfinding.cloud IDs:
+- Pattern: `pl-{environment}-{path-id}-to-{target}-{purpose}`
+- Examples:
+  - `pl-prod-iam-002-to-admin-starting-user`
+  - `pl-prod-iam-005-to-admin-starting-role`
+  - `pl-prod-lambda-001-to-admin-admin-role`
+
+**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account)**, use descriptive shorthand:
+- Pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
+- Examples:
+  - `pl-prod-multi-hop-role-chain-starting-user`
+  - `pl-prod-toxic-public-lambda-admin-role`
+
 ## Core Responsibilities
 
 1. **Create main.tf** with all IAM resources, roles, policies, and target resources
@@ -24,7 +39,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 
 **From scenario.yaml you will use:**
 - **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
+- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
@@ -315,19 +330,33 @@ output "attack_path" {
 ## Naming Conventions
 
 ### Resource Names
-Pattern: `pl-{environment}-{scenario-shorthand}-{resource-type}`
+
+**For self-escalation and one-hop scenarios (use pathfinding.cloud IDs):**
+Pattern: `pl-{environment}-{path-id}-to-{target}-{purpose}`
 
 Examples:
-- `pl-prod-prp-to-admin-starting-role` (self-escalation: PutRolePolicy)
-- `pl-prod-prp-to-admin-admin-role` (target admin role)
-- `pl-prod-cak-to-admin-starting-user` (one-hop: CreateAccessKey)
-- `pl-prod-cak-to-admin-admin-user` (target admin user)
+- `pl-prod-iam-005-to-admin-starting-user` (self-escalation: PutRolePolicy)
+- `pl-prod-iam-005-to-admin-starting-role` (vulnerable role)
+- `pl-prod-iam-002-to-admin-starting-user` (one-hop: CreateAccessKey)
+- `pl-prod-iam-002-to-admin-target-user` (target admin user)
+- `pl-prod-lambda-001-to-admin-admin-role` (target admin role)
+
+**For other scenarios (no path IDs):**
+Pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
+
+Examples:
+- `pl-prod-multi-hop-role-chain-starting-user` (multi-hop)
 - `pl-prod-multi-hop-role-chain-intermediate-role` (multi-hop)
+- `pl-prod-toxic-public-lambda-admin-role` (toxic combo)
 
 ### S3 Buckets (Globally Unique)
-Pattern: `pl-{purpose}-${var.account_id}-${var.resource_suffix}`
 
-Example: `pl-sensitive-data-${var.account_id}-${var.resource_suffix}`
+**For self-escalation and one-hop:**
+Pattern: `pl-{environment}-{path-id}-to-{target}-bucket-${var.account_id}-${var.resource_suffix}`
+Example: `pl-prod-iam-002-to-bucket-target-bucket-${var.account_id}-${var.resource_suffix}`
+
+**For other scenarios:**
+Pattern: `pl-sensitive-data-${var.account_id}-${var.resource_suffix}`
 
 ## Provider Configuration
 

@@ -63,8 +63,11 @@ cd - > /dev/null
 
 **Example for specific scenario**:
 ```bash
-# For iam-createaccesskey to-admin scenario
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_createaccesskey.value // empty')
+# For iam-002-iam-createaccesskey to-admin scenario (self-escalation and one-hop use path IDs)
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey.value // empty')
+
+# For multi-hop or other scenarios (no path IDs)
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_admin_role_chain.value // empty')
 ```
 
 ### Step 2: Export to Environment (REQUIRED PATTERN)
@@ -187,7 +190,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 
 **From scenario.yaml you will use:**
 - **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-lateral-movement", "service-passrole", "access-resource", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
+- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
@@ -766,16 +769,16 @@ echo ""
 - Focus on the self-modification action
 - May not need role assumption
 
-**principal-lateral-movement**: Access another principal
+**principal-access**: Access another principal
 - Show credential switch to the target principal
 - Verify identity after each switch
 
-**service-passrole**: Pass privileged role to AWS service
+**new-passrole**: Pass privileged role to AWS service
 - Create the service resource (Lambda, EC2, etc.)
 - Wait for resource to be ready
 - Execute/invoke the resource with elevated privileges
 
-**access-resource**: Access existing workloads
+**existing-passrole**: Access existing workloads
 - Show discovery of the existing resource (optional)
 - Access the resource (e.g., ssm:StartSession)
 - Use the resource's elevated permissions

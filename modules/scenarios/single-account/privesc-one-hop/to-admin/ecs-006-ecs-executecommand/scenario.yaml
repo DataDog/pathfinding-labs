@@ -1,0 +1,125 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "ecs-executecommand"
+description: "User with ecs:ExecuteCommand can shell into running ECS task with admin role to access credentials"
+cost_estimate: "$0.04/hour"
+pathfinding-cloud-id: "ecs-006"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ecs-006-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ecs-006-to-admin-target-role"
+
+  summary: "starting_user → (ecs:ExecuteCommand) → ECS task with admin role → curl metadata → admin credentials"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "ecs:ExecuteCommand"
+      resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
+
+  helpful:
+    - permission: "ecs:ListTasks"
+      purpose: "Discover task ARNs in the cluster"
+
+    - permission: "ecs:DescribeTasks"
+      purpose: "Get task details including container names"
+
+    - permission: "ecs:DescribeTaskDefinition"
+      purpose: "Get task definition to discover task role ARN"
+
+    - permission: "ecs:ListClusters"
+      purpose: "Discover ECS clusters in the account"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1059 - Command and Scripting Interpreter"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand"
+
+# =============================================================================
+# INFRASTRUCTURE DETAILS (for agent reference)
+# =============================================================================
+infrastructure:
+  vpc:
+    source: "Use existing pathfinding VPC via data source or module reference"
+    note: "Subnets have map_public_ip_on_launch=true, use public IP (no NAT needed)"
+
+  resources:
+    - type: "aws_ecs_cluster"
+      name: "pl-prod-ecs-006-to-admin-cluster"
+      purpose: "ECS cluster for running the target task"
+
+    - type: "aws_ecs_service"
+      name: "pl-prod-ecs-006-to-admin-service"
+      purpose: "Service that keeps the task running with ECS Exec enabled"
+      settings:
+        enable_execute_command: true
+        desired_count: 1
+
+    - type: "aws_ecs_task_definition"
+      name: "pl-prod-ecs-006-to-admin-task"
+      purpose: "Task definition with admin role"
+      settings:
+        launch_type: "FARGATE"
+        cpu: "256"
+        memory: "512"
+        container: "alpine with sleep infinity"
+        task_role: "pl-prod-ecs-006-to-admin-target-role"
+
+    - type: "aws_iam_role"
+      name: "pl-prod-ecs-006-to-admin-target-role"
+      purpose: "Admin task role that containers assume"
+      settings:
+        trust: "ecs-tasks.amazonaws.com"
+        policy: "AdministratorAccess"
+        additional_policy: "SSM permissions for ECS Exec"
+
+    - type: "aws_iam_role"
+      name: "pl-prod-ecs-006-to-admin-execution-role"
+      purpose: "ECS execution role for pulling images and logging"
+      settings:
+        trust: "ecs-tasks.amazonaws.com"
+        policy: "AmazonECSTaskExecutionRolePolicy"
+
+    - type: "aws_iam_user"
+      name: "pl-prod-ecs-006-to-admin-starting-user"
+      purpose: "Starting user with ecs:ExecuteCommand permissions"
+
+    - type: "aws_security_group"
+      name: "pl-prod-ecs-006-to-admin-sg"
+      purpose: "Security group for ECS tasks (egress only needed)"
+
+  naming_convention:
+    prefix: "pl-prod-ecs-006-to-admin"
+    shorthand: "ecs-006"
+    meaning: "ecs-executecommand (pathfinding.cloud ID)"

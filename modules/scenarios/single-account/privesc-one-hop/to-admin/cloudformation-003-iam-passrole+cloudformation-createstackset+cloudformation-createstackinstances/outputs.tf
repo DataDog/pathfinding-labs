@@ -1,0 +1,55 @@
+# Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
+output "starting_user_arn" {
+  description = "ARN of the scenario-specific starting user"
+  value       = aws_iam_user.starting_user.arn
+}
+
+output "starting_user_name" {
+  description = "Name of the scenario-specific starting user"
+  value       = aws_iam_user.starting_user.name
+}
+
+output "starting_user_access_key_id" {
+  description = "Access key ID for the scenario-specific starting user"
+  value       = aws_iam_access_key.starting_user_key.id
+  sensitive   = true
+}
+
+output "starting_user_secret_access_key" {
+  description = "Secret access key for the scenario-specific starting user"
+  value       = aws_iam_access_key.starting_user_key.secret
+  sensitive   = true
+}
+
+# StackSet execution role outputs
+output "execution_role_arn" {
+  description = "ARN of the StackSet execution role"
+  value       = aws_iam_role.execution_role.arn
+}
+
+output "execution_role_name" {
+  description = "Name of the StackSet execution role"
+  value       = aws_iam_role.execution_role.name
+}
+
+# StackSet administration role outputs
+output "administration_role_arn" {
+  description = "ARN of the StackSet administration role"
+  value       = aws_iam_role.administration_role.arn
+}
+
+output "administration_role_name" {
+  description = "Name of the StackSet administration role"
+  value       = aws_iam_role.administration_role.name
+}
+
+# Escalated role name (will be created by demo script)
+output "escalated_role_name" {
+  description = "Name of the role that will be created by the StackSet (for demo script reference)"
+  value       = "pl-prod-cloudformation-003-to-admin-escalated-role"
+}
+
+output "attack_path" {
+  description = "Description of the attack path"
+  value       = "User (pl-prod-cloudformation-003-to-admin-starting-user) → PassRole + CreateStackSet → StackSet passes execution role (pl-prod-cloudformation-003-to-admin-execution-role) → CloudFormation creates escalated role (pl-prod-cloudformation-003-to-admin-escalated-role) with admin access → Assume escalated role → Admin access"
+}

@@ -1,0 +1,64 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "bedrockagentcore-startsession+invoke"
+description: "User with bedrock-agentcore:StartCodeInterpreterSession and InvokeCodeInterpreter can access existing code interpreters with privileged roles to extract credentials (no iam:PassRole required)"
+cost_estimate: "free"
+pathfinding-cloud-id: "bedrock-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-bedrock-002-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-bedrock-002-to-admin-target-role"
+
+  summary: "starting_user → (StartCodeInterpreterSession) → existing code interpreter (with pre-attached admin role) → (InvokeCodeInterpreter) → extract credentials from MicroVM Metadata Service (169.254.169.254) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "bedrock-agentcore:StartCodeInterpreterSession"
+      resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
+
+    - permission: "bedrock-agentcore:InvokeCodeInterpreter"
+      resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
+
+  helpful:
+    - permission: "bedrock-agentcore:ListCodeInterpreters"
+      purpose: "Discover existing code interpreters to target"
+
+    - permission: "bedrock-agentcore:GetCodeInterpreter"
+      purpose: "View interpreter details including execution role"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-002-bedrockagentcore-startsession+invoke"

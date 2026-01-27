@@ -1,0 +1,71 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "ec2-instance-connect-sendsshpublickey"
+description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 instance and extract S3 bucket role credentials via IMDS"
+cost_estimate: "$5/month"
+pathfinding-cloud-id: "ec2-003"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-bucket-starting-user"
+    - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-bucket-ec2-bucket-role"
+    - "arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}"
+
+  summary: "starting_user → (ec2-instance-connect:SendSSHPublicKey) → EC2 instance → (IMDS credential extraction) → S3 bucket access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "ec2-instance-connect:SendSSHPublicKey"
+      resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id}"
+
+  helpful:
+    - permission: "ec2:DescribeInstances"
+      purpose: "Discover EC2 instances with S3 bucket access"
+
+    - permission: "iam:GetInstanceProfile"
+      purpose: "View instance profile to determine attached role permissions"
+
+    - permission: "iam:GetRole"
+      purpose: "View role permissions and S3 bucket access"
+
+    - permission: "s3:ListBucket"
+      purpose: "Verify S3 access after credential extraction"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-bucket/ec2-003-ec2-instance-connect-sendsshpublickey"

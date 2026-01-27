@@ -1,0 +1,85 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
+description: "User with iam:PassRole, cloudformation:CreateStackSet, and cloudformation:CreateStackInstances can escalate by passing admin role to CloudFormation StackSet execution"
+cost_estimate: "free"
+pathfinding-cloud-id: "cloudformation-003"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-003-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-003-to-admin-execution-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-003-to-admin-escalated-role"
+
+  summary: "starting_user → (PassRole + cloudformation:CreateStackSet + CreateStackInstances) → StackSet creates role with admin → assume escalated role → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-cloudformation-003-to-admin-execution-role"
+
+    - permission: "cloudformation:CreateStackSet"
+      resource: "*"
+
+    - permission: "cloudformation:CreateStackInstances"
+      resource: "*"
+
+  helpful:
+    - permission: "cloudformation:DescribeStackSet"
+      purpose: "Monitor StackSet creation progress"
+
+    - permission: "cloudformation:DescribeStackSetOperation"
+      purpose: "Check StackSet operation status"
+
+    - permission: "cloudformation:ListStackInstances"
+      purpose: "List stack instances for cleanup"
+
+    - permission: "cloudformation:DeleteStackInstances"
+      purpose: "Delete stack instances during cleanup"
+
+    - permission: "cloudformation:DeleteStackSet"
+      purpose: "Clean up attack artifacts"
+
+    - permission: "iam:ListRoles"
+      purpose: "Discover available privileged roles to pass"
+
+    - permission: "iam:GetRole"
+      purpose: "Verify the escalated role was created"
+
+    - permission: "sts:AssumeRole"
+      purpose: "Assume the escalated role for admin access"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/cloudformation-003-iam-passrole+cloudformation-createstackset+cloudformation-createstackinstances"
