@@ -7,22 +7,29 @@ terraform {
   }
 }
 
+locals {
+  # Fall back to prod profile when dev/ops profiles are not configured
+  # This allows single-account mode to work without errors
+  effective_dev_profile = coalesce(var.dev_account_aws_profile, var.prod_account_aws_profile)
+  effective_ops_profile = coalesce(var.operations_account_aws_profile, var.prod_account_aws_profile)
+}
+
 provider "aws" {
   alias   = "dev"
-  profile = var.dev_account_aws_profile
-  region  = "us-west-2"
+  profile = local.effective_dev_profile
+  region  = var.aws_region
 }
 
 provider "aws" {
   alias   = "operations"
-  profile = var.operations_account_aws_profile
-  region  = "us-west-2"
+  profile = local.effective_ops_profile
+  region  = var.aws_region
 }
 
 provider "aws" {
   alias   = "prod"
   profile = var.prod_account_aws_profile
-  region  = "us-west-2"
+  region  = var.aws_region
 }
 
 # Random suffix for globally namespaced resources to prevent conflicts
@@ -35,10 +42,12 @@ resource "random_string" "resource_suffix" {
 }
 
 ##############################################################################
-# ENVIRONMENT MODULES (Always Deployed)
+# ENVIRONMENT MODULES
 ##############################################################################
 
+# Prod environment (enabled by default)
 module "prod_environment" {
+  count  = var.enable_prod_environment ? 1 : 0
   source = "./environments/prod"
   providers = {
     aws = aws.prod
@@ -49,7 +58,9 @@ module "prod_environment" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
+# Dev environment is optional (for cross-account scenarios)
 module "dev_environment" {
+  count  = var.enable_dev_environment ? 1 : 0
   source = "./environments/dev"
   providers = {
     aws = aws.dev
@@ -60,7 +71,9 @@ module "dev_environment" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
+# Ops environment is optional (for cross-account scenarios)
 module "ops_environment" {
+  count  = var.enable_ops_environment ? 1 : 0
   source = "./environments/ops"
   providers = {
     aws = aws.operations
@@ -212,7 +225,7 @@ module "single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updatese
   account_id                        = var.prod_account_id
   environment                       = "prod"
   resource_suffix                   = random_string.resource_suffix.result
-  apprunner_service_linked_role_id  = module.prod_environment.apprunner_service_linked_role_id
+  apprunner_service_linked_role_id  = module.prod_environment[0].apprunner_service_linked_role_id
 
   # Ensure service-linked role is created first and destroyed last
   depends_on = [module.prod_environment]

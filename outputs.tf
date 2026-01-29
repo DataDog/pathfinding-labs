@@ -1,26 +1,26 @@
 # Outputs for pathfinding starting users
 output "dev_pathfinding_starting_user_access_key_id" {
   description = "Access key ID for the pathfinding starting user in dev environment"
-  value       = module.dev_environment.pathfinding_starting_user_access_key_id
+  value       = var.enable_dev_environment ? module.dev_environment[0].pathfinding_starting_user_access_key_id : null
   sensitive   = true
 }
 
 output "dev_pathfinding_starting_user_secret_access_key" {
   description = "Secret access key for the pathfinding starting user in dev environment"
-  value       = module.dev_environment.pathfinding_starting_user_secret_access_key
+  value       = var.enable_dev_environment ? module.dev_environment[0].pathfinding_starting_user_secret_access_key : null
   sensitive   = true
 }
 
 
 output "operations_pathfinding_starting_user_access_key_id" {
   description = "Access key ID for the pathfinding starting user in operations environment"
-  value       = module.ops_environment.pathfinding_starting_user_access_key_id
+  value       = var.enable_ops_environment ? module.ops_environment[0].pathfinding_starting_user_access_key_id : null
   sensitive   = true
 }
 
 output "operations_pathfinding_starting_user_secret_access_key" {
   description = "Secret access key for the pathfinding starting user in operations environment"
-  value       = module.ops_environment.pathfinding_starting_user_secret_access_key
+  value       = var.enable_ops_environment ? module.ops_environment[0].pathfinding_starting_user_secret_access_key : null
   sensitive   = true
 }
 
@@ -33,37 +33,37 @@ output "resource_suffix" {
 # Admin cleanup user outputs
 output "dev_admin_user_for_cleanup_access_key_id" {
   description = "Access key ID for the admin cleanup user in dev environment"
-  value       = module.dev_environment.admin_user_for_cleanup_access_key_id
+  value       = var.enable_dev_environment ? module.dev_environment[0].admin_user_for_cleanup_access_key_id : null
   sensitive   = true
 }
 
 output "dev_admin_user_for_cleanup_secret_access_key" {
   description = "Secret access key for the admin cleanup user in dev environment"
-  value       = module.dev_environment.admin_user_for_cleanup_secret_access_key
+  value       = var.enable_dev_environment ? module.dev_environment[0].admin_user_for_cleanup_secret_access_key : null
   sensitive   = true
 }
 
 output "prod_admin_user_for_cleanup_access_key_id" {
   description = "Access key ID for the admin cleanup user in prod environment"
-  value       = module.prod_environment.admin_user_for_cleanup_access_key_id
+  value       = var.enable_prod_environment ? module.prod_environment[0].admin_user_for_cleanup_access_key_id : null
   sensitive   = true
 }
 
 output "prod_admin_user_for_cleanup_secret_access_key" {
   description = "Secret access key for the admin cleanup user in prod environment"
-  value       = module.prod_environment.admin_user_for_cleanup_secret_access_key
+  value       = var.enable_prod_environment ? module.prod_environment[0].admin_user_for_cleanup_secret_access_key : null
   sensitive   = true
 }
 
 output "operations_admin_user_for_cleanup_access_key_id" {
   description = "Access key ID for the admin cleanup user in operations environment"
-  value       = module.ops_environment.admin_user_for_cleanup_access_key_id
+  value       = var.enable_ops_environment ? module.ops_environment[0].admin_user_for_cleanup_access_key_id : null
   sensitive   = true
 }
 
 output "operations_admin_user_for_cleanup_secret_access_key" {
   description = "Secret access key for the admin cleanup user in operations environment"
-  value       = module.ops_environment.admin_user_for_cleanup_secret_access_key
+  value       = var.enable_ops_environment ? module.ops_environment[0].admin_user_for_cleanup_secret_access_key : null
   sensitive   = true
 }
 

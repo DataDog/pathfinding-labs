@@ -1,0 +1,85 @@
+# GoReleaser configuration for plabs CLI
+# Documentation: https://goreleaser.com
+
+version: 2
+
+project_name: plabs
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: plabs
+    main: ./cmd/plabs
+    binary: plabs
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/DataDog/pathfinding-labs/internal/cmd.version={{.Version}}
+      - -X github.com/DataDog/pathfinding-labs/internal/cmd.commit={{.Commit}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-dev"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: DataDog
+    name: pathfinding-labs
+  draft: false
+  prerelease: auto
+  mode: replace
+  name_template: "v{{.Version}}"
+
+brews:
+  - name: plabs
+    repository:
+      owner: DataDog
+      name: homebrew-plabs
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/DataDog/pathfinding-labs"
+    description: "CLI for managing Pathfinding Labs AWS attack scenarios"
+    license: "Apache-2.0"
+    install: |
+      bin.install "plabs"
+    test: |
+      system "#{bin}/plabs", "version"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com

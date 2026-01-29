@@ -2,13 +2,19 @@
 # ACCOUNT CONFIGURATION
 ##############################################################################
 
-prod_account_id        = "111111111111"
-dev_account_id         = "222222222222"
-operations_account_id  = "333333333333"
+# Production environment (enabled by default)
+enable_prod_environment  = true
+prod_account_id          = "111111111111"
+prod_account_aws_profile = "your-aws-profile"
 
-prod_account_aws_profile       = "pl-prod.AWSAdministratorAccess"
-dev_account_aws_profile        = "pl-dev.AWSAdministratorAccess"
-operations_account_aws_profile = "pl-ops.AWSAdministratorAccess"
+# Optional: For cross-account scenarios (leave commented for single-account mode)
+# enable_dev_environment   = true
+# dev_account_id           = "222222222222"
+# dev_account_aws_profile  = "your-dev-profile"
+
+# enable_ops_environment          = true
+# operations_account_id           = "333333333333"
+# operations_account_aws_profile  = "your-ops-profile"
 
 # Optional: For OIDC-GitHub challenge
 # github_repo = "your-org/your-repo"

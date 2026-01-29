@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # Test Reverse Blast Radius - Direct and Indirect to Bucket
 #
 # This tool testing scenario creates two distinct paths to access an S3 bucket:

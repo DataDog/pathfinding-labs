@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # iam-deleteaccesskey+createaccesskey privilege escalation scenario (to-bucket)
 #
 # This scenario demonstrates how a user with iam:DeleteAccessKey and iam:CreateAccessKey

@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # CodeBuild StartBuildBatch privilege escalation scenario
 #
 # This scenario demonstrates how a user with codebuild:StartBuildBatch can exploit

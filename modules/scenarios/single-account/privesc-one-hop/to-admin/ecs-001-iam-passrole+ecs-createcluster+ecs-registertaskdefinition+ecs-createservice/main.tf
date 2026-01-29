@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # PassRole + ECS CreateCluster + RegisterTaskDefinition + CreateService privilege escalation scenario
 #
 # This scenario demonstrates how a user with ecs:CreateCluster, iam:PassRole,

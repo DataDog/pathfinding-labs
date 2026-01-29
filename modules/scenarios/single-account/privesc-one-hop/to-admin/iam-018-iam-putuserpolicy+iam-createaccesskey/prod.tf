@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # PutUserPolicy + CreateAccessKey privilege escalation scenario
 #
 # This scenario demonstrates how a user with iam:PutUserPolicy and iam:CreateAccessKey

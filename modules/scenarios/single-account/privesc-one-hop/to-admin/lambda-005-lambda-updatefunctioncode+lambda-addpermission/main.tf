@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # Lambda UpdateFunctionCode + AddPermission privilege escalation scenario
 #
 # This scenario demonstrates how a user with lambda:UpdateFunctionCode and lambda:AddPermission
@@ -46,7 +55,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "lambda:UpdateFunctionCode",
           "lambda:AddPermission"
         ]
-        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${var.account_id}:function:pl-prod-lambda-005-to-admin-target-lambda"
+        Resource = "arn:aws:lambda:${data.aws_region.current.id}:${var.account_id}:function:pl-prod-lambda-005-to-admin-target-lambda"
       },
       {
         Sid    = "helpfulAdditionalPermissions1"
