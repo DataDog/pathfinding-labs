@@ -32,6 +32,32 @@ provider "aws" {
   region  = var.aws_region
 }
 
+# =============================================================================
+# AUTOMATIC ACCOUNT ID DISCOVERY
+# =============================================================================
+# These data sources derive account IDs from the configured AWS profiles,
+# eliminating the need for users to manually specify account IDs.
+
+data "aws_caller_identity" "prod" {
+  provider = aws.prod
+}
+
+data "aws_caller_identity" "dev" {
+  provider = aws.dev
+}
+
+data "aws_caller_identity" "operations" {
+  provider = aws.operations
+}
+
+locals {
+  # Derive account IDs from the configured profiles
+  # If a user provides an explicit account ID variable, use that instead (for backward compatibility)
+  prod_account_id       = var.prod_account_id != "" ? var.prod_account_id : data.aws_caller_identity.prod.account_id
+  dev_account_id        = var.dev_account_id != "" ? var.dev_account_id : data.aws_caller_identity.dev.account_id
+  operations_account_id = var.operations_account_id != "" ? var.operations_account_id : data.aws_caller_identity.operations.account_id
+}
+
 # Random suffix for globally namespaced resources to prevent conflicts
 resource "random_string" "resource_suffix" {
   length  = 6
@@ -52,9 +78,9 @@ module "prod_environment" {
   providers = {
     aws = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -65,9 +91,9 @@ module "dev_environment" {
   providers = {
     aws = aws.dev
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -78,9 +104,9 @@ module "ops_environment" {
   providers = {
     aws = aws.operations
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -94,7 +120,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolic
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -105,9 +131,9 @@ module "single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepo
   providers = {
     aws.prod = aws.prod
   }
-  prod_account_id       = var.prod_account_id
-  dev_account_id        = var.dev_account_id
-  operations_account_id = var.operations_account_id
+  prod_account_id       = local.prod_account_id
+  dev_account_id        = local.dev_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -117,9 +143,9 @@ module "single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicy
   providers = {
     aws.prod = aws.prod
   }
-  prod_account_id       = var.prod_account_id
-  dev_account_id        = var.dev_account_id
-  operations_account_id = var.operations_account_id
+  prod_account_id       = local.prod_account_id
+  dev_account_id        = local.dev_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -129,7 +155,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolic
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -140,7 +166,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppoli
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -151,7 +177,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogro
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -162,7 +188,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpo
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -173,7 +199,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgroupp
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -189,7 +215,7 @@ module "single_account_privesc_one_hop_to_admin_iam_019_iam_attachrolepolicy_iam
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -200,7 +226,7 @@ module "single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -211,7 +237,7 @@ module "single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -222,7 +248,7 @@ module "single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updatese
   providers = {
     aws.prod = aws.prod
   }
-  account_id                        = var.prod_account_id
+  account_id                        = local.prod_account_id
   environment                       = "prod"
   resource_suffix                   = random_string.resource_suffix.result
   apprunner_service_linked_role_id  = module.prod_environment[0].apprunner_service_linked_role_id
@@ -237,7 +263,7 @@ module "single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -248,7 +274,7 @@ module "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -259,7 +285,7 @@ module "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_appru
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -270,7 +296,7 @@ module "single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrock
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -281,7 +307,7 @@ module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -292,7 +318,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -303,7 +329,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -314,7 +340,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplate
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -325,7 +351,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createc
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -336,7 +362,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registe
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -347,7 +373,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -358,7 +384,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registe
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -369,7 +395,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createc
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -380,7 +406,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -391,7 +417,7 @@ module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -402,7 +428,7 @@ module "single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepoli
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -413,7 +439,7 @@ module "single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile" 
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -424,7 +450,7 @@ module "single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -435,7 +461,7 @@ module "single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -446,7 +472,7 @@ module "single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile" 
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -457,7 +483,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_c
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -468,7 +494,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_c
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -479,7 +505,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformatio
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -490,7 +516,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformatio
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -501,7 +527,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -512,7 +538,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -523,7 +549,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -534,7 +560,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -545,7 +571,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -556,7 +582,7 @@ module "single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_up
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -567,7 +593,7 @@ module "single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_as
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -578,7 +604,7 @@ module "single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_cr
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -589,7 +615,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_c
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -600,7 +626,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunction
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -611,7 +637,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunction
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -622,7 +648,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunction
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -633,7 +659,7 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -644,7 +670,7 @@ module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -655,7 +681,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbui
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -666,7 +692,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbui
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -677,7 +703,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sen
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -688,7 +714,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -699,7 +725,7 @@ module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_creat
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -710,7 +736,7 @@ module "single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint"
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -721,7 +747,7 @@ module "single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_creat
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -732,7 +758,7 @@ module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_creat
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -743,7 +769,7 @@ module "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updat
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -754,7 +780,7 @@ module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updat
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -765,7 +791,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagem
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -776,7 +802,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagem
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -787,7 +813,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagem
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -798,7 +824,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpr
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -809,7 +835,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updateno
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -824,7 +850,7 @@ module "single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepoli
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -835,7 +861,7 @@ module "single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolep
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -851,7 +877,7 @@ module "single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_crea
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -862,7 +888,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -873,7 +899,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile"
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -884,7 +910,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_cre
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -895,7 +921,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepol
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -906,7 +932,7 @@ module "single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -917,7 +943,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile"
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -928,7 +954,7 @@ module "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_se
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -939,7 +965,7 @@ module "single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -950,7 +976,7 @@ module "single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -961,7 +987,7 @@ module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -977,9 +1003,9 @@ module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -993,8 +1019,8 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   providers = {
     aws.prod = aws.prod
   }
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1004,9 +1030,9 @@ module "tool_testing_exclusive_resource_policy" {
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1016,9 +1042,9 @@ module "tool_testing_resource_policy_bypass" {
   providers = {
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1028,7 +1054,7 @@ module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -1039,7 +1065,7 @@ module "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -1050,7 +1076,7 @@ module "tool_testing_test_effective_permissions_evaluation" {
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
@@ -1065,9 +1091,9 @@ module "single_account_toxic_combo_public_lambda_with_admin" {
   providers = {
     aws.dev = aws.dev
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1082,8 +1108,8 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
     aws.prod = aws.prod
     aws.dev  = aws.dev
   }
-  dev_account_id  = var.dev_account_id
-  prod_account_id = var.prod_account_id
+  dev_account_id  = local.dev_account_id
+  prod_account_id = local.prod_account_id
   resource_suffix = random_string.resource_suffix.result
 }
 
@@ -1094,9 +1120,9 @@ module "cross_account_dev_to_prod_multi_hop_passrole_lambda_admin" {
     aws.dev  = aws.dev
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1107,9 +1133,9 @@ module "cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
     aws.dev  = aws.dev
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1120,9 +1146,9 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
     aws.dev  = aws.dev
     aws.prod = aws.prod
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
 
@@ -1133,8 +1159,8 @@ module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
     aws.prod = aws.prod
     aws.dev  = aws.dev
   }
-  dev_account_id  = var.dev_account_id
-  prod_account_id = var.prod_account_id
+  dev_account_id  = local.dev_account_id
+  prod_account_id = local.prod_account_id
   resource_suffix = random_string.resource_suffix.result
 }
 
@@ -1149,8 +1175,8 @@ module "cross_account_ops_to_prod_one_hop_simple_role_assumption" {
     aws.prod       = aws.prod
     aws.operations = aws.operations
   }
-  dev_account_id        = var.dev_account_id
-  prod_account_id       = var.prod_account_id
-  operations_account_id = var.operations_account_id
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }

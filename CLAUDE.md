@@ -103,7 +103,8 @@ pathfinding-labs/
 
 - All modules use provider aliases: `aws.dev`, `aws.prod`, `aws.operations`
 - Resources must specify the correct provider to deploy to the right account
-- Account IDs are passed as variables to all modules
+- Account IDs are automatically derived from AWS profiles via `aws_caller_identity` data sources
+- Account IDs are passed as variables to all modules (auto-derived, no manual input needed)
 - Conditional module instantiation based on boolean flags
 
 ## Common Commands
@@ -117,7 +118,7 @@ cd pathfinding-labs
 
 # 2. Copy and configure your settings
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your prod account ID and AWS profile
+# Edit terraform.tfvars with your AWS profile (account IDs are auto-derived!)
 
 # 3. Enable specific scenarios (edit terraform.tfvars)
 enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
@@ -135,11 +136,8 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createa
 ### Initial Setup (Multi-Account with Dev/Ops)
 
 ```bash
-# Same as above, but configure all three accounts in terraform.tfvars:
-prod_account_id        = "111111111111"
-dev_account_id         = "222222222222"
-operations_account_id  = "333333333333"
-
+# Same as above, but configure all three account profiles in terraform.tfvars:
+# (Account IDs are automatically derived from the profiles!)
 prod_account_aws_profile       = "my-prod-profile"
 dev_account_aws_profile        = "my-dev-profile"
 operations_account_aws_profile = "my-ops-profile"
@@ -438,7 +436,7 @@ Configure these in `terraform.tfvars`:
 
 ```hcl
 # Minimal configuration for single-account scenarios
-prod_account_id          = "111111111111"
+# NOTE: Account IDs are automatically derived from your AWS profile!
 prod_account_aws_profile = "my-playground-account"
 
 # Enable specific scenarios (use pathfinding.cloud IDs)
@@ -456,10 +454,7 @@ enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = false
 For cross-account scenarios:
 
 ```hcl
-# Add dev and ops accounts
-dev_account_id         = "222222222222"
-operations_account_id  = "333333333333"
-
+# Add dev and ops account profiles (account IDs auto-derived!)
 dev_account_aws_profile        = "my-dev-profile"
 operations_account_aws_profile = "my-ops-profile"
 

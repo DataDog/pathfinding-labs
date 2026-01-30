@@ -1,182 +1,256 @@
 package config
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"regexp"
+	"path/filepath"
+	"sort"
 	"strings"
+
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
+	"gopkg.in/ini.v1"
 )
 
 // Wizard runs the interactive setup wizard
-type Wizard struct {
-	reader *bufio.Reader
-}
+type Wizard struct{}
 
 // NewWizard creates a new setup wizard
 func NewWizard() *Wizard {
-	return &Wizard{
-		reader: bufio.NewReader(os.Stdin),
-	}
+	return &Wizard{}
 }
 
 // Run executes the setup wizard and returns the configuration
 func (w *Wizard) Run() (*Config, error) {
-	fmt.Println("\n╔════════════════════════════════════════════════════════════╗")
-	fmt.Println("║         Pathfinding Labs Setup Wizard                      ║")
-	fmt.Println("╚════════════════════════════════════════════════════════════╝")
+	// Print header
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86")).
+		BorderStyle(lipgloss.DoubleBorder()).
+		BorderForeground(lipgloss.Color("86")).
+		Padding(0, 2)
 
-	fmt.Println("\nThis wizard will help you configure plabs for your AWS environment.")
-	fmt.Println("You'll need:")
-	fmt.Println("  • At least one AWS account ID (12-digit number)")
-	fmt.Println("  • AWS CLI profiles configured for your accounts")
+	fmt.Println()
+	fmt.Println(headerStyle.Render("Pathfinding Labs Setup"))
 	fmt.Println()
 
+	// Explanation
+	explanationStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Bold(true)
+
+	fmt.Println(explanationStyle.Render("Pathfinding Labs can work with 1, 2, or 3 AWS accounts:"))
+	fmt.Println()
+	fmt.Printf("  %s  Most scenarios run in a single account (called %s).\n",
+		dimStyle.Render("•"),
+		highlightStyle.Render("prod"))
+	fmt.Printf("  %s  Adding a %s account enables dev→prod cross-account scenarios.\n",
+		dimStyle.Render("•"),
+		highlightStyle.Render("dev"))
+	fmt.Printf("  %s  Adding an %s account enables ops→prod cross-account scenarios.\n",
+		dimStyle.Render("•"),
+		highlightStyle.Render("ops"))
+	fmt.Println()
+	fmt.Println(dimStyle.Render("  Account IDs are automatically derived from your AWS profiles."))
+	fmt.Println()
+
+	// Get available AWS profiles
+	profiles := getAWSProfiles()
+	if len(profiles) == 0 {
+		profiles = []string{"default"}
+	}
+
+	// Build profile options
+	profileOptions := make([]huh.Option[string], len(profiles))
+	for i, p := range profiles {
+		profileOptions[i] = huh.NewOption(p, p)
+	}
+
 	cfg := &Config{}
+	var numAccounts string
 
-	// Ask about account mode
-	fmt.Println("How many AWS accounts do you want to use?")
-	fmt.Println("  1) Single account (prod only) - For most scenarios")
-	fmt.Println("  2) Multi-account (prod + dev/ops) - For cross-account scenarios")
-	fmt.Print("\nEnter choice [1]: ")
+	// Ask how many accounts
+	accountForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("How many AWS accounts do you want to configure?").
+				Options(
+					huh.NewOption("1 account (prod only)", "1").Selected(true),
+					huh.NewOption("2 accounts (prod + dev)", "2"),
+					huh.NewOption("3 accounts (prod + dev + ops)", "3"),
+				).
+				Value(&numAccounts),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
 
-	choice, err := w.readLine()
-	if err != nil {
+	if err := accountForm.Run(); err != nil {
 		return nil, err
 	}
-	choice = strings.TrimSpace(choice)
-	if choice == "" {
-		choice = "1"
-	}
 
-	multiAccount := choice == "2"
+	// Configure prod account (always required)
+	fmt.Println()
+	accountHeaderStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212")).
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+	fmt.Println(accountHeaderStyle.Render(" 1. Production Account (prod) "))
+	fmt.Println(dimStyle.Render("   This is your primary account where most scenarios will run."))
+	fmt.Println()
 
-	// Get production account details
-	fmt.Println("\n─── Production Account ───")
+	prodForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select AWS profile for PROD account").
+				Description("Type to filter, arrows to navigate, enter to select").
+				Options(profileOptions...).
+				Filtering(true).
+				Height(15).
+				Value(&cfg.ProdProfile),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
 
-	prodID, err := w.promptAccountID("Production AWS Account ID")
-	if err != nil {
+	if err := prodForm.Run(); err != nil {
 		return nil, err
 	}
-	cfg.ProdAccountID = prodID
 
-	prodProfile, err := w.promptString("Production AWS CLI Profile", "default")
-	if err != nil {
-		return nil, err
-	}
-	cfg.ProdProfile = prodProfile
+	// Configure dev account if needed
+	if numAccounts == "2" || numAccounts == "3" {
+		fmt.Println()
+		fmt.Println(accountHeaderStyle.Render(" 2. Development Account (dev) "))
+		fmt.Println(dimStyle.Render("   Used as the source account for dev→prod attack scenarios."))
+		fmt.Println()
 
-	if multiAccount {
-		// Get development account details
-		fmt.Println("\n─── Development Account (optional) ───")
-		fmt.Println("Press Enter to skip if you don't have a dev account.")
+		devForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Select AWS profile for DEV account").
+					Description("Type to filter, arrows to navigate, enter to select").
+					Options(profileOptions...).
+					Filtering(true).
+					Height(15).
+					Value(&cfg.DevProfile),
+			),
+		).WithTheme(huh.ThemeCatppuccin())
 
-		devID, err := w.promptAccountID("Development AWS Account ID")
-		if err != nil {
+		if err := devForm.Run(); err != nil {
 			return nil, err
 		}
-		if devID != "" {
-			cfg.DevAccountID = devID
-
-			devProfile, err := w.promptString("Development AWS CLI Profile", "")
-			if err != nil {
-				return nil, err
-			}
-			cfg.DevProfile = devProfile
-		}
-
-		// Get operations account details
-		fmt.Println("\n─── Operations Account (optional) ───")
-		fmt.Println("Press Enter to skip if you don't have an ops account.")
-
-		opsID, err := w.promptAccountID("Operations AWS Account ID")
-		if err != nil {
-			return nil, err
-		}
-		if opsID != "" {
-			cfg.OpsAccountID = opsID
-
-			opsProfile, err := w.promptString("Operations AWS CLI Profile", "")
-			if err != nil {
-				return nil, err
-			}
-			cfg.OpsProfile = opsProfile
-		}
+		cfg.DevAccountID = "auto"
 	}
 
+	// Configure ops account if needed
+	if numAccounts == "3" {
+		fmt.Println()
+		fmt.Println(accountHeaderStyle.Render(" 3. Operations Account (ops) "))
+		fmt.Println(dimStyle.Render("   Used as the source account for ops→prod attack scenarios."))
+		fmt.Println()
+
+		opsForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Select AWS profile for OPS account").
+					Description("Type to filter, arrows to navigate, enter to select").
+					Options(profileOptions...).
+					Filtering(true).
+					Height(15).
+					Value(&cfg.OpsProfile),
+			),
+		).WithTheme(huh.ThemeCatppuccin())
+
+		if err := opsForm.Run(); err != nil {
+			return nil, err
+		}
+		cfg.OpsAccountID = "auto"
+	}
+
+	cfg.ProdAccountID = "auto"
 	cfg.Initialized = true
 
 	// Summary
-	fmt.Println("\n─── Configuration Summary ───")
-	fmt.Printf("Production Account: %s (profile: %s)\n", cfg.ProdAccountID, cfg.ProdProfile)
-	if cfg.DevAccountID != "" {
-		fmt.Printf("Development Account: %s (profile: %s)\n", cfg.DevAccountID, cfg.DevProfile)
+	fmt.Println()
+	summaryStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86"))
+	fmt.Println(summaryStyle.Render("Configuration Summary"))
+	fmt.Println(strings.Repeat("─", 50))
+
+	labelStyle := lipgloss.NewStyle().Width(25).Foreground(lipgloss.Color("241"))
+	valueStyle := lipgloss.NewStyle().Bold(true)
+
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(cfg.ProdProfile))
+	if cfg.DevProfile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(cfg.DevProfile))
 	}
-	if cfg.OpsAccountID != "" {
-		fmt.Printf("Operations Account: %s (profile: %s)\n", cfg.OpsAccountID, cfg.OpsProfile)
+	if cfg.OpsProfile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.OpsProfile))
 	}
 
-	if cfg.IsSingleAccountMode() {
-		fmt.Println("\nMode: Single-account (cross-account scenarios will be unavailable)")
-	} else {
-		fmt.Println("\nMode: Multi-account (all scenarios available)")
+	// Mode description
+	fmt.Println()
+	switch numAccounts {
+	case "1":
+		fmt.Println(dimStyle.Render("Mode: Single-account (cross-account scenarios unavailable)"))
+	case "2":
+		fmt.Println(dimStyle.Render("Mode: 2 accounts (dev→prod cross-account scenarios available)"))
+	case "3":
+		fmt.Println(dimStyle.Render("Mode: 3 accounts (all cross-account scenarios available)"))
 	}
+	fmt.Println()
 
 	return cfg, nil
 }
 
-// promptString prompts for a string value with an optional default
-func (w *Wizard) promptString(prompt, defaultVal string) (string, error) {
-	if defaultVal != "" {
-		fmt.Printf("%s [%s]: ", prompt, defaultVal)
-	} else {
-		fmt.Printf("%s: ", prompt)
-	}
+// getAWSProfiles returns a list of available AWS CLI profiles
+func getAWSProfiles() []string {
+	profileSet := make(map[string]bool)
 
-	input, err := w.readLine()
+	// Check ~/.aws/credentials
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", err
+		return []string{"default"}
 	}
 
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return defaultVal, nil
-	}
-	return input, nil
-}
-
-// promptAccountID prompts for an AWS account ID with validation
-func (w *Wizard) promptAccountID(prompt string) (string, error) {
-	for {
-		input, err := w.promptString(prompt, "")
-		if err != nil {
-			return "", err
+	credPath := filepath.Join(home, ".aws", "credentials")
+	if cfg, err := ini.Load(credPath); err == nil {
+		for _, section := range cfg.Sections() {
+			name := section.Name()
+			if name != "DEFAULT" && name != "" {
+				profileSet[name] = true
+			}
 		}
-
-		if input == "" {
-			return "", nil
-		}
-
-		if !isValidAccountID(input) {
-			fmt.Println("Invalid account ID. Must be a 12-digit number.")
-			continue
-		}
-
-		return input, nil
 	}
-}
 
-// readLine reads a line from stdin
-func (w *Wizard) readLine() (string, error) {
-	line, err := w.reader.ReadString('\n')
-	if err != nil {
-		return "", err
+	// Check ~/.aws/config
+	configPath := filepath.Join(home, ".aws", "config")
+	if cfg, err := ini.Load(configPath); err == nil {
+		for _, section := range cfg.Sections() {
+			name := section.Name()
+			if name == "DEFAULT" || name == "" {
+				continue
+			}
+			// Config file uses "profile xyz" format
+			if strings.HasPrefix(name, "profile ") {
+				name = strings.TrimPrefix(name, "profile ")
+			}
+			profileSet[name] = true
+		}
 	}
-	return strings.TrimSuffix(line, "\n"), nil
-}
 
-// isValidAccountID validates an AWS account ID
-func isValidAccountID(id string) bool {
-	matched, _ := regexp.MatchString(`^\d{12}$`, id)
-	return matched
+	// Convert to sorted slice
+	profiles := make([]string, 0, len(profileSet))
+	for p := range profileSet {
+		profiles = append(profiles, p)
+	}
+	sort.Strings(profiles)
+
+	// Ensure "default" is first if it exists
+	for i, p := range profiles {
+		if p == "default" && i != 0 {
+			profiles = append([]string{"default"}, append(profiles[:i], profiles[i+1:]...)...)
+			break
+		}
+	}
+
+	return profiles
 }

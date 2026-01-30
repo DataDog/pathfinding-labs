@@ -23,19 +23,19 @@ variable "prod_account_aws_profile" {
 }
 
 variable "prod_account_id" {
-  description = "The account id of the prod account"
+  description = "The account id of the prod account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }
 
 variable "operations_account_id" {
-  description = "The account id of the operations account"
+  description = "The account id of the operations account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }
 
 variable "dev_account_id" {
-  description = "The account id of the dev account"
+  description = "The account id of the dev account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }

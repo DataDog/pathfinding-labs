@@ -2,40 +2,97 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
+	"github.com/DataDog/pathfinding-labs/internal/tui"
 )
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize plabs and configure your AWS accounts",
-	Long: `Initialize plabs by:
-  1. Checking for/downloading terraform
-  2. Cloning the pathfinding-labs repository
-  3. Running the setup wizard to configure AWS accounts
-  4. Creating terraform.tfvars
-  5. Running terraform init`,
-	RunE: runInit,
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Launch the interactive TUI dashboard",
+	Long: `Launch a full-screen interactive dashboard for managing Pathfinding Labs scenarios.
+
+The TUI provides a visual interface for:
+  - Browsing and filtering scenarios
+  - Enabling/disabling scenarios
+  - Deploying infrastructure
+  - Running demos and cleanups
+  - Viewing scenario details and credentials
+
+Navigation:
+  j/k, ↑/↓    Move cursor
+  Tab         Switch between panes
+  Space       Toggle enable/disable
+  d           Deploy all enabled scenarios
+  /           Filter scenarios
+  ?           Show help
+  q           Quit`,
+	RunE: runTUI,
 }
 
-func runInit(cmd *cobra.Command, args []string) error {
+func init() {
+	rootCmd.AddCommand(tuiCmd)
+}
+
+func runTUI(cmd *cobra.Command, args []string) error {
 	paths, err := repo.GetPaths()
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
+	// Check if initialized - if not, run the setup wizard first
+	if !paths.RepoExists() || !isInitialized(paths) {
+		if err := runTUIInit(paths); err != nil {
+			return err
+		}
+		// Refresh paths after init
+		paths, err = getWorkingPaths()
+		if err != nil {
+			return fmt.Errorf("failed to get paths after init: %w", err)
+		}
+	} else {
+		// Use working paths (respects dev mode)
+		paths, err = getWorkingPaths()
+		if err != nil {
+			return fmt.Errorf("failed to get paths: %w", err)
+		}
+	}
+
+	// Create the TUI model
+	model := tui.NewModel(paths)
+
+	// Run the TUI program
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("failed to run TUI: %w", err)
+	}
+
+	return nil
+}
+
+// isInitialized checks if plabs has been initialized
+func isInitialized(paths *repo.Paths) bool {
+	cfg, err := config.Load(paths.ConfigPath)
+	if err != nil {
+		return false
+	}
+	return cfg.Initialized
+}
+
+// runTUIInit runs the initialization process before launching the TUI
+func runTUIInit(paths *repo.Paths) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 
 	fmt.Println()
-	fmt.Println(cyan("Initializing Pathfinding Labs..."))
+	fmt.Println(cyan("Pathfinding Labs needs to be initialized before using the TUI."))
 	fmt.Println()
 
 	// Step 1: Create directories
@@ -117,52 +174,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println(green("════════════════════════════════════════════════════════════"))
-	fmt.Println(green("  Pathfinding Labs initialization complete!"))
+	fmt.Println(green("  Initialization complete! Launching TUI..."))
 	fmt.Println(green("════════════════════════════════════════════════════════════"))
-	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println("  1. Browse available scenarios:")
-	fmt.Println(cyan("     plabs scenarios list"))
-	fmt.Println()
-	fmt.Println("  2. Enable a scenario:")
-	fmt.Println(cyan("     plabs enable iam-002"))
-	fmt.Println()
-	fmt.Println("  3. Deploy enabled scenarios:")
-	fmt.Println(cyan("     plabs deploy"))
-	fmt.Println()
-	fmt.Println("  4. Run a demo attack:")
-	fmt.Println(cyan("     plabs demo iam-002"))
 	fmt.Println()
 
 	return nil
-}
-
-func init() {
-	// Check if already initialized when running non-init commands
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		// Skip check for init, version, help, and tui commands
-		// TUI handles its own initialization flow
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" {
-			return nil
-		}
-
-		// Allow running in dev mode (from within a pathfinding-labs repo)
-		if isDevMode() {
-			return nil
-		}
-
-		paths, err := repo.GetPaths()
-		if err != nil {
-			return err
-		}
-
-		// Check if repo exists
-		if !paths.RepoExists() {
-			fmt.Fprintln(os.Stderr, "Pathfinding Labs is not initialized.")
-			fmt.Fprintln(os.Stderr, "Run 'plabs init' to get started.")
-			os.Exit(1)
-		}
-
-		return nil
-	}
 }

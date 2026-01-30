@@ -79,27 +79,19 @@ func (c *Config) Save(path string) error {
 
 // IsSingleAccountMode returns true if only the prod account is configured
 func (c *Config) IsSingleAccountMode() bool {
-	return c.DevAccountID == "" && c.OpsAccountID == ""
+	return c.DevProfile == "" && c.OpsProfile == ""
 }
 
 // IsMultiAccountMode returns true if multiple accounts are configured
 func (c *Config) IsMultiAccountMode() bool {
-	return c.DevAccountID != "" || c.OpsAccountID != ""
+	return c.DevProfile != "" || c.OpsProfile != ""
 }
 
 // Validate checks if the configuration is valid
 func (c *Config) Validate() error {
-	if c.ProdAccountID == "" {
-		return fmt.Errorf("prod account ID is required")
-	}
+	// Only profile is required - account IDs are auto-derived from AWS
 	if c.ProdProfile == "" {
 		return fmt.Errorf("prod AWS profile is required")
-	}
-	if c.DevAccountID != "" && c.DevProfile == "" {
-		return fmt.Errorf("dev AWS profile is required when dev account ID is set")
-	}
-	if c.OpsAccountID != "" && c.OpsProfile == "" {
-		return fmt.Errorf("ops AWS profile is required when ops account ID is set")
 	}
 	return nil
 }

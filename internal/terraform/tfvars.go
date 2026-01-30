@@ -119,27 +119,26 @@ func (t *TFVars) InitFromConfig(cfg *config.Config) error {
 	lines = append(lines, "")
 
 	// Add account configuration
+	// NOTE: Account IDs are automatically derived from AWS profiles via aws_caller_identity
 	lines = append(lines, "# AWS Account Configuration")
+	lines = append(lines, "# Account IDs are auto-derived from profiles - no need to specify them!")
 	lines = append(lines, "enable_prod_environment  = true")
-	lines = append(lines, fmt.Sprintf("prod_account_id          = %q", cfg.ProdAccountID))
 	lines = append(lines, fmt.Sprintf("prod_account_aws_profile = %q", cfg.ProdProfile))
 	lines = append(lines, "")
 
 	// Dev environment (optional)
-	if cfg.DevAccountID != "" {
+	if cfg.DevProfile != "" {
 		lines = append(lines, "# Dev Environment (for cross-account scenarios)")
-		lines = append(lines, "enable_dev_environment   = true")
-		lines = append(lines, fmt.Sprintf("dev_account_id           = %q", cfg.DevAccountID))
-		lines = append(lines, fmt.Sprintf("dev_account_aws_profile  = %q", cfg.DevProfile))
+		lines = append(lines, "enable_dev_environment  = true")
+		lines = append(lines, fmt.Sprintf("dev_account_aws_profile = %q", cfg.DevProfile))
 		lines = append(lines, "")
 	}
 
 	// Ops environment (optional)
-	if cfg.OpsAccountID != "" {
+	if cfg.OpsProfile != "" {
 		lines = append(lines, "# Ops Environment (for cross-account scenarios)")
-		lines = append(lines, "enable_ops_environment          = true")
-		lines = append(lines, fmt.Sprintf("operations_account_id           = %q", cfg.OpsAccountID))
-		lines = append(lines, fmt.Sprintf("operations_account_aws_profile  = %q", cfg.OpsProfile))
+		lines = append(lines, "enable_ops_environment         = true")
+		lines = append(lines, fmt.Sprintf("operations_account_aws_profile = %q", cfg.OpsProfile))
 		lines = append(lines, "")
 	}
 
