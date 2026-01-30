@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # SageMaker UpdateNotebook Lifecycle Config privilege escalation scenario
 #
 # This scenario demonstrates how a user with SageMaker update permissions can inject

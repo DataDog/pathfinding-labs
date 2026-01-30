@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # One-Hop to-Bucket: iam:CreateLoginProfile privilege escalation scenario
 #
 # This scenario demonstrates how an attacker with programmatic access can

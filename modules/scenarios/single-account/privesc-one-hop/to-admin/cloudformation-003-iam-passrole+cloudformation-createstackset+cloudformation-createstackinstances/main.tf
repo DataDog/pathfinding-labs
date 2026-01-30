@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # iam:PassRole + cloudformation:CreateStackSet + cloudformation:CreateStackInstances privilege escalation scenario
 #
 # This scenario demonstrates how a user with iam:PassRole and cloudformation:CreateStackSet

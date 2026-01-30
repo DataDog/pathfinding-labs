@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # iam:PassRole + CloudFormation UpdateStackSet privilege escalation scenario
 #
 # This scenario demonstrates how a user with iam:PassRole and cloudformation:UpdateStackSet can modify
@@ -243,7 +252,7 @@ resource "aws_cloudformation_stack_set_instance" "stackset_instance" {
   provider       = aws.prod
   stack_set_name = aws_cloudformation_stack_set.vulnerable_stackset.name
   account_id     = var.account_id
-  region         = data.aws_region.current.name
+  stack_set_instance_region = data.aws_region.current.id
 
   depends_on = [
     aws_iam_role.stackset_execution_role,

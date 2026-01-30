@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # CloudFormation UpdateStack privilege escalation scenario
 #
 # This scenario demonstrates how a user with cloudformation:UpdateStack permission

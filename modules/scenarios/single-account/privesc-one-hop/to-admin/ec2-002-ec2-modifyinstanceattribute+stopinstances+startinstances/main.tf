@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # EC2 ModifyInstanceAttribute + StopInstances + StartInstances privilege escalation scenario
 #
 # This scenario demonstrates how a principal with ec2:ModifyInstanceAttribute, ec2:StopInstances,

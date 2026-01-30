@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # Test Reverse Blast Radius: Direct and Indirect Through Admin
 #
 # This scenario demonstrates reverse blast radius detection by creating two paths to the same S3 bucket:

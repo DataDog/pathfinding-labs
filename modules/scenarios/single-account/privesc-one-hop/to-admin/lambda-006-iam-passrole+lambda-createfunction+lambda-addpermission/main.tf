@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # iam:PassRole + lambda:CreateFunction + lambda:AddPermission privilege escalation scenario
 #
 # This scenario demonstrates how a user with iam:PassRole, lambda:CreateFunction,

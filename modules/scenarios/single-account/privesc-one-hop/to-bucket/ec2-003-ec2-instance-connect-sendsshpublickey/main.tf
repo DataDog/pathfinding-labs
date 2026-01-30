@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+
 # EC2 Instance Connect SendSSHPublicKey to-bucket privilege escalation scenario
 #
 # This scenario demonstrates how an attacker with ec2-instance-connect:SendSSHPublicKey

@@ -8,13 +8,13 @@ variable "aws_region" {
 }
 
 variable "dev_account_aws_profile" {
-  description = "AWS profile for dev environment"
-  default     = "pl-pathfinding-starting-user-dev"
+  description = "AWS profile for dev environment (leave empty to use prod profile)"
+  default     = ""
 }
 
 variable "operations_account_aws_profile" {
-  description = "AWS profile for operations account"
-  default     = "pl-pathfinding-starting-user-operations"
+  description = "AWS profile for operations account (leave empty to use prod profile)"
+  default     = ""
 }
 
 variable "prod_account_aws_profile" {
@@ -23,19 +23,19 @@ variable "prod_account_aws_profile" {
 }
 
 variable "prod_account_id" {
-  description = "The account id of the prod account"
+  description = "The account id of the prod account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }
 
 variable "operations_account_id" {
-  description = "The account id of the operations account"
+  description = "The account id of the operations account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }
 
 variable "dev_account_id" {
-  description = "The account id of the dev account"
+  description = "The account id of the dev account (optional - auto-derived from profile if not specified)"
   type        = string
   default     = ""
 }
@@ -44,6 +44,28 @@ variable "github_repo" {
   description = "The github repo for the OIDC-GitHub challenge"
   type        = string
   default     = null
+}
+
+##############################################################################
+# ENVIRONMENT ENABLEMENT
+##############################################################################
+
+variable "enable_prod_environment" {
+  description = "Enable the prod environment"
+  type        = bool
+  default     = true
+}
+
+variable "enable_dev_environment" {
+  description = "Enable the dev environment (requires dev_account_id and dev_account_aws_profile)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ops_environment" {
+  description = "Enable the ops environment (requires operations_account_id and operations_account_aws_profile)"
+  type        = bool
+  default     = false
 }
 
 ##############################################################################
