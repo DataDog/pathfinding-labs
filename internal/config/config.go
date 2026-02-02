@@ -24,17 +24,26 @@ type Config struct {
 	// ProdProfile is the AWS profile for the production account
 	ProdProfile string `yaml:"prod_profile,omitempty"`
 
+	// ProdRegion is the AWS region for the production account
+	ProdRegion string `yaml:"prod_region,omitempty"`
+
 	// DevAccountID is the development AWS account ID (optional)
 	DevAccountID string `yaml:"dev_account_id,omitempty"`
 
 	// DevProfile is the AWS profile for the development account (optional)
 	DevProfile string `yaml:"dev_profile,omitempty"`
 
+	// DevRegion is the AWS region for the development account (optional)
+	DevRegion string `yaml:"dev_region,omitempty"`
+
 	// OpsAccountID is the operations AWS account ID (optional)
 	OpsAccountID string `yaml:"ops_account_id,omitempty"`
 
 	// OpsProfile is the AWS profile for the operations account (optional)
 	OpsProfile string `yaml:"ops_profile,omitempty"`
+
+	// OpsRegion is the AWS region for the operations account (optional)
+	OpsRegion string `yaml:"ops_region,omitempty"`
 
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`

@@ -1,4 +1,4 @@
-# Privilege Escalation via ecs:ExecuteCommand
+# Privilege Escalation via ecs:ExecuteCommand + ecs:DescribeTasks
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -9,7 +9,7 @@
 
 ## Overview
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to execute commands in running ECS containers (`ecs:ExecuteCommand`). When a container is running with a privileged task role attached, an attacker can shell into the container and retrieve the role's temporary credentials from the container metadata service, gaining administrative access.
+This scenario demonstrates a privilege escalation vulnerability where a user has permission to execute commands in running ECS containers (`ecs:ExecuteCommand`) and describe tasks (`ecs:DescribeTasks`). Both permissions are required because the AWS CLI internally calls `DescribeTasks` to retrieve the container runtime ID needed to establish the SSM session. When a container is running with a privileged task role attached, an attacker can shell into the container and retrieve the role's temporary credentials from the container metadata service, gaining administrative access.
 
 Unlike new-passrole scenarios where attackers create new resources and pass roles to them, this attack exploits access to an **existing** running ECS task that already has an admin role attached. This represents a common real-world scenario where ECS Exec is enabled for debugging purposes on tasks that run with elevated privileges. The attacker doesn't need to create anything - they simply access what's already running.
 
@@ -26,7 +26,7 @@ The attack works by using `ecs:ExecuteCommand` (powered by AWS Systems Manager S
 
 ```mermaid
 graph LR
-    A[pl-prod-ecs-006-to-admin-starting-user] -->|ecs:ExecuteCommand| B[ECS Task Container]
+    A[pl-prod-ecs-006-to-admin-starting-user] -->|ecs:ExecuteCommand + ecs:DescribeTasks| B[ECS Task Container]
     B -->|curl metadata service| C[Task Role Credentials]
     C -->|Use credentials| D[pl-prod-ecs-006-to-admin-target-role]
     D -->|Administrator Access| E[Effective Administrator]
@@ -144,7 +144,7 @@ The cleanup script will verify the environment state and confirm that no attack 
 
 - Disable ECS Exec on production tasks unless absolutely necessary for debugging; use it only on demand and disable immediately after troubleshooting
 - Follow the principle of least privilege for ECS task roles - avoid attaching administrative permissions to task roles, even for "internal" services
-- Restrict `ecs:ExecuteCommand` permissions using IAM conditions to limit which clusters, services, or tasks can be accessed
+- Restrict both `ecs:ExecuteCommand` and `ecs:DescribeTasks` permissions using IAM conditions to limit which clusters, services, or tasks can be accessed (both are required for ECS Exec to work)
 - Use resource tags and condition keys like `aws:ResourceTag` to control which tasks allow execute command access
 - Implement Service Control Policies (SCPs) at the organization level to prevent ECS Exec on sensitive workloads
 - Monitor CloudTrail for `ExecuteCommand` API calls and alert on executions targeting tasks with privileged roles
@@ -160,7 +160,7 @@ A properly configured CSPM should detect:
 
 - ECS services with `enable_execute_command = true` that have task definitions using privileged task roles
 - Task roles with administrative or highly privileged permissions attached to tasks in clusters where ECS Exec is enabled
-- IAM users or roles with `ecs:ExecuteCommand` permission on clusters/tasks running with sensitive roles
+- IAM users or roles with both `ecs:ExecuteCommand` and `ecs:DescribeTasks` permissions on clusters/tasks running with sensitive roles (both are required for exploitation)
 - Privilege escalation paths from low-privileged principals through ECS Exec to administrative task roles
 
 ## Cost note

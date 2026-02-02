@@ -23,6 +23,7 @@ type ScenariosPane struct {
 	cursor          int
 	offset          int
 	focused         bool
+	loading         bool
 	width           int
 	height          int
 	filterText      string
@@ -37,7 +38,13 @@ func NewScenariosPane(styles *Styles) *ScenariosPane {
 		styles:      styles,
 		showGrouped: true,
 		collapsed:   make(map[string]bool),
+		loading:     true, // Start in loading state
 	}
+}
+
+// SetLoading sets the loading state
+func (s *ScenariosPane) SetLoading(loading bool) {
+	s.loading = loading
 }
 
 // SetScenarios updates the scenario list
@@ -241,9 +248,23 @@ func (s *ScenariosPane) MoveDown() {
 // PageUp moves up a page
 func (s *ScenariosPane) PageUp() {
 	pageSize := s.visibleRows()
-	s.cursor -= pageSize
-	if s.cursor < 0 {
-		s.cursor = 0
+	// Move cursor up by pageSize items, accounting for collapsed categories
+	for i := 0; i < pageSize && s.cursor > 0; i++ {
+		s.cursor--
+		// Skip over collapsed category items
+		if s.cursor > 0 {
+			currentCat := s.filtered[s.cursor].Scenario.CategoryShort()
+			if s.collapsed[currentCat] {
+				// Find first item of this collapsed category
+				for s.cursor > 0 {
+					prevCat := s.filtered[s.cursor-1].Scenario.CategoryShort()
+					if prevCat != currentCat {
+						break
+					}
+					s.cursor--
+				}
+			}
+		}
 	}
 	s.ensureVisible()
 }
@@ -251,12 +272,22 @@ func (s *ScenariosPane) PageUp() {
 // PageDown moves down a page
 func (s *ScenariosPane) PageDown() {
 	pageSize := s.visibleRows()
-	s.cursor += pageSize
-	if s.cursor >= len(s.filtered) {
-		s.cursor = len(s.filtered) - 1
-	}
-	if s.cursor < 0 {
-		s.cursor = 0
+	// Move cursor down by pageSize items, accounting for collapsed categories
+	for i := 0; i < pageSize && s.cursor < len(s.filtered)-1; i++ {
+		currentCat := s.filtered[s.cursor].Scenario.CategoryShort()
+		// If in a collapsed category, jump to first of next category
+		if s.collapsed[currentCat] {
+			for s.cursor < len(s.filtered)-1 {
+				s.cursor++
+				newCat := s.filtered[s.cursor].Scenario.CategoryShort()
+				if newCat != currentCat {
+					break
+				}
+			}
+		} else {
+			s.cursor++
+			// If we entered a collapsed category, that's fine - we're on its first item
+		}
 	}
 	s.ensureVisible()
 }
@@ -391,6 +422,11 @@ func (s *ScenariosPane) UpdateDeployed(varName string, deployed bool) {
 			break
 		}
 	}
+}
+
+// GetItems returns all scenario items
+func (s *ScenariosPane) GetItems() []ScenarioItem {
+	return s.items
 }
 
 // GetEnabledScenarios returns all enabled scenarios
@@ -540,7 +576,12 @@ func (s *ScenariosPane) View() string {
 	}
 	titleStyle := s.styles.PanelTitle.Width(s.width - 4)
 	sb.WriteString(titleStyle.Render(titleText))
-	sb.WriteString("\n")
+
+	if s.loading {
+		sb.WriteString("\n")
+		sb.WriteString(s.styles.ScenarioDisabled.Render("  Loading scenarios..."))
+		return s.wrapInPanel(sb.String())
+	}
 
 	if len(s.filtered) == 0 {
 		sb.WriteString("\n")
@@ -631,7 +672,6 @@ func (s *ScenariosPane) renderGrouped() string {
 
 			sb.WriteString("\n")
 			sb.WriteString(headerStyle.Render(headerText))
-			sb.WriteString("\n")
 		}
 		visualRow++
 
@@ -641,8 +681,8 @@ func (s *ScenariosPane) renderGrouped() string {
 				if visualRow >= s.offset && visualRow < s.offset+visible {
 					// Compare by scenario ID, not by index
 					isSelected := item.Scenario.UniqueID() == selectedID
-					sb.WriteString(s.renderScenarioLine(item, isSelected))
 					sb.WriteString("\n")
+					sb.WriteString(s.renderScenarioLine(item, isSelected))
 				}
 				visualRow++
 			}
@@ -664,8 +704,8 @@ func (s *ScenariosPane) renderFlat() string {
 
 	for i := start; i < end; i++ {
 		item := s.filtered[i]
-		sb.WriteString(s.renderScenarioLine(item, i == s.cursor))
 		sb.WriteString("\n")
+		sb.WriteString(s.renderScenarioLine(item, i == s.cursor))
 	}
 
 	return sb.String()
@@ -683,11 +723,19 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 	}
 	parts = append(parts, cursor)
 
-	// Enabled indicator
-	if item.Enabled {
-		parts = append(parts, s.styles.EnabledIndicator.Render())
+	// Status indicator based on enabled AND deployed state
+	// Green = enabled & deployed (live)
+	// Yellow = enabled but not deployed (pending deploy)
+	// Red = disabled but still deployed (pending destroy)
+	// Gray = disabled and not deployed (off)
+	if item.Enabled && item.Deployed {
+		parts = append(parts, s.styles.EnabledIndicator.Render()) // Green
+	} else if item.Enabled && !item.Deployed {
+		parts = append(parts, s.styles.PendingDeployIndicator.Render()) // Yellow
+	} else if !item.Enabled && item.Deployed {
+		parts = append(parts, s.styles.PendingDestroyIndicator.Render()) // Red
 	} else {
-		parts = append(parts, s.styles.DisabledIndicator.Render())
+		parts = append(parts, s.styles.DisabledIndicator.Render()) // Gray
 	}
 	parts = append(parts, " ")
 
@@ -702,10 +750,25 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 	id := item.Scenario.UniqueID()
 	parts = append(parts, idStyle.Render(id))
 
-	// Deployed indicator
-	if item.Deployed {
+	// Status label for pending states - use short version if width is limited
+	// Calculate used width: cursor(2) + indicator(1) + space(1) + id + space(1)
+	usedWidth := 2 + 1 + 1 + len(id) + 1
+	availableWidth := s.width - usedWidth - 4 // 4 for panel padding/borders
+
+	if item.Enabled && !item.Deployed {
 		parts = append(parts, " ")
-		parts = append(parts, s.styles.DeployedIndicator.Render())
+		if availableWidth >= 27 { // len("[Enablement pending deploy]")
+			parts = append(parts, s.styles.PendingDeployLabel.Render("[Enablement pending deploy]"))
+		} else {
+			parts = append(parts, s.styles.PendingDeployLabel.Render("[pending]"))
+		}
+	} else if !item.Enabled && item.Deployed {
+		parts = append(parts, " ")
+		if availableWidth >= 28 { // len("[Disablement pending deploy]")
+			parts = append(parts, s.styles.PendingDestroyLabel.Render("[Disablement pending deploy]"))
+		} else {
+			parts = append(parts, s.styles.PendingDestroyLabel.Render("[pending]"))
+		}
 	}
 
 	return strings.Join(parts, "")

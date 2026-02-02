@@ -6,7 +6,14 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
+	"github.com/charmbracelet/lipgloss"
 )
+
+// hyperlink creates a clickable terminal hyperlink using OSC 8 escape sequence
+// Works in modern terminals like iTerm2, GNOME Terminal, Windows Terminal, etc.
+func hyperlink(url, text string) string {
+	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, text)
+}
 
 // DetailsPane displays detailed information about the selected scenario
 type DetailsPane struct {
@@ -66,6 +73,30 @@ func (d *DetailsPane) SetFocused(focused bool) {
 func (d *DetailsPane) SetSize(width, height int) {
 	d.width = width
 	d.height = height
+	d.clampScroll()
+}
+
+// clampScroll ensures scroll position is valid for current content and size
+func (d *DetailsPane) clampScroll() {
+	if d.scenario == nil {
+		d.scroll = 0
+		return
+	}
+	contentLines := d.buildContent()
+	visible := d.visibleRows()
+	if visible < 1 {
+		visible = 1
+	}
+	maxScroll := len(contentLines) - visible
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if d.scroll > maxScroll {
+		d.scroll = maxScroll
+	}
+	if d.scroll < 0 {
+		d.scroll = 0
+	}
 }
 
 // ScrollUp scrolls the content up
@@ -80,14 +111,60 @@ func (d *DetailsPane) ScrollDown() {
 	d.scroll++
 }
 
-// View renders the details pane
-func (d *DetailsPane) View() string {
-	var sb strings.Builder
+// PageUp scrolls up by a page
+func (d *DetailsPane) PageUp() {
+	pageSize := d.visibleRows()
+	if pageSize < 1 {
+		pageSize = 1
+	}
+	d.scroll -= pageSize
+	if d.scroll < 0 {
+		d.scroll = 0
+	}
+}
+
+// PageDown scrolls down by a page
+func (d *DetailsPane) PageDown() {
+	pageSize := d.visibleRows()
+	if pageSize < 1 {
+		pageSize = 1
+	}
+	d.scroll += pageSize
+}
+
+// GoToTop scrolls to the top
+func (d *DetailsPane) GoToTop() {
+	d.scroll = 0
+}
+
+// GoToBottom scrolls to the bottom
+func (d *DetailsPane) GoToBottom() {
+	contentLines := d.buildContent()
+	visible := d.visibleRows()
+	maxScroll := len(contentLines) - visible
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	d.scroll = maxScroll
+}
+
+// visibleRows returns the number of content rows that fit in the panel
+func (d *DetailsPane) visibleRows() int {
+	// Account for panel borders and title (same as scenarios pane)
+	return d.height - 6
+}
+
+// buildContent builds the full content as a slice of lines
+func (d *DetailsPane) buildContent() []string {
+	var lines []string
+
+	// Section header style without MarginTop (for windowed content)
+	sectionStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#06B6D4"))
 
 	if d.scenario == nil {
-		sb.WriteString("\n")
-		sb.WriteString(d.styles.DetailLabel.Render("  Select a scenario"))
-		return d.wrapInPanel(sb.String())
+		lines = append(lines, "")
+		lines = append(lines, d.styles.DetailLabel.Render("Select a scenario"))
+		return lines
 	}
 
 	contentWidth := d.width - 6
@@ -95,134 +172,154 @@ func (d *DetailsPane) View() string {
 		contentWidth = 20
 	}
 
-	// Scenario ID (bold, highlighted)
-	idStyle := d.styles.DetailHighlight.Bold(true)
-	sb.WriteString(idStyle.Render(d.scenario.UniqueID()))
-	sb.WriteString("\n")
+	// Short Name (ID)
+	lines = append(lines, d.styles.DetailLabel.Render("Short Name ")+d.styles.DetailHighlight.Bold(true).Render(d.scenario.UniqueID()))
 
-	// Name (truncated if needed)
+	// Long Name (truncated if needed)
 	name := d.scenario.Name
-	if len(name) > contentWidth {
-		name = name[:contentWidth-3] + "..."
+	if len(name) > contentWidth-11 {
+		name = name[:contentWidth-14] + "..."
 	}
-	sb.WriteString(d.styles.DetailValue.Render(name))
-	sb.WriteString("\n")
+	lines = append(lines, d.styles.DetailLabel.Render("Long Name  ")+d.styles.DetailValue.Render(name))
 
-	// Status with color
+	// Status with color - show pending states
+	var statusLine string
+	statusLine = d.styles.DetailLabel.Render("Status     ")
 	if d.enabled && d.deployed {
-		sb.WriteString(d.styles.EnvDeployed.Render("● Deployed"))
-	} else if d.enabled {
-		sb.WriteString(d.styles.EnvConfigured.Render("● Enabled"))
+		statusLine += d.styles.EnvDeployed.Render("● Deployed")
+	} else if d.enabled && !d.deployed {
+		statusLine += d.styles.PendingDeployIndicator.Render() + d.styles.PendingDeployLabel.Render(" [Enablement pending deploy]")
+	} else if !d.enabled && d.deployed {
+		statusLine += d.styles.PendingDestroyIndicator.Render() + d.styles.PendingDestroyLabel.Render(" [Disablement pending deploy]")
 	} else {
-		sb.WriteString(d.styles.ScenarioDisabled.Render("○ Disabled"))
+		statusLine += d.styles.ScenarioDisabled.Render("○ Disabled")
 	}
-	sb.WriteString("\n\n")
+	lines = append(lines, statusLine)
+	lines = append(lines, "") // blank line
 
-	// Metadata fields (each on own line with label styling)
-	sb.WriteString(d.styles.DetailLabel.Render("Category  "))
-	sb.WriteString(d.styles.DetailValue.Render(d.scenario.CategoryShort()))
-	sb.WriteString("\n")
-
-	sb.WriteString(d.styles.DetailLabel.Render("Target    "))
-	sb.WriteString(d.styles.DetailValue.Render(d.scenario.TargetShort()))
-	sb.WriteString("\n")
-
-	sb.WriteString(d.styles.DetailLabel.Render("Cost      "))
-	sb.WriteString(d.styles.DetailValue.Render(d.scenario.CostEstimate))
-	sb.WriteString("\n")
+	// Metadata fields
+	lines = append(lines, d.styles.DetailLabel.Render("Category  ")+d.styles.DetailValue.Render(d.scenario.CategoryShort()))
+	lines = append(lines, d.styles.DetailLabel.Render("Target    ")+d.styles.DetailValue.Render(d.scenario.TargetShort()))
+	lines = append(lines, d.styles.DetailLabel.Render("Cost      ")+d.styles.DetailValue.Render(d.scenario.CostEstimate))
 
 	// Pathfinding.cloud link
 	if d.scenario.PathfindingCloudID != "" {
-		sb.WriteString(d.styles.DetailLabel.Render("Link      "))
-		link := fmt.Sprintf("pathfinding.cloud/paths/%s", d.scenario.PathfindingCloudID)
-		if len(link) > contentWidth-10 {
-			link = link[:contentWidth-13] + "..."
+		url := fmt.Sprintf("https://pathfinding.cloud/paths/%s", d.scenario.PathfindingCloudID)
+		displayText := url
+		if len(displayText) > contentWidth-10 {
+			displayText = displayText[:contentWidth-13] + "..."
 		}
-		sb.WriteString(d.styles.DetailHighlight.Render(link))
-		sb.WriteString("\n")
+		lines = append(lines, d.styles.DetailLabel.Render("Link      ")+hyperlink(url, d.styles.DetailHighlight.Render(displayText)))
 	}
 
 	// Description
-	sb.WriteString("\n")
-	sb.WriteString(d.styles.DetailSection.Render("Description"))
-	sb.WriteString("\n")
+	lines = append(lines, "")
+	lines = append(lines, sectionStyle.Render("Description"))
 	if d.scenario.Description != "" {
 		wrapped := d.wordWrap(d.scenario.Description, contentWidth)
-		sb.WriteString(d.styles.DetailValue.Render(wrapped))
+		for _, wl := range strings.Split(wrapped, "\n") {
+			lines = append(lines, d.styles.DetailValue.Render(wl))
+		}
 	} else {
-		sb.WriteString(d.styles.ScenarioDisabled.Render("No description available"))
+		lines = append(lines, d.styles.ScenarioDisabled.Render("No description available"))
 	}
-	sb.WriteString("\n")
 
-	// MITRE ATT&CK (compact)
-	if len(d.scenario.MitreAttack.Techniques) > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(d.styles.DetailSection.Render("MITRE ATT&CK"))
-		sb.WriteString("\n")
-		for _, tech := range d.scenario.MitreAttack.Techniques {
-			if len(tech) > contentWidth {
-				tech = tech[:contentWidth-3] + "..."
-			}
-			sb.WriteString(d.styles.DetailValue.Render("  " + tech))
-			sb.WriteString("\n")
+	// Attack Path Summary
+	if d.scenario.AttackPath.Summary != "" {
+		lines = append(lines, "")
+		lines = append(lines, sectionStyle.Render("Attack Path"))
+		wrapped := d.wordWrap(d.scenario.AttackPath.Summary, contentWidth)
+		for _, wl := range strings.Split(wrapped, "\n") {
+			lines = append(lines, d.styles.DetailValue.Render(wl))
 		}
 	}
 
-	// Required Permissions (compact, show first 3)
+	// Required Permissions
 	if len(d.scenario.Permissions.Required) > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(d.styles.DetailSection.Render("Required Permissions"))
-		sb.WriteString("\n")
-		shown := 0
+		lines = append(lines, "")
+		lines = append(lines, sectionStyle.Render("Required Permissions"))
 		for _, perm := range d.scenario.Permissions.Required {
-			if shown >= 3 {
-				remaining := len(d.scenario.Permissions.Required) - 3
-				sb.WriteString(d.styles.ScenarioDisabled.Render(fmt.Sprintf("  ...and %d more", remaining)))
-				sb.WriteString("\n")
-				break
-			}
 			permText := perm.Permission
 			if len(permText) > contentWidth-2 {
 				permText = permText[:contentWidth-5] + "..."
 			}
-			sb.WriteString(d.styles.DetailValue.Render("  " + permText))
-			sb.WriteString("\n")
-			shown++
+			lines = append(lines, d.styles.DetailValue.Render("  "+permText))
 		}
 	}
 
 	// Credentials (only if deployed)
-	if d.deployed && d.creds != nil {
-		sb.WriteString("\n")
-		sb.WriteString(d.styles.DetailSection.Render("Credentials"))
-		sb.WriteString("\n")
-		if d.creds.AccessKeyID != "" {
-			sb.WriteString(d.styles.CredentialKey.Render("  Access Key: "))
-			sb.WriteString(d.styles.CredentialValue.Render(d.creds.AccessKeyID))
-			sb.WriteString("\n")
+	if d.deployed && d.creds != nil && d.creds.AccessKeyID != "" {
+		lines = append(lines, "")
+		lines = append(lines, d.styles.CredentialKey.Render("Starting Credentials")+sectionStyle.Render("  via Environment Variables"))
+		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_ACCESS_KEY_ID=%s", d.creds.AccessKeyID)))
+		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_SECRET_ACCESS_KEY=%s", d.creds.SecretAccessKey)))
+		if d.creds.SessionToken != "" {
+			lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_SESSION_TOKEN=%s", d.creds.SessionToken)))
 		}
-		if d.creds.SecretAccessKey != "" {
-			sb.WriteString(d.styles.CredentialKey.Render("  Secret Key: "))
-			// Show full secret - user can copy it
-			sb.WriteString(d.styles.CredentialValue.Render(d.creds.SecretAccessKey))
-			sb.WriteString("\n")
+		lines = append(lines, sectionStyle.Render("  via AWS Profile"))
+		profileName := d.scenario.UniqueID()
+		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("[%s]", profileName)))
+		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_access_key_id = %s", d.creds.AccessKeyID)))
+		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_secret_access_key = %s", d.creds.SecretAccessKey)))
+		if d.creds.SessionToken != "" {
+			lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_session_token = %s", d.creds.SessionToken)))
 		}
 	}
 
 	// Deployed Resources (only if deployed)
 	if d.deployed && len(d.resources) > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(d.styles.DetailSection.Render("Deployed Resources"))
-		sb.WriteString("\n")
+		lines = append(lines, "")
+		lines = append(lines, sectionStyle.Render("Deployed Resources"))
 		for _, arn := range d.resources {
-			// Truncate if needed
 			displayARN := arn
 			if len(displayARN) > contentWidth-2 {
 				displayARN = displayARN[:contentWidth-5] + "..."
 			}
-			sb.WriteString(d.styles.DetailValue.Render("  • " + displayARN))
-			sb.WriteString("\n")
+			lines = append(lines, d.styles.DetailValue.Render("  • "+displayARN))
 		}
+	}
+
+	return lines
+}
+
+// View renders the details pane
+func (d *DetailsPane) View() string {
+	var sb strings.Builder
+
+	// Title
+	titleStyle := d.styles.PanelTitle.Width(d.width - 4)
+	sb.WriteString(titleStyle.Render("Scenario Details"))
+
+	// Build all content lines
+	contentLines := d.buildContent()
+
+	// Calculate visible area
+	visible := d.visibleRows()
+	if visible < 1 {
+		visible = 1
+	}
+
+	// Clamp scroll to valid range
+	maxScroll := len(contentLines) - visible
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if d.scroll > maxScroll {
+		d.scroll = maxScroll
+	}
+	if d.scroll < 0 {
+		d.scroll = 0
+	}
+
+	// Render only visible lines
+	end := d.scroll + visible
+	if end > len(contentLines) {
+		end = len(contentLines)
+	}
+
+	for i := d.scroll; i < end; i++ {
+		sb.WriteString("\n")
+		sb.WriteString(contentLines[i])
 	}
 
 	return d.wrapInPanel(sb.String())

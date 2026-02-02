@@ -190,7 +190,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  %s\n", id)
 		}
 		fmt.Println()
-		fmt.Println("Use 'plabs scenarios list' to see available scenarios")
+		fmt.Println("Use 'plabs' to browse scenarios in the TUI, or 'plabs scenarios list' for CLI")
 	}
 
 	if len(actuallyDisabling) > 0 {

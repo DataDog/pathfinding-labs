@@ -169,7 +169,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Println(dim("No scenarios enabled"))
 		fmt.Println()
-		fmt.Printf("Use %s to enable scenarios\n", cyan("plabs enable <id>"))
+		fmt.Printf("Use %s to browse and enable scenarios interactively\n", cyan("plabs"))
+		fmt.Printf("  or %s to enable via command line\n", cyan("plabs enable iam-002-to-admin"))
 	}
 
 	fmt.Println()

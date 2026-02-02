@@ -1,12 +1,14 @@
 # ecs-executecommand privilege escalation scenario
 #
-# This scenario demonstrates how a user with ecs:ExecuteCommand can shell into
-# a running ECS task and extract credentials from the container metadata service.
+# This scenario demonstrates how a user with ecs:ExecuteCommand and ecs:DescribeTasks
+# can shell into a running ECS task and extract credentials from the container metadata
+# service. Both permissions are required - the AWS CLI internally calls DescribeTasks
+# to retrieve the container runtime ID needed to establish the SSM session.
 # The task runs with an admin role, so the extracted credentials grant admin access.
 #
 # Attack path:
 # 1. Attacker identifies a running ECS task with an admin role attached
-# 2. Uses ecs:ExecuteCommand to open a shell session in the container
+# 2. Uses ecs:ExecuteCommand (which requires ecs:DescribeTasks) to open a shell session
 # 3. Curls the container metadata service to extract IAM credentials
 # 4. Uses the extracted admin credentials for full account access
 
@@ -46,6 +48,9 @@ resource "aws_iam_access_key" "starting_user" {
 }
 
 # Required permissions policy for exploitation
+# Both ecs:ExecuteCommand and ecs:DescribeTasks are required because the AWS CLI
+# internally calls DescribeTasks to retrieve the container runtime ID needed to
+# establish the SSM session.
 resource "aws_iam_user_policy" "starting_user_required" {
   provider = aws.prod
   name     = "pl-prod-ecs-006-to-admin-required-permissions"
@@ -64,6 +69,19 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "arn:aws:ecs:*:${var.account_id}:cluster/${aws_ecs_cluster.cluster.name}",
           "arn:aws:ecs:*:${var.account_id}:task/${aws_ecs_cluster.cluster.name}/*"
         ]
+      },
+      {
+        Sid    = "describeTasksRequired"
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeTasks"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "ecs:cluster" = "arn:aws:ecs:*:${var.account_id}:cluster/${aws_ecs_cluster.cluster.name}"
+          }
+        }
       },
       {
         Sid    = "identityPermission"
@@ -91,7 +109,6 @@ resource "aws_iam_user_policy" "starting_user_helpful" {
         Effect = "Allow"
         Action = [
           "ecs:ListTasks",
-          "ecs:DescribeTasks",
           "ecs:DescribeTaskDefinition",
           "ecs:ListClusters"
         ]

@@ -114,6 +114,13 @@ func (w *Wizard) Run() (*Config, error) {
 		return nil, err
 	}
 
+	// Ask for prod region
+	prodRegion, err := askForRegion("prod", cfg.ProdProfile)
+	if err != nil {
+		return nil, err
+	}
+	cfg.ProdRegion = prodRegion
+
 	// Configure dev account if needed
 	if numAccounts == "2" || numAccounts == "3" {
 		fmt.Println()
@@ -137,6 +144,13 @@ func (w *Wizard) Run() (*Config, error) {
 			return nil, err
 		}
 		cfg.DevAccountID = "auto"
+
+		// Ask for dev region
+		devRegion, err := askForRegion("dev", cfg.DevProfile)
+		if err != nil {
+			return nil, err
+		}
+		cfg.DevRegion = devRegion
 	}
 
 	// Configure ops account if needed
@@ -162,6 +176,13 @@ func (w *Wizard) Run() (*Config, error) {
 			return nil, err
 		}
 		cfg.OpsAccountID = "auto"
+
+		// Ask for ops region
+		opsRegion, err := askForRegion("ops", cfg.OpsProfile)
+		if err != nil {
+			return nil, err
+		}
+		cfg.OpsRegion = opsRegion
 	}
 
 	cfg.ProdAccountID = "auto"
@@ -179,11 +200,14 @@ func (w *Wizard) Run() (*Config, error) {
 	valueStyle := lipgloss.NewStyle().Bold(true)
 
 	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(cfg.ProdProfile))
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod region:"), valueStyle.Render(cfg.ProdRegion))
 	if cfg.DevProfile != "" {
 		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(cfg.DevProfile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev region:"), valueStyle.Render(cfg.DevRegion))
 	}
 	if cfg.OpsProfile != "" {
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.OpsProfile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.OpsRegion))
 	}
 
 	// Mode description
@@ -199,6 +223,133 @@ func (w *Wizard) Run() (*Config, error) {
 	fmt.Println()
 
 	return cfg, nil
+}
+
+// RunForEnvironment runs the wizard for a single environment
+// Returns the selected profile name
+func (w *Wizard) RunForEnvironment(envName string, currentProfile string) (string, error) {
+	// Get available AWS profiles
+	profiles := getAWSProfiles()
+	if len(profiles) == 0 {
+		profiles = []string{"default"}
+	}
+
+	// Build profile options, putting current profile first if set
+	var profileOptions []huh.Option[string]
+	if currentProfile != "" {
+		// Add current as first option
+		profileOptions = append(profileOptions, huh.NewOption(currentProfile+" (current)", currentProfile))
+		for _, p := range profiles {
+			if p != currentProfile {
+				profileOptions = append(profileOptions, huh.NewOption(p, p))
+			}
+		}
+	} else {
+		for _, p := range profiles {
+			profileOptions = append(profileOptions, huh.NewOption(p, p))
+		}
+	}
+
+	// Styling
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212")).
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+
+	var envTitle, envDesc string
+	switch envName {
+	case "prod":
+		envTitle = " Production Account (prod) "
+		envDesc = "This is your primary account where most scenarios will run."
+	case "dev":
+		envTitle = " Development Account (dev) "
+		envDesc = "Used as the source account for dev→prod attack scenarios."
+	case "ops":
+		envTitle = " Operations Account (ops) "
+		envDesc = "Used as the source account for ops→prod attack scenarios."
+	default:
+		return "", fmt.Errorf("unknown environment: %s", envName)
+	}
+
+	fmt.Println()
+	fmt.Println(headerStyle.Render(envTitle))
+	fmt.Println(dimStyle.Render("   " + envDesc))
+	fmt.Println()
+
+	var selectedProfile string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(fmt.Sprintf("Select AWS profile for %s account", strings.ToUpper(envName))).
+				Description("Type to filter, arrows to navigate, enter to select").
+				Options(profileOptions...).
+				Filtering(true).
+				Height(15).
+				Value(&selectedProfile),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return selectedProfile, nil
+}
+
+// Common AWS regions for selection
+var awsRegions = []string{
+	"us-east-1",      // N. Virginia
+	"us-east-2",      // Ohio
+	"us-west-1",      // N. California
+	"us-west-2",      // Oregon
+	"eu-west-1",      // Ireland
+	"eu-west-2",      // London
+	"eu-west-3",      // Paris
+	"eu-central-1",   // Frankfurt
+	"eu-north-1",     // Stockholm
+	"ap-northeast-1", // Tokyo
+	"ap-northeast-2", // Seoul
+	"ap-southeast-1", // Singapore
+	"ap-southeast-2", // Sydney
+	"ap-south-1",     // Mumbai
+	"sa-east-1",      // São Paulo
+	"ca-central-1",   // Canada
+}
+
+// getAWSRegionForProfile returns the region configured for a profile in AWS config files
+func getAWSRegionForProfile(profileName string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	// Check ~/.aws/config (primary location for regions)
+	configPath := filepath.Join(home, ".aws", "config")
+	if cfg, err := ini.Load(configPath); err == nil {
+		// For non-default profiles, AWS config uses "profile xyz" format
+		sectionName := profileName
+		if profileName != "default" {
+			sectionName = "profile " + profileName
+		}
+
+		if section, err := cfg.GetSection(sectionName); err == nil {
+			if region := section.Key("region").String(); region != "" {
+				return region
+			}
+		}
+	}
+
+	// Fallback: check environment variable
+	if region := os.Getenv("AWS_DEFAULT_REGION"); region != "" {
+		return region
+	}
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		return region
+	}
+
+	return ""
 }
 
 // getAWSProfiles returns a list of available AWS CLI profiles
@@ -230,9 +381,7 @@ func getAWSProfiles() []string {
 				continue
 			}
 			// Config file uses "profile xyz" format
-			if strings.HasPrefix(name, "profile ") {
-				name = strings.TrimPrefix(name, "profile ")
-			}
+			name = strings.TrimPrefix(name, "profile ")
 			profileSet[name] = true
 		}
 	}
@@ -253,4 +402,50 @@ func getAWSProfiles() []string {
 	}
 
 	return profiles
+}
+
+// askForRegion prompts the user to select a region for an environment
+// It checks the AWS config for a default region and pre-selects it if found
+func askForRegion(envName string, profileName string) (string, error) {
+	// Get the region from AWS config if available
+	defaultRegion := getAWSRegionForProfile(profileName)
+
+	// Build region options
+	var regionOptions []huh.Option[string]
+
+	// If we found a region in the profile, add it first as the recommended option
+	if defaultRegion != "" {
+		regionOptions = append(regionOptions, huh.NewOption(defaultRegion+" (from profile)", defaultRegion))
+	}
+
+	// Add all regions, skipping the default if it was already added
+	for _, region := range awsRegions {
+		if region != defaultRegion {
+			regionOptions = append(regionOptions, huh.NewOption(region, region))
+		}
+	}
+
+	var selectedRegion string
+
+	// Set default value if we found one
+	if defaultRegion != "" {
+		selectedRegion = defaultRegion
+	}
+
+	regionForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(fmt.Sprintf("Select AWS region for %s account", strings.ToUpper(envName))).
+				Description("This is where your resources will be deployed").
+				Options(regionOptions...).
+				Height(12).
+				Value(&selectedRegion),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := regionForm.Run(); err != nil {
+		return "", err
+	}
+
+	return selectedRegion, nil
 }

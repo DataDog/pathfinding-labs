@@ -124,6 +124,9 @@ func (t *TFVars) InitFromConfig(cfg *config.Config) error {
 	lines = append(lines, "# Account IDs are auto-derived from profiles - no need to specify them!")
 	lines = append(lines, "enable_prod_environment  = true")
 	lines = append(lines, fmt.Sprintf("prod_account_aws_profile = %q", cfg.ProdProfile))
+	if cfg.ProdRegion != "" {
+		lines = append(lines, fmt.Sprintf("aws_region               = %q", cfg.ProdRegion))
+	}
 	lines = append(lines, "")
 
 	// Dev environment (optional)
@@ -201,6 +204,115 @@ func (t *TFVars) ListEnabledScenarios() ([]string, error) {
 
 	sort.Strings(result)
 	return result, nil
+}
+
+// GetEnabledEnvironments returns the enabled state of each environment
+func (t *TFVars) GetEnabledEnvironments() (prod, dev, ops bool, err error) {
+	if !t.Exists() {
+		return true, false, false, nil // Default: only prod enabled
+	}
+
+	content, err := t.readContent()
+	if err != nil {
+		return false, false, false, err
+	}
+
+	// Parse environment enabled flags
+	prodPattern := regexp.MustCompile(`(?m)^\s*enable_prod_environment\s*=\s*(true|false)`)
+	devPattern := regexp.MustCompile(`(?m)^\s*enable_dev_environment\s*=\s*(true|false)`)
+	opsPattern := regexp.MustCompile(`(?m)^\s*enable_ops_environment\s*=\s*(true|false)`)
+
+	// Default prod to true if not specified
+	prod = true
+	if matches := prodPattern.FindStringSubmatch(content); len(matches) == 2 {
+		prod = matches[1] == "true"
+	}
+
+	if matches := devPattern.FindStringSubmatch(content); len(matches) == 2 {
+		dev = matches[1] == "true"
+	}
+
+	if matches := opsPattern.FindStringSubmatch(content); len(matches) == 2 {
+		ops = matches[1] == "true"
+	}
+
+	return prod, dev, ops, nil
+}
+
+// SetEnvironmentEnabled enables or disables an environment
+func (t *TFVars) SetEnvironmentEnabled(env string, enabled bool) error {
+	varName := ""
+	switch env {
+	case "prod":
+		varName = "enable_prod_environment"
+	case "dev":
+		varName = "enable_dev_environment"
+	case "ops":
+		varName = "enable_ops_environment"
+	default:
+		return fmt.Errorf("unknown environment: %s", env)
+	}
+
+	// Read existing content
+	content, err := t.readContent()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Check if variable already exists
+	varPattern := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*%s\s*=\s*(true|false)\s*$`, regexp.QuoteMeta(varName)))
+
+	if varPattern.MatchString(content) {
+		// Update existing variable
+		replacement := fmt.Sprintf("%s = %t", varName, enabled)
+		content = varPattern.ReplaceAllString(content, replacement)
+	} else {
+		// Add new variable
+		if content != "" && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		content += fmt.Sprintf("%s = %t\n", varName, enabled)
+	}
+
+	return t.writeContent(content)
+}
+
+// SetProfile sets the AWS profile for an environment
+func (t *TFVars) SetProfile(env string, profile string) error {
+	varName := ""
+	switch env {
+	case "prod":
+		varName = "prod_account_aws_profile"
+	case "dev":
+		varName = "dev_account_aws_profile"
+	case "ops":
+		varName = "operations_account_aws_profile"
+	default:
+		return fmt.Errorf("unknown environment: %s", env)
+	}
+
+	// Read existing content
+	content, err := t.readContent()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Check if variable already exists
+	varPattern := regexp.MustCompile(fmt.Sprintf(`(?m)^\s*%s\s*=\s*"[^"]*"\s*$`, regexp.QuoteMeta(varName)))
+
+	if varPattern.MatchString(content) {
+		// Update existing variable
+		replacement := fmt.Sprintf(`%s = "%s"`, varName, profile)
+		content = varPattern.ReplaceAllString(content, replacement)
+	} else {
+		// Add new variable
+		if content != "" && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		content += fmt.Sprintf(`%s = "%s"`+"\n", varName, profile)
+	}
+
+	return t.writeContent(content)
 }
 
 // readContent reads the entire tfvars file

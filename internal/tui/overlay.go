@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -16,6 +17,7 @@ const (
 	OverlayDemo
 	OverlayError
 	OverlayConfirm
+	OverlayConfig
 )
 
 // Overlay represents a floating overlay panel
@@ -129,6 +131,11 @@ func (o *Overlay) scrollToBottom() {
 	o.scroll = maxScroll
 }
 
+// ScrollToBottom scrolls the overlay content to the bottom
+func (o *Overlay) ScrollToBottom() {
+	o.scrollToBottom()
+}
+
 func (o *Overlay) visibleLines() int {
 	// Account for title, borders, and footer
 	return o.height - 8
@@ -140,19 +147,13 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 		return ""
 	}
 
-	// Calculate overlay size (80% of terminal, max 80x40)
-	overlayWidth := termWidth * 80 / 100
-	if overlayWidth > 100 {
-		overlayWidth = 100
-	}
+	// Calculate overlay size (95% width, 90% height - fixed)
+	overlayWidth := termWidth * 95 / 100
 	if overlayWidth < 40 {
 		overlayWidth = 40
 	}
 
-	overlayHeight := termHeight * 70 / 100
-	if overlayHeight > 40 {
-		overlayHeight = 40
-	}
+	overlayHeight := termHeight * 90 / 100
 	if overlayHeight < 15 {
 		overlayHeight = 15
 	}
@@ -178,10 +179,8 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 
 	for i := start; i < end; i++ {
 		line := o.content[i]
-		// Truncate long lines
-		if len(line) > contentWidth {
-			line = line[:contentWidth-3] + "..."
-		}
+		// Truncate long lines to prevent wrapping
+		line = truncateWithStyle(line, contentWidth)
 		sb.WriteString(o.styles.OverlayText.Render(line))
 		sb.WriteString("\n")
 	}
@@ -216,10 +215,54 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 	)
 }
 
-// RenderHelpOverlay renders the help content
-func (o *Overlay) RenderHelpOverlay() string {
-	var sb strings.Builder
+// truncateWithStyle truncates a string to maxWidth visual characters,
+// preserving ANSI escape codes and adding "..." if truncated
+func truncateWithStyle(s string, maxWidth int) string {
+	if maxWidth <= 3 {
+		return "..."
+	}
 
+	visualWidth := lipgloss.Width(s)
+	if visualWidth <= maxWidth {
+		return s
+	}
+
+	// Need to truncate - walk through and count visual width
+	var result strings.Builder
+	var visualCount int
+	inEscape := false
+	targetWidth := maxWidth - 3 // leave room for "..."
+
+	for _, r := range s {
+		if r == '\x1b' {
+			inEscape = true
+			result.WriteRune(r)
+			continue
+		}
+
+		if inEscape {
+			result.WriteRune(r)
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEscape = false
+			}
+			continue
+		}
+
+		// Regular character
+		if visualCount >= targetWidth {
+			break
+		}
+		result.WriteRune(r)
+		visualCount++
+	}
+
+	// Add reset code if we were in styled text, then ellipsis
+	result.WriteString("\x1b[0m...")
+	return result.String()
+}
+
+// RenderHelpOverlay renders the help content as columns (or single column if too narrow)
+func (o *Overlay) RenderHelpOverlay() string {
 	sections := []struct {
 		title string
 		keys  [][]string
@@ -227,36 +270,71 @@ func (o *Overlay) RenderHelpOverlay() string {
 		{
 			title: "Navigation",
 			keys: [][]string{
-				{"j/k, ↑/↓", "Move cursor up/down"},
-				{"h/←", "Collapse category"},
-				{"l/→", "Expand category"},
+				{"↑/↓", "Move cursor"},
+				{"←", "Collapse scenario section"},
+				{"→", "Expand scenario section"},
 				{"pgup/pgdn", "Page up/down"},
-				{"g/G", "First/last item"},
 				{"Tab", "Switch panes"},
 			},
 		},
 		{
 			title: "Actions",
 			keys: [][]string{
-				{"Space", "Toggle enable/disable"},
-				{"d", "Deploy enabled scenarios"},
-				{"p", "Plan (preview changes)"},
-				{"r", "Run demo (deployed only)"},
-				{"c", "Cleanup (deployed only)"},
+				{"Space", "Toggle if a scenario is enabled/disabled"},
+				{"d", "Deploy scenarios and environments"},
+				{"p", "Plan"},
+				{"r", "Run attack demo"},
+				{"c", "Cleanup attack demo"},
+				{"D", "Destroy scenarios"},
+				{"Ctrl+D", "Destroy scenarios and environments"},
+				{"s", "Settings"},
 			},
 		},
 		{
-			title: "Filter & Help",
+			title: "Filtering and other",
 			keys: [][]string{
-				{"/", "Filter scenarios"},
-				{".", "Toggle enabled only"},
-				{"Esc", "Clear filter / dismiss"},
-				{"?", "Toggle help"},
+				{"/", "Filter scenarios by prefix"},
+				{".", "Show enabled scenarios only"},
+				{"Esc", "Dismiss"},
+				{"?", "Help"},
 				{"q", "Quit"},
 			},
 		},
 	}
 
+	columnStyle := lipgloss.NewStyle().Padding(0, 2)
+
+	// First, render columns to measure total width
+	var columns []string
+	for _, section := range sections {
+		var sb strings.Builder
+		sb.WriteString(o.styles.DetailSection.Render(section.title))
+		sb.WriteString("\n\n")
+
+		for _, kv := range section.keys {
+			key := o.styles.HelpKey.Render(fmt.Sprintf("%-10s", kv[0]))
+			desc := o.styles.HelpDesc.Render(kv[1])
+			sb.WriteString(key)
+			sb.WriteString(" ")
+			sb.WriteString(desc)
+			sb.WriteString("\n")
+		}
+
+		columns = append(columns, columnStyle.Render(sb.String()))
+	}
+
+	// Calculate total width of columns
+	columnsJoined := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
+	totalWidth := lipgloss.Width(columnsJoined)
+
+	// If columns fit, use column layout
+	availableWidth := o.width - 6 // account for padding/borders
+	if totalWidth <= availableWidth {
+		return columnsJoined
+	}
+
+	// Otherwise, render as single scrollable column
+	var sb strings.Builder
 	for i, section := range sections {
 		if i > 0 {
 			sb.WriteString("\n")
@@ -265,11 +343,11 @@ func (o *Overlay) RenderHelpOverlay() string {
 		sb.WriteString("\n")
 
 		for _, kv := range section.keys {
-			key := o.styles.HelpKey.Render(kv[0])
+			key := o.styles.HelpKey.Render(fmt.Sprintf("%-10s", kv[0]))
 			desc := o.styles.HelpDesc.Render(kv[1])
 			sb.WriteString("  ")
 			sb.WriteString(key)
-			sb.WriteString("  ")
+			sb.WriteString(" ")
 			sb.WriteString(desc)
 			sb.WriteString("\n")
 		}

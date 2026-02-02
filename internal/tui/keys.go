@@ -21,11 +21,14 @@ type KeyMap struct {
 	ShiftTab key.Binding
 
 	// Actions
-	Toggle  key.Binding
-	Deploy  key.Binding
-	Plan    key.Binding
-	RunDemo key.Binding
-	Cleanup key.Binding
+	Toggle           key.Binding
+	Deploy           key.Binding
+	Plan             key.Binding
+	RunDemo          key.Binding
+	Cleanup          key.Binding
+	DestroyScenarios key.Binding
+	DestroyAll       key.Binding
+	Config           key.Binding
 
 	// Filter
 	Filter          key.Binding
@@ -46,36 +49,36 @@ func DefaultKeyMap() *KeyMap {
 	return &KeyMap{
 		// Navigation
 		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "up"),
+			key.WithKeys("up"),
+			key.WithHelp("↑", "up"),
 		),
 		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "down"),
+			key.WithKeys("down"),
+			key.WithHelp("↓", "down"),
 		),
 		Left: key.NewBinding(
-			key.WithKeys("left", "h"),
-			key.WithHelp("←/h", "left"),
+			key.WithKeys("left"),
+			key.WithHelp("←", "left"),
 		),
 		Right: key.NewBinding(
-			key.WithKeys("right", "l"),
-			key.WithHelp("→/l", "right"),
+			key.WithKeys("right"),
+			key.WithHelp("→", "right"),
 		),
 		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "ctrl+u"),
+			key.WithKeys("pgup"),
 			key.WithHelp("pgup", "page up"),
 		),
 		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", "ctrl+d"),
+			key.WithKeys("pgdown"),
 			key.WithHelp("pgdn", "page down"),
 		),
 		Home: key.NewBinding(
-			key.WithKeys("home", "g"),
-			key.WithHelp("home/g", "first"),
+			key.WithKeys("home"),
+			key.WithHelp("home", "first"),
 		),
 		End: key.NewBinding(
-			key.WithKeys("end", "G"),
-			key.WithHelp("end/G", "last"),
+			key.WithKeys("end"),
+			key.WithHelp("end", "last"),
 		),
 
 		// Pane focus
@@ -108,6 +111,18 @@ func DefaultKeyMap() *KeyMap {
 		Cleanup: key.NewBinding(
 			key.WithKeys("c"),
 			key.WithHelp("c", "cleanup"),
+		),
+		DestroyScenarios: key.NewBinding(
+			key.WithKeys("D"),
+			key.WithHelp("D", "destroy scenarios"),
+		),
+		DestroyAll: key.NewBinding(
+			key.WithKeys("ctrl+D"),
+			key.WithHelp("ctrl+D", "destroy all"),
+		),
+		Config: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "settings"),
 		),
 
 		// Filter
@@ -159,6 +174,7 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Tab, k.Toggle},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup},
+		{k.DestroyScenarios, k.DestroyAll, k.Config},
 		{k.Filter, k.Help, k.Quit},
 	}
 }
