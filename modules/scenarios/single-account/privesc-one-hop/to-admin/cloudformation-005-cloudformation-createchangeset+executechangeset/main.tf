@@ -158,11 +158,11 @@ resource "aws_cloudformation_stack" "target_stack" {
       InitialBucket = {
         Type = "AWS::S3::Bucket"
         Properties = {
-          BucketName = "pl-prod-cloudformation-005-to-admin-initial-bucket-${var.account_id}-${var.resource_suffix}"
+          BucketName = "pl-cfn-005-admin-bucket-${var.account_id}-${var.resource_suffix}"
           Tags = [
             {
               Key   = "Name"
-              Value = "pl-prod-cloudformation-005-to-admin-initial-bucket"
+              Value = "pl-cfn-005-admin-bucket"
             },
             {
               Key   = "Environment"
@@ -189,6 +189,11 @@ resource "aws_cloudformation_stack" "target_stack" {
       }
     }
   })
+
+  # Ignore changes to template_body since demo/cleanup scripts modify the stack
+  lifecycle {
+    ignore_changes = [template_body]
+  }
 
   tags = {
     Name        = "pl-prod-cloudformation-005-to-admin-target-stack"

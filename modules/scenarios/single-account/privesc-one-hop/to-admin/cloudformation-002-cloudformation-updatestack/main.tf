@@ -131,6 +131,11 @@ resource "aws_cloudformation_stack" "vulnerable_stack" {
   # Wait for policy attachment to propagate
   depends_on = [aws_iam_role_policy_attachment.stack_role_admin_access]
 
+  # Ignore changes to template_body since demo/cleanup scripts modify the stack
+  lifecycle {
+    ignore_changes = [template_body]
+  }
+
   # Initial benign template - creates a simple S3 bucket
   template_body = jsonencode({
     AWSTemplateFormatVersion = "2010-09-09"
@@ -139,11 +144,11 @@ resource "aws_cloudformation_stack" "vulnerable_stack" {
       InitialBucket = {
         Type = "AWS::S3::Bucket"
         Properties = {
-          BucketName = "pl-prod-cloudformation-002-to-admin-initial-bucket-${var.account_id}-${var.resource_suffix}"
+          BucketName = "pl-cfn-002-admin-bucket-${var.account_id}-${var.resource_suffix}"
           Tags = [
             {
               Key   = "Name"
-              Value = "pl-prod-cloudformation-002-to-admin-initial-bucket"
+              Value = "pl-cfn-002-admin-bucket"
             },
             {
               Key   = "Environment"

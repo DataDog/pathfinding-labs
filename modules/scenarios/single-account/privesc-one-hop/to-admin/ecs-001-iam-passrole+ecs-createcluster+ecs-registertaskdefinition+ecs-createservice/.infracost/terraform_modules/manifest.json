@@ -1,0 +1,1 @@
+{"Path":"modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-001-iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-createservice","Version":"2.0","Modules":[]}
