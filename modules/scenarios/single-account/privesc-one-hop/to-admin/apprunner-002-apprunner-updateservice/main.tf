@@ -50,7 +50,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "apprunner:UpdateService"
         ]
-        Resource = "arn:aws:apprunner:*:${var.account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*"
+        Resource = "arn:aws:apprunner:*:${var.account_id}:service/pl-apprunner-002-to-admin/*"
       },
       {
         Effect = "Allow"
@@ -127,7 +127,7 @@ resource "aws_iam_role_policy" "target_role_admin_policy" {
 # This represents an existing production service that will be compromised
 resource "aws_apprunner_service" "target_service" {
   provider     = aws.prod
-  service_name = "pl-prod-apprunner-002-to-admin-target-service"
+  service_name = "pl-apprunner-002-to-admin"
 
   source_configuration {
     auto_deployments_enabled = false
@@ -147,8 +147,13 @@ resource "aws_apprunner_service" "target_service" {
     memory            = "2048"
   }
 
+  # Ignore changes since demo/cleanup scripts modify the service configuration
+  lifecycle {
+    ignore_changes = [source_configuration]
+  }
+
   tags = {
-    Name        = "pl-prod-apprunner-002-to-admin-target-service"
+    Name        = "pl-apprunner-002-to-admin"
     Environment = var.environment
     Scenario    = "apprunner-updateservice"
     Purpose     = "target-service"

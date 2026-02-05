@@ -156,6 +156,11 @@ resource "aws_codebuild_project" "target_project" {
     service_role = aws_iam_role.target_role.arn
   }
 
+  # Ignore changes since demo scripts may modify the project configuration
+  lifecycle {
+    ignore_changes = [build_batch_config, source]
+  }
+
   tags = {
     Name        = "pl-prod-codebuild-003-to-admin-target-project"
     Environment = var.environment
