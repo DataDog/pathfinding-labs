@@ -25,8 +25,8 @@ The demo script will:
   - Verify successful privilege escalation
 
 Examples:
-  plabs demo iam-002          # Run demo for iam-002 scenario
-  plabs demo --list           # List available demos`,
+  plabs demo iam-002-to-admin  # Run demo for iam-002-to-admin scenario
+  plabs demo --list            # List available demos`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		listDemos, _ := cmd.Flags().GetBool("list")
 		if !listDemos && len(args) < 1 {
@@ -93,7 +93,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	if scenario == nil {
 		fmt.Printf("Scenario '%s' not found.\n", scenarioID)
 		fmt.Println()
-		fmt.Println("Use 'plabs scenarios list' to see available scenarios")
+		fmt.Println("Use 'plabs' to browse scenarios in the TUI, or 'plabs scenarios list' for CLI")
 		return fmt.Errorf("scenario not found")
 	}
 

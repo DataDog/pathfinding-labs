@@ -266,8 +266,8 @@ variable "enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ec
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-006-ecs-executecommand ($0.04/hour)"
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-006-ecs-executecommand+describetasks ($0.04/hour)"
   type        = bool
   default     = false
 }

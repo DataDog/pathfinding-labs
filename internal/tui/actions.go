@@ -13,6 +13,9 @@ type ActionsPane struct {
 	enabled         bool
 	deployed        bool
 	showOnlyEnabled bool
+	focusedPane     Pane // Which pane is currently focused
+	envEnabled      bool // Selected environment enabled state
+	envDeployed     bool // Selected environment deployed state
 	width           int
 	height          int
 }
@@ -20,7 +23,8 @@ type ActionsPane struct {
 // NewActionsPane creates a new actions pane
 func NewActionsPane(styles *Styles) *ActionsPane {
 	return &ActionsPane{
-		styles: styles,
+		styles:      styles,
+		focusedPane: PaneScenarios,
 	}
 }
 
@@ -34,6 +38,17 @@ func (a *ActionsPane) SetScenario(s *scenarios.Scenario, enabled, deployed bool)
 // SetShowOnlyEnabled updates the enabled filter state for display
 func (a *ActionsPane) SetShowOnlyEnabled(showOnly bool) {
 	a.showOnlyEnabled = showOnly
+}
+
+// SetFocusedPane sets which pane is currently focused
+func (a *ActionsPane) SetFocusedPane(pane Pane) {
+	a.focusedPane = pane
+}
+
+// SetEnvironment updates the selected environment state
+func (a *ActionsPane) SetEnvironment(enabled, deployed bool) {
+	a.envEnabled = enabled
+	a.envDeployed = deployed
 }
 
 // SetSize sets the pane dimensions
@@ -54,38 +69,79 @@ func (a *ActionsPane) View() string {
 	sb.WriteString(a.styles.HelpDesc.Render(" navigate"))
 	sb.WriteString("\n")
 
-	sb.WriteString(a.styles.HelpKey.Render(" ←→"))
-	sb.WriteString(a.styles.HelpDesc.Render(" collapse"))
+	sb.WriteString(a.styles.HelpKey.Render(" tab"))
+	sb.WriteString(a.styles.HelpDesc.Render(" switch pane"))
 	sb.WriteString("\n")
 
-	sb.WriteString(a.styles.HelpKey.Render(" /"))
-	sb.WriteString(a.styles.HelpDesc.Render("  filter"))
-	sb.WriteString("\n")
+	// Pane-specific navigation hints
+	if a.focusedPane == PaneScenarios {
+		sb.WriteString(a.styles.HelpKey.Render(" ←→"))
+		sb.WriteString(a.styles.HelpDesc.Render(" collapse"))
+		sb.WriteString("\n")
 
-	// Toggle enabled only - show current state
-	if a.showOnlyEnabled {
-		sb.WriteString(a.styles.HelpKey.Render(" ."))
-		sb.WriteString(a.styles.HelpDesc.Render("  show all"))
+		sb.WriteString(a.styles.HelpKey.Render(" /"))
+		sb.WriteString(a.styles.HelpDesc.Render("  filter"))
 		sb.WriteString("\n")
-	} else {
-		sb.WriteString(a.styles.HelpKey.Render(" ."))
-		sb.WriteString(a.styles.HelpDesc.Render("  enabled only"))
-		sb.WriteString("\n")
+
+		// Toggle enabled only - show current state
+		if a.showOnlyEnabled {
+			sb.WriteString(a.styles.HelpKey.Render(" ."))
+			sb.WriteString(a.styles.HelpDesc.Render("  show all"))
+			sb.WriteString("\n")
+		} else {
+			sb.WriteString(a.styles.HelpKey.Render(" ."))
+			sb.WriteString(a.styles.HelpDesc.Render("  enabled only"))
+			sb.WriteString("\n")
+		}
 	}
-
-	sb.WriteString(a.styles.HelpKey.Render(" ?"))
-	sb.WriteString(a.styles.HelpDesc.Render("  help"))
-	sb.WriteString("\n")
-
-	sb.WriteString(a.styles.HelpKey.Render(" q"))
-	sb.WriteString(a.styles.HelpDesc.Render("  quit"))
-	sb.WriteString("\n")
 
 	// Divider
 	sb.WriteString(a.styles.ScenarioDisabled.Render(" ───────────"))
 	sb.WriteString("\n")
 
-	// Context-specific actions
+	// Context-specific actions based on focused pane
+	switch a.focusedPane {
+	case PaneEnvironment:
+		a.renderEnvironmentActions(&sb)
+	case PaneScenarios:
+		a.renderScenarioActions(&sb)
+	case PaneDetails:
+		sb.WriteString(a.styles.ScenarioDisabled.Render(" View only"))
+		sb.WriteString("\n")
+	}
+
+	return a.wrapInPanel(sb.String())
+}
+
+func (a *ActionsPane) renderEnvironmentActions(sb *strings.Builder) {
+	if a.envEnabled && a.envDeployed {
+		sb.WriteString(a.styles.HelpKey.Render(" space"))
+		sb.WriteString(a.styles.HelpDesc.Render(" disable"))
+		sb.WriteString("\n")
+		sb.WriteString(a.styles.ScenarioDisabled.Render(" (will destroy)"))
+		sb.WriteString("\n")
+	} else if a.envEnabled && !a.envDeployed {
+		sb.WriteString(a.styles.HelpKey.Render(" space"))
+		sb.WriteString(a.styles.HelpDesc.Render(" disable"))
+		sb.WriteString("\n")
+		sb.WriteString(a.styles.HelpKey.Render(" d"))
+		sb.WriteString(a.styles.HelpDesc.Render("     deploy"))
+		sb.WriteString("\n")
+	} else if !a.envEnabled && a.envDeployed {
+		sb.WriteString(a.styles.HelpKey.Render(" space"))
+		sb.WriteString(a.styles.HelpDesc.Render(" enable"))
+		sb.WriteString("\n")
+		sb.WriteString(a.styles.HelpKey.Render(" d"))
+		sb.WriteString(a.styles.HelpDesc.Render("     deploy (destroy)"))
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString(a.styles.HelpKey.Render(" space"))
+		sb.WriteString(a.styles.HelpDesc.Render(" enable"))
+		sb.WriteString("\n")
+	}
+}
+
+func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
 	if a.scenario == nil {
 		sb.WriteString(a.styles.ScenarioDisabled.Render(" Select scenario"))
 		sb.WriteString("\n")
@@ -103,6 +159,12 @@ func (a *ActionsPane) View() string {
 			sb.WriteString(a.styles.HelpDesc.Render("     cleanup"))
 			sb.WriteString("\n")
 		}
+		sb.WriteString(a.styles.HelpKey.Render(" D"))
+		sb.WriteString(a.styles.HelpDesc.Render("     destroy scenarios"))
+		sb.WriteString("\n")
+		sb.WriteString(a.styles.HelpKey.Render(" ^D"))
+		sb.WriteString(a.styles.HelpDesc.Render("    destroy all"))
+		sb.WriteString("\n")
 	} else if a.enabled {
 		sb.WriteString(a.styles.HelpKey.Render(" space"))
 		sb.WriteString(a.styles.HelpDesc.Render(" disable"))
@@ -115,8 +177,6 @@ func (a *ActionsPane) View() string {
 		sb.WriteString(a.styles.HelpDesc.Render(" enable"))
 		sb.WriteString("\n")
 	}
-
-	return a.wrapInPanel(sb.String())
 }
 
 func (a *ActionsPane) wrapInPanel(content string) string {

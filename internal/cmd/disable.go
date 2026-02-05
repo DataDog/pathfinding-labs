@@ -7,8 +7,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
-	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
 var disableCmd = &cobra.Command{
@@ -59,6 +59,12 @@ func runDisable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
+	// Load config (single source of truth)
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
 	// Discover scenarios
 	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
 
@@ -69,12 +75,8 @@ func runDisable(cmd *cobra.Command, args []string) error {
 	var toDisable []*scenarios.Scenario
 	var notFound []string
 
-	// Get current enabled status
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledVars, err := tfvars.GetEnabledScenarios()
-	if err != nil {
-		return fmt.Errorf("failed to read enabled scenarios: %w", err)
-	}
+	// Get current enabled status from config
+	enabledVars := cfg.GetEnabledScenarioVars()
 
 	// Get all scenarios for filtering
 	allScenarios, err := discovery.DiscoverAll()
@@ -148,16 +150,19 @@ func runDisable(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Update tfvars
-	var variables []string
+	// Update config with disabled scenarios
 	for _, s := range actuallyDisabling {
-		variables = append(variables, s.Terraform.VariableName)
+		cfg.DisableScenario(s.Terraform.VariableName)
 	}
 
-	if len(variables) > 0 {
-		if err := tfvars.SetMultipleScenariosEnabled(variables, false); err != nil {
-			return fmt.Errorf("failed to update terraform.tfvars: %w", err)
-		}
+	// Save config (single source of truth)
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Regenerate terraform.tfvars
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
 	// Print results
@@ -169,15 +174,15 @@ func runDisable(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(actuallyDisabling) > 0 {
-		fmt.Printf("%s Disabled %d scenario(s):\n", green("✓"), len(actuallyDisabling))
+		fmt.Printf("%s Disabled %d scenario(s):\n", green("OK"), len(actuallyDisabling))
 		for _, s := range actuallyDisabling {
-			fmt.Printf("  %s %s - %s\n", dim("○"), s.UniqueID(), truncate(s.Description, 50))
+			fmt.Printf("  %s %s - %s\n", dim("o"), s.UniqueID(), truncate(s.Description, 50))
 		}
 	}
 
 	if len(alreadyDisabled) > 0 {
 		fmt.Println()
-		fmt.Printf("%s Already disabled %d scenario(s):\n", dim("○"), len(alreadyDisabled))
+		fmt.Printf("%s Already disabled %d scenario(s):\n", dim("o"), len(alreadyDisabled))
 		for _, s := range alreadyDisabled {
 			fmt.Printf("  %s\n", s.UniqueID())
 		}
@@ -185,12 +190,12 @@ func runDisable(cmd *cobra.Command, args []string) error {
 
 	if len(notFound) > 0 {
 		fmt.Println()
-		fmt.Printf("%s Could not find %d scenario(s):\n", red("✗"), len(notFound))
+		fmt.Printf("%s Could not find %d scenario(s):\n", red("X"), len(notFound))
 		for _, id := range notFound {
 			fmt.Printf("  %s\n", id)
 		}
 		fmt.Println()
-		fmt.Println("Use 'plabs scenarios list' to see available scenarios")
+		fmt.Println("Use 'plabs' to browse scenarios in the TUI, or 'plabs scenarios list' for CLI")
 	}
 
 	if len(actuallyDisabling) > 0 {

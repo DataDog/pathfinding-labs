@@ -69,9 +69,13 @@ type Styles struct {
 	OverlayDimmed lipgloss.Style
 
 	// Indicators
-	EnabledIndicator  lipgloss.Style
-	DisabledIndicator lipgloss.Style
-	DeployedIndicator lipgloss.Style
+	EnabledIndicator       lipgloss.Style
+	DisabledIndicator      lipgloss.Style
+	DeployedIndicator      lipgloss.Style
+	PendingDeployIndicator lipgloss.Style
+	PendingDestroyIndicator lipgloss.Style
+	PendingDeployLabel     lipgloss.Style
+	PendingDestroyLabel    lipgloss.Style
 
 	// Help
 	HelpKey  lipgloss.Style
@@ -181,8 +185,7 @@ func DefaultStyles() *Styles {
 	s.Overlay = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(colorPrimary).
-		Padding(1, 2).
-		Background(lipgloss.Color("#111827"))
+		Padding(1, 2)
 	s.OverlayTitle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(colorText).
@@ -202,6 +205,16 @@ func DefaultStyles() *Styles {
 	s.DeployedIndicator = lipgloss.NewStyle().
 		Foreground(colorSuccess).
 		SetString("✓")
+	s.PendingDeployIndicator = lipgloss.NewStyle().
+		Foreground(colorWarning).
+		SetString("●")
+	s.PendingDestroyIndicator = lipgloss.NewStyle().
+		Foreground(colorError).
+		SetString("●")
+	s.PendingDeployLabel = lipgloss.NewStyle().
+		Foreground(colorWarning)
+	s.PendingDestroyLabel = lipgloss.NewStyle().
+		Foreground(colorError)
 
 	// Help
 	s.HelpKey = lipgloss.NewStyle().

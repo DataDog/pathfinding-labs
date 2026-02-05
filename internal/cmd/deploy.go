@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -35,43 +36,42 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
 	cyan := color.New(color.FgCyan).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
+	dim := color.New(color.Faint).SprintFunc()
 
 	fmt.Println()
 	fmt.Println(cyan("Deploying Pathfinding Labs..."))
+
+	// Show mode indicator only in dev mode
+	if cfg.DevMode {
+		fmt.Println()
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+	}
 	fmt.Println()
 
-	// Show enabled environments and scenarios count
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledList, err := tfvars.ListEnabledScenarios()
-	if err != nil {
-		return fmt.Errorf("failed to list enabled scenarios: %w", err)
-	}
+	// Show enabled scenarios count from config
+	enabledCount := len(cfg.Scenarios.Enabled)
 
-	// Separate environments from scenarios
-	var environments []string
-	var scenarios []string
-	for _, name := range enabledList {
-		if strings.HasSuffix(name, "_environment") {
-			environments = append(environments, name)
-		} else {
-			scenarios = append(scenarios, name)
-		}
-	}
-
-	fmt.Printf("Enabled environments: %d\n", len(environments))
-	if len(scenarios) == 0 {
+	fmt.Printf("Enabled scenarios: %d\n", enabledCount)
+	if enabledCount == 0 {
 		fmt.Println(yellow("No scenarios are currently enabled."))
 		fmt.Println("Running terraform apply to sync state (this may destroy previously enabled scenarios)...")
-	} else {
-		fmt.Printf("Enabled scenarios: %d\n", len(scenarios))
 	}
+	fmt.Println()
+
+	// Show terraform directory
+	fmt.Printf("%s Terraform directory: %s\n", dim("->"), paths.TerraformDir)
 	fmt.Println()
 
 	// Create runner
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 
 	// Ensure terraform is initialized
 	if !runner.IsInitialized() {
@@ -117,9 +117,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println(green("  Deployment complete!"))
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println()
 	fmt.Printf("Run %s to see deployment status\n", cyan("plabs status"))
 	fmt.Printf("Run %s to run a demo attack\n", cyan("plabs demo <scenario-id>"))

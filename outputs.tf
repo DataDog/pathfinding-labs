@@ -79,18 +79,18 @@ output "prod_multi_hop_to_bucket_role_chain_s3_bucket_name" {
 }
 
 output "prod_account_id" {
-  description = "ID of the prod account"
-  value       = var.prod_account_id
+  description = "ID of the prod account (derived from AWS profile)"
+  value       = local.prod_account_id
 }
 
 output "dev_account_id" {
-  description = "ID of the dev account"
-  value       = var.dev_account_id
+  description = "ID of the dev account (derived from AWS profile)"
+  value       = local.dev_account_id
 }
 
 output "operations_account_id" {
-  description = "ID of the operations account"
-  value       = var.operations_account_id
+  description = "ID of the operations account (derived from AWS profile)"
+  value       = local.operations_account_id
 }
 
 output "aws_region" {
@@ -584,19 +584,19 @@ output "single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createc
   sensitive = true
 }
 
-output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand" {
-  description = "All outputs for ecs-006-ecs-executecommand one-hop to-admin scenario"
-  value = var.enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].starting_user_secret_access_key
-    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].target_role_name
-    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].target_role_arn
-    ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].ecs_cluster_name
-    ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].ecs_cluster_arn
-    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].ecs_service_name
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand[0].attack_path
+output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks" {
+  description = "All outputs for ecs-006-ecs-executecommand+describetasks one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_arn
+    ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_name
+    ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_arn
+    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
   } : null
   sensitive = true
 }

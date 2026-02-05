@@ -2,8 +2,8 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.2.0"
-name: "ecs-executecommand"
-description: "User with ecs:ExecuteCommand can shell into running ECS task with admin role to access credentials"
+name: "ecs:ExecuteCommand + ecs:DescribeTasks"
+description: "User with ecs:ExecuteCommand and ecs:DescribeTasks can shell into running ECS task with admin role to access credentials"
 cost_estimate: "$0.04/hour"
 pathfinding-cloud-id: "ecs-006"
 
@@ -25,7 +25,7 @@ attack_path:
     - "arn:aws:iam::{account_id}:user/pl-prod-ecs-006-to-admin-starting-user"
     - "arn:aws:iam::{account_id}:role/pl-prod-ecs-006-to-admin-target-role"
 
-  summary: "starting_user → (ecs:ExecuteCommand) → ECS task with admin role → curl metadata → admin credentials"
+  summary: "starting_user → (ecs:ExecuteCommand + ecs:DescribeTasks) → ECS task with admin role → curl metadata → admin credentials"
 
 # =============================================================================
 # PERMISSIONS
@@ -35,12 +35,13 @@ permissions:
     - permission: "ecs:ExecuteCommand"
       resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
 
+    - permission: "ecs:DescribeTasks"
+      resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
+      purpose: "Required by AWS CLI to retrieve container runtime ID for SSM session"
+
   helpful:
     - permission: "ecs:ListTasks"
       purpose: "Discover task ARNs in the cluster"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Get task details including container names"
 
     - permission: "ecs:DescribeTaskDefinition"
       purpose: "Get task definition to discover task role ARN"
@@ -63,8 +64,8 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand"
-  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand+describetasks"
 
 # =============================================================================
 # INFRASTRUCTURE DETAILS (for agent reference)

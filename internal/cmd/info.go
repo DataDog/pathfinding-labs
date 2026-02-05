@@ -96,21 +96,21 @@ func runInfo(cmd *cobra.Command, args []string) error {
 
 	// Configuration
 	fmt.Println(cyan("Configuration:"))
-	cfg, err := config.Load(paths.ConfigPath)
+	cfg, err := config.Load()
 	if err != nil {
 		fmt.Printf("  Status: %s\n", yellow("Not configured"))
-	} else if cfg.ProdAccountID == "" {
+	} else if cfg.AWS.Prod.Profile == "" {
 		fmt.Printf("  Status: %s\n", yellow("Not configured (run 'plabs init')"))
 	} else {
-		fmt.Printf("  Production Account: %s %s\n", cfg.ProdAccountID, dim("(profile: "+cfg.ProdProfile+")"))
-		if cfg.DevAccountID != "" {
-			fmt.Printf("  Development Account: %s %s\n", cfg.DevAccountID, dim("(profile: "+cfg.DevProfile+")"))
+		fmt.Printf("  Production: %s\n", dim("profile: "+cfg.AWS.Prod.Profile))
+		if cfg.AWS.Dev.Profile != "" {
+			fmt.Printf("  Development: %s\n", dim("profile: "+cfg.AWS.Dev.Profile))
 		}
-		if cfg.OpsAccountID != "" {
-			fmt.Printf("  Operations Account: %s %s\n", cfg.OpsAccountID, dim("(profile: "+cfg.OpsProfile+")"))
+		if cfg.AWS.Ops.Profile != "" {
+			fmt.Printf("  Operations: %s\n", dim("profile: "+cfg.AWS.Ops.Profile))
 		}
 
-		if cfg.IsSingleAccountMode() {
+		if !cfg.IsMultiAccountMode() {
 			fmt.Printf("  Mode: %s\n", "Single-account")
 		} else {
 			fmt.Printf("  Mode: %s\n", "Multi-account")

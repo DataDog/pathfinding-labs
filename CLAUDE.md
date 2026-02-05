@@ -27,7 +27,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 pathfinding-labs/
-├── environments/              # Base infrastructure (always deployed)
+├── cmd/plabs/                # Go CLI entry point
+│   └── main.go
+├── internal/                 # Go CLI internal packages
+│   ├── cmd/                  # Cobra commands
+│   ├── tui/                  # Bubble Tea TUI components
+│   ├── config/               # Configuration management
+│   ├── scenarios/            # Scenario discovery
+│   ├── terraform/            # Terraform orchestration
+│   ├── repo/                 # Repository management
+│   └── demo/                 # Demo script execution
+│
+├── environments/             # Base infrastructure (always deployed)
 │   ├── prod/                 # Production environment base resources
 │   ├── dev/                  # Development environment base resources (optional)
 │   └── operations/           # Operations environment base resources (optional)
@@ -49,7 +60,8 @@ pathfinding-labs/
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario
 ├── outputs.tf                # Credential outputs for testing
-└── terraform.tfvars          # Your configuration (gitignored)
+├── terraform.tfvars          # Your configuration (gitignored)
+└── go.mod / go.sum           # Go module dependencies
 ```
 
 ### Scenario Taxonomy
@@ -107,7 +119,332 @@ pathfinding-labs/
 - Account IDs are passed as variables to all modules (auto-derived, no manual input needed)
 - Conditional module instantiation based on boolean flags
 
+## The `plabs` CLI Binary
+
+The project includes a Go-based CLI tool (`plabs`) with an interactive TUI dashboard for managing scenarios without manually editing Terraform files.
+
+### Go Project Structure
+
+```
+pathfinding-labs/
+├── cmd/plabs/
+│   └── main.go                    # Entry point (calls cmd.Execute())
+│
+├── internal/
+│   ├── cmd/                       # Cobra commands
+│   │   ├── root.go               # Root command & command registration
+│   │   ├── tui.go                # Interactive TUI dashboard
+│   │   ├── init.go               # Initial setup & wizard
+│   │   ├── config.go             # Configuration management
+│   │   ├── scenarios.go          # Browse & list scenarios
+│   │   ├── enable.go             # Enable scenarios
+│   │   ├── disable.go            # Disable scenarios
+│   │   ├── deploy.go             # Deploy to AWS
+│   │   ├── plan.go               # Terraform plan
+│   │   ├── destroy.go            # Destroy resources
+│   │   ├── status.go             # Deployment status
+│   │   ├── info.go               # Show configuration info
+│   │   ├── update.go             # Update repo
+│   │   └── helpers.go            # Shared utilities
+│   │
+│   ├── tui/                       # Terminal UI (Bubble Tea)
+│   │   ├── model.go              # Main Bubble Tea model & state
+│   │   ├── keys.go               # Keybindings
+│   │   ├── styles.go             # Lipgloss styles & color palette
+│   │   ├── environment.go        # Environment pane component
+│   │   ├── scenarios.go          # Scenarios list pane
+│   │   ├── details.go            # Details pane
+│   │   ├── actions.go            # Actions/shortcuts pane
+│   │   ├── info.go               # Info header pane
+│   │   └── overlay.go            # Modal overlays
+│   │
+│   ├── config/                    # Configuration management
+│   │   ├── config.go             # Config structure & persistence
+│   │   └── wizard.go             # Interactive setup wizard
+│   │
+│   ├── scenarios/                 # Scenario discovery & metadata
+│   │   ├── metadata.go           # Scenario struct (from scenario.yaml)
+│   │   ├── discovery.go          # Scenario discovery engine
+│   │   └── filter.go             # Scenario filtering
+│   │
+│   ├── terraform/                 # Terraform orchestration
+│   │   ├── runner.go             # Execute terraform commands
+│   │   ├── outputs.go            # Parse terraform outputs
+│   │   ├── tfvars.go             # Generate terraform.tfvars
+│   │   └── installer.go          # Download terraform binary
+│   │
+│   ├── repo/                      # Repository management
+│   │   ├── paths.go              # Directory path management
+│   │   ├── clone.go              # Clone repository
+│   │   └── update.go             # Pull repository updates
+│   │
+│   └── demo/                      # Demo script execution
+│       └── runner.go             # Execute demo_attack.sh scripts
+│
+└── go.mod / go.sum               # Go dependencies
+```
+
+### Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture) |
+| `github.com/charmbracelet/bubbles` | Pre-built TUI components |
+| `github.com/charmbracelet/huh` | Interactive forms |
+| `github.com/charmbracelet/lipgloss` | Terminal styling |
+| `github.com/spf13/cobra` | CLI framework |
+| `github.com/fatih/color` | Terminal colors |
+| `gopkg.in/yaml.v3` | YAML parsing |
+
+### CLI Commands (Cobra)
+
+Running `plabs` with no arguments launches the interactive TUI dashboard.
+
+| Command | Description |
+|---------|-------------|
+| `plabs` | Launch interactive TUI (default) |
+| `plabs tui` | Launch interactive TUI explicitly |
+| `plabs init` | Initial setup & configuration wizard |
+| `plabs config` | Manage configuration |
+| `plabs scenarios list` | List scenarios with filtering |
+| `plabs enable [id\|pattern]` | Enable scenarios |
+| `plabs disable [id\|pattern]` | Disable scenarios |
+| `plabs deploy` | Deploy enabled scenarios |
+| `plabs plan` | Show terraform plan |
+| `plabs destroy` | Destroy infrastructure |
+| `plabs status` | Show deployment status |
+| `plabs info` | Show config info |
+| `plabs update` | Update repository |
+
+### TUI Architecture (Bubble Tea)
+
+The TUI uses the Elm architecture via Bubble Tea:
+
+**Pane System:**
+- `PaneEnvironment` - Left: Account/environment status
+- `PaneScenarios` - Center: Scrollable, filterable scenario list
+- `PaneDetails` - Right: Scenario details & credentials
+
+**Key Bindings:**
+- Navigation: `↑↓`, `pgup/pgdown`, `home/end`
+- Actions: `space`=toggle, `d`=deploy, `D`=destroy
+- UI: `tab`=switch pane, `/`=filter, `.`=toggle enabled-only, `?`=help, `q`=quit
+
+**Styling:**
+- Centralized in `internal/tui/styles.go`
+- Color palette: Purple primary, Cyan secondary, Green success, Red error
+- All styles use Lipgloss
+
+### Configuration Management
+
+**Config Location:** `~/.plabs/plabs.yaml`
+
+```yaml
+dev_mode: false
+dev_mode_path: ""
+aws:
+  prod:
+    profile: "my-profile"
+    region: "us-east-1"
+  dev:
+    profile: ""
+    region: ""
+  ops:
+    profile: ""
+    region: ""
+scenarios:
+  enabled:
+    - "enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey"
+initialized: true
+```
+
+**Directory Structure:**
+- `~/.plabs/plabs.yaml` - Config file
+- `~/.plabs/pathfinding-labs/` - Cloned repository (normal mode)
+- `~/.plabs/bin/` - Downloaded binaries (terraform)
+
+**Dev Mode:**
+- Set `dev_mode: true` and `dev_mode_path: /path/to/local/repo`
+- Uses local repository instead of `~/.plabs/pathfinding-labs/`
+- Useful when developing the CLI against local Terraform changes
+
+### Building the plabs Binary
+
+```bash
+# Build the binary
+go build -o plabs ./cmd/plabs
+
+# Run directly without building
+go run ./cmd/plabs
+
+# Install to $GOPATH/bin
+go install ./cmd/plabs
+```
+
+## plabs CLI Development Guidelines
+
+### CRITICAL: Always Rebuild After Changes
+
+**When making ANY changes to Go code in `cmd/` or `internal/`, you MUST rebuild the binary before testing:**
+
+```bash
+go build -o plabs ./cmd/plabs
+```
+
+This is the most common source of confusion during development - testing against a stale binary.
+
+### Adding a New Cobra Command
+
+1. Create a new file in `internal/cmd/` (e.g., `newcommand.go`)
+2. Define the command:
+   ```go
+   var newcommandCmd = &cobra.Command{
+       Use:   "newcommand [args]",
+       Short: "Brief description",
+       Long:  `Detailed help text with examples`,
+       RunE:  runNewcommand,
+   }
+
+   func runNewcommand(cmd *cobra.Command, args []string) error {
+       // Implementation - return error on failure
+       return nil
+   }
+   ```
+3. Register in `internal/cmd/root.go`'s `init()` function:
+   ```go
+   rootCmd.AddCommand(newcommandCmd)
+   ```
+4. **Rebuild the binary**
+
+### Adding a New TUI Pane/Component
+
+1. Create a new file in `internal/tui/` (e.g., `newpane.go`)
+2. Define render function following existing patterns:
+   ```go
+   func (m Model) renderNewPane() string {
+       // Use styles from styles.go
+       return styles.PaneStyle.Render(content)
+   }
+   ```
+3. Add to the main View() in `model.go`
+4. Add any new keybindings to `keys.go`
+5. **Rebuild the binary**
+
+### TUI State Management
+
+The TUI uses a single `Model` struct in `internal/tui/model.go`:
+
+```go
+type Model struct {
+    // Pane management
+    activePane    Pane
+
+    // Data
+    scenarios     []scenarios.Scenario
+    enabled       map[string]bool
+    deployed      map[string]bool
+
+    // UI state
+    cursor        int
+    filter        string
+    showEnabledOnly bool
+
+    // Async operations
+    loading       bool
+    err           error
+}
+```
+
+**Message Pattern for Async Operations:**
+```go
+// Define a message type
+type scenariosLoadedMsg struct {
+    scenarios []scenarios.Scenario
+    err       error
+}
+
+// Return a command that sends the message
+func loadScenarios() tea.Cmd {
+    return func() tea.Msg {
+        scenarios, err := discovery.LoadAll()
+        return scenariosLoadedMsg{scenarios, err}
+    }
+}
+
+// Handle in Update()
+case scenariosLoadedMsg:
+    m.scenarios = msg.scenarios
+    m.err = msg.err
+    m.loading = false
+```
+
+### Path Resolution Pattern
+
+Always use `getWorkingPaths()` helper for consistent path resolution:
+
+```go
+func getWorkingPaths() (*WorkingPaths, error) {
+    cfg, err := config.Load()
+    if err != nil {
+        return nil, err
+    }
+    return &WorkingPaths{
+        TerraformDir: cfg.GetTerraformDir(),
+        ConfigPath:   config.DefaultConfigPath(),
+    }, nil
+}
+```
+
+### Error Handling Pattern
+
+Commands use `RunE` (returns error) not `Run`:
+
+```go
+func runCommand(cmd *cobra.Command, args []string) error {
+    if err := doSomething(); err != nil {
+        return fmt.Errorf("operation failed: %w", err)
+    }
+    return nil
+}
+```
+
+### Testing Go Code
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests for specific package
+go test ./internal/scenarios/...
+
+# Run with verbose output
+go test -v ./...
+```
+
 ## Common Commands
+
+### Using the plabs CLI
+
+```bash
+# Initial setup (interactive wizard)
+plabs init
+
+# Launch TUI dashboard
+plabs
+
+# List all scenarios
+plabs scenarios list
+
+# Enable scenarios by pattern
+plabs enable iam-002
+plabs enable "one-hop/*"
+
+# Deploy enabled scenarios
+plabs deploy
+
+# Show deployment status
+plabs status
+```
 
 ### Initial Setup (Single Account)
 
@@ -608,7 +945,8 @@ terraform apply
 ## Future Roadmap
 
 - [ ] Web interface for scenario management
-- [ ] Go CLI for easier configuration
+- [x] Go CLI for easier configuration (`plabs` binary)
+- [x] Interactive TUI dashboard
 - [ ] More toxic combination scenarios
 - [ ] GCP and Azure support
 - [ ] Integration with popular CSPM tools

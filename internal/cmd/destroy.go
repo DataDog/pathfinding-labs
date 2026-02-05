@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
@@ -32,8 +33,8 @@ WARNING: Use with caution. This removes AWS resources.`,
 }
 
 var (
-	destroyAutoApprove  bool
-	destroyAll          bool
+	destroyAutoApprove   bool
+	destroyAll           bool
 	destroyScenariosOnly bool
 )
 
@@ -49,10 +50,18 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
+	cfg, _ := config.Load()
+
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
+
+	// Show mode indicator only in dev mode
+	if cfg != nil && cfg.DevMode {
+		fmt.Println()
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+	}
 
 	// Require explicit flag
 	if !destroyAll && !destroyScenariosOnly {
@@ -67,14 +76,14 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 
 	// Handle --scenarios-only: disable all scenarios and deploy
 	if destroyScenariosOnly {
-		return destroyScenarios(paths, green, yellow)
+		return destroyScenarios(paths, cfg, green, yellow)
 	}
 
 	// Handle --all: full terraform destroy
 	return destroyEverything(paths, red, yellow, green)
 }
 
-func destroyScenarios(paths *repo.Paths, green, yellow func(a ...interface{}) string) error {
+func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(a ...interface{}) string) error {
 	fmt.Println()
 	fmt.Println(yellow("Removing all scenarios (keeping base infrastructure)..."))
 	fmt.Println()
@@ -86,8 +95,8 @@ func destroyScenarios(paths *repo.Paths, green, yellow func(a ...interface{}) st
 		return fmt.Errorf("failed to discover scenarios: %w", err)
 	}
 
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledVars, _ := tfvars.GetEnabledScenarios()
+	// Get current enabled status from config
+	enabledVars := cfg.GetEnabledScenarioVars()
 
 	var toDisable []string
 	for _, s := range allScenarios {
@@ -103,8 +112,19 @@ func destroyScenarios(paths *repo.Paths, green, yellow func(a ...interface{}) st
 
 	fmt.Printf("Disabling %d scenario(s)...\n", len(toDisable))
 
-	if err := tfvars.SetMultipleScenariosEnabled(toDisable, false); err != nil {
-		return fmt.Errorf("failed to disable scenarios: %w", err)
+	// Disable all scenarios in config
+	for _, varName := range toDisable {
+		cfg.DisableScenario(varName)
+	}
+
+	// Save config
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Regenerate terraform.tfvars
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
 	// Run terraform apply to remove the scenarios
@@ -112,15 +132,15 @@ func destroyScenarios(paths *repo.Paths, green, yellow func(a ...interface{}) st
 	fmt.Println("Running terraform apply to remove scenarios...")
 	fmt.Println()
 
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 	if err := runner.Apply(true); err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
 
 	fmt.Println()
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println(green("  All scenarios removed! Base infrastructure preserved."))
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println()
 
 	return nil
@@ -128,15 +148,15 @@ func destroyScenarios(paths *repo.Paths, green, yellow func(a ...interface{}) st
 
 func destroyEverything(paths *repo.Paths, red, yellow, green func(a ...interface{}) string) error {
 	fmt.Println()
-	fmt.Println(red("╔════════════════════════════════════════════════════════════╗"))
-	fmt.Println(red("║                         WARNING                            ║"))
-	fmt.Println(red("║  This will destroy ALL deployed Pathfinding Labs resources ║"))
-	fmt.Println(red("║  including base environment infrastructure.                ║"))
-	fmt.Println(red("╚════════════════════════════════════════════════════════════╝"))
+	fmt.Println(red("+----------------------------------------------------------+"))
+	fmt.Println(red("|                         WARNING                          |"))
+	fmt.Println(red("|  This will destroy ALL deployed Pathfinding Labs resources|"))
+	fmt.Println(red("|  including base environment infrastructure.              |"))
+	fmt.Println(red("+----------------------------------------------------------+"))
 	fmt.Println()
 
 	// Create runner
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 
 	// Check if there's anything to destroy
 	if !runner.IsInitialized() {
@@ -185,9 +205,9 @@ func destroyEverything(paths *repo.Paths, red, yellow, green func(a ...interface
 	}
 
 	fmt.Println()
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println(green("  All infrastructure destroyed!"))
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println()
 
 	return nil

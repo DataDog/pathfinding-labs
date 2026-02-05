@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	version = "dev"
+	version = "0.0.1"
 	commit  = "unknown"
 )
 
@@ -21,13 +21,21 @@ Pathfinding Labs deploys intentionally vulnerable AWS configurations
 to validate Cloud Security Posture Management (CSPM) tools and
 train security teams on cloud attack paths.
 
-Get started with:
-  plabs init     - Set up plabs and configure your AWS accounts
-  plabs scenarios list - Browse available attack scenarios
-  plabs enable iam-002 - Enable a specific scenario
-  plabs deploy   - Deploy enabled scenarios to AWS`,
+Running 'plabs' with no arguments launches the interactive TUI dashboard.
+All commands are also available for scripting:
+
+  plabs              - Launch the interactive TUI dashboard
+  plabs help         - Show this help message
+  plabs init         - Set up plabs and configure your AWS accounts
+  plabs scenarios    - Browse available attack scenarios
+  plabs enable       - Enable a specific scenario
+  plabs deploy       - Deploy enabled scenarios to AWS`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	// Run TUI by default when no subcommand is provided
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runTUI(cmd, args)
+	},
 }
 
 // Execute runs the root command

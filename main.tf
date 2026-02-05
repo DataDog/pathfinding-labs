@@ -400,9 +400,9 @@ module "single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createc
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand"
+module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand+describetasks"
   providers = {
     aws.prod = aws.prod
   }

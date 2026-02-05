@@ -180,7 +180,7 @@ func runLocalSync(paths *repo.Paths, localDir string, green, yellow, cyan func(a
 	fmt.Println(green("✓ Synced successfully from local directory"))
 
 	// Check if we need to run terraform init
-	cfg, _ := config.Load(paths.ConfigPath)
+	cfg, _ := config.Load()
 	if cfg != nil {
 		fmt.Println()
 		fmt.Println(yellow("Note: You may need to run 'plabs deploy' or 'terraform init' to pick up module changes"))

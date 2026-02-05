@@ -55,23 +55,6 @@ variable "subnet3_id" {
 }
 
 
-variable "AWS_REGION_SUB_1" {
-  type    = string
-  default = "us-west-2a"
-}
-
-variable "AWS_REGION_SUB_2" {
-  type    = string
-  default = "us-west-2b"
-}
-
-variable "AWS_REGION_SUB_3" {
-  type    = string
-  default = "us-west-2c"
-}
-
-
-
 variable "user_ip" {
   description = "The current user's IP address"
   type        = string

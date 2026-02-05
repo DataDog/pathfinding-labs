@@ -20,7 +20,7 @@ echo -e "${GREEN}========================================${NC}\n"
 cd ../../../../../..
 
 # Get the module output using the grouped output pattern
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"
