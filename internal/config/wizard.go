@@ -42,13 +42,13 @@ func (w *Wizard) Run() (*Config, error) {
 	fmt.Println(explanationStyle.Render("Pathfinding Labs can work with 1, 2, or 3 AWS accounts:"))
 	fmt.Println()
 	fmt.Printf("  %s  Most scenarios run in a single account (called %s).\n",
-		dimStyle.Render("•"),
+		dimStyle.Render("*"),
 		highlightStyle.Render("prod"))
-	fmt.Printf("  %s  Adding a %s account enables dev→prod cross-account scenarios.\n",
-		dimStyle.Render("•"),
+	fmt.Printf("  %s  Adding a %s account enables dev->prod cross-account scenarios.\n",
+		dimStyle.Render("*"),
 		highlightStyle.Render("dev"))
-	fmt.Printf("  %s  Adding an %s account enables ops→prod cross-account scenarios.\n",
-		dimStyle.Render("•"),
+	fmt.Printf("  %s  Adding an %s account enables ops->prod cross-account scenarios.\n",
+		dimStyle.Render("*"),
 		highlightStyle.Render("ops"))
 	fmt.Println()
 	fmt.Println(dimStyle.Render("  Account IDs are automatically derived from your AWS profiles."))
@@ -98,6 +98,7 @@ func (w *Wizard) Run() (*Config, error) {
 	fmt.Println(dimStyle.Render("   This is your primary account where most scenarios will run."))
 	fmt.Println()
 
+	var prodProfile string
 	prodForm := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -106,28 +107,30 @@ func (w *Wizard) Run() (*Config, error) {
 				Options(profileOptions...).
 				Filtering(true).
 				Height(15).
-				Value(&cfg.ProdProfile),
+				Value(&prodProfile),
 		),
 	).WithTheme(huh.ThemeCatppuccin())
 
 	if err := prodForm.Run(); err != nil {
 		return nil, err
 	}
+	cfg.AWS.Prod.Profile = prodProfile
 
 	// Ask for prod region
-	prodRegion, err := askForRegion("prod", cfg.ProdProfile)
+	prodRegion, err := askForRegion("prod", prodProfile)
 	if err != nil {
 		return nil, err
 	}
-	cfg.ProdRegion = prodRegion
+	cfg.AWS.Prod.Region = prodRegion
 
 	// Configure dev account if needed
 	if numAccounts == "2" || numAccounts == "3" {
 		fmt.Println()
 		fmt.Println(accountHeaderStyle.Render(" 2. Development Account (dev) "))
-		fmt.Println(dimStyle.Render("   Used as the source account for dev→prod attack scenarios."))
+		fmt.Println(dimStyle.Render("   Used as the source account for dev->prod attack scenarios."))
 		fmt.Println()
 
+		var devProfile string
 		devForm := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
@@ -136,30 +139,31 @@ func (w *Wizard) Run() (*Config, error) {
 					Options(profileOptions...).
 					Filtering(true).
 					Height(15).
-					Value(&cfg.DevProfile),
+					Value(&devProfile),
 			),
 		).WithTheme(huh.ThemeCatppuccin())
 
 		if err := devForm.Run(); err != nil {
 			return nil, err
 		}
-		cfg.DevAccountID = "auto"
+		cfg.AWS.Dev.Profile = devProfile
 
 		// Ask for dev region
-		devRegion, err := askForRegion("dev", cfg.DevProfile)
+		devRegion, err := askForRegion("dev", devProfile)
 		if err != nil {
 			return nil, err
 		}
-		cfg.DevRegion = devRegion
+		cfg.AWS.Dev.Region = devRegion
 	}
 
 	// Configure ops account if needed
 	if numAccounts == "3" {
 		fmt.Println()
 		fmt.Println(accountHeaderStyle.Render(" 3. Operations Account (ops) "))
-		fmt.Println(dimStyle.Render("   Used as the source account for ops→prod attack scenarios."))
+		fmt.Println(dimStyle.Render("   Used as the source account for ops->prod attack scenarios."))
 		fmt.Println()
 
+		var opsProfile string
 		opsForm := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
@@ -168,24 +172,23 @@ func (w *Wizard) Run() (*Config, error) {
 					Options(profileOptions...).
 					Filtering(true).
 					Height(15).
-					Value(&cfg.OpsProfile),
+					Value(&opsProfile),
 			),
 		).WithTheme(huh.ThemeCatppuccin())
 
 		if err := opsForm.Run(); err != nil {
 			return nil, err
 		}
-		cfg.OpsAccountID = "auto"
+		cfg.AWS.Ops.Profile = opsProfile
 
 		// Ask for ops region
-		opsRegion, err := askForRegion("ops", cfg.OpsProfile)
+		opsRegion, err := askForRegion("ops", opsProfile)
 		if err != nil {
 			return nil, err
 		}
-		cfg.OpsRegion = opsRegion
+		cfg.AWS.Ops.Region = opsRegion
 	}
 
-	cfg.ProdAccountID = "auto"
 	cfg.Initialized = true
 
 	// Summary
@@ -194,20 +197,20 @@ func (w *Wizard) Run() (*Config, error) {
 		Bold(true).
 		Foreground(lipgloss.Color("86"))
 	fmt.Println(summaryStyle.Render("Configuration Summary"))
-	fmt.Println(strings.Repeat("─", 50))
+	fmt.Println(strings.Repeat("-", 50))
 
 	labelStyle := lipgloss.NewStyle().Width(25).Foreground(lipgloss.Color("241"))
 	valueStyle := lipgloss.NewStyle().Bold(true)
 
-	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(cfg.ProdProfile))
-	fmt.Printf("%s %s\n", labelStyle.Render("Prod region:"), valueStyle.Render(cfg.ProdRegion))
-	if cfg.DevProfile != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(cfg.DevProfile))
-		fmt.Printf("%s %s\n", labelStyle.Render("Dev region:"), valueStyle.Render(cfg.DevRegion))
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(cfg.AWS.Prod.Profile))
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod region:"), valueStyle.Render(cfg.AWS.Prod.Region))
+	if cfg.AWS.Dev.Profile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(cfg.AWS.Dev.Profile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev region:"), valueStyle.Render(cfg.AWS.Dev.Region))
 	}
-	if cfg.OpsProfile != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.OpsProfile))
-		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.OpsRegion))
+	if cfg.AWS.Ops.Profile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.AWS.Ops.Profile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.AWS.Ops.Region))
 	}
 
 	// Mode description
@@ -216,7 +219,7 @@ func (w *Wizard) Run() (*Config, error) {
 	case "1":
 		fmt.Println(dimStyle.Render("Mode: Single-account (cross-account scenarios unavailable)"))
 	case "2":
-		fmt.Println(dimStyle.Render("Mode: 2 accounts (dev→prod cross-account scenarios available)"))
+		fmt.Println(dimStyle.Render("Mode: 2 accounts (dev->prod cross-account scenarios available)"))
 	case "3":
 		fmt.Println(dimStyle.Render("Mode: 3 accounts (all cross-account scenarios available)"))
 	}
@@ -265,10 +268,10 @@ func (w *Wizard) RunForEnvironment(envName string, currentProfile string) (strin
 		envDesc = "This is your primary account where most scenarios will run."
 	case "dev":
 		envTitle = " Development Account (dev) "
-		envDesc = "Used as the source account for dev→prod attack scenarios."
+		envDesc = "Used as the source account for dev->prod attack scenarios."
 	case "ops":
 		envTitle = " Operations Account (ops) "
-		envDesc = "Used as the source account for ops→prod attack scenarios."
+		envDesc = "Used as the source account for ops->prod attack scenarios."
 	default:
 		return "", fmt.Errorf("unknown environment: %s", envName)
 	}
@@ -314,7 +317,7 @@ var awsRegions = []string{
 	"ap-southeast-1", // Singapore
 	"ap-southeast-2", // Sydney
 	"ap-south-1",     // Mumbai
-	"sa-east-1",      // São Paulo
+	"sa-east-1",      // Sao Paulo
 	"ca-central-1",   // Canada
 }
 

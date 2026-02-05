@@ -21,14 +21,13 @@ type KeyMap struct {
 	ShiftTab key.Binding
 
 	// Actions
-	Toggle           key.Binding
-	Deploy           key.Binding
-	Plan             key.Binding
-	RunDemo          key.Binding
-	Cleanup          key.Binding
-	DestroyScenarios key.Binding
-	DestroyAll       key.Binding
-	Config           key.Binding
+	Toggle  key.Binding
+	Deploy  key.Binding
+	Plan    key.Binding
+	RunDemo key.Binding
+	Cleanup key.Binding
+	Destroy key.Binding
+	Config  key.Binding
 
 	// Filter
 	Filter          key.Binding
@@ -112,13 +111,9 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys("c"),
 			key.WithHelp("c", "cleanup"),
 		),
-		DestroyScenarios: key.NewBinding(
+		Destroy: key.NewBinding(
 			key.WithKeys("D"),
-			key.WithHelp("D", "destroy scenarios"),
-		),
-		DestroyAll: key.NewBinding(
-			key.WithKeys("ctrl+D"),
-			key.WithHelp("ctrl+D", "destroy all"),
+			key.WithHelp("D", "destroy"),
 		),
 		Config: key.NewBinding(
 			key.WithKeys("s"),
@@ -174,7 +169,7 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Tab, k.Toggle},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup},
-		{k.DestroyScenarios, k.DestroyAll, k.Config},
+		{k.Destroy, k.Config},
 		{k.Filter, k.Help, k.Quit},
 	}
 }

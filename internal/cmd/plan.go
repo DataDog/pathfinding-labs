@@ -6,6 +6,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -25,14 +26,23 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
+	cfg, _ := config.Load()
+
 	cyan := color.New(color.FgCyan).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
 
 	fmt.Println()
 	fmt.Println(cyan("Planning Pathfinding Labs deployment..."))
+
+	// Show mode indicator only in dev mode
+	if cfg != nil && cfg.DevMode {
+		fmt.Println()
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+	}
 	fmt.Println()
 
-	// Create runner
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	// Create runner with the correct terraform directory
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 
 	// Ensure terraform is initialized
 	if !runner.IsInitialized() {

@@ -43,7 +43,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := paths.EnsureDirectories(); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
-	fmt.Println(green("      ✓ Directories created"))
+	fmt.Println(green("      Directories created"))
 
 	// Step 2: Check for git
 	fmt.Println("[2/5] Checking for git...")
@@ -53,7 +53,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 			"  Ubuntu/Debian: sudo apt-get install git\n" +
 			"  RHEL/CentOS: sudo yum install git")
 	}
-	fmt.Println(green("      ✓ Git is available"))
+	fmt.Println(green("      Git is available"))
 
 	// Step 3: Check for/download terraform
 	fmt.Println("[3/5] Checking for terraform...")
@@ -62,7 +62,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to ensure terraform is installed: %w", err)
 	}
-	fmt.Printf(green("      ✓ Terraform available at %s\n"), tfPath)
+	fmt.Printf(green("      Terraform available at %s\n"), tfPath)
 
 	// Step 4: Clone repository if not exists
 	fmt.Println("[4/5] Setting up pathfinding-labs repository...")
@@ -81,7 +81,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if err := repo.Clone(paths.RepoPath); err != nil {
 			return fmt.Errorf("failed to clone repository: %w", err)
 		}
-		fmt.Println(green("      ✓ Repository cloned"))
+		fmt.Println(green("      Repository cloned"))
 	}
 
 	// Step 5: Run setup wizard
@@ -93,32 +93,29 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}
 
-	// Save CLI config
-	cfg.WorkingDirectory = paths.RepoPath
-	cfg.DevMode = isDevMode()
-	if err := cfg.Save(paths.ConfigPath); err != nil {
+	// Save config to ~/.plabs/plabs.yaml (single source of truth)
+	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Create terraform.tfvars
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	if err := tfvars.InitFromConfig(cfg); err != nil {
+	// Generate terraform.tfvars from config
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to create terraform.tfvars: %w", err)
 	}
-	fmt.Println(green("      ✓ Configuration saved"))
+	fmt.Println(green("      Configuration saved"))
 
 	// Run terraform init
 	fmt.Println()
 	fmt.Println("Running terraform init...")
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 	if err := runner.Init(); err != nil {
 		return fmt.Errorf("terraform init failed: %w", err)
 	}
 
 	fmt.Println()
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println(green("  Pathfinding Labs initialization complete!"))
-	fmt.Println(green("════════════════════════════════════════════════════════════"))
+	fmt.Println(green("========================================================"))
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Println()
@@ -152,7 +149,7 @@ func init() {
 			return nil
 		}
 
-		// Allow running in dev mode (from within a pathfinding-labs repo)
+		// Allow running in dev mode (using local repository)
 		if isDevMode() {
 			return nil
 		}

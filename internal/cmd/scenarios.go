@@ -87,8 +87,8 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load config to check if single-account mode
-	cfg, _ := config.Load(paths.ConfigPath)
-	singleAccountMode := cfg == nil || cfg.IsSingleAccountMode()
+	cfg, _ := config.Load()
+	singleAccountMode := cfg == nil || !cfg.IsMultiAccountMode()
 
 	// Discover all scenarios
 	discovery := scenarios.NewDiscovery(paths.ScenariosPath())

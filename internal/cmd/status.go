@@ -43,23 +43,22 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	dim := color.New(color.Faint).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 
-	// Load config to show environment status
-	cfg, _ := config.Load(paths.ConfigPath)
+	// Load config (single source of truth)
+	cfg, _ := config.Load()
 
 	fmt.Println()
 	fmt.Println(bold("Environment Status"))
 	fmt.Println()
 
-	// Show dev mode warning and paths
-	if isDevMode() {
-		fmt.Printf("  %s %s\n", yellow("⚠"), yellow("DEV MODE - Using local repository"))
-		fmt.Printf("  %s %s\n", dim("Repository:"), paths.RepoPath)
-		fmt.Printf("  %s %s\n", dim("TFVars:"), paths.TFVarsPath)
+	// Show dev mode warning and paths only when in dev mode
+	if cfg != nil && cfg.DevMode {
+		fmt.Printf("  %s %s\n", yellow("!"), yellow("DEV MODE - Using local repository"))
+		fmt.Printf("  %s %s\n", dim("Repository:"), cfg.DevModePath)
 		fmt.Println()
 	}
 
 	// Get terraform outputs and state to check deployment status
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 	var outputs terraform.Outputs
 	var deployedModules map[string]bool
 
@@ -73,9 +72,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show environment configuration and deployment status
-	printEnvStatus := func(name, accountID, profile string) {
-		if accountID == "" {
-			fmt.Printf("  %s %-12s %s\n", dim("○"), name+":", dim("not configured"))
+	printEnvStatus := func(name, profile string) {
+		if profile == "" {
+			fmt.Printf("  %s %-12s %s\n", dim("o"), name+":", dim("not configured"))
 			return
 		}
 
@@ -86,16 +85,16 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			(outputs != nil && outputs.Exists(name+"_admin_user_for_cleanup_access_key_id"))
 
 		if isDeployed {
-			fmt.Printf("  %s %-12s %s (profile: %s) %s\n", green("●"), name+":", accountID, profile, green("deployed"))
+			fmt.Printf("  %s %-12s %s %s\n", green("*"), name+":", profile, green("deployed"))
 		} else {
-			fmt.Printf("  %s %-12s %s (profile: %s) %s\n", yellow("●"), name+":", accountID, profile, yellow("not deployed"))
+			fmt.Printf("  %s %-12s %s %s\n", yellow("*"), name+":", profile, yellow("not deployed"))
 		}
 	}
 
 	if cfg != nil {
-		printEnvStatus("prod", cfg.ProdAccountID, cfg.ProdProfile)
-		printEnvStatus("dev", cfg.DevAccountID, cfg.DevProfile)
-		printEnvStatus("ops", cfg.OpsAccountID, cfg.OpsProfile)
+		printEnvStatus("prod", cfg.AWS.Prod.Profile)
+		printEnvStatus("dev", cfg.AWS.Dev.Profile)
+		printEnvStatus("ops", cfg.AWS.Ops.Profile)
 	} else {
 		fmt.Printf("  %s\n", dim("No configuration found. Run 'plabs init' to configure."))
 	}
@@ -109,7 +108,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	fmt.Println(dim("─────────────────────────────────────────────────────────────"))
+	fmt.Println(dim("---------------------------------------------------------"))
 
 	// Discover scenarios
 	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
@@ -118,11 +117,10 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to discover scenarios: %w", err)
 	}
 
-	// Get enabled status
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledVars, err := tfvars.GetEnabledScenarios()
-	if err != nil {
-		enabledVars = make(map[string]bool)
+	// Get enabled status from config (single source of truth)
+	enabledVars := make(map[string]bool)
+	if cfg != nil {
+		enabledVars = cfg.GetEnabledScenarioVars()
 	}
 
 	fmt.Println()
@@ -143,7 +141,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// Show enabled scenarios
 	if len(enabled) > 0 {
-		fmt.Printf("%s Enabled Scenarios (%d)\n", cyan("───"), len(enabled))
+		fmt.Printf("%s Enabled Scenarios (%d)\n", cyan("---"), len(enabled))
 		fmt.Println()
 
 		for _, s := range enabled {
@@ -152,13 +150,13 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			// Status indicator
 			var status string
 			if deployed {
-				status = green("✓ deployed")
+				status = green("deployed")
 			} else {
-				status = yellow("○ pending")
+				status = yellow("pending")
 			}
 
 			// Build line - use UniqueID for clarity
-			line := fmt.Sprintf("  %s %-20s %s", green("●"), s.UniqueID(), status)
+			line := fmt.Sprintf("  %s %-20s %s", green("*"), s.UniqueID(), status)
 
 			if showCost && s.CostEstimate != "" {
 				line += fmt.Sprintf(" [%s]", s.CostEstimate)
@@ -186,7 +184,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println(dim("─────────────────────────────────────────────────────────────"))
+	fmt.Println(dim("---------------------------------------------------------"))
 	fmt.Printf("Total: %d enabled | %s deployed | %s pending\n",
 		len(enabled),
 		green(fmt.Sprintf("%d", deployedCount)),

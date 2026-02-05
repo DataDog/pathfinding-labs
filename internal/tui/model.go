@@ -31,14 +31,14 @@ const (
 // Model is the main Bubble Tea model for the TUI
 type Model struct {
 	// Core data
-	paths            *repo.Paths
-	config           *config.Config
-	tfvars           *terraform.TFVars
-	tfRunner         *terraform.Runner
-	discovery        *scenarios.Discovery
-	allScenarios     []*scenarios.Scenario
-	cachedOutputs    terraform.Outputs      // Cached terraform outputs for credentials
-	cachedResources  map[string][]string    // Cached module name -> ARNs
+	paths           *repo.Paths
+	config          *config.Config
+	tfvars          *terraform.TFVars
+	tfRunner        *terraform.Runner
+	discovery       *scenarios.Discovery
+	allScenarios    []*scenarios.Scenario
+	cachedOutputs   terraform.Outputs   // Cached terraform outputs for credentials
+	cachedResources map[string][]string // Cached module name -> ARNs
 
 	// UI components
 	styles        *Styles
@@ -60,15 +60,16 @@ type Model struct {
 	loading     bool // true while loading scenarios
 	err         error
 
-	// Confirmation state for destroy operations
-	confirmingDestroy   bool
+	// Destroy operation state
+	choosingDestroyType bool   // true when showing destroy type choice
+	confirmingDestroy   bool   // true when waiting for "destroy" confirmation
 	destroyType         string // "scenarios" or "all"
 	confirmInput        textinput.Model
 
 	// Running command (for cancellation and streaming)
-	runningCmd    *exec.Cmd
-	cmdScanner    *bufio.Scanner
-	cmdWaitDone   chan error
+	runningCmd  *exec.Cmd
+	cmdScanner  *bufio.Scanner
+	cmdWaitDone chan error
 }
 
 // Message types for async operations
@@ -139,15 +140,14 @@ func (m *Model) Init() tea.Cmd {
 
 // loadScenarios loads scenarios from the filesystem
 func (m *Model) loadScenarios() tea.Msg {
-	// Load config (we don't need to use it here, config is loaded in the Update handler)
-	_, err := config.Load(m.paths.ConfigPath)
+	// Load config from canonical location
+	cfg, err := config.Load()
 	if err != nil {
 		return errMsg{err}
 	}
 
 	// Create terraform components
-	tfvars := terraform.NewTFVars(m.paths.TFVarsPath)
-	runner := terraform.NewRunner(m.paths.BinPath, m.paths.RepoPath)
+	runner := terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir)
 
 	// Discover scenarios
 	discovery := scenarios.NewDiscovery(m.paths.ScenariosPath())
@@ -156,11 +156,8 @@ func (m *Model) loadScenarios() tea.Msg {
 		return errMsg{err}
 	}
 
-	// Get enabled status
-	enabled, err := tfvars.GetEnabledScenarios()
-	if err != nil {
-		enabled = make(map[string]bool)
-	}
+	// Get enabled status from config (single source of truth)
+	enabled := cfg.GetEnabledScenarioVars()
 
 	// Get deployed status
 	deployed := make(map[string]bool)
@@ -231,10 +228,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case scenariosLoadedMsg:
-		cfg, _ := config.Load(m.paths.ConfigPath)
+		cfg, _ := config.Load()
 		m.config = cfg
 		m.tfvars = terraform.NewTFVars(m.paths.TFVarsPath)
-		m.tfRunner = terraform.NewRunner(m.paths.BinPath, m.paths.RepoPath)
+		m.tfRunner = terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir)
 		m.discovery = scenarios.NewDiscovery(m.paths.ScenariosPath())
 		m.allScenarios = msg.scenarios
 
@@ -394,6 +391,49 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle destroy type choice
+	if m.choosingDestroyType {
+		switch msg.String() {
+		case "s", "S", "1":
+			// Validate scenarios exist
+			if len(m.config.Scenarios.Enabled) == 0 {
+				m.choosingDestroyType = false
+				m.overlay.Show(OverlayError, "Destroy Scenarios", "No scenarios are currently enabled.")
+				return m, nil
+			}
+			m.choosingDestroyType = false
+			m.destroyType = "scenarios"
+			m.confirmingDestroy = true
+			m.confirmInput.SetValue("")
+			m.confirmInput.Focus()
+			return m, textinput.Blink
+		case "a", "A", "2":
+			// Validate resources exist
+			if m.tfRunner == nil || !m.tfRunner.IsInitialized() {
+				m.choosingDestroyType = false
+				m.overlay.Show(OverlayError, "Destroy All", "Terraform is not initialized. Nothing to destroy.")
+				return m, nil
+			}
+			resources, err := m.tfRunner.StateList()
+			if err != nil || len(resources) == 0 {
+				m.choosingDestroyType = false
+				m.overlay.Show(OverlayError, "Destroy All", "No resources found. Nothing to destroy.")
+				return m, nil
+			}
+			m.choosingDestroyType = false
+			m.destroyType = "all"
+			m.confirmingDestroy = true
+			m.confirmInput.SetValue("")
+			m.confirmInput.Focus()
+			return m, textinput.Blink
+		case "esc", "q":
+			m.choosingDestroyType = false
+			return m, nil
+		}
+		// Ignore other keys while choosing
+		return m, nil
+	}
+
 	// Handle destroy confirmation mode
 	if m.confirmingDestroy {
 		switch {
@@ -491,11 +531,8 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Cleanup):
 		return m, m.runCleanup()
 
-	case key.Matches(msg, m.keys.DestroyScenarios):
-		return m, m.showDestroyConfirmation("scenarios")
-
-	case key.Matches(msg, m.keys.DestroyAll):
-		return m, m.showDestroyConfirmation("all")
+	case key.Matches(msg, m.keys.Destroy):
+		return m, m.showDestroyTypeChoice()
 
 	case key.Matches(msg, m.keys.Config):
 		m.showConfig()
@@ -565,21 +602,16 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // toggleEnvironment toggles the enabled state of the selected environment
+// Note: Environment toggling is not supported via config - environments are
+// enabled/disabled based on whether a profile is configured.
 func (m *Model) toggleEnvironment() tea.Cmd {
-	envName, enabled := m.environment.Toggle()
-	if envName == "" || m.tfvars == nil {
-		return nil
-	}
-
-	// Update tfvars
-	err := m.tfvars.SetEnvironmentEnabled(envName, enabled)
-	if err != nil {
-		m.err = err
-	}
-
-	// Update actions pane
-	m.updateEnvironmentActions()
-
+	// Environment toggling through tfvars is deprecated.
+	// Environments are now enabled based on profile configuration.
+	// Show a message explaining this.
+	m.overlay.Show(OverlayError, "Environment Toggle",
+		"Environment enable/disable is now managed through profile configuration.\n\n"+
+			"Use 'plabs config set <env>-profile <profile>' to configure an environment,\n"+
+			"or press 's' to open settings and change profiles.")
 	return nil
 }
 
@@ -615,7 +647,6 @@ func (m *Model) updatePaneFocus() {
 		}
 	}
 }
-
 
 func (m *Model) updateDetails() {
 	selected := m.scenariosPane.Selected()
@@ -656,7 +687,7 @@ func (m *Model) updateDetailsForSelected() {
 
 func (m *Model) toggleSelected() tea.Cmd {
 	scenario := m.scenariosPane.Toggle()
-	if scenario == nil || m.tfvars == nil {
+	if scenario == nil || m.config == nil {
 		return nil
 	}
 
@@ -666,9 +697,20 @@ func (m *Model) toggleSelected() tea.Cmd {
 		return nil
 	}
 
-	// Update tfvars
-	err := m.tfvars.SetScenarioEnabled(scenario.Terraform.VariableName, selected.Enabled)
-	if err != nil {
+	// Update config (single source of truth)
+	if selected.Enabled {
+		m.config.EnableScenario(scenario.Terraform.VariableName)
+	} else {
+		m.config.DisableScenario(scenario.Terraform.VariableName)
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 	}
 
@@ -677,13 +719,13 @@ func (m *Model) toggleSelected() tea.Cmd {
 
 func (m *Model) runDeploy() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Deploy")
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.RepoPath))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
 
 func (m *Model) runPlan() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.RepoPath))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
 
@@ -725,47 +767,37 @@ func (m *Model) runCleanup() tea.Cmd {
 	return m.runCommandStreaming(cmd)
 }
 
-func (m *Model) showDestroyConfirmation(destroyType string) tea.Cmd {
-	// Validate there's something to destroy
-	if destroyType == "scenarios" {
-		enabledCount := 0
-		for _, s := range m.allScenarios {
-			enabled, _ := m.tfvars.GetEnabledScenarios()
-			if enabled[s.Terraform.VariableName] {
-				enabledCount++
-			}
-		}
-		if enabledCount == 0 {
-			m.overlay.Show(OverlayError, "Destroy Scenarios", "No scenarios are currently enabled.")
-			return nil
-		}
-	} else if destroyType == "all" {
-		if m.tfRunner == nil || !m.tfRunner.IsInitialized() {
-			m.overlay.Show(OverlayError, "Destroy All", "Terraform is not initialized. Nothing to destroy.")
-			return nil
-		}
+func (m *Model) showDestroyTypeChoice() tea.Cmd {
+	// Check if there's anything to destroy
+	hasEnabledScenarios := len(m.config.Scenarios.Enabled) > 0
+	hasDeployedResources := false
+	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		resources, err := m.tfRunner.StateList()
-		if err != nil || len(resources) == 0 {
-			m.overlay.Show(OverlayError, "Destroy All", "No resources found. Nothing to destroy.")
-			return nil
-		}
+		hasDeployedResources = err == nil && len(resources) > 0
 	}
 
-	// Show confirmation prompt
-	m.confirmingDestroy = true
-	m.destroyType = destroyType
-	m.confirmInput.SetValue("")
-	m.confirmInput.Focus()
-	return textinput.Blink
+	if !hasEnabledScenarios && !hasDeployedResources {
+		m.overlay.Show(OverlayError, "Destroy", "Nothing to destroy. No scenarios enabled and no resources deployed.")
+		return nil
+	}
+
+	m.choosingDestroyType = true
+	return nil
 }
 
+
 func (m *Model) executeDestroyScenarios() tea.Cmd {
-	// Disable all enabled scenarios first
-	for _, s := range m.allScenarios {
-		enabled, _ := m.tfvars.GetEnabledScenarios()
-		if enabled[s.Terraform.VariableName] {
-			m.tfvars.SetScenarioEnabled(s.Terraform.VariableName, false)
-		}
+	// Disable all enabled scenarios in config
+	m.config.Scenarios.Enabled = nil
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
 	}
 
 	// Refresh the scenarios pane to show disabled state
@@ -776,13 +808,13 @@ func (m *Model) executeDestroyScenarios() tea.Cmd {
 	m.scenariosPane.SetScenarios(items)
 
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy Scenarios")
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform apply -auto-approve", m.paths.RepoPath))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform apply -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
 
 func (m *Model) executeDestroyAll() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy All")
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform destroy -auto-approve", m.paths.RepoPath))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform destroy -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
 
@@ -804,24 +836,24 @@ func (m *Model) renderSettingsMenu() string {
 	opsDeployed := deployed["ops_environment"]
 
 	sb.WriteString("AWS Profiles\n")
-	sb.WriteString("────────────────────────────────────────\n\n")
+	sb.WriteString("----------------------------------------\n\n")
 
 	// Prod
-	sb.WriteString(fmt.Sprintf("  [1] prod:  %s", m.valueOrNotSet(m.config.ProdProfile)))
+	sb.WriteString(fmt.Sprintf("  [1] prod:  %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
 	sb.WriteString(m.envStatusSuffix(prodEnabled, prodDeployed))
 	sb.WriteString("\n")
 
 	// Dev
-	sb.WriteString(fmt.Sprintf("  [2] dev:   %s", m.valueOrNotSet(m.config.DevProfile)))
+	sb.WriteString(fmt.Sprintf("  [2] dev:   %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
 	sb.WriteString(m.envStatusSuffix(devEnabled, devDeployed))
 	sb.WriteString("\n")
 
 	// Ops
-	sb.WriteString(fmt.Sprintf("  [3] ops:   %s", m.valueOrNotSet(m.config.OpsProfile)))
+	sb.WriteString(fmt.Sprintf("  [3] ops:   %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
 	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
 	sb.WriteString("\n")
 
-	sb.WriteString("\n────────────────────────────────────────\n")
+	sb.WriteString("\n----------------------------------------\n")
 	sb.WriteString("Press 1/2/3 to change a profile\n")
 	sb.WriteString("Press Esc to close\n")
 
@@ -884,7 +916,7 @@ func (w *wizardCmd) Run() error {
 	return nil
 }
 
-func (w *wizardCmd) SetStdin(r io.Reader)  {}
+func (w *wizardCmd) SetStdin(r io.Reader)   {}
 func (w *wizardCmd) SetStdout(wr io.Writer) {}
 func (w *wizardCmd) SetStderr(wr io.Writer) {}
 
@@ -894,11 +926,11 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 	var currentProfile string
 	switch envName {
 	case "prod":
-		currentProfile = m.config.ProdProfile
+		currentProfile = m.config.AWS.Prod.Profile
 	case "dev":
-		currentProfile = m.config.DevProfile
+		currentProfile = m.config.AWS.Dev.Profile
 	case "ops":
-		currentProfile = m.config.OpsProfile
+		currentProfile = m.config.AWS.Ops.Profile
 	}
 
 	resultChan := make(chan profileWizardMsg, 1)
@@ -935,13 +967,13 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 
 	switch envName {
 	case "prod":
-		currentProfile = m.config.ProdProfile
+		currentProfile = m.config.AWS.Prod.Profile
 		isEnabled = prodEnabled
 	case "dev":
-		currentProfile = m.config.DevProfile
+		currentProfile = m.config.AWS.Dev.Profile
 		isEnabled = devEnabled
 	case "ops":
-		currentProfile = m.config.OpsProfile
+		currentProfile = m.config.AWS.Ops.Profile
 		isEnabled = opsEnabled
 	}
 
@@ -967,24 +999,21 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	// All checks passed - update the config
 	switch envName {
 	case "prod":
-		m.config.ProdProfile = newProfile
-		m.config.ProdAccountID = newAccountID
+		m.config.AWS.Prod.Profile = newProfile
 	case "dev":
-		m.config.DevProfile = newProfile
-		m.config.DevAccountID = newAccountID
+		m.config.AWS.Dev.Profile = newProfile
 	case "ops":
-		m.config.OpsProfile = newProfile
-		m.config.OpsAccountID = newAccountID
+		m.config.AWS.Ops.Profile = newProfile
 	}
 
-	// Save config
-	if err := m.config.Save(m.paths.ConfigPath); err != nil {
+	// Save config (single source of truth)
+	if err := m.config.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %v", err)
 	}
 
-	// Update tfvars
-	if err := m.tfvars.SetProfile(envName, newProfile); err != nil {
-		return fmt.Errorf("failed to update tfvars: %v", err)
+	// Regenerate tfvars
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync tfvars: %v", err)
 	}
 
 	return nil
@@ -1165,6 +1194,11 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderFilterBar()
 	}
 
+	// Destroy type choice overlay
+	if m.choosingDestroyType {
+		return content + "\n" + m.renderDestroyTypeChoiceBar()
+	}
+
 	// Destroy confirmation overlay
 	if m.confirmingDestroy {
 		return content + "\n" + m.renderDestroyConfirmBar()
@@ -1179,8 +1213,8 @@ func (m *Model) renderStatusBar() string {
 
 	// Colors with status bar background
 	statusBg := lipgloss.Color("#1F2937")
-	enabledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Background(statusBg)  // Cyan
-	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg) // Green
+	enabledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Background(statusBg)   // Cyan
+	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg)  // Green
 	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Background(statusBg) // Gray
 	pendingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg)   // Warning yellow
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Background(statusBg)       // Light gray for keys
@@ -1189,12 +1223,12 @@ func (m *Model) renderStatusBar() string {
 	// Build left side - status counts
 	var leftParts []string
 	leftParts = append(leftParts, enabledStyle.Render(fmt.Sprintf("%d enabled", enabledCount)))
-	leftParts = append(leftParts, separatorStyle.Render(" · "))
+	leftParts = append(leftParts, separatorStyle.Render(" . "))
 	leftParts = append(leftParts, deployedStyle.Render(fmt.Sprintf("%d deployed", deployedCount)))
 
 	// Check if deploy is needed
 	if m.scenariosPane.HasPendingChanges() {
-		leftParts = append(leftParts, separatorStyle.Render(" · "))
+		leftParts = append(leftParts, separatorStyle.Render(" . "))
 		leftParts = append(leftParts, pendingStyle.Render("[d] to deploy changes"))
 	}
 
@@ -1228,6 +1262,21 @@ func (m *Model) renderFilterBar() string {
 	return m.styles.FilterPrompt.Render("/") + m.filterInput.View()
 }
 
+func (m *Model) renderDestroyTypeChoiceBar() string {
+	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	return warningStyle.Render("DESTROY ") +
+		promptStyle.Render("What to destroy? ") +
+		keyStyle.Render("[s]") +
+		dimStyle.Render("cenarios only  ") +
+		keyStyle.Render("[a]") +
+		dimStyle.Render("ll (scenarios + environments)  ") +
+		dimStyle.Render("(Esc to cancel)")
+}
+
 func (m *Model) renderDestroyConfirmBar() string {
 	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true)
 	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
@@ -1239,7 +1288,7 @@ func (m *Model) renderDestroyConfirmBar() string {
 		action = "DESTROY ALL RESOURCES"
 	}
 
-	return warningStyle.Render("⚠ "+action+" ⚠ ") +
+	return warningStyle.Render("! "+action+" ! ") +
 		promptStyle.Render("Type 'destroy' to confirm: ") +
 		m.confirmInput.View() +
 		promptStyle.Render(" (Esc to cancel)")

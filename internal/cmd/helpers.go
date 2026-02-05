@@ -13,49 +13,44 @@ import (
 )
 
 // getWorkingPaths returns the paths to use for the current operation.
-// By default, always uses ~/.plabs/pathfinding-labs.
-// If dev mode is explicitly enabled in config, uses the local repo directory.
+// Loads config from ~/.plabs/plabs.yaml and uses dev_mode settings to determine
+// which terraform directory to use.
 func getWorkingPaths() (*repo.Paths, error) {
-	paths, err := repo.GetPaths()
+	// Load config from the canonical location
+	cfg, err := config.Load()
 	if err != nil {
-		return nil, err
+		// Config might not exist yet, return default paths
+		return repo.GetPaths()
 	}
 
-	// Check if dev mode is explicitly enabled in config
-	cfg, _ := config.Load(paths.ConfigPath)
-	if cfg != nil && cfg.DevMode && cfg.WorkingDirectory != "" {
-		// Verify the dev mode directory still exists and is valid
-		scenariosPath := filepath.Join(cfg.WorkingDirectory, "modules", "scenarios")
-		if _, err := os.Stat(scenariosPath); err == nil {
-			// Use the configured dev mode directory
-			return &repo.Paths{
-				Home:       paths.Home,
-				PlabsRoot:  paths.PlabsRoot,
-				RepoPath:   cfg.WorkingDirectory,
-				BinPath:    paths.BinPath,
-				ConfigPath: paths.ConfigPath,
-				TFVarsPath: filepath.Join(cfg.WorkingDirectory, "terraform.tfvars"),
-			}, nil
-		}
-	}
-
-	// Default: use ~/.plabs/pathfinding-labs
-	return paths, nil
+	// Get paths with mode awareness
+	return repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
 }
 
-// isDevMode returns true if dev mode is explicitly enabled in config
-func isDevMode() bool {
-	paths, err := repo.GetPaths()
-	if err != nil {
-		return false
-	}
+// getConfig loads the configuration from the canonical location
+func getConfig() (*config.Config, error) {
+	return config.Load()
+}
 
-	cfg, err := config.Load(paths.ConfigPath)
+// isDevMode returns true if dev mode is enabled in config
+func isDevMode() bool {
+	cfg, err := config.Load()
 	if err != nil || cfg == nil {
 		return false
 	}
-
 	return cfg.DevMode
+}
+
+// getDevModePath returns the dev mode path if enabled, empty string otherwise
+func getDevModePath() string {
+	cfg, err := config.Load()
+	if err != nil || cfg == nil {
+		return ""
+	}
+	if cfg.DevMode {
+		return cfg.DevModePath
+	}
+	return ""
 }
 
 // containsGlobPattern checks if any of the args contain glob characters
@@ -131,4 +126,19 @@ func confirmAction(prompt string) bool {
 	}
 	response = strings.TrimSpace(strings.ToLower(response))
 	return response == "y" || response == "yes"
+}
+
+// syncTFVars regenerates terraform.tfvars from the config
+func syncTFVars() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	paths, err := getWorkingPaths()
+	if err != nil {
+		return fmt.Errorf("failed to get paths: %w", err)
+	}
+
+	return cfg.SyncTFVars(paths.TerraformDir)
 }

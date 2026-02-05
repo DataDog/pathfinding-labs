@@ -11,7 +11,6 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
-	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
 var configCmd = &cobra.Command{
@@ -32,80 +31,74 @@ var configSetCmd = &cobra.Command{
 	Long: `Set a configuration value.
 
 Available keys:
-  prod-account     Production AWS account ID
   prod-profile     Production AWS CLI profile
-  dev-account      Development AWS account ID
+  prod-region      Production AWS region
   dev-profile      Development AWS CLI profile
-  ops-account      Operations AWS account ID
-  ops-profile      Operations AWS CLI profile`,
+  dev-region       Development AWS region
+  ops-profile      Operations AWS CLI profile
+  ops-region       Operations AWS region
+  dev-mode         Enable/disable development mode (true/false)`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
+}
+
+var configSyncCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Sync terraform.tfvars from config",
+	Long:  `Regenerate terraform.tfvars from the current plabs configuration. Use this if terraform.tfvars gets out of sync.`,
+	RunE:  runConfigSync,
 }
 
 func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configSyncCmd)
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
-	paths, err := repo.GetPaths()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	paths, err := getWorkingPaths()
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
 	cyan := color.New(color.FgCyan).SprintFunc()
 	dim := color.New(color.Faint).SprintFunc()
-
-	// Load CLI config
-	cfg, err := config.Load(paths.ConfigPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	// Also load from tfvars for account info
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	tfCfg, _ := tfvars.GetAccountConfig()
-
-	// Merge - prefer tfvars for account info
-	if tfCfg.ProdAccountID != "" {
-		cfg.ProdAccountID = tfCfg.ProdAccountID
-	}
-	if tfCfg.ProdProfile != "" {
-		cfg.ProdProfile = tfCfg.ProdProfile
-	}
-	if tfCfg.DevAccountID != "" {
-		cfg.DevAccountID = tfCfg.DevAccountID
-	}
-	if tfCfg.DevProfile != "" {
-		cfg.DevProfile = tfCfg.DevProfile
-	}
-	if tfCfg.OpsAccountID != "" {
-		cfg.OpsAccountID = tfCfg.OpsAccountID
-	}
-	if tfCfg.OpsProfile != "" {
-		cfg.OpsProfile = tfCfg.OpsProfile
-	}
+	green := color.New(color.FgGreen).SprintFunc()
 
 	fmt.Println()
 	fmt.Println(cyan("Current Configuration"))
 	fmt.Println()
 
 	fmt.Println("AWS Accounts:")
-	fmt.Printf("  prod-account:  %s\n", valueOrNotSet(cfg.ProdAccountID))
-	fmt.Printf("  prod-profile:  %s\n", valueOrNotSet(cfg.ProdProfile))
-	fmt.Printf("  dev-account:   %s\n", valueOrNotSet(cfg.DevAccountID))
-	fmt.Printf("  dev-profile:   %s\n", valueOrNotSet(cfg.DevProfile))
-	fmt.Printf("  ops-account:   %s\n", valueOrNotSet(cfg.OpsAccountID))
-	fmt.Printf("  ops-profile:   %s\n", valueOrNotSet(cfg.OpsProfile))
+	fmt.Printf("  prod-profile:  %s\n", valueOrNotSet(cfg.AWS.Prod.Profile))
+	fmt.Printf("  prod-region:   %s\n", valueOrNotSet(cfg.AWS.Prod.Region))
+	fmt.Printf("  dev-profile:   %s\n", valueOrNotSet(cfg.AWS.Dev.Profile))
+	fmt.Printf("  dev-region:    %s\n", valueOrNotSet(cfg.AWS.Dev.Region))
+	fmt.Printf("  ops-profile:   %s\n", valueOrNotSet(cfg.AWS.Ops.Profile))
+	fmt.Printf("  ops-region:    %s\n", valueOrNotSet(cfg.AWS.Ops.Region))
+	fmt.Println()
+
+	fmt.Println("Mode:")
+	if cfg.DevMode {
+		fmt.Printf("  dev-mode:      %s\n", green("enabled"))
+		fmt.Printf("  dev-path:      %s\n", cfg.DevModePath)
+	} else {
+		fmt.Printf("  dev-mode:      %s\n", "disabled")
+	}
 	fmt.Println()
 
 	fmt.Println("Paths:")
-	fmt.Printf("  working-dir:   %s\n", valueOrNotSet(cfg.WorkingDirectory))
-	if cfg.DevMode {
-		fmt.Printf("  mode:          %s\n", "dev (using local repository)")
-	} else {
-		fmt.Printf("  mode:          %s\n", "normal")
-	}
+	fmt.Printf("  config:        %s\n", paths.ConfigPath)
+	fmt.Printf("  terraform-dir: %s\n", paths.TerraformDir)
+	fmt.Println()
+
+	// Show enabled scenarios count
+	fmt.Printf("Enabled scenarios: %d\n", len(cfg.Scenarios.Enabled))
 	fmt.Println()
 
 	fmt.Println(dim("Use 'plabs config set <key> <value>' to change settings"))
@@ -118,44 +111,28 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	key := strings.ToLower(args[0])
 	value := args[1]
 
-	paths, err := repo.GetPaths()
-	if err != nil {
-		return fmt.Errorf("failed to get paths: %w", err)
-	}
-
-	// Load existing configs
-	cfg, err := config.Load(paths.ConfigPath)
+	cfg, err := config.Load()
 	if err != nil {
 		cfg = &config.Config{}
 	}
-
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	tfCfg, _ := tfvars.GetAccountConfig()
 
 	green := color.New(color.FgGreen).SprintFunc()
 
 	// Update the appropriate value
 	switch key {
-	case "prod-account", "prod_account_id":
-		cfg.ProdAccountID = value
-		tfCfg.ProdAccountID = value
-	case "prod-profile", "prod_account_aws_profile":
-		cfg.ProdProfile = value
-		tfCfg.ProdProfile = value
-	case "dev-account", "dev_account_id":
-		cfg.DevAccountID = value
-		tfCfg.DevAccountID = value
-	case "dev-profile", "dev_account_aws_profile":
-		cfg.DevProfile = value
-		tfCfg.DevProfile = value
-	case "ops-account", "operations_account_id":
-		cfg.OpsAccountID = value
-		tfCfg.OpsAccountID = value
-	case "ops-profile", "operations_account_aws_profile":
-		cfg.OpsProfile = value
-		tfCfg.OpsProfile = value
+	case "prod-profile":
+		cfg.AWS.Prod.Profile = value
+	case "prod-region":
+		cfg.AWS.Prod.Region = value
+	case "dev-profile":
+		cfg.AWS.Dev.Profile = value
+	case "dev-region":
+		cfg.AWS.Dev.Region = value
+	case "ops-profile":
+		cfg.AWS.Ops.Profile = value
+	case "ops-region":
+		cfg.AWS.Ops.Region = value
 	case "dev-mode":
-		// Enable or disable dev mode
 		lowerVal := strings.ToLower(value)
 		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
 			// Find the local repo directory
@@ -170,7 +147,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 				scenariosPath := filepath.Join(dir, "modules", "scenarios")
 				if _, err := os.Stat(scenariosPath); err == nil {
 					cfg.DevMode = true
-					cfg.WorkingDirectory = dir
+					cfg.DevModePath = dir
 					found = true
 					break
 				}
@@ -185,27 +162,53 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 			}
 		} else if lowerVal == "false" || lowerVal == "0" || lowerVal == "no" {
 			cfg.DevMode = false
-			cfg.WorkingDirectory = paths.RepoPath // Reset to default ~/.plabs/pathfinding-labs
+			cfg.DevModePath = ""
 		} else {
 			return fmt.Errorf("invalid value for dev-mode: %s (use true/false)", value)
 		}
 	default:
-		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-account, prod-profile, dev-account, dev-profile, ops-account, ops-profile, dev-mode", key)
+		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, dev-mode", key)
 	}
 
-	// Save CLI config
-	if err := cfg.Save(paths.ConfigPath); err != nil {
+	// Save config (single source of truth)
+	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Update tfvars
-	if paths.TFVarsExists() {
-		if err := tfvars.InitFromConfig(tfCfg); err != nil {
-			return fmt.Errorf("failed to update terraform.tfvars: %w", err)
-		}
+	// Regenerate terraform.tfvars
+	paths, err := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
+	if err != nil {
+		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	fmt.Printf("%s Set %s = %s\n", green("✓"), key, value)
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
+	}
+
+	fmt.Printf("%s Set %s = %s\n", green("OK"), key, value)
+	if key == "dev-mode" && cfg.DevMode {
+		fmt.Printf("    Terraform will run in: %s\n", cfg.DevModePath)
+	}
+	return nil
+}
+
+func runConfigSync(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	paths, err := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
+	if err != nil {
+		return fmt.Errorf("failed to get paths: %w", err)
+	}
+
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
+	}
+
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Printf("%s Synced terraform.tfvars to %s\n", green("OK"), paths.TFVarsPath)
 	return nil
 }
 

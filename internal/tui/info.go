@@ -18,14 +18,15 @@ func infoHyperlink(url, text string) string {
 
 // InfoPane displays project information and status
 type InfoPane struct {
-	styles           *Styles
-	config           *config.Config
-	workingDirectory string
-	devMode          bool
-	tfInitialized    bool
-	totalScenarios   int
-	width            int
-	height           int
+	styles         *Styles
+	config         *config.Config
+	terraformDir   string
+	devMode        bool
+	devModePath    string
+	tfInitialized  bool
+	totalScenarios int
+	width          int
+	height         int
 }
 
 // NewInfoPane creates a new info pane
@@ -40,8 +41,13 @@ func (i *InfoPane) SetConfig(cfg *config.Config) {
 	i.config = cfg
 	if cfg != nil {
 		i.devMode = cfg.DevMode
-		i.workingDirectory = cfg.WorkingDirectory
+		i.devModePath = cfg.DevModePath
 	}
+}
+
+// SetTerraformDir sets the terraform directory path
+func (i *InfoPane) SetTerraformDir(dir string) {
+	i.terraformDir = dir
 }
 
 // SetTerraformInitialized sets whether terraform is initialized
@@ -70,9 +76,9 @@ func (i *InfoPane) View() string {
 	}
 
 	// Styled ASCII art title box
-	titleColor := lipgloss.Color("#06B6D4")    // Cyan
-	accentColor := lipgloss.Color("#8B5CF6")   // Purple
-	dimColor := lipgloss.Color("#6B7280")      // Gray
+	titleColor := lipgloss.Color("#06B6D4")  // Cyan
+	accentColor := lipgloss.Color("#8B5CF6") // Purple
+	dimColor := lipgloss.Color("#6B7280")    // Gray
 	boxStyle := lipgloss.NewStyle().Foreground(accentColor)
 	titleStyle := lipgloss.NewStyle().Foreground(titleColor).Bold(true)
 	dimStyle := lipgloss.NewStyle().Foreground(dimColor)
@@ -99,23 +105,24 @@ func (i *InfoPane) View() string {
 	centerInBox := func(text string, style lipgloss.Style) string {
 		padding := (boxWidth - len(text)) / 2
 		rightPad := boxWidth - padding - len(text)
-		return boxStyle.Render("║") + strings.Repeat(" ", padding) + style.Render(text) + strings.Repeat(" ", rightPad) + boxStyle.Render("║")
+		return boxStyle.Render("│") + strings.Repeat(" ", padding) + style.Render(text) + strings.Repeat(" ", rightPad) + boxStyle.Render("│")
 	}
 
-	topBorder := "╔" + strings.Repeat("═", boxWidth) + "╗"
-	bottomBorder := "╚" + strings.Repeat("═", boxWidth) + "╝"
+	topBorder := boxStyle.Render("╭" + strings.Repeat("─", boxWidth) + "╮")
+	bottomBorder := boxStyle.Render("╰" + strings.Repeat("─", boxWidth) + "╯")
 
-	// Center the box
+	// Build the complete box first
+	var boxLines []string
+	boxLines = append(boxLines, topBorder)
+	boxLines = append(boxLines, centerInBox(titleText, titleStyle))
+	boxLines = append(boxLines, centerInBox(versionText, dimStyle))
+	boxLines = append(boxLines, centerInBox(labsText, dimStyle))
+	boxLines = append(boxLines, bottomBorder)
+	box := strings.Join(boxLines, "\n")
+
+	// Center the entire box as one unit
 	centerStyle := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center)
-	sb.WriteString(centerStyle.Render(boxStyle.Render(topBorder)))
-	sb.WriteString("\n")
-	sb.WriteString(centerStyle.Render(centerInBox(titleText, titleStyle)))
-	sb.WriteString("\n")
-	sb.WriteString(centerStyle.Render(centerInBox(versionText, dimStyle)))
-	sb.WriteString("\n")
-	sb.WriteString(centerStyle.Render(centerInBox(labsText, dimStyle)))
-	sb.WriteString("\n")
-	sb.WriteString(centerStyle.Render(boxStyle.Render(bottomBorder)))
+	sb.WriteString(centerStyle.Render(box))
 	sb.WriteString("\n")
 
 	// Clickable URL centered
@@ -131,6 +138,14 @@ func (i *InfoPane) View() string {
 		sb.WriteString(i.styles.HelpKey.Render("Mode "))
 		sb.WriteString(i.styles.EnvConfigured.Render("dev"))
 		sb.WriteString("\n")
+		// Show dev mode path
+		if i.devModePath != "" {
+			sb.WriteString(i.styles.HelpKey.Render("Dev Path"))
+			sb.WriteString("\n")
+			wrapped := i.wordWrap(i.devModePath, contentWidth)
+			sb.WriteString(i.styles.ScenarioDisabled.Render(wrapped))
+			sb.WriteString("\n")
+		}
 	}
 
 	// Terraform status
@@ -141,14 +156,6 @@ func (i *InfoPane) View() string {
 		sb.WriteString(i.styles.ScenarioDisabled.Render("not initialized"))
 	}
 	sb.WriteString("\n")
-
-	// Working directory (wrapped to multiple lines)
-	if i.workingDirectory != "" {
-		sb.WriteString(i.styles.HelpKey.Render("Data Directory"))
-		sb.WriteString("\n")
-		wrapped := i.wordWrap(i.workingDirectory, contentWidth)
-		sb.WriteString(i.styles.ScenarioDisabled.Render(wrapped))
-	}
 
 	return i.wrapInPanel(sb.String())
 }

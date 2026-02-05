@@ -9,7 +9,6 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
-	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
 // Note: containsGlobPattern, matchByPatterns, matchesPattern, hasBothTargets, confirmAction
@@ -63,9 +62,13 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	// Load config to check if single-account mode
-	cfg, _ := config.Load(paths.ConfigPath)
-	singleAccountMode := cfg == nil || cfg.IsSingleAccountMode()
+	// Load config (single source of truth)
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	singleAccountMode := cfg.IsSingleAccountMode()
 
 	// Discover scenarios
 	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
@@ -87,6 +90,9 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	// Determine if we're doing bulk enable (--all, --category, --target, or glob patterns)
 	hasFilters := enableAll || enableCategory != "" || enableTarget != ""
 	hasGlobPatterns := containsGlobPattern(args)
+
+	// Get currently enabled scenarios for filtering
+	enabledVars := cfg.GetEnabledScenarioVars()
 
 	if hasFilters || hasGlobPatterns {
 		// Apply category/target filters first
@@ -150,33 +156,38 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Update tfvars
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-
-	var variables []string
+	// Update config with enabled scenarios
 	for _, s := range toEnable {
-		variables = append(variables, s.Terraform.VariableName)
+		cfg.EnableScenario(s.Terraform.VariableName)
 	}
 
-	if len(variables) > 0 {
-		if err := tfvars.SetMultipleScenariosEnabled(variables, true); err != nil {
-			return fmt.Errorf("failed to update terraform.tfvars: %w", err)
-		}
+	// Save config (single source of truth)
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Regenerate terraform.tfvars
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
 	// Print results
 	fmt.Println()
 
 	if len(toEnable) > 0 {
-		fmt.Printf("%s Enabled %d scenario(s):\n", green("✓"), len(toEnable))
+		fmt.Printf("%s Enabled %d scenario(s):\n", green("OK"), len(toEnable))
 		for _, s := range toEnable {
-			fmt.Printf("  %s %s - %s\n", green("●"), s.UniqueID(), truncate(s.Description, 50))
+			status := green("*")
+			if enabledVars[s.Terraform.VariableName] {
+				status = yellow("*") // Already was enabled
+			}
+			fmt.Printf("  %s %s - %s\n", status, s.UniqueID(), truncate(s.Description, 50))
 		}
 	}
 
 	if len(notFound) > 0 {
 		fmt.Println()
-		fmt.Printf("%s Could not find %d scenario(s):\n", red("✗"), len(notFound))
+		fmt.Printf("%s Could not find %d scenario(s):\n", red("X"), len(notFound))
 		for _, id := range notFound {
 			fmt.Printf("  %s\n", id)
 		}
@@ -188,11 +199,10 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		fmt.Printf("%s Skipped %d cross-account scenario(s) (single-account mode):\n", yellow("!"), len(skippedCrossAccount))
 		for _, s := range skippedCrossAccount {
-			fmt.Printf("  %s %s\n", yellow("○"), s.UniqueID())
+			fmt.Printf("  %s %s\n", yellow("o"), s.UniqueID())
 		}
 		fmt.Println()
 		fmt.Println("To enable cross-account scenarios, configure dev/ops accounts:")
-		fmt.Println("  plabs config set dev-account <account-id>")
 		fmt.Println("  plabs config set dev-profile <profile-name>")
 	}
 

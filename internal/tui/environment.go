@@ -115,31 +115,31 @@ func (e *EnvironmentPane) rebuildEnvironments() {
 	e.environments = append(e.environments, Environment{
 		Name:      "prod",
 		Label:     "Prod",
-		AccountID: getAccountID(e.derivedProdAccountID, e.config.ProdAccountID),
-		Profile:   e.config.ProdProfile,
+		AccountID: getAccountID(e.derivedProdAccountID, ""),
+		Profile:   e.config.AWS.Prod.Profile,
 		Enabled:   e.prodEnabled,
 		Deployed:  e.prodDeployed,
 	})
 
 	// Dev (if configured)
-	if e.config.DevAccountID != "" || e.config.DevProfile != "" {
+	if e.config.AWS.Dev.Profile != "" {
 		e.environments = append(e.environments, Environment{
 			Name:      "dev",
 			Label:     "Dev",
-			AccountID: getAccountID(e.derivedDevAccountID, e.config.DevAccountID),
-			Profile:   e.config.DevProfile,
+			AccountID: getAccountID(e.derivedDevAccountID, ""),
+			Profile:   e.config.AWS.Dev.Profile,
 			Enabled:   e.devEnabled,
 			Deployed:  e.devDeployed,
 		})
 	}
 
 	// Ops (if configured)
-	if e.config.OpsAccountID != "" || e.config.OpsProfile != "" {
+	if e.config.AWS.Ops.Profile != "" {
 		e.environments = append(e.environments, Environment{
 			Name:      "ops",
 			Label:     "Ops",
-			AccountID: getAccountID(e.derivedOpsAccountID, e.config.OpsAccountID),
-			Profile:   e.config.OpsProfile,
+			AccountID: getAccountID(e.derivedOpsAccountID, ""),
+			Profile:   e.config.AWS.Ops.Profile,
 			Enabled:   e.opsEnabled,
 			Deployed:  e.opsDeployed,
 		})
