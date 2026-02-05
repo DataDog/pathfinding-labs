@@ -66,6 +66,11 @@ type Model struct {
 	destroyType         string // "scenarios" or "all"
 	confirmInput        textinput.Model
 
+	// Enable operation state
+	choosingEnableType bool            // true when showing enable type choice
+	enteringPattern    bool            // true when entering a pattern
+	patternInput       textinput.Model // input for pattern entry
+
 	// Running command (for cancellation and streaming)
 	runningCmd  *exec.Cmd
 	cmdScanner  *bufio.Scanner
@@ -111,6 +116,11 @@ func NewModel(paths *repo.Paths) *Model {
 	ci.Placeholder = "Type 'destroy' to confirm"
 	ci.CharLimit = 10
 
+	// Pattern input for enable operations
+	pi := textinput.New()
+	pi.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
+	pi.CharLimit = 50
+
 	m := &Model{
 		paths:         paths,
 		styles:        styles,
@@ -123,6 +133,7 @@ func NewModel(paths *repo.Paths) *Model {
 		overlay:       NewOverlay(styles),
 		filterInput:   ti,
 		confirmInput:  ci,
+		patternInput:  pi,
 		currentPane:   PaneScenarios,
 		loading:       true,
 	}
@@ -464,6 +475,50 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle enable type choice
+	if m.choosingEnableType {
+		switch msg.String() {
+		case "a", "A", "1":
+			m.choosingEnableType = false
+			return m, m.executeEnableAll()
+		case "p", "P", "2":
+			m.choosingEnableType = false
+			m.enteringPattern = true
+			m.patternInput.SetValue("")
+			m.patternInput.Focus()
+			return m, textinput.Blink
+		case "esc", "q":
+			m.choosingEnableType = false
+			return m, nil
+		}
+		// Ignore other keys while choosing
+		return m, nil
+	}
+
+	// Handle enable pattern entry
+	if m.enteringPattern {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.enteringPattern = false
+			m.patternInput.Blur()
+			m.patternInput.SetValue("")
+			return m, nil
+		case msg.Type == tea.KeyEnter:
+			pattern := m.patternInput.Value()
+			m.enteringPattern = false
+			m.patternInput.Blur()
+			m.patternInput.SetValue("")
+			if pattern != "" {
+				return m, m.executeEnablePattern(pattern)
+			}
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.patternInput, cmd = m.patternInput.Update(msg)
+			return m, cmd
+		}
+	}
+
 	// Handle filter mode
 	if m.filtering {
 		switch {
@@ -533,6 +588,9 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Destroy):
 		return m, m.showDestroyTypeChoice()
+
+	case key.Matches(msg, m.keys.Enable):
+		return m, m.showEnableTypeChoice()
 
 	case key.Matches(msg, m.keys.Config):
 		m.showConfig()
@@ -816,6 +874,141 @@ func (m *Model) executeDestroyAll() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy All")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform destroy -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
+}
+
+func (m *Model) showEnableTypeChoice() tea.Cmd {
+	m.choosingEnableType = true
+	return nil
+}
+
+func (m *Model) executeEnableAll() tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Enable All", "Configuration not loaded.")
+		return nil
+	}
+
+	singleAccountMode := m.config.IsSingleAccountMode()
+	enabledCount := 0
+	skippedCrossAccount := 0
+
+	for _, s := range m.allScenarios {
+		// Skip cross-account scenarios in single-account mode
+		if singleAccountMode && s.RequiresMultiAccount() {
+			skippedCrossAccount++
+			continue
+		}
+		m.config.EnableScenario(s.Terraform.VariableName)
+		enabledCount++
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+
+	// Show result
+	msg := fmt.Sprintf("Enabled %d scenario(s).", enabledCount)
+	if skippedCrossAccount > 0 {
+		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
+	}
+	msg += "\n\nPress [d] to deploy."
+	m.overlay.Show(OverlayInfo, "Enable All", msg)
+	return nil
+}
+
+func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Enable Pattern", "Configuration not loaded.")
+		return nil
+	}
+
+	singleAccountMode := m.config.IsSingleAccountMode()
+	enabledCount := 0
+	skippedCrossAccount := 0
+	var enabledNames []string
+
+	for _, s := range m.allScenarios {
+		// Check if matches pattern (against UniqueID or base ID)
+		if !m.matchesPattern(s.UniqueID(), pattern) && !m.matchesPattern(s.ID(), pattern) {
+			continue
+		}
+
+		// Skip cross-account scenarios in single-account mode
+		if singleAccountMode && s.RequiresMultiAccount() {
+			skippedCrossAccount++
+			continue
+		}
+
+		m.config.EnableScenario(s.Terraform.VariableName)
+		enabledCount++
+		enabledNames = append(enabledNames, s.UniqueID())
+	}
+
+	if enabledCount == 0 && skippedCrossAccount == 0 {
+		m.overlay.Show(OverlayError, "Enable Pattern", fmt.Sprintf("No scenarios match pattern: %s", pattern))
+		return nil
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+
+	// Show result
+	msg := fmt.Sprintf("Pattern: %s\n\nEnabled %d scenario(s):", pattern, enabledCount)
+	// Show up to 10 enabled scenarios
+	for i, name := range enabledNames {
+		if i >= 10 {
+			msg += fmt.Sprintf("\n  ... and %d more", len(enabledNames)-10)
+			break
+		}
+		msg += fmt.Sprintf("\n  - %s", name)
+	}
+	if skippedCrossAccount > 0 {
+		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
+	}
+	if enabledCount > 0 {
+		msg += "\n\nPress [d] to deploy."
+	}
+	m.overlay.Show(OverlayInfo, "Enable Pattern", msg)
+	return nil
+}
+
+// matchesPattern checks if a string matches a glob pattern
+func (m *Model) matchesPattern(s, pattern string) bool {
+	matched, err := filepath.Match(pattern, s)
+	if err != nil {
+		return false
+	}
+	return matched
 }
 
 func (m *Model) showConfig() {
@@ -1204,6 +1397,16 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderDestroyConfirmBar()
 	}
 
+	// Enable type choice overlay
+	if m.choosingEnableType {
+		return content + "\n" + m.renderEnableTypeChoiceBar()
+	}
+
+	// Enable pattern input overlay
+	if m.enteringPattern {
+		return content + "\n" + m.renderEnablePatternBar()
+	}
+
 	return content
 }
 
@@ -1292,4 +1495,29 @@ func (m *Model) renderDestroyConfirmBar() string {
 		promptStyle.Render("Type 'destroy' to confirm: ") +
 		m.confirmInput.View() +
 		promptStyle.Render(" (Esc to cancel)")
+}
+
+func (m *Model) renderEnableTypeChoiceBar() string {
+	enableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	return enableStyle.Render("ENABLE ") +
+		promptStyle.Render("What to enable? ") +
+		keyStyle.Render("[a]") +
+		dimStyle.Render("ll scenarios  ") +
+		keyStyle.Render("[p]") +
+		dimStyle.Render("attern (e.g., iam-*, lambda-001)  ") +
+		dimStyle.Render("(Esc to cancel)")
+}
+
+func (m *Model) renderEnablePatternBar() string {
+	enableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+
+	return enableStyle.Render("ENABLE ") +
+		promptStyle.Render("Enter pattern: ") +
+		m.patternInput.View() +
+		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
 }

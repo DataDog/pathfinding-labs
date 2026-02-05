@@ -22,6 +22,7 @@ type KeyMap struct {
 
 	// Actions
 	Toggle  key.Binding
+	Enable  key.Binding
 	Deploy  key.Binding
 	Plan    key.Binding
 	RunDemo key.Binding
@@ -95,6 +96,10 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys(" "),
 			key.WithHelp("space", "toggle"),
 		),
+		Enable: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "enable"),
+		),
 		Deploy: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("d", "deploy"),
@@ -159,7 +164,7 @@ func DefaultKeyMap() *KeyMap {
 // ShortHelp returns a short help string for the status bar
 func (k *KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		k.Toggle, k.Deploy, k.Filter, k.Help, k.Quit,
+		k.Toggle, k.Enable, k.Deploy, k.Filter, k.Help, k.Quit,
 	}
 }
 
@@ -167,7 +172,7 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 func (k *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.PageUp, k.PageDown},
-		{k.Tab, k.Toggle},
+		{k.Tab, k.Toggle, k.Enable},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup},
 		{k.Destroy, k.Config},
 		{k.Filter, k.Help, k.Quit},

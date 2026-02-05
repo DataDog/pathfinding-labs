@@ -18,24 +18,27 @@ const (
 	OverlayError
 	OverlayConfirm
 	OverlayConfig
+	OverlayInfo
 )
 
 // Overlay represents a floating overlay panel
 type Overlay struct {
-	styles      *Styles
-	overlayType OverlayType
-	title       string
-	content     []string
-	isRunning   bool
-	width       int
-	height      int
-	scroll      int
+	styles       *Styles
+	overlayType  OverlayType
+	title        string
+	content      []string
+	isRunning    bool
+	width        int
+	height       int
+	scroll       int
+	contentWidth int // cached content width for scroll calculations
 }
 
 // NewOverlay creates a new overlay
 func NewOverlay(styles *Styles) *Overlay {
 	return &Overlay{
-		styles: styles,
+		styles:       styles,
+		contentWidth: 80, // reasonable default until View() sets actual width
 	}
 }
 
@@ -114,7 +117,7 @@ func (o *Overlay) ScrollUp() {
 
 // ScrollDown scrolls the overlay content down
 func (o *Overlay) ScrollDown() {
-	maxScroll := len(o.content) - o.visibleLines()
+	maxScroll := o.wrappedLineCount() - o.visibleLines()
 	if maxScroll < 0 {
 		maxScroll = 0
 	}
@@ -124,11 +127,24 @@ func (o *Overlay) ScrollDown() {
 }
 
 func (o *Overlay) scrollToBottom() {
-	maxScroll := len(o.content) - o.visibleLines()
+	maxScroll := o.wrappedLineCount() - o.visibleLines()
 	if maxScroll < 0 {
 		maxScroll = 0
 	}
 	o.scroll = maxScroll
+}
+
+// wrappedLineCount returns the total number of lines after wrapping
+func (o *Overlay) wrappedLineCount() int {
+	if o.contentWidth <= 0 {
+		return len(o.content)
+	}
+	count := 0
+	for _, line := range o.content {
+		wrapped := wrapWithStyle(line, o.contentWidth)
+		count += len(wrapped)
+	}
+	return count
 }
 
 // ScrollToBottom scrolls the overlay content to the bottom
@@ -170,18 +186,27 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 	// Content area
 	visibleLines := o.visibleLines()
 	contentWidth := overlayWidth - 6
+	o.contentWidth = contentWidth // Store for scroll calculations
 
+	// Wrap all content lines to get the actual displayable lines
+	var wrappedLines []string
+	for _, line := range o.content {
+		wrapped := wrapWithStyle(line, contentWidth)
+		wrappedLines = append(wrappedLines, wrapped...)
+	}
+
+	// Calculate scroll bounds based on wrapped content
 	start := o.scroll
+	if start > len(wrappedLines) {
+		start = len(wrappedLines)
+	}
 	end := start + visibleLines
-	if end > len(o.content) {
-		end = len(o.content)
+	if end > len(wrappedLines) {
+		end = len(wrappedLines)
 	}
 
 	for i := start; i < end; i++ {
-		line := o.content[i]
-		// Truncate long lines to prevent wrapping
-		line = truncateWithStyle(line, contentWidth)
-		sb.WriteString(o.styles.OverlayText.Render(line))
+		sb.WriteString(o.styles.OverlayText.Render(wrappedLines[i]))
 		sb.WriteString("\n")
 	}
 
@@ -215,50 +240,75 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 	)
 }
 
-// truncateWithStyle truncates a string to maxWidth visual characters,
-// preserving ANSI escape codes and adding "..." if truncated
-func truncateWithStyle(s string, maxWidth int) string {
-	if maxWidth <= 3 {
-		return "..."
+// wrapWithStyle wraps a string to maxWidth visual characters,
+// preserving ANSI escape codes and returning multiple lines if needed
+func wrapWithStyle(s string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{s}
+	}
+
+	// Handle empty string
+	if s == "" {
+		return []string{""}
 	}
 
 	visualWidth := lipgloss.Width(s)
 	if visualWidth <= maxWidth {
-		return s
+		return []string{s}
 	}
 
-	// Need to truncate - walk through and count visual width
-	var result strings.Builder
+	// Need to wrap - walk through and count visual width
+	var lines []string
+	var currentLine strings.Builder
 	var visualCount int
 	inEscape := false
-	targetWidth := maxWidth - 3 // leave room for "..."
+	var activeEscapes strings.Builder // Track active ANSI codes for continuation
 
 	for _, r := range s {
 		if r == '\x1b' {
 			inEscape = true
-			result.WriteRune(r)
+			currentLine.WriteRune(r)
+			activeEscapes.WriteRune(r)
 			continue
 		}
 
 		if inEscape {
-			result.WriteRune(r)
+			currentLine.WriteRune(r)
+			activeEscapes.WriteRune(r)
 			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
 				inEscape = false
+				// Check if this is a reset code
+				escapeStr := activeEscapes.String()
+				if escapeStr == "\x1b[0m" || escapeStr == "\x1b[m" {
+					activeEscapes.Reset()
+				}
 			}
 			continue
 		}
 
-		// Regular character
-		if visualCount >= targetWidth {
-			break
+		// Regular character - check if we need to wrap
+		if visualCount >= maxWidth {
+			// Close current line with reset and start new line
+			currentLine.WriteString("\x1b[0m")
+			lines = append(lines, currentLine.String())
+			currentLine.Reset()
+			visualCount = 0
+			// Re-apply active escapes to new line
+			if activeEscapes.Len() > 0 {
+				currentLine.WriteString(activeEscapes.String())
+			}
 		}
-		result.WriteRune(r)
+
+		currentLine.WriteRune(r)
 		visualCount++
 	}
 
-	// Add reset code if we were in styled text, then ellipsis
-	result.WriteString("\x1b[0m...")
-	return result.String()
+	// Add the last line if there's content
+	if currentLine.Len() > 0 {
+		lines = append(lines, currentLine.String())
+	}
+
+	return lines
 }
 
 // RenderHelpOverlay renders the help content as columns (or single column if too narrow)
@@ -281,12 +331,12 @@ func (o *Overlay) RenderHelpOverlay() string {
 			title: "Actions",
 			keys: [][]string{
 				{"Space", "Toggle if a scenario is enabled/disabled"},
+				{"e", "Enable scenarios (all or by pattern)"},
 				{"d", "Deploy scenarios and environments"},
 				{"p", "Plan"},
 				{"r", "Run attack demo"},
 				{"c", "Cleanup attack demo"},
 				{"D", "Destroy scenarios"},
-				{"Ctrl+D", "Destroy scenarios and environments"},
 				{"s", "Settings"},
 			},
 		},
