@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.1 | 2026-02-05 | Standardized `cost_estimate` format to `"$X/mo"` (e.g., `"$0/mo"`, `"$9/mo"`). Replaced `"free"` and other formats. |
 | 1.2.0 | 2025-11-03 | Added `pathfinding-cloud-id` to help map scenarios with Pathfinding.cloud paths when applicable. |
 | 1.1.0 | 2025-10-21 | Added `cross-account` path_type; Changed `no-hop` to `self-escalation`; Added `privilege-chaining` and `cross-account-escalation` sub_categories; Added principal counting rules |
 | 1.0.0 | 2025-10-21 | Initial schema release |
@@ -74,7 +75,7 @@ Fundamental information about the scenario.
 schema_version: "1.0.0"
 name: "iam-putuserpolicy"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: IAM-005
 ```
 
@@ -85,13 +86,26 @@ pathfinding-cloud-id: IAM-005
 | `schema_version` | string | ✅ Yes | Schema version this file conforms to. Format: `"X.Y.Z"` |
 | `name` | string | ✅ Yes | Unique identifier for the scenario. Should match directory name. Use kebab-case. |
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
-| `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario on a monthly basis. Use `"free"` or actual cost like `"$5.00/month"` |
+| `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario. Always use `"$X/mo"` format rounded to nearest dollar (e.g., `"$0/mo"`, `"$9/mo"`, `"$321/mo"`) |
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. | 
 
 #### Cost Estimate Examples
 
-- `"free"` - No AWS charges (IAM-only scenarios)
-- `"$5/month"` - Monthly estimations for anything pay per time unit type resource
+Always use `"$X/mo"` format with rounding to the nearest dollar:
+
+| Cost Range | Format |
+|------------|--------|
+| No AWS charges (IAM-only) | `"$0/mo"` |
+| $0.50 - $1.49 | `"$1/mo"` |
+| $5.00 - $5.49 | `"$5/mo"` |
+| $9.01 | `"$9/mo"` |
+| $321.44 | `"$321/mo"` |
+
+**Rules:**
+- Always use `"$X/mo"` format (not "free", not "$5/month", not "$0.01/hour")
+- Round to nearest whole dollar (standard rounding: 0.5 rounds up)
+- No cents, no hourly/daily rates
+- No vague terms ("low", "minimal", "cheap")
 
 ---
 
@@ -553,7 +567,7 @@ module_path: "modules/scenarios/single-account/credential-access/ec2-hardcoded-c
 schema_version: "1.0.0"
 name: "iam-createaccesskey"
 description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "IAM-002"
 
 # =============================================================================
@@ -620,7 +634,7 @@ terraform:
 schema_version: "1.0.0"
 name: "iam-passrole-ec2-runinstances"
 description: "Role with PassRole and EC2 RunInstances can escalate to admin by launching instance with privileged instance profile"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION
@@ -690,7 +704,7 @@ terraform:
 schema_version: "1.0.0"
 name: "putrolepolicy-on-other"
 description: "RoleA with iam:PutRolePolicy on RoleB can inject admin policy, then assume RoleB for admin access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 
 
 # =============================================================================
@@ -766,7 +780,7 @@ terraform:
 schema_version: "1.0.0"
 name: "ec2-hardcoded-credentials"
 description: "EC2 instance with hardcoded AWS credentials accessible via SSM"
-cost_estimate: "$5.00/month"
+cost_estimate: "$5/mo"
 
 
 # =============================================================================
@@ -843,18 +857,20 @@ terraform:
 
 ### 2. Cost Estimates
 
-Be realistic and specific:
+Always use the `"$X/mo"` format with rounding to the nearest dollar:
 
 **Good:**
-- `"free"` - No AWS charges
-- `"$0.01/hour"` - Single t3.nano instance
-- `"$0.50/day"` - Multiple small resources
-- `"$5/month"` - Lambda + API Gateway with minimal usage
+- `"$0/mo"` - No AWS charges (IAM-only scenarios)
+- `"$1/mo"` - Minimal always-on resources
+- `"$9/mo"` - ECS Fargate task
+- `"$321/mo"` - Glue dev endpoint
 
 **Bad:**
+- `"free"` - Use `"$0/mo"` instead
+- `"$5/month"` - Use `"$5/mo"` instead
+- `"$0.01/hour"` - Convert to monthly and round
 - `"low"` - Too vague
 - `"minimal"` - Not specific enough
-- `"cheap"` - Subjective
 
 ### 3. Attack Path Summary
 
@@ -1048,5 +1064,5 @@ For questions about the schema or suggestions for improvements:
 2. Reference this SCHEMA.md file in your question
 3. Provide examples when possible
 
-**Last Updated:** 2025-01-21
-**Schema Version:** 1.1.0
+**Last Updated:** 2026-02-05
+**Schema Version:** 1.2.1

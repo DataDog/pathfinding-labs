@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+lambda-createfunction+lambda-addpermission"
 description: "User with iam:PassRole, lambda:CreateFunction, and lambda:AddPermission can create a new Lambda function with an admin role, add permission to invoke it, and execute malicious code to gain admin access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-006"
 
 # =============================================================================

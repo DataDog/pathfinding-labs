@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "lambda-updatefunctioncode+lambda-invokefunction"
 description: "User with lambda:UpdateFunctionCode and lambda:InvokeFunction can modify existing Lambda function code and manually invoke it to execute malicious logic under the function's privileged role and gain admin access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-004"
 
 # =============================================================================

@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "test-effective-permissions-evaluation"
 description: "Comprehensive tool testing scenario with 40 principals (15 isAdmin, 24 notAdmin) testing admin access patterns, denies, boundaries, and multi-policy edge cases to validate effective permissions evaluation"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

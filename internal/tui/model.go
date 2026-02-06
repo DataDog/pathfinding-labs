@@ -286,6 +286,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.info.SetTerraformInitialized(m.tfRunner.IsInitialized())
 		}
 
+		// Calculate running cost of deployed scenarios
+		m.updateRunningCost()
+
 		// Cache outputs, then update details for initially selected scenario
 		m.cachedOutputs = msg.outputs
 		m.cachedResources = nil // Will be populated async
@@ -564,6 +567,10 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.scenariosPane.ToggleShowOnlyEnabled()
 		m.actions.SetShowOnlyEnabled(m.scenariosPane.IsShowingOnlyEnabled())
 		m.updateDetailsForSelected()
+		return m, nil
+
+	case key.Matches(msg, m.keys.ToggleCosts):
+		m.scenariosPane.ToggleShowCosts()
 		return m, nil
 
 	case key.Matches(msg, m.keys.Tab):
@@ -1520,4 +1527,39 @@ func (m *Model) renderEnablePatternBar() string {
 		promptStyle.Render("Enter pattern: ") +
 		m.patternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+// parseCostString extracts the numeric value from a cost string like "$8/mo"
+func parseCostString(cost string) float64 {
+	if cost == "" {
+		return 0
+	}
+	// Remove $ prefix and /mo suffix
+	cost = strings.TrimPrefix(cost, "$")
+	cost = strings.TrimSuffix(cost, "/mo")
+	cost = strings.TrimSuffix(cost, "/month")
+
+	// Parse as float
+	var value float64
+	fmt.Sscanf(cost, "%f", &value)
+	return value
+}
+
+// calculateRunningCost calculates the total monthly cost of deployed scenarios
+func (m *Model) calculateRunningCost() float64 {
+	var total float64
+	items := m.scenariosPane.GetItems()
+	for _, item := range items {
+		// Only count scenarios that are both enabled AND deployed (actually running)
+		if item.Enabled && item.Deployed {
+			total += parseCostString(item.Scenario.CostEstimate)
+		}
+	}
+	return total
+}
+
+// updateRunningCost recalculates and updates the running cost in the info pane
+func (m *Model) updateRunningCost() {
+	cost := m.calculateRunningCost()
+	m.info.SetRunningCost(cost)
 }

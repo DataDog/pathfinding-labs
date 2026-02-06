@@ -30,6 +30,7 @@ type ScenariosPane struct {
 	showGrouped     bool
 	collapsed       map[string]bool // category name -> collapsed state
 	showOnlyEnabled bool            // filter to show only enabled scenarios
+	showCosts       bool            // show cost estimates next to scenario names
 }
 
 // NewScenariosPane creates a new scenarios pane
@@ -92,6 +93,16 @@ func (s *ScenariosPane) ToggleShowOnlyEnabled() {
 // IsShowingOnlyEnabled returns whether only enabled scenarios are shown
 func (s *ScenariosPane) IsShowingOnlyEnabled() bool {
 	return s.showOnlyEnabled
+}
+
+// ToggleShowCosts toggles the display of cost estimates
+func (s *ScenariosPane) ToggleShowCosts() {
+	s.showCosts = !s.showCosts
+}
+
+// IsShowingCosts returns whether costs are being displayed
+func (s *ScenariosPane) IsShowingCosts() bool {
+	return s.showCosts
 }
 
 // SetCategoryFilter filters scenarios by category
@@ -750,9 +761,19 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 	id := item.Scenario.UniqueID()
 	parts = append(parts, idStyle.Render(id))
 
+	// Cost estimate (if showing costs)
+	if s.showCosts && item.Scenario.CostEstimate != "" {
+		costStyle := s.styles.ScenarioDisabled // Use dim style for cost
+		parts = append(parts, costStyle.Render(fmt.Sprintf(" (%s)", item.Scenario.CostEstimate)))
+	}
+
 	// Status label for pending states - use short version if width is limited
-	// Calculate used width: cursor(2) + indicator(1) + space(1) + id + space(1)
-	usedWidth := 2 + 1 + 1 + len(id) + 1
+	// Calculate used width: cursor(2) + indicator(1) + space(1) + id + cost + space(1)
+	costWidth := 0
+	if s.showCosts && item.Scenario.CostEstimate != "" {
+		costWidth = len(item.Scenario.CostEstimate) + 3 // " ($X/mo)"
+	}
+	usedWidth := 2 + 1 + 1 + len(id) + costWidth + 1
 	availableWidth := s.width - usedWidth - 4 // 4 for panel padding/borders
 
 	if item.Enabled && !item.Deployed {

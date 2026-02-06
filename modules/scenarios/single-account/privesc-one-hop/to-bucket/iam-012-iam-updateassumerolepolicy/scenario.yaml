@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-updateassumerolepolicy"
 description: "User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-012"
 
 # =============================================================================

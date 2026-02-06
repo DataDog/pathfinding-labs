@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "bedrockagentcore-startsession+invoke"
 description: "User with bedrock-agentcore:StartCodeInterpreterSession and InvokeCodeInterpreter can access existing code interpreters with privileged roles to extract credentials (no iam:PassRole required)"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "bedrock-002"
 
 # =============================================================================

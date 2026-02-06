@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-createaccesskey"
 description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-002"
 
 # =============================================================================

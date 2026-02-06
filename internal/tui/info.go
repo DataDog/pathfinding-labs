@@ -18,15 +18,16 @@ func infoHyperlink(url, text string) string {
 
 // InfoPane displays project information and status
 type InfoPane struct {
-	styles         *Styles
-	config         *config.Config
-	terraformDir   string
-	devMode        bool
-	devModePath    string
-	tfInitialized  bool
-	totalScenarios int
-	width          int
-	height         int
+	styles              *Styles
+	config              *config.Config
+	terraformDir        string
+	devMode             bool
+	devModePath         string
+	tfInitialized       bool
+	totalScenarios      int
+	runningCostPerMonth float64 // Aggregate cost of enabled+deployed scenarios
+	width               int
+	height              int
 }
 
 // NewInfoPane creates a new info pane
@@ -58,6 +59,11 @@ func (i *InfoPane) SetTerraformInitialized(initialized bool) {
 // SetTotalScenarios sets the total number of scenarios
 func (i *InfoPane) SetTotalScenarios(count int) {
 	i.totalScenarios = count
+}
+
+// SetRunningCost sets the aggregate monthly cost of deployed scenarios
+func (i *InfoPane) SetRunningCost(costPerMonth float64) {
+	i.runningCostPerMonth = costPerMonth
 }
 
 // SetSize sets the pane dimensions
@@ -156,6 +162,15 @@ func (i *InfoPane) View() string {
 		sb.WriteString(i.styles.ScenarioDisabled.Render("not initialized"))
 	}
 	sb.WriteString("\n")
+
+	// Running cost (only show if there's a cost)
+	if i.runningCostPerMonth > 0 {
+		costPerDay := i.runningCostPerMonth / 30
+		sb.WriteString(i.styles.HelpKey.Render("Running "))
+		costStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")) // Warning yellow
+		sb.WriteString(costStyle.Render(fmt.Sprintf("$%.0f/mo ($%.2f/day)", i.runningCostPerMonth, costPerDay)))
+		sb.WriteString("\n")
+	}
 
 	return i.wrapInPanel(sb.String())
 }
