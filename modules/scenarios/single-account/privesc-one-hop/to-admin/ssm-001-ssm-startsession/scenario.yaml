@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "ssm-startsession"
 description: "Principal with ssm:StartSession can remotely access EC2 instance with admin role to exfiltrate credentials via IMDS"
-cost_estimate: "$5/month"
+cost_estimate: "$5/mo"
 pathfinding-cloud-id: "ssm-001"
 
 # =============================================================================

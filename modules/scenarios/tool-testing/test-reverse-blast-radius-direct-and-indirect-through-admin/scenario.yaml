@@ -1,0 +1,106 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "test-reverse-blast-radius-direct-and-indirect-through-admin"
+description: "Tool testing scenario validating reverse blast radius detection - tests whether security tools identify both direct S3 access (user1) and indirect access via administrative role assumption (user2 -> admin role -> bucket)"
+cost_estimate: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "reverse-blast-radius"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    # Direct access user
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-admin-user1"
+    
+    # Indirect access user (via admin role)
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-admin-user2"
+    
+    # Administrative role
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3"
+    
+    # Target S3 bucket
+    - "arn:aws:s3:::pl-sensitive-data-rbr-admin-{account_id}-{suffix}"
+
+  summary: "Two paths to S3 bucket: user1 has direct S3 permissions; user2 can assume admin role (role3 with AdministratorAccess) granting indirect access to bucket"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    # User1 - Direct S3 access
+    - permission: "s3:GetObject"
+      resource: "arn:aws:s3:::pl-sensitive-data-rbr-admin-*/*"
+      notes: "User1 has explicit permission to read objects from target bucket"
+    
+    - permission: "s3:ListBucket"
+      resource: "arn:aws:s3:::pl-sensitive-data-rbr-admin-*"
+      notes: "User1 has explicit permission to list target bucket"
+    
+    # User2 - Indirect access via admin role
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3"
+      notes: "User2 can assume administrative role"
+    
+    # Role3 - AdministratorAccess
+    - permission: "*"
+      resource: "*"
+      notes: "Role3 has AdministratorAccess, granting implicit access to all resources including the target S3 bucket"
+
+  helpful:
+    - permission: "sts:GetCallerIdentity"
+      purpose: "Verify current identity"
+    
+    - permission: "s3:ListAllMyBuckets"
+      purpose: "Discover available buckets"
+
+# =============================================================================
+# ADMIN DEFINITION
+# =============================================================================
+admin_definition: "Role3 has AdministratorAccess (*:*) - user2 gains admin access by assuming this role"
+
+# =============================================================================
+# TEST GROUPS
+# =============================================================================
+test_groups:
+  direct_access:
+    total: 1
+    users: 1
+    roles: 0
+    description: "user1 with explicit S3 permissions to target bucket"
+
+  indirect_access:
+    total: 1
+    users: 1
+    roles: 1
+    description: "user2 can assume role3 (AdministratorAccess) for implicit bucket access"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-through-admin"

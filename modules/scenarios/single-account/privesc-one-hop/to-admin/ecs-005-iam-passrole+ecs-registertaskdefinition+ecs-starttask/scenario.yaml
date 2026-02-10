@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-registertaskdefinition+ecs-starttask"
 description: "User with iam:PassRole, ecs:RegisterTaskDefinition, and ecs:StartTask can escalate privileges by starting ECS task with admin role that grants starting user admin access"
-cost_estimate: "$5.00/month"
+cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ecs-005"
 
 # =============================================================================

@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-registertaskdefinition+ecs-createservice"
 description: "User with iam:PassRole, ecs:RegisterTaskDefinition, and ecs:CreateService can escalate privileges by creating ECS service with admin role that grants starting user admin access"
-cost_estimate: "$0.02/hour"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ecs-003"
 
 # =============================================================================

@@ -23,6 +23,11 @@ resource "aws_iam_service_linked_role" "apprunner" {
   aws_service_name = "apprunner.amazonaws.com"
 }
 
+# Service-Linked Role for MWAA (required for MWAA scenarios)
+resource "aws_iam_service_linked_role" "mwaa" {
+  aws_service_name = "airflow.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   name = "pl-admin-user-for-cleanup-scripts"

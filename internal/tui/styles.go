@@ -53,6 +53,7 @@ type Styles struct {
 	ScenarioName     lipgloss.Style
 	ScenarioCount    lipgloss.Style
 	CategoryHeader   lipgloss.Style
+	CostNonZero      lipgloss.Style
 
 	// Details pane
 	DetailLabel     lipgloss.Style
@@ -111,8 +112,7 @@ func DefaultStyles() *Styles {
 		Padding(0, 1)
 	s.PanelTitle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(colorText).
-		Padding(0, 1)
+		Foreground(colorSecondary) // Cyan for visual pop
 	s.PanelFocused = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(colorPrimary).
@@ -163,6 +163,8 @@ func DefaultStyles() *Styles {
 		Bold(true).
 		Foreground(colorText).
 		MarginTop(1)
+	s.CostNonZero = lipgloss.NewStyle().
+		Foreground(colorWarning) // Orange to match running cost
 
 	// Details pane
 	s.DetailLabel = lipgloss.NewStyle().

@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "cloudformation-updatestack"
 description: "User with cloudformation:UpdateStack can modify existing stack to create admin role using stack's elevated service role"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "cloudformation-002"
 
 # =============================================================================

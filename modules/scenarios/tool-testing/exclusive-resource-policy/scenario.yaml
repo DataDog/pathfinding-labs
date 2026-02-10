@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "exclusive-resource-policy"
 description: "Access S3 bucket with exclusive resource policy that denies all except specific role"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

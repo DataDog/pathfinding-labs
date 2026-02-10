@@ -785,6 +785,39 @@ module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updat
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-007-iam-passrole+glue-createsession+glue-runstatement"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-001-iam-passrole+airflow-createenvironment"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-002-airflow-updateenvironment"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-001-iam-passrole+sagemaker-createnotebookinstance"

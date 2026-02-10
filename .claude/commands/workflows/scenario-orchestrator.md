@@ -431,6 +431,17 @@ When delegating, provide a comprehensive prompt to each agent with ALL the infor
    - Check that cleanup script properly removes artifacts
    - Fix any inconsistencies found
 
+4. After validation passes, launch the **scenario-cost-estimator** agent to:
+   - Run infracost on the scenario Terraform files
+   - Research pricing for any unsupported resources
+   - Calculate and format the total monthly cost
+   - Update scenario.yaml with an accurate `cost_estimate` value (format: `"$X/mo"`)
+
+   Pass the scenario directory path to the agent. The cost estimator will:
+   - Use infracost for supported AWS resources
+   - Manually research pricing for unsupported resources (Glue, SageMaker, etc.)
+   - Update the cost_estimate field with the proper `"$X/mo"` format
+
 
 ## Example Orchestration Flow
 

@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "ssm-sendcommand"
 description: "User with ssm:SendCommand can execute commands on EC2 instances with privileged roles to extract credentials and gain admin access"
-cost_estimate: "$5.00/month"
+cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ssm-002"
 
 # =============================================================================

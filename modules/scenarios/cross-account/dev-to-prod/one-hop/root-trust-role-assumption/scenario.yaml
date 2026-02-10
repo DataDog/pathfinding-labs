@@ -4,7 +4,7 @@
 schema_version: "1.1.0"
 name: "root-trust-role-assumption"
 description: "User in dev account with sts:AssumeRole permission can assume an admin role in prod account that trusts the entire dev account via :root principal"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

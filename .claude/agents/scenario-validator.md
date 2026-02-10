@@ -2,7 +2,7 @@
 name: scenario-validator
 description: Validates and ensures consistency across all files in a Pathfinding Labs scenario
 tools: Read, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
 color: red
 ---
 

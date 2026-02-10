@@ -1,7 +1,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+datapipeline-pipeline"
 description: "User with iam:PassRole and datapipeline permissions can create a pipeline that executes commands with admin role, escalating privileges by attaching AdministratorAccess to themselves"
-cost_estimate: "$0.01/hour"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "datapipeline-001"
 
 category: "Privilege Escalation"

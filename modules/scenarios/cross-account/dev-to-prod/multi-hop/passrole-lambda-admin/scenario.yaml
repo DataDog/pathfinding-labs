@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 name: "passrole-lambda-admin"
 description: "Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role"
-cost_estimate: "$0.20/month"
+cost_estimate: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

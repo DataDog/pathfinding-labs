@@ -246,9 +246,36 @@ func (e *EnvironmentPane) GetDeployedCount() int {
 func (e *EnvironmentPane) View() string {
 	var sb strings.Builder
 
-	// Title
-	titleStyle := e.styles.PanelTitle.Width(e.width - 4)
-	sb.WriteString(titleStyle.Render("Environments"))
+	// Title with account mode
+	titleStyle := e.styles.PanelTitle
+	dimStyle := e.styles.EnvNotConfigured
+
+	// Calculate available width for mode text (account for panel padding/borders)
+	availableWidth := e.width - 4 // panel padding
+	baseTitle := "Environments"
+
+	// Determine mode text based on available space
+	var modeText string
+	if e.config != nil && e.config.IsMultiAccountMode() {
+		fullText := " (Multi-account mode)"
+		shortText := " (multi)"
+		if len(baseTitle)+len(fullText) <= availableWidth {
+			modeText = fullText
+		} else {
+			modeText = shortText
+		}
+	} else {
+		fullText := " (Single-account mode)"
+		shortText := " (single)"
+		if len(baseTitle)+len(fullText) <= availableWidth {
+			modeText = fullText
+		} else {
+			modeText = shortText
+		}
+	}
+
+	sb.WriteString(titleStyle.Render(baseTitle))
+	sb.WriteString(dimStyle.Render(modeText))
 	sb.WriteString("\n\n")
 
 	if e.loading {
@@ -267,14 +294,6 @@ func (e *EnvironmentPane) View() string {
 			sb.WriteString("\n")
 		}
 		sb.WriteString(e.renderEnvironment(env, i == e.selected))
-	}
-
-	// Account mode
-	sb.WriteString("\n\n")
-	if e.config.IsMultiAccountMode() {
-		sb.WriteString(e.styles.EnvConfigured.Render("Multi-account mode"))
-	} else {
-		sb.WriteString(e.styles.EnvNotConfigured.Render("Single-account mode"))
 	}
 
 	return e.wrapInPanel(sb.String())
@@ -362,6 +381,7 @@ func (e *EnvironmentPane) wrapInPanel(content string) string {
 		panelStyle = e.styles.PanelFocused
 	}
 
-	panelStyle = panelStyle.Width(e.width - 2)
+	// Set both width and height to keep the panel size constant
+	panelStyle = panelStyle.Width(e.width - 2).Height(e.height - 2)
 	return panelStyle.Render(content)
 }

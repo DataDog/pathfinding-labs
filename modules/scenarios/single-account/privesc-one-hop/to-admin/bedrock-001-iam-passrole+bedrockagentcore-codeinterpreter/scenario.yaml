@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+bedrockagentcore-codeinterpreter"
 description: "Principal with iam:PassRole and Bedrock AgentCore permissions can create a code interpreter with a privileged role and extract credentials from the MicroVM Metadata Service"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "bedrock-001"
 
 # =============================================================================

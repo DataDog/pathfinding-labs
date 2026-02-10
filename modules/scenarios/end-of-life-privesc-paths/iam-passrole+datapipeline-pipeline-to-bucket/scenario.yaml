@@ -1,7 +1,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+datapipeline-pipeline"
 description: "User with iam:PassRole and datapipeline permissions can create a pipeline that exfiltrates S3 data using read-only role, bypassing IAM via overly permissive bucket resource policy"
-cost_estimate: "$0.01/hour"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "datapipeline-001"
 
 category: "Privilege Escalation"

@@ -18,15 +18,18 @@ func infoHyperlink(url, text string) string {
 
 // InfoPane displays project information and status
 type InfoPane struct {
-	styles         *Styles
-	config         *config.Config
-	terraformDir   string
-	devMode        bool
-	devModePath    string
-	tfInitialized  bool
-	totalScenarios int
-	width          int
-	height         int
+	styles              *Styles
+	config              *config.Config
+	terraformDir        string
+	devMode             bool
+	devModePath         string
+	tfInitialized       bool
+	totalScenarios      int
+	deployedCount       int     // Number of deployed scenarios
+	enabledCount        int     // Number of enabled scenarios
+	runningCostPerMonth float64 // Aggregate cost of enabled+deployed scenarios
+	width               int
+	height              int
 }
 
 // NewInfoPane creates a new info pane
@@ -60,6 +63,17 @@ func (i *InfoPane) SetTotalScenarios(count int) {
 	i.totalScenarios = count
 }
 
+// SetDeploymentCounts sets the enabled and deployed scenario counts
+func (i *InfoPane) SetDeploymentCounts(enabled, deployed int) {
+	i.enabledCount = enabled
+	i.deployedCount = deployed
+}
+
+// SetRunningCost sets the aggregate monthly cost of deployed scenarios
+func (i *InfoPane) SetRunningCost(costPerMonth float64) {
+	i.runningCostPerMonth = costPerMonth
+}
+
 // SetSize sets the pane dimensions
 func (i *InfoPane) SetSize(width, height int) {
 	i.width = width
@@ -83,18 +97,14 @@ func (i *InfoPane) View() string {
 	titleStyle := lipgloss.NewStyle().Foreground(titleColor).Bold(true)
 	dimStyle := lipgloss.NewStyle().Foreground(dimColor)
 
-	// Build the box content
+	// Build the box content - now just title and version
 	titleText := "PATHFINDING LABS"
-	versionText := fmt.Sprintf("version: %s", Version)
-	labsText := fmt.Sprintf("labs: %d", i.totalScenarios)
+	versionText := fmt.Sprintf("v%s", Version)
 
 	// Find the widest line for box width
 	boxWidth := len(titleText)
 	if len(versionText) > boxWidth {
 		boxWidth = len(versionText)
-	}
-	if len(labsText) > boxWidth {
-		boxWidth = len(labsText)
 	}
 	boxWidth += 4 // padding
 	if boxWidth > contentWidth {
@@ -116,7 +126,6 @@ func (i *InfoPane) View() string {
 	boxLines = append(boxLines, topBorder)
 	boxLines = append(boxLines, centerInBox(titleText, titleStyle))
 	boxLines = append(boxLines, centerInBox(versionText, dimStyle))
-	boxLines = append(boxLines, centerInBox(labsText, dimStyle))
 	boxLines = append(boxLines, bottomBorder)
 	box := strings.Join(boxLines, "\n")
 
@@ -131,53 +140,101 @@ func (i *InfoPane) View() string {
 	clickableLink := infoHyperlink(url, linkStyle.Render(url))
 	centeredLink := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Render(clickableLink)
 	sb.WriteString(centeredLink)
-	sb.WriteString("\n\n")
+	sb.WriteString("\n")
+
+	// ─── DEPLOYMENT STATUS ────────────────
+	dividerStyle := lipgloss.NewStyle().Foreground(dimColor)
+	divider := dividerStyle.Render(strings.Repeat("─", contentWidth))
+	sb.WriteString(divider)
+	sb.WriteString("\n")
+
+	// Deployment stats - more prominent
+	labelStyle := lipgloss.NewStyle().Foreground(dimColor)
+	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F3F4F6")) // Light text
+	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true) // Green for deployed count
+	costStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")) // Warning yellow for cost
+
+	// Scenarios deployed: X/Y
+	sb.WriteString(labelStyle.Render("Scenarios deployed "))
+	sb.WriteString(deployedStyle.Render(fmt.Sprintf("%d", i.deployedCount)))
+	sb.WriteString(valueStyle.Render(fmt.Sprintf("/%d", i.totalScenarios)))
+	sb.WriteString("\n")
+
+	// Running cost
+	if i.runningCostPerMonth > 0 {
+		costPerDay := i.runningCostPerMonth / 30
+		sb.WriteString(labelStyle.Render("Running cost "))
+		sb.WriteString(costStyle.Render(fmt.Sprintf("$%.0f/mo", i.runningCostPerMonth)))
+		sb.WriteString(dimStyle.Render(fmt.Sprintf(" ($%.2f/day)", costPerDay)))
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString(labelStyle.Render("Running cost "))
+		sb.WriteString(dimStyle.Render("$0/mo"))
+		sb.WriteString("\n")
+	}
+
+	// ─── CONFIGURATION ────────────────
+	sb.WriteString(divider)
+	sb.WriteString("\n")
 
 	// Mode - only show when in dev mode
 	if i.devMode {
-		sb.WriteString(i.styles.HelpKey.Render("Mode "))
+		sb.WriteString(labelStyle.Render("Mode         "))
 		sb.WriteString(i.styles.EnvConfigured.Render("dev"))
 		sb.WriteString("\n")
-		// Show dev mode path
-		if i.devModePath != "" {
-			sb.WriteString(i.styles.HelpKey.Render("Dev Path"))
-			sb.WriteString("\n")
-			wrapped := i.wordWrap(i.devModePath, contentWidth)
-			sb.WriteString(i.styles.ScenarioDisabled.Render(wrapped))
-			sb.WriteString("\n")
-		}
 	}
 
 	// Terraform status
-	sb.WriteString(i.styles.HelpKey.Render("Terraform "))
+	sb.WriteString(labelStyle.Render("Terraform    "))
 	if i.tfInitialized {
-		sb.WriteString(i.styles.EnvConfigured.Render("initialized"))
+		sb.WriteString(i.styles.EnvConfigured.Render("ready"))
 	} else {
 		sb.WriteString(i.styles.ScenarioDisabled.Render("not initialized"))
 	}
 	sb.WriteString("\n")
 
+	// Dev mode path - show below terraform, wrapped if needed
+	if i.devMode && i.devModePath != "" {
+		sb.WriteString(labelStyle.Render("Path         "))
+		wrapped := i.wordWrap(i.devModePath, contentWidth-13, 13) // 13 = len("Path         ")
+		sb.WriteString(dimStyle.Render(wrapped))
+	}
+
 	return i.wrapInPanel(sb.String())
 }
 
-func (i *InfoPane) wordWrap(text string, width int) string {
+// wordWrap wraps text to fit within width, with optional indentation for continuation lines
+func (i *InfoPane) wordWrap(text string, width int, indent int) string {
 	if width <= 0 || len(text) <= width {
 		return text
 	}
 
+	indentStr := strings.Repeat(" ", indent)
 	var lines []string
-	for len(text) > width {
-		lines = append(lines, text[:width])
-		text = text[width:]
+	remaining := text
+
+	// First line uses full width
+	if len(remaining) > width {
+		lines = append(lines, remaining[:width])
+		remaining = remaining[width:]
+	} else {
+		return remaining
 	}
-	if len(text) > 0 {
-		lines = append(lines, text)
+
+	// Subsequent lines are indented
+	for len(remaining) > width {
+		lines = append(lines, indentStr+remaining[:width])
+		remaining = remaining[width:]
+	}
+	if len(remaining) > 0 {
+		lines = append(lines, indentStr+remaining)
 	}
 
 	return strings.Join(lines, "\n")
 }
 
 func (i *InfoPane) wrapInPanel(content string) string {
-	panelStyle := i.styles.Panel.Width(i.width - 2)
+	// Set both width and height to keep the panel size constant
+	panelStyle := i.styles.Panel.Width(i.width - 2).Height(i.height - 2)
 	return panelStyle.Render(content)
 }

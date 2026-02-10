@@ -55,6 +55,9 @@ type Scenario struct {
 		ModulePath   string `yaml:"module_path"`
 	} `yaml:"terraform"`
 
+	// Demo configuration
+	InteractiveDemo bool `yaml:"interactive_demo"` // If true, demo script needs terminal input
+
 	// Internal fields (not from YAML)
 	FilePath string `yaml:"-"` // Path to the scenario.yaml file
 	DirPath  string `yaml:"-"` // Directory containing the scenario

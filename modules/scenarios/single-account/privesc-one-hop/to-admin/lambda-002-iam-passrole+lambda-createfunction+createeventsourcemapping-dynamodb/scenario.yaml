@@ -4,7 +4,7 @@
 schema_version: "1.2.0"
 name: "iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
 description: "User with PassRole, CreateFunction, and CreateEventSourceMapping can create Lambda with privileged role, link to DynamoDB stream, and gain admin access when table events trigger execution"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-002"
 
 # =============================================================================

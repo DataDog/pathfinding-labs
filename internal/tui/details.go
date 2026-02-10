@@ -289,6 +289,7 @@ func (d *DetailsPane) View() string {
 	// Title
 	titleStyle := d.styles.PanelTitle.Width(d.width - 4)
 	sb.WriteString(titleStyle.Render("Scenario Details"))
+	sb.WriteString("\n")
 
 	// Build all content lines
 	contentLines := d.buildContent()
@@ -317,9 +318,16 @@ func (d *DetailsPane) View() string {
 		end = len(contentLines)
 	}
 
+	renderedLines := 0
 	for i := d.scroll; i < end; i++ {
 		sb.WriteString("\n")
 		sb.WriteString(contentLines[i])
+		renderedLines++
+	}
+
+	// Pad with empty lines to fill the visible area (keeps panel height constant)
+	for i := renderedLines; i < visible; i++ {
+		sb.WriteString("\n")
 	}
 
 	return d.wrapInPanel(sb.String())
@@ -359,6 +367,7 @@ func (d *DetailsPane) wrapInPanel(content string) string {
 		panelStyle = d.styles.PanelFocused
 	}
 
-	panelStyle = panelStyle.Width(d.width - 2)
+	// Set both width and height to keep the panel size constant
+	panelStyle = panelStyle.Width(d.width - 2).Height(d.height - 2)
 	return panelStyle.Render(content)
 }
