@@ -327,6 +327,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.info.SetTerraformInitialized(m.tfRunner.IsInitialized())
 		}
 
+		// Calculate deployment counts
+		enabledCount := 0
+		deployedCount := 0
+		for _, s := range msg.scenarios {
+			if msg.enabled[s.Terraform.VariableName] {
+				enabledCount++
+			}
+			if msg.deployed[s.Terraform.VariableName] {
+				deployedCount++
+			}
+		}
+		m.info.SetDeploymentCounts(enabledCount, deployedCount)
+
 		// Calculate running cost of deployed scenarios
 		m.updateRunningCost()
 
@@ -886,7 +899,26 @@ func (m *Model) toggleSelected() tea.Cmd {
 		m.err = err
 	}
 
+	// Update info pane counts
+	m.updateInfoCounts()
+
 	return nil
+}
+
+// updateInfoCounts updates the enabled/deployed counts in the info pane
+func (m *Model) updateInfoCounts() {
+	items := m.scenariosPane.GetItems()
+	enabledCount := 0
+	deployedCount := 0
+	for _, item := range items {
+		if item.Enabled {
+			enabledCount++
+		}
+		if item.Deployed {
+			deployedCount++
+		}
+	}
+	m.info.SetDeploymentCounts(enabledCount, deployedCount)
 }
 
 func (m *Model) runDeploy() tea.Cmd {
@@ -1128,6 +1160,7 @@ func (m *Model) executeEnableAll() tea.Cmd {
 	}
 	m.scenariosPane.SetScenarios(items)
 	m.updateDetails()
+	m.updateInfoCounts()
 
 	// Show result
 	msg := fmt.Sprintf("Enabled %d scenario(s).", enabledCount)
@@ -1190,6 +1223,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 	}
 	m.scenariosPane.SetScenarios(items)
 	m.updateDetails()
+	m.updateInfoCounts()
 
 	// Show result
 	msg := fmt.Sprintf("Pattern: %s\n\nEnabled %d scenario(s):", pattern, enabledCount)
@@ -1553,7 +1587,7 @@ func (m *Model) updateLayout() {
 	m.info.SetSize(leftWidth, infoHeight)
 	m.environment.SetSize(leftWidth, envHeight)
 	m.actions.SetSize(leftWidth, actionsHeight)
-	m.scenariosPane.SetSize(centerWidth, mainHeight)
+	m.scenariosPane.SetSize(centerWidth, mainHeight+1) // +1 to align bottom border with details pane
 	m.details.SetSize(rightWidth, mainHeight)
 	m.overlay.SetSize(m.termWidth, m.termHeight)
 

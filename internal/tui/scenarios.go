@@ -40,6 +40,7 @@ func NewScenariosPane(styles *Styles) *ScenariosPane {
 		showGrouped: true,
 		collapsed:   make(map[string]bool),
 		loading:     true, // Start in loading state
+		showCosts:   true, // Show costs by default
 	}
 }
 
@@ -198,6 +199,8 @@ func (s *ScenariosPane) applyTextFilter() {
 // MoveUp moves the cursor up, skipping collapsed scenarios
 func (s *ScenariosPane) MoveUp() {
 	if s.cursor <= 0 {
+		// Already at top, but still call ensureVisible to scroll to show header
+		s.ensureVisible()
 		return
 	}
 
@@ -558,10 +561,32 @@ func (s *ScenariosPane) ensureVisible() {
 		visible = 10
 	}
 
+	// Special case: cursor at first item should always show from the top
+	// This ensures the first category header is always visible
+	if s.cursor == 0 {
+		s.offset = 0
+		return
+	}
+
 	visualRow := s.getVisualRow()
 
-	if visualRow < s.offset {
-		s.offset = visualRow
+	// Check if cursor is at the first item in its category
+	// If so, we want to show the category header too
+	isFirstInCategory := false
+	if s.cursor >= 0 && s.cursor < len(s.filtered) {
+		currentCat := s.filtered[s.cursor].Scenario.CategoryShort()
+		prevCat := s.filtered[s.cursor-1].Scenario.CategoryShort()
+		isFirstInCategory = (currentCat != prevCat)
+	}
+
+	// Adjust visual row to include header if at first item in category
+	targetRow := visualRow
+	if isFirstInCategory && visualRow > 0 {
+		targetRow = visualRow - 1 // Include the header
+	}
+
+	if targetRow < s.offset {
+		s.offset = targetRow
 	} else if visualRow >= s.offset+visible {
 		s.offset = visualRow - visible + 1
 	}
@@ -763,7 +788,11 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 
 	// Cost estimate (if showing costs)
 	if s.showCosts && item.Scenario.CostEstimate != "" {
-		costStyle := s.styles.ScenarioDisabled // Use dim style for cost
+		costStyle := s.styles.ScenarioDisabled // Use dim style for $0 costs
+		// Use orange for non-zero costs to match the running cost display
+		if item.Scenario.CostEstimate != "$0/mo" && item.Scenario.CostEstimate != "$0" {
+			costStyle = s.styles.CostNonZero
+		}
 		parts = append(parts, costStyle.Render(fmt.Sprintf(" (%s)", item.Scenario.CostEstimate)))
 	}
 

@@ -42,17 +42,17 @@ func CategoryDisplayName(category string) string {
 	case "All":
 		return "All"
 	case "self-escalation":
-		return "Self-Escalation"
+		return "PrivEsc: Self-Escalation"
 	case "one-hop":
-		return "One-Hop"
+		return "PrivEsc: One-Hop"
 	case "multi-hop":
-		return "Multi-Hop"
+		return "PrivEsc: Multi-Hop"
 	case "toxic-combo":
 		return "Toxic Combo"
 	case "tool-testing":
 		return "Tool Testing"
 	case "cross-account":
-		return "Cross-Account"
+		return "PrivEsc: Cross-Account"
 	default:
 		return category
 	}

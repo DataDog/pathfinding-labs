@@ -61,12 +61,12 @@ func (a *ActionsPane) SetSize(width, height int) {
 func (a *ActionsPane) View() string {
 	var sb strings.Builder
 
-	sb.WriteString(a.styles.PanelTitle.Render("Shortcuts"))
-	sb.WriteString("\n")
+	sb.WriteString(a.styles.PanelTitle.Render("Key bindings"))
+	sb.WriteString("\n\n")
 
 	// Navigation keys (always shown)
 	sb.WriteString(a.styles.HelpKey.Render(" ↑↓"))
-	sb.WriteString(a.styles.HelpDesc.Render(" navigate"))
+	sb.WriteString(a.styles.HelpDesc.Render("  navigate"))
 	sb.WriteString("\n")
 
 	sb.WriteString(a.styles.HelpKey.Render(" tab"))
@@ -76,24 +76,29 @@ func (a *ActionsPane) View() string {
 	// Pane-specific navigation hints
 	if a.focusedPane == PaneScenarios {
 		sb.WriteString(a.styles.HelpKey.Render(" ←→"))
-		sb.WriteString(a.styles.HelpDesc.Render(" collapse"))
+		sb.WriteString(a.styles.HelpDesc.Render("  collapse"))
 		sb.WriteString("\n")
 
 		sb.WriteString(a.styles.HelpKey.Render(" /"))
-		sb.WriteString(a.styles.HelpDesc.Render("  filter"))
+		sb.WriteString(a.styles.HelpDesc.Render("   filter"))
 		sb.WriteString("\n")
 
 		// Toggle enabled only - show current state
 		if a.showOnlyEnabled {
 			sb.WriteString(a.styles.HelpKey.Render(" ."))
-			sb.WriteString(a.styles.HelpDesc.Render("  show all"))
+			sb.WriteString(a.styles.HelpDesc.Render("   show all scenarios"))
 			sb.WriteString("\n")
 		} else {
 			sb.WriteString(a.styles.HelpKey.Render(" ."))
-			sb.WriteString(a.styles.HelpDesc.Render("  enabled only"))
+			sb.WriteString(a.styles.HelpDesc.Render("   enabled scenarios only"))
 			sb.WriteString("\n")
 		}
 	}
+
+	// Help - always available
+	sb.WriteString(a.styles.HelpKey.Render(" ?"))
+	sb.WriteString(a.styles.HelpDesc.Render("   show all key bindings"))
+	sb.WriteString("\n")
 
 	// Divider
 	sb.WriteString(a.styles.ScenarioDisabled.Render(" ───────────"))
@@ -147,34 +152,31 @@ func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
 		sb.WriteString("\n")
 	} else if a.deployed {
 		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" disable"))
+		sb.WriteString(a.styles.HelpDesc.Render(" disable scenario"))
 		sb.WriteString("\n")
 		if a.scenario.HasDemo() {
 			sb.WriteString(a.styles.HelpKey.Render(" r"))
-			sb.WriteString(a.styles.HelpDesc.Render("     run demo"))
+			sb.WriteString(a.styles.HelpDesc.Render("     run attack demo"))
 			sb.WriteString("\n")
 		}
 		if a.scenario.HasCleanup() {
 			sb.WriteString(a.styles.HelpKey.Render(" c"))
-			sb.WriteString(a.styles.HelpDesc.Render("     cleanup"))
+			sb.WriteString(a.styles.HelpDesc.Render("     cleanup demo artifacts"))
 			sb.WriteString("\n")
 		}
 		sb.WriteString(a.styles.HelpKey.Render(" D"))
-		sb.WriteString(a.styles.HelpDesc.Render("     destroy scenarios"))
-		sb.WriteString("\n")
-		sb.WriteString(a.styles.HelpKey.Render(" ^D"))
-		sb.WriteString(a.styles.HelpDesc.Render("    destroy all"))
+		sb.WriteString(a.styles.HelpDesc.Render("     destroy scenarios or environments"))
 		sb.WriteString("\n")
 	} else if a.enabled {
 		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" disable"))
+		sb.WriteString(a.styles.HelpDesc.Render(" disable scenario"))
 		sb.WriteString("\n")
 		sb.WriteString(a.styles.HelpKey.Render(" d"))
-		sb.WriteString(a.styles.HelpDesc.Render("     deploy"))
+		sb.WriteString(a.styles.HelpDesc.Render("     deploy scenario"))
 		sb.WriteString("\n")
 	} else {
 		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" enable"))
+		sb.WriteString(a.styles.HelpDesc.Render(" enable scenario"))
 		sb.WriteString("\n")
 	}
 }
