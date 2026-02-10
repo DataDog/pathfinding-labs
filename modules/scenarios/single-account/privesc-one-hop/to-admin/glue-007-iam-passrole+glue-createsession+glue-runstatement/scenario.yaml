@@ -1,0 +1,68 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+glue-createsession+glue-runstatement"
+description: "User with iam:PassRole and Glue session permissions can escalate to admin by creating an interactive session with an admin role and running code to attach AdministratorAccess to themselves"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "glue-007"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-glue-007-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-glue-007-to-admin-admin-role"
+
+  summary: "starting_user → (iam:PassRole + glue:CreateSession) → Glue Interactive Session with admin role → (glue:RunStatement with boto3) → attaches AdministratorAccess to starting_user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role"
+
+    - permission: "glue:CreateSession"
+      resource: "*"
+
+    - permission: "glue:RunStatement"
+      resource: "*"
+
+  helpful:
+    - permission: "glue:GetSession"
+      purpose: "Check session status and wait for it to be ready"
+
+    - permission: "glue:GetStatement"
+      purpose: "Check statement execution status and retrieve output"
+
+    - permission: "glue:DeleteSession"
+      purpose: "Clean up the Glue Interactive Session after the attack"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098 - Account Manipulation"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/glue-007-iam-passrole+glue-createsession+glue-runstatement"

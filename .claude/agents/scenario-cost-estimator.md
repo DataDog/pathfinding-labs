@@ -2,7 +2,7 @@
 name: scenario-cost-estimator
 description: Estimates AWS costs for Pathfinding Labs scenarios using infracost and manual pricing research
 tools: Bash, Read, Grep, Glob, WebSearch, WebFetch, Edit
-model: inherit
+model: sonnet
 color: green
 ---
 

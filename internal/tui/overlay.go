@@ -218,7 +218,7 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 	// Footer
 	sb.WriteString("\n")
 	if o.isRunning {
-		sb.WriteString(o.styles.OverlayDimmed.Render("Running... (j/k scroll, Esc cancel)"))
+		sb.WriteString(o.styles.OverlayDimmed.Render("Running... (↑/↓ scroll, Esc cancel)"))
 	} else {
 		sb.WriteString(o.styles.OverlayDimmed.Render("[Press Esc to close]"))
 	}

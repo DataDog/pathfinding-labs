@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -71,6 +72,15 @@ type Model struct {
 	enteringPattern    bool            // true when entering a pattern
 	patternInput       textinput.Model // input for pattern entry
 
+	// Simple action confirmation state (for deploy, demo, cleanup, plan)
+	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup"
+	pendingScenarioID  string // scenario ID for demo/cleanup actions
+
+	// Credential validation state
+	validatingCredentials bool   // true while checking AWS credentials
+	validatingForAction   string // the action we're validating for
+	validatingScenarioID  string // scenario ID for demo/cleanup during validation
+
 	// Running command (for cancellation and streaming)
 	runningCmd  *exec.Cmd
 	cmdScanner  *bufio.Scanner
@@ -89,6 +99,12 @@ type resourcesLoadedMsg struct {
 	resources map[string][]string // module name -> ARNs
 }
 
+type credentialsValidatedMsg struct {
+	valid   bool
+	profile string
+	err     error
+}
+
 type cmdOutputMsg struct {
 	line string
 }
@@ -99,6 +115,31 @@ type cmdDoneMsg struct {
 
 type errMsg struct {
 	err error
+}
+
+type interactiveDemoDoneMsg struct {
+	err error
+}
+
+// interactiveDemoCmd wraps a bash command for tea.Exec
+type interactiveDemoCmd struct {
+	cmd *exec.Cmd
+}
+
+func (c *interactiveDemoCmd) Run() error {
+	return c.cmd.Run()
+}
+
+func (c *interactiveDemoCmd) SetStdin(r io.Reader) {
+	c.cmd.Stdin = r
+}
+
+func (c *interactiveDemoCmd) SetStdout(w io.Writer) {
+	c.cmd.Stdout = w
+}
+
+func (c *interactiveDemoCmd) SetStderr(w io.Writer) {
+	c.cmd.Stderr = w
 }
 
 // NewModel creates a new TUI model
@@ -317,6 +358,37 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDetails()
 		return m, nil
 
+	case credentialsValidatedMsg:
+		m.validatingCredentials = false
+		if !msg.valid {
+			// Show error and reset state
+			if msg.profile == "" {
+				m.overlay.Show(OverlayError, "AWS Credentials", "No AWS profile configured.\n\nRun 'plabs init' to configure.")
+			} else {
+				m.overlay.Show(OverlayError, "AWS Credentials",
+					fmt.Sprintf("AWS SSO session expired or invalid.\n\nProfile: %s\n\nRun this command to authenticate:\n\n  aws sso login --profile %s\n\nThen try again.", msg.profile, msg.profile))
+			}
+			m.validatingForAction = ""
+			m.validatingScenarioID = ""
+			return m, nil
+		}
+		// Credentials valid - proceed with the action
+		action := m.validatingForAction
+		m.validatingForAction = ""
+		scenarioID := m.validatingScenarioID
+		m.validatingScenarioID = ""
+		switch action {
+		case "deploy":
+			return m, m.executeDeploy()
+		case "plan":
+			return m, m.executePlan()
+		case "demo":
+			return m, m.executeDemo(scenarioID)
+		case "cleanup":
+			return m, m.executeCleanup(scenarioID)
+		}
+		return m, nil
+
 	case cmdOutputMsg:
 		// Append output line to overlay (skip empty lines from polling)
 		if msg.line != "" {
@@ -338,6 +410,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Ensure the done message is visible
 		m.overlay.ScrollToBottom()
+		// Reload scenarios to refresh deployment state
+		return m, m.loadScenarios
+
+	case interactiveDemoDoneMsg:
+		// Interactive demo finished (TUI was suspended during execution)
 		// Reload scenarios to refresh deployment state
 		return m, m.loadScenarios
 
@@ -476,6 +553,36 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.confirmInput, cmd = m.confirmInput.Update(msg)
 			return m, cmd
 		}
+	}
+
+	// Handle simple action confirmation (deploy, plan, demo, cleanup)
+	if m.pendingAction != "" {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.pendingAction = ""
+			m.pendingScenarioID = ""
+			return m, nil
+		case msg.Type == tea.KeyEnter:
+			// Start async credential validation
+			m.validatingForAction = m.pendingAction
+			m.validatingScenarioID = m.pendingScenarioID
+			m.validatingCredentials = true
+			m.pendingAction = ""
+			m.pendingScenarioID = ""
+			return m, m.validateCredentialsAsync()
+		}
+		// Ignore other keys while confirming
+		return m, nil
+	}
+
+	// Handle credential validation in progress (ignore all keys except Esc)
+	if m.validatingCredentials {
+		if key.Matches(msg, m.keys.Esc) {
+			m.validatingCredentials = false
+			m.validatingForAction = ""
+			m.validatingScenarioID = ""
+		}
+		return m, nil
 	}
 
 	// Handle enable type choice
@@ -783,12 +890,24 @@ func (m *Model) toggleSelected() tea.Cmd {
 }
 
 func (m *Model) runDeploy() tea.Cmd {
+	// Show confirmation prompt
+	m.pendingAction = "deploy"
+	return nil
+}
+
+func (m *Model) executeDeploy() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Deploy")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
 
 func (m *Model) runPlan() tea.Cmd {
+	// Show confirmation prompt
+	m.pendingAction = "plan"
+	return nil
+}
+
+func (m *Model) executePlan() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
@@ -806,11 +925,53 @@ func (m *Model) runDemo() tea.Cmd {
 		return nil
 	}
 
-	m.overlay.ShowRunning(OverlayDemo, fmt.Sprintf("Demo: %s", selected.Scenario.UniqueID()))
-	demoPath := selected.Scenario.DemoPath()
-	cmd := exec.Command("bash", demoPath)
-	cmd.Dir = filepath.Dir(demoPath)
-	return m.runCommandStreaming(cmd)
+	// Show confirmation prompt
+	m.pendingAction = "demo"
+	m.pendingScenarioID = selected.Scenario.UniqueID()
+	return nil
+}
+
+func (m *Model) executeDemo(scenarioID string) tea.Cmd {
+	// Find scenario by ID
+	var scenario *scenarios.Scenario
+	for _, s := range m.allScenarios {
+		if s.UniqueID() == scenarioID {
+			scenario = s
+			break
+		}
+	}
+	if scenario == nil {
+		return nil
+	}
+
+	demoPath := scenario.DemoPath()
+	demoDir := filepath.Dir(demoPath)
+
+	// Wrap the script to pause before returning to TUI so users can see output
+	// This captures the exit code, shows a message, waits for Enter, then exits
+	wrapperScript := fmt.Sprintf(`
+		bash %q
+		exit_code=$?
+		echo ""
+		if [ $exit_code -eq 0 ]; then
+			echo -e "\033[0;32m[Demo completed successfully]\033[0m"
+		else
+			echo -e "\033[0;31m[Demo failed with exit code $exit_code]\033[0m"
+		fi
+		echo ""
+		echo "Press Enter to return to TUI..."
+		read
+		exit $exit_code
+	`, demoPath)
+
+	cmd := exec.Command("bash", "-c", wrapperScript)
+	cmd.Dir = demoDir
+
+	// Use tea.Exec to suspend TUI and give full terminal control to the script
+	interactiveCmd := &interactiveDemoCmd{cmd: cmd}
+	return tea.Exec(interactiveCmd, func(err error) tea.Msg {
+		return interactiveDemoDoneMsg{err: err}
+	})
 }
 
 func (m *Model) runCleanup() tea.Cmd {
@@ -825,11 +986,52 @@ func (m *Model) runCleanup() tea.Cmd {
 		return nil
 	}
 
-	m.overlay.ShowRunning(OverlayDemo, fmt.Sprintf("Cleanup: %s", selected.Scenario.UniqueID()))
-	cleanupPath := selected.Scenario.CleanupPath()
-	cmd := exec.Command("bash", cleanupPath)
-	cmd.Dir = filepath.Dir(cleanupPath)
-	return m.runCommandStreaming(cmd)
+	// Show confirmation prompt
+	m.pendingAction = "cleanup"
+	m.pendingScenarioID = selected.Scenario.UniqueID()
+	return nil
+}
+
+func (m *Model) executeCleanup(scenarioID string) tea.Cmd {
+	// Find scenario by ID
+	var scenario *scenarios.Scenario
+	for _, s := range m.allScenarios {
+		if s.UniqueID() == scenarioID {
+			scenario = s
+			break
+		}
+	}
+	if scenario == nil {
+		return nil
+	}
+
+	cleanupPath := scenario.CleanupPath()
+	cleanupDir := filepath.Dir(cleanupPath)
+
+	// Wrap the script to pause before returning to TUI so users can see output
+	wrapperScript := fmt.Sprintf(`
+		bash %q
+		exit_code=$?
+		echo ""
+		if [ $exit_code -eq 0 ]; then
+			echo -e "\033[0;32m[Cleanup completed successfully]\033[0m"
+		else
+			echo -e "\033[0;31m[Cleanup failed with exit code $exit_code]\033[0m"
+		fi
+		echo ""
+		echo "Press Enter to return to TUI..."
+		read
+		exit $exit_code
+	`, cleanupPath)
+
+	cmd := exec.Command("bash", "-c", wrapperScript)
+	cmd.Dir = cleanupDir
+
+	// Use tea.Exec to suspend TUI and give full terminal control to the script
+	interactiveCmd := &interactiveDemoCmd{cmd: cmd}
+	return tea.Exec(interactiveCmd, func(err error) tea.Msg {
+		return interactiveDemoDoneMsg{err: err}
+	})
 }
 
 func (m *Model) showDestroyTypeChoice() tea.Cmd {
@@ -1229,6 +1431,23 @@ func (m *Model) getAccountIDForProfile(profile string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// validateCredentialsAsync returns a tea.Cmd that validates AWS credentials asynchronously
+func (m *Model) validateCredentialsAsync() tea.Cmd {
+	return func() tea.Msg {
+		if m.config == nil {
+			return credentialsValidatedMsg{valid: false, err: fmt.Errorf("configuration not loaded")}
+		}
+
+		profile := m.config.AWS.Prod.Profile
+		if profile == "" {
+			return credentialsValidatedMsg{valid: false, err: fmt.Errorf("no AWS profile configured")}
+		}
+
+		err := aws.ValidatePrimaryProfile(profile)
+		return credentialsValidatedMsg{valid: err == nil, profile: profile, err: err}
+	}
+}
+
 // runCommandStreaming runs a command and streams its output to the overlay
 func (m *Model) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 	m.runningCmd = cmd
@@ -1404,6 +1623,16 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderDestroyConfirmBar()
 	}
 
+	// Simple action confirmation overlay (deploy, plan, demo, cleanup)
+	if m.pendingAction != "" {
+		return content + "\n" + m.renderActionConfirmBar()
+	}
+
+	// Credential validation in progress
+	if m.validatingCredentials {
+		return content + "\n" + m.renderValidatingCredentialsBar()
+	}
+
 	// Enable type choice overlay
 	if m.choosingEnableType {
 		return content + "\n" + m.renderEnableTypeChoiceBar()
@@ -1502,6 +1731,64 @@ func (m *Model) renderDestroyConfirmBar() string {
 		promptStyle.Render("Type 'destroy' to confirm: ") +
 		m.confirmInput.View() +
 		promptStyle.Render(" (Esc to cancel)")
+}
+
+func (m *Model) renderActionConfirmBar() string {
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	var actionStyle lipgloss.Style
+	var actionText string
+	var description string
+
+	switch m.pendingAction {
+	case "deploy":
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true) // Green
+		actionText = "DEPLOY"
+		description = "Run terraform apply to deploy enabled scenarios"
+	case "plan":
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true) // Cyan
+		actionText = "PLAN"
+		description = "Run terraform plan to preview changes"
+	case "demo":
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true) // Yellow/Orange
+		actionText = "RUN DEMO"
+		if m.pendingScenarioID != "" {
+			description = fmt.Sprintf("Execute demo_attack.sh for %s", m.pendingScenarioID)
+		} else {
+			description = "Execute demo_attack.sh"
+		}
+	case "cleanup":
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true) // Yellow/Orange
+		actionText = "RUN CLEANUP"
+		if m.pendingScenarioID != "" {
+			description = fmt.Sprintf("Execute cleanup_attack.sh for %s", m.pendingScenarioID)
+		} else {
+			description = "Execute cleanup_attack.sh"
+		}
+	default:
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+		actionText = "ACTION"
+		description = "Confirm action"
+	}
+
+	return actionStyle.Render(actionText+" ") +
+		dimStyle.Render(description+"  ") +
+		keyStyle.Render("Enter") +
+		dimStyle.Render(" to proceed  ") +
+		keyStyle.Render("Esc") +
+		dimStyle.Render(" to cancel")
+}
+
+func (m *Model) renderValidatingCredentialsBar() string {
+	spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true) // Cyan
+	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+
+	return spinnerStyle.Render("⟳ ") +
+		textStyle.Render("Validating AWS credentials...  ") +
+		keyStyle.Render("Esc") +
+		textStyle.Render(" to cancel")
 }
 
 func (m *Model) renderEnableTypeChoiceBar() string {
