@@ -57,3 +57,6 @@ echo "  3. Implement least privilege access controls"
 
 echo -e "\n${GREEN}The environment is already in its original state.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

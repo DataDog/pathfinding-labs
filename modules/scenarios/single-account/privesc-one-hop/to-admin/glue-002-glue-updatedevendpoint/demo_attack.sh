@@ -281,3 +281,6 @@ echo ""
 echo -e "${YELLOW}To clean up the attack artifacts:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

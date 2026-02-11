@@ -122,6 +122,12 @@ func (s *Scenario) HasCleanup() bool {
 	return err == nil
 }
 
+// HasDemoActive returns true if a .demo_active marker file exists
+func (s *Scenario) HasDemoActive() bool {
+	_, err := os.Stat(filepath.Join(s.DirPath, ".demo_active"))
+	return err == nil
+}
+
 // DemoPath returns the path to the demo script
 func (s *Scenario) DemoPath() string {
 	return filepath.Join(s.DirPath, "demo_attack.sh")
@@ -141,8 +147,10 @@ func (s *Scenario) CategoryShort() string {
 		return "one-hop"
 	case strings.Contains(s.Terraform.ModulePath, "privesc-multi-hop"):
 		return "multi-hop"
-	case strings.Contains(s.Terraform.ModulePath, "toxic-combo"):
-		return "toxic-combo"
+	case strings.Contains(s.Terraform.ModulePath, "cspm-toxic-combo"):
+		return "cspm-toxic-combo"
+	case strings.Contains(s.Terraform.ModulePath, "cspm-misconfig"):
+		return "cspm-misconfig"
 	case strings.Contains(s.Terraform.ModulePath, "tool-testing"):
 		return "tool-testing"
 	case strings.Contains(s.Terraform.ModulePath, "cross-account"):

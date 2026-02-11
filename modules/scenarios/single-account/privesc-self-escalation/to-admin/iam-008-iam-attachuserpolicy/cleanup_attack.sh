@@ -87,3 +87,6 @@ echo -e "${GREEN}Cleanup Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo "The user $STARTING_USER has been restored to its original permissions"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

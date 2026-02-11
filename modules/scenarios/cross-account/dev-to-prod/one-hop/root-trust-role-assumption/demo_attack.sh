@@ -214,3 +214,6 @@ echo "4. Implement least privilege - only grant trust to principals that need it
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

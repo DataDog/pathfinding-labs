@@ -30,9 +30,10 @@ func PredefinedCategories() []string {
 		"self-escalation",
 		"one-hop",
 		"multi-hop",
-		"toxic-combo",
-		"tool-testing",
 		"cross-account",
+		"cspm-misconfig",
+		"cspm-toxic-combo",
+		"tool-testing",
 	}
 }
 
@@ -47,12 +48,14 @@ func CategoryDisplayName(category string) string {
 		return "PrivEsc: One-Hop"
 	case "multi-hop":
 		return "PrivEsc: Multi-Hop"
-	case "toxic-combo":
-		return "Toxic Combo"
-	case "tool-testing":
-		return "Tool Testing"
 	case "cross-account":
 		return "PrivEsc: Cross-Account"
+	case "cspm-misconfig":
+		return "CSPM: Misconfig"
+	case "cspm-toxic-combo":
+		return "CSPM: Toxic Combo"
+	case "tool-testing":
+		return "Tool Testing"
 	default:
 		return category
 	}

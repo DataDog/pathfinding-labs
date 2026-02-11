@@ -132,3 +132,6 @@ echo ""
 echo "CLEANUP_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:SUCCESS"
 echo "CLEANUP_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Login profiles cleanup completed"
 echo "CLEANUP_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:cleanup_completed=true"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

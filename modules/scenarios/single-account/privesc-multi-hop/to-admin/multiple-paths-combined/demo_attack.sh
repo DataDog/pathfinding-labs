@@ -371,3 +371,6 @@ echo "TEST_METRICS:prod_role_with_multiple_privesc_paths:paths_tested=3,admin_ro
 
 # Clean up temp files
 rm -f /tmp/ec2-userdata.sh /tmp/lambda_function.py /tmp/lambda-response.json /tmp/cf-template.yaml
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

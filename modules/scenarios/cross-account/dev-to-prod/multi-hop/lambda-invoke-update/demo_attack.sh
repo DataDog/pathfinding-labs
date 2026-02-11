@@ -174,3 +174,6 @@ rm -f /tmp/malicious_lambda.py /tmp/malicious_lambda.zip /tmp/lambda_response.js
 echo ""
 echo "✅ Attack demonstration completed successfully!"
 echo "The prod Lambda function now contains malicious code that can extract credentials."
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

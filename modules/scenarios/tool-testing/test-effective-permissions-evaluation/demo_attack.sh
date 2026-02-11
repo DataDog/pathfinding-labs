@@ -459,3 +459,6 @@ echo ""
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${CYAN}Admin Definition: You have * on * without any IAM denies${NC}"
 echo -e "${CYAN}================================================================${NC}"
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

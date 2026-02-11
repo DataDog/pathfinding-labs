@@ -127,3 +127,6 @@ echo ""
 echo -e "${BLUE}Note: The SSH public key pushed to the instance automatically expires after 60 seconds.${NC}"
 echo -e "${BLUE}The extracted instance role credentials are temporary and will expire.${NC}"
 echo -e "${BLUE}The AdministratorAccess policy has been removed from the starting user.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

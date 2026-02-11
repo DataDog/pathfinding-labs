@@ -184,3 +184,6 @@ echo "To remove all infrastructure, disable the scenario in terraform.tfvars:"
 echo "  enable_tool_testing_test_effective_permissions_evaluation = false"
 echo "Then run: terraform apply"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

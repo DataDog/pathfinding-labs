@@ -150,3 +150,6 @@ echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreatePolicyV
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the malicious policy version${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

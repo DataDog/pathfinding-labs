@@ -320,3 +320,6 @@ echo "- Direct paths and indirect paths through privilege escalation"
 echo ""
 echo -e "${YELLOW}No cleanup required - this scenario only reads data.${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

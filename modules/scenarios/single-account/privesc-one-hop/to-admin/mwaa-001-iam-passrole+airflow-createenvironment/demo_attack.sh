@@ -292,3 +292,6 @@ echo -e "${RED}${NC}"
 echo -e "${RED}Cleanup will take 10-20 minutes to delete the environment.${NC}"
 echo -e "${RED}========================================${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

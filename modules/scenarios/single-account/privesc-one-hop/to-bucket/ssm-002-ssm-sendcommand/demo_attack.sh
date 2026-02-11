@@ -323,3 +323,6 @@ echo -e "\n${YELLOW}Note: SSM command history is automatically cleaned up by AWS
 echo -e "${YELLOW}To clean up immediately (optional):${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -387,3 +387,6 @@ echo "  - T1059: Command and Scripting Interpreter"
 echo "  - TA0004: Privilege Escalation"
 echo "  - TA0006: Credential Access"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

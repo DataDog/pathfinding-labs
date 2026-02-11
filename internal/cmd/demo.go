@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/demo"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -52,11 +53,11 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	// Discover scenarios
 	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
 
-	// Get enabled and deployed status
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledVars, err := tfvars.GetEnabledScenarios()
-	if err != nil {
-		enabledVars = make(map[string]bool)
+	// Get enabled status from config (source of truth)
+	cfg, _ := config.Load()
+	enabledVars := make(map[string]bool)
+	if cfg != nil {
+		enabledVars = cfg.GetEnabledScenarioVars()
 	}
 
 	// Get deployment status

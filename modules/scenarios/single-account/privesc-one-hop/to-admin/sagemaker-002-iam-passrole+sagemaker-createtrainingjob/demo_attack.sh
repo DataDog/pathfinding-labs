@@ -322,3 +322,6 @@ echo -e "\n${RED}⚠ Warning: This demo has attached AdministratorAccess to the 
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

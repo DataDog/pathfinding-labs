@@ -50,7 +50,7 @@ var (
 
 func init() {
 	enableCmd.Flags().BoolVar(&enableAll, "all", false, "Enable all scenarios (optionally filtered by --category/--target)")
-	enableCmd.Flags().StringVar(&enableCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, toxic-combo, cross-account)")
+	enableCmd.Flags().StringVar(&enableCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, cross-account, cspm-misconfig, cspm-toxic-combo)")
 	enableCmd.Flags().StringVar(&enableTarget, "target", "", "Filter by target (admin, bucket)")
 	enableCmd.Flags().BoolVarP(&enableYes, "yes", "y", false, "Skip confirmation prompts")
 	enableCmd.Flags().BoolVar(&enableDeploy, "deploy", false, "Deploy immediately after enabling")

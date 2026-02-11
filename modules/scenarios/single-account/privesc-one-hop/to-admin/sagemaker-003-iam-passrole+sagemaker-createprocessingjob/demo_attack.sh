@@ -301,3 +301,6 @@ echo ""
 
 # Cleanup temp files
 rm -f /tmp/exploit.py
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

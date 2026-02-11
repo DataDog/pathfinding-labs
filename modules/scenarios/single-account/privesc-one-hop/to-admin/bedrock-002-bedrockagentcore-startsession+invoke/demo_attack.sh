@@ -371,3 +371,6 @@ echo -e "${RED}⚠ The code interpreter session remains active until cleaned up$
 echo -e "\n${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

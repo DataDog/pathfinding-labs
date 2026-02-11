@@ -227,3 +227,6 @@ echo "- Cleaned up temporary files"
 echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
 echo -e "${YELLOW}The infrastructure (users, roles, and policies) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

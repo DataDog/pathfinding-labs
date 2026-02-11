@@ -105,3 +105,6 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}All temporary files and test objects have been removed${NC}"
 echo -e "${YELLOW}The infrastructure (bucket, role, sensitive-data.txt) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

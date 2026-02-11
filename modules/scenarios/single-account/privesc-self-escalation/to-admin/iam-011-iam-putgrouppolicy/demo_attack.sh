@@ -174,3 +174,5 @@ echo "- Inline policy '$POLICY_NAME' on group $TARGET_GROUP"
 echo ""
 echo -e "${RED}⚠ Warning: The user $PRIVESC_USER now has administrator access!${NC}"
 echo "Run ./cleanup_attack.sh to remove the inline policy and restore the original state"
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

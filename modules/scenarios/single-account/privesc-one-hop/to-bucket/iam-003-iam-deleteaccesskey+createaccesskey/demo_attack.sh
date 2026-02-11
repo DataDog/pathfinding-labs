@@ -223,3 +223,6 @@ echo -e "\n${RED}⚠ Warning: The original access key has been deleted and canno
 echo -e "${YELLOW}To clean up and restore the environment:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

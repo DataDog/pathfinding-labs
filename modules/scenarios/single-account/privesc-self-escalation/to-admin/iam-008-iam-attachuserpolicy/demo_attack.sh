@@ -108,3 +108,6 @@ echo -e "  $STARTING_USER → (AttachUserPolicy on self) → Admin"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the managed policy${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

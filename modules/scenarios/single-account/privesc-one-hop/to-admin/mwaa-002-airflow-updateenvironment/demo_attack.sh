@@ -400,3 +400,6 @@ echo -e "${RED}${NC}"
 echo -e "${RED}Note: Cleanup will also require an environment update (~10-30 min)${NC}"
 echo -e "${RED}========================================${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -322,6 +322,7 @@ func (o *Overlay) RenderHelpOverlay() string {
 			keys: [][]string{
 				{"↑/↓", "Move cursor"},
 				{"←/→", "Collapse/expand category"},
+				{",", "Toggle collapse/expand all"},
 				{"pgup/pgdn", "Page up/down"},
 				{"home/end", "Go to first/last"},
 				{"Tab", "Next pane"},

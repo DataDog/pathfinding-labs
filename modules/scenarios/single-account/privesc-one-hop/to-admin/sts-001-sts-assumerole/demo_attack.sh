@@ -123,3 +123,6 @@ echo ""
 echo -e "${GREEN}Privilege escalation successful!${NC}"
 echo -e "${YELLOW}This scenario demonstrates direct role assumption for privilege escalation.${NC}"
 echo -e "${YELLOW}No cleanup needed - this attack makes no persistent changes.${NC}\n"
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

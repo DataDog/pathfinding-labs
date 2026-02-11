@@ -87,3 +87,6 @@ fi
 echo ""
 echo "✅ Cleanup completed successfully!"
 echo "Any Lambda functions created during the attack demo have been removed."
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

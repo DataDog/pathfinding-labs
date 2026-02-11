@@ -178,3 +178,6 @@ echo ""
 echo -e "${GREEN}=== Cleanup Complete ===${NC}"
 echo "All resources created by the demo have been cleaned up."
 echo "The original module resources remain intact."
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

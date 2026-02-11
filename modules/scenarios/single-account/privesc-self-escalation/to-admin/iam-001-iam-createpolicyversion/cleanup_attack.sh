@@ -133,3 +133,6 @@ echo -e "${GREEN}Cleanup Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo "The policy has been restored to its original version"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

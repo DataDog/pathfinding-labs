@@ -279,3 +279,6 @@ echo -e "${GREEN}MWAA billing should stop once deletion is complete.${NC}"
 echo ""
 echo -e "${YELLOW}The infrastructure (users, roles, VPC, S3 bucket) remains deployed.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

@@ -400,3 +400,6 @@ echo "- IMDSv2 tokens used for secure access to metadata service"
 echo -e "\n${GREEN}✓ The instance has been restored to its original state${NC}"
 echo -e "${YELLOW}The infrastructure (users, roles, and EC2 instance) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

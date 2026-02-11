@@ -222,3 +222,6 @@ else
     echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumption_failed=true"
     exit 1
 fi
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

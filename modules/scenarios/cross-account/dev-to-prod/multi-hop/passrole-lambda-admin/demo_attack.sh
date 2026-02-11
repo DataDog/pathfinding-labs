@@ -239,3 +239,6 @@ else
     echo "TEST_METRICS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:dev_role_assumed=true,prod_role_assumed=true,lambda_created=true,admin_access_confirmed=false"
     exit 1
 fi
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

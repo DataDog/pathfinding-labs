@@ -1,0 +1,80 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "sts-001-to-ecs-002-to-admin"
+description: "Multi-hop escalation: assume a role with ECS permissions, then use PassRole + ECS to run a task with an admin role"
+cost_estimate: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+path_type: "multi-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sts001-ecs002-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-starting-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-admin-role"
+
+  summary: "starting_user → (sts:AssumeRole) → starting_role → (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask) → admin_role (via ECS task) → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "sts:AssumeRole"
+      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-starting-role"
+
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role"
+
+    - permission: "ecs:CreateCluster"
+      resource: "*"
+
+    - permission: "ecs:RegisterTaskDefinition"
+      resource: "*"
+
+    - permission: "ecs:RunTask"
+      resource: "*"
+
+  helpful:
+    - permission: "ec2:DescribeVpcs"
+      purpose: "Find default VPC for Fargate network configuration"
+
+    - permission: "ec2:DescribeSubnets"
+      purpose: "Find subnets for Fargate network configuration"
+
+    - permission: "ecs:DescribeTasks"
+      purpose: "Monitor task status and completion"
+
+    - permission: "iam:ListRoles"
+      purpose: "Discover available roles that trust ecs-tasks.amazonaws.com"
+
+    - permission: "iam:GetRole"
+      purpose: "View role permissions and trust policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin"
+  module_path: "modules/scenarios/single-account/privesc-multi-hop/to-admin/sts-001-to-ecs-002-to-admin"

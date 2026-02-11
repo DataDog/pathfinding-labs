@@ -87,3 +87,6 @@ echo ""
 echo "All infrastructure remains deployed and unchanged."
 echo "To remove infrastructure, set the scenario flag to false and run terraform apply"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

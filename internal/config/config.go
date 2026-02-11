@@ -32,6 +32,9 @@ type Config struct {
 	// Scenarios contains enabled scenarios configuration
 	Scenarios ScenariosConfig `yaml:"scenarios"`
 
+	// Budget contains AWS Budget alert configuration
+	Budget BudgetConfig `yaml:"budget,omitempty"`
+
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
 }
@@ -54,6 +57,18 @@ type ScenariosConfig struct {
 	// Enabled is the list of enabled scenario variable names
 	// Uses terraform variable names without the "enable_" prefix
 	Enabled []string `yaml:"enabled,omitempty"`
+}
+
+// BudgetConfig contains AWS Budget alert settings
+type BudgetConfig struct {
+	// Enabled indicates if budget alerts are enabled
+	Enabled bool `yaml:"enabled"`
+
+	// Email is the address to receive budget alerts
+	Email string `yaml:"email,omitempty"`
+
+	// LimitUSD is the monthly budget limit in USD
+	LimitUSD int `yaml:"limit_usd,omitempty"`
 }
 
 // GetConfigPath returns the path to the config file
@@ -320,6 +335,19 @@ func (c *Config) GenerateTFVars() string {
 		}
 	}
 	lines = append(lines, "")
+
+	// Add budget configuration
+	if c.Budget.Enabled && c.Budget.Email != "" {
+		lines = append(lines, "# Budget Alerts")
+		lines = append(lines, "enable_budget_alerts = true")
+		lines = append(lines, fmt.Sprintf("budget_alert_email   = %q", c.Budget.Email))
+		if c.Budget.LimitUSD > 0 {
+			lines = append(lines, fmt.Sprintf("budget_limit_usd     = %d", c.Budget.LimitUSD))
+		} else {
+			lines = append(lines, "budget_limit_usd     = 50")
+		}
+		lines = append(lines, "")
+	}
 
 	return strings.Join(lines, "\n")
 }

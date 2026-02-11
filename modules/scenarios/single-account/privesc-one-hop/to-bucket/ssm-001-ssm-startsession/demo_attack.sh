@@ -320,3 +320,6 @@ echo -e "${YELLOW}This scenario does not create persistent artifacts that requir
 echo -e "${YELLOW}To clean up environment variables (optional):${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

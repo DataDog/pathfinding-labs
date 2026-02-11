@@ -139,3 +139,6 @@ echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the escalated policy${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

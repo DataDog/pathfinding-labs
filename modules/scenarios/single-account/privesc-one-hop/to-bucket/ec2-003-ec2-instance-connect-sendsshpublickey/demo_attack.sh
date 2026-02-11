@@ -365,3 +365,6 @@ echo "- S3 access is achieved using stolen temporary credentials, not by changin
 echo -e "\n${YELLOW}To clean up temporary files and environment:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -82,6 +82,11 @@ module "prod_environment" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+
+  # Budget alerts
+  enable_budget_alerts = var.enable_budget_alerts
+  budget_alert_email   = var.budget_alert_email
+  budget_limit_usd     = var.budget_limit_usd
 }
 
 # Dev environment is optional (for cross-account scenarios)
@@ -95,6 +100,11 @@ module "dev_environment" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+
+  # Budget alerts
+  enable_budget_alerts = var.enable_budget_alerts
+  budget_alert_email   = var.budget_alert_email
+  budget_limit_usd     = var.budget_limit_usd
 }
 
 # Ops environment is optional (for cross-account scenarios)
@@ -108,6 +118,11 @@ module "ops_environment" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+
+  # Budget alerts
+  enable_budget_alerts = var.enable_budget_alerts
+  budget_alert_email   = var.budget_alert_email
+  budget_limit_usd     = var.budget_limit_usd
 }
 
 ##############################################################################
@@ -248,10 +263,10 @@ module "single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updatese
   providers = {
     aws.prod = aws.prod
   }
-  account_id                        = local.prod_account_id
-  environment                       = "prod"
-  resource_suffix                   = random_string.resource_suffix.result
-  apprunner_service_linked_role_id  = module.prod_environment[0].apprunner_service_linked_role_id
+  account_id                       = local.prod_account_id
+  environment                      = "prod"
+  resource_suffix                  = random_string.resource_suffix.result
+  apprunner_service_linked_role_id = module.prod_environment[0].apprunner_service_linked_role_id
 
   # Ensure service-linked role is created first and destroyed last
   depends_on = [module.prod_environment]
@@ -1029,6 +1044,18 @@ module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
 # PROD MULTI-HOP TO-ADMIN SCENARIOS
 ##############################################################################
 
+module "single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002" {
+  count  = var.enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002 ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-multi-hop/to-admin/lambda-004-to-iam-002-to-admin"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
 
 module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   count  = var.enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined ? 1 : 0
@@ -1040,6 +1067,19 @@ module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
+  count  = var.enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-multi-hop/to-admin/sts-001-to-ecs-002-to-admin"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
 }
 
 ##############################################################################
@@ -1115,12 +1155,12 @@ module "tool_testing_test_effective_permissions_evaluation" {
 }
 
 ##############################################################################
-# PROD TOXIC-COMBO SCENARIOS
+# PROD CSPM-TOXIC-COMBO SCENARIOS
 ##############################################################################
 
-module "single_account_toxic_combo_public_lambda_with_admin" {
-  count  = var.enable_single_account_toxic_combo_public_lambda_with_admin ? 1 : 0
-  source = "./modules/scenarios/single-account/toxic-combo/public-lambda-with-admin"
+module "single_account_cspm_toxic_combo_public_lambda_with_admin" {
+  count  = var.enable_single_account_cspm_toxic_combo_public_lambda_with_admin ? 1 : 0
+  source = "./modules/scenarios/single-account/cspm-toxic-combo/public-lambda-with-admin"
   providers = {
     aws.dev = aws.dev
   }
@@ -1128,6 +1168,21 @@ module "single_account_toxic_combo_public_lambda_with_admin" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
+}
+
+##############################################################################
+# PROD CSPM-MISCONFIG SCENARIOS
+##############################################################################
+
+module "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role" {
+  count  = var.enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role ? 1 : 0
+  source = "./modules/scenarios/single-account/cspm-misconfig/cspm-ec2-001-instance-with-privileged-role"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
 }
 
 ##############################################################################

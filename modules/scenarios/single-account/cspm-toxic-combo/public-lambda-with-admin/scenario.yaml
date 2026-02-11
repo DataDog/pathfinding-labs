@@ -9,9 +9,9 @@ cost_estimate: "$0/mo"
 # =============================================================================
 # CLASSIFICATION
 # =============================================================================
-category: "Toxic Combination"
+category: "CSPM: Toxic Combination"
 sub_category: "Publicly-accessible"
-path_type: "one-hop"
+path_type: "toxic-combination"
 target: "to-admin"
 environments:
   - "prod"
@@ -58,5 +58,5 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_single_account_toxic_combo_public_lambda_with_admin"
-  module_path: "modules/scenarios/single-account/toxic-combo/public-lambda-with-admin"
+  variable_name: "enable_single_account_cspm_toxic_combo_public_lambda_with_admin"
+  module_path: "modules/scenarios/single-account/cspm-toxic-combo/public-lambda-with-admin"

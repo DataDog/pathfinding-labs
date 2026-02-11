@@ -128,6 +128,28 @@ variable "resource_suffix" {
   type        = string
 }
 
+##############################################################################
+# BUDGET ALERT CONFIGURATION
+##############################################################################
+
+variable "enable_budget_alerts" {
+  description = "Enable AWS Budget alerts for this environment"
+  type        = bool
+  default     = false
+}
+
+variable "budget_alert_email" {
+  description = "Email address to receive budget alerts"
+  type        = string
+  default     = ""
+}
+
+variable "budget_limit_usd" {
+  description = "Monthly budget limit in USD"
+  type        = number
+  default     = 50
+}
+
 variable "github_repo" {
   description = "The github repo for the OIDC-GitHub challenge"
   type        = string

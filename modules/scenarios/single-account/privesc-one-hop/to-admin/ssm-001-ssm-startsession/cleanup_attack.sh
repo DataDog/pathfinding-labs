@@ -128,3 +128,6 @@ echo "  - SSM Session Manager: Complete session history"
 echo "  - CloudWatch Logs: Session commands (if logging enabled)"
 echo ""
 echo -e "${YELLOW}These logs are retained for security auditing and cannot be deleted.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

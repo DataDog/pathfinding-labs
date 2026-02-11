@@ -538,10 +538,10 @@ resource "aws_security_group" "mwaa_sg" {
 
   # Self-referencing inbound rule (MWAA workers communicate with each other)
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
     description = "Allow all traffic from within the security group (MWAA requirement)"
   }
 

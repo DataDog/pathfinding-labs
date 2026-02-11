@@ -7,6 +7,58 @@ terraform {
   }
 }
 
+# =============================================================================
+# BUDGET ALERTS
+# =============================================================================
+# AWS Budgets to protect against unexpected costs
+# Alerts at 50%, 80%, 100% actual spend and 100% forecasted spend
+
+resource "aws_budgets_budget" "monthly_cost" {
+  count = var.enable_budget_alerts && var.budget_alert_email != "" ? 1 : 0
+
+  name         = "pl-ops-monthly-budget"
+  budget_type  = "COST"
+  limit_amount = tostring(var.budget_limit_usd)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  # Alert at 50% actual spend
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 50
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+
+  # Alert at 80% actual spend
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+
+  # Alert at 100% actual spend
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+
+  # Alert when forecast exceeds 100%
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+}
+
 # Pathfinding starting user for operations environment
 resource "aws_iam_user" "pathfinding_starting_user" {
   name = "pl-pathfinding-starting-user-operations"

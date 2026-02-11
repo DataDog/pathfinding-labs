@@ -40,3 +40,5 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup Check Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

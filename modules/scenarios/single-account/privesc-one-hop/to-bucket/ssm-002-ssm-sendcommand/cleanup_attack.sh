@@ -120,3 +120,6 @@ echo ""
 echo -e "${BLUE}Note: This scenario does not create persistent artifacts that require cleanup.${NC}"
 echo -e "${BLUE}The SSM command executed during the demo is stored in AWS Systems Manager${NC}"
 echo -e "${BLUE}command history and will be automatically deleted after 30 days.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

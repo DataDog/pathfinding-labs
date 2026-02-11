@@ -274,3 +274,6 @@ else
     echo "TEST_METRICS:prod_role_has_exclusive_access_to_bucket_through_resource_policy:role_assumption_failed=true"
     exit 1
 fi
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

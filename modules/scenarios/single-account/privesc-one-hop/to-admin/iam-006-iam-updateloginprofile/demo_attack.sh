@@ -178,3 +178,6 @@ echo -e "  Original Password: ${YELLOW}$ORIGINAL_PASSWORD${NC} (saved for cleanu
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to restore the original password${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

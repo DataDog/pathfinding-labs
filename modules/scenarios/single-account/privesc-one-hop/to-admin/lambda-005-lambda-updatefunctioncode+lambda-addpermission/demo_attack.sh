@@ -266,3 +266,6 @@ echo -e "\n${RED}⚠ Warning: Lambda function contains malicious code and Admini
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

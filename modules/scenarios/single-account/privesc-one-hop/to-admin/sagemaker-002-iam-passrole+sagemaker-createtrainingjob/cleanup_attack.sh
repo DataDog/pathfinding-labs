@@ -190,3 +190,6 @@ echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false a
 
 echo -e "${BLUE}Note: Completed training jobs are automatically cleaned up by AWS${NC}"
 echo -e "${BLUE}and do not need manual deletion.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

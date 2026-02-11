@@ -10,9 +10,10 @@ import (
 
 // ScenarioItem represents a scenario in the list with its state
 type ScenarioItem struct {
-	Scenario *scenarios.Scenario
-	Enabled  bool
-	Deployed bool
+	Scenario   *scenarios.Scenario
+	Enabled    bool
+	Deployed   bool
+	DemoActive bool
 }
 
 // ScenariosPane displays the main scenario list
@@ -29,8 +30,9 @@ type ScenariosPane struct {
 	filterText      string
 	showGrouped     bool
 	collapsed       map[string]bool // category name -> collapsed state
-	showOnlyEnabled bool            // filter to show only enabled scenarios
-	showCosts       bool            // show cost estimates next to scenario names
+	showOnlyEnabled    bool // filter to show only enabled scenarios
+	showOnlyDemoActive bool // filter to show only demo-active scenarios
+	showCosts          bool // show cost estimates next to scenario names
 }
 
 // NewScenariosPane creates a new scenarios pane
@@ -54,11 +56,11 @@ func (s *ScenariosPane) SetScenarios(items []ScenarioItem) {
 	s.items = items
 	s.applyFilter()
 
-	// Initialize all categories as expanded by default
+	// Initialize all categories as collapsed by default
 	for _, item := range items {
 		cat := item.Scenario.CategoryShort()
 		if _, exists := s.collapsed[cat]; !exists {
-			s.collapsed[cat] = false // expanded by default
+			s.collapsed[cat] = true // collapsed by default
 		}
 	}
 }
@@ -94,6 +96,19 @@ func (s *ScenariosPane) ToggleShowOnlyEnabled() {
 // IsShowingOnlyEnabled returns whether only enabled scenarios are shown
 func (s *ScenariosPane) IsShowingOnlyEnabled() bool {
 	return s.showOnlyEnabled
+}
+
+// ToggleShowOnlyDemoActive toggles the filter to show only demo-active scenarios
+func (s *ScenariosPane) ToggleShowOnlyDemoActive() {
+	s.showOnlyDemoActive = !s.showOnlyDemoActive
+	s.applyFilter()
+	s.cursor = 0
+	s.offset = 0
+}
+
+// IsShowingOnlyDemoActive returns whether only demo-active scenarios are shown
+func (s *ScenariosPane) IsShowingOnlyDemoActive() bool {
+	return s.showOnlyDemoActive
 }
 
 // ToggleShowCosts toggles the display of cost estimates
@@ -138,6 +153,17 @@ func (s *ScenariosPane) applyFilter() {
 		var result []ScenarioItem
 		for _, item := range s.filtered {
 			if item.Enabled {
+				result = append(result, item)
+			}
+		}
+		s.filtered = result
+	}
+
+	// Filter by demo-active state if requested
+	if s.showOnlyDemoActive {
+		var result []ScenarioItem
+		for _, item := range s.filtered {
+			if item.DemoActive {
 				result = append(result, item)
 			}
 		}
@@ -406,6 +432,25 @@ func (s *ScenariosPane) CollapseAll() {
 	}
 }
 
+// ToggleCollapseAll toggles between all collapsed and all expanded
+func (s *ScenariosPane) ToggleCollapseAll() {
+	// Check if any category is expanded
+	anyExpanded := false
+	for _, isCollapsed := range s.collapsed {
+		if !isCollapsed {
+			anyExpanded = true
+			break
+		}
+	}
+
+	// If any are expanded, collapse all; otherwise expand all
+	if anyExpanded {
+		s.CollapseAll()
+	} else {
+		s.ExpandAll()
+	}
+}
+
 // UpdateEnabled updates the enabled state from external source
 func (s *ScenariosPane) UpdateEnabled(varName string, enabled bool) {
 	for i := range s.items {
@@ -474,6 +519,33 @@ func (s *ScenariosPane) GetDeployedCount() int {
 		}
 	}
 	return count
+}
+
+// GetDemoActiveCount returns the count of scenarios with active demos
+func (s *ScenariosPane) GetDemoActiveCount() int {
+	count := 0
+	for _, item := range s.items {
+		if item.DemoActive {
+			count++
+		}
+	}
+	return count
+}
+
+// UpdateDemoActive updates the demo-active state
+func (s *ScenariosPane) UpdateDemoActive(varName string, active bool) {
+	for i := range s.items {
+		if s.items[i].Scenario.Terraform.VariableName == varName {
+			s.items[i].DemoActive = active
+			break
+		}
+	}
+	for i := range s.filtered {
+		if s.filtered[i].Scenario.Terraform.VariableName == varName {
+			s.filtered[i].DemoActive = active
+			break
+		}
+	}
 }
 
 // HasPendingChanges returns true if there are enabled/deployed mismatches
@@ -603,12 +675,18 @@ func (s *ScenariosPane) View() string {
 
 	// Title with filter info
 	titleText := "Scenarios"
-	if s.showOnlyEnabled && s.filterText != "" {
-		titleText = fmt.Sprintf("Scenarios [enabled] [/%s]", s.filterText)
-	} else if s.showOnlyEnabled {
-		titleText = "Scenarios [enabled]"
-	} else if s.filterText != "" {
-		titleText = fmt.Sprintf("Scenarios [/%s]", s.filterText)
+	var filters []string
+	if s.showOnlyEnabled {
+		filters = append(filters, "enabled")
+	}
+	if s.showOnlyDemoActive {
+		filters = append(filters, "demo active")
+	}
+	if s.filterText != "" {
+		filters = append(filters, fmt.Sprintf("/%s", s.filterText))
+	}
+	if len(filters) > 0 {
+		titleText = fmt.Sprintf("Scenarios [%s]", strings.Join(filters, "] ["))
 	}
 	titleStyle := s.styles.PanelTitle.Width(s.width - 4)
 	sb.WriteString(titleStyle.Render(titleText))
@@ -819,6 +897,12 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 		} else {
 			parts = append(parts, s.styles.PendingDestroyLabel.Render("[pending]"))
 		}
+	}
+
+	// Demo active indicator
+	if item.DemoActive {
+		parts = append(parts, " ")
+		parts = append(parts, s.styles.DemoActiveLabel.Render("\u26a0 demo active"))
 	}
 
 	return strings.Join(parts, "")

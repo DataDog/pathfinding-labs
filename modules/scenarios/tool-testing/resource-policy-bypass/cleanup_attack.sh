@@ -175,3 +175,6 @@ echo ""
 echo "CLEANUP_RESULT:prod_role_has_access_to_bucket_through_resource_policy:SUCCESS"
 echo "CLEANUP_DETAILS:prod_role_has_access_to_bucket_through_resource_policy:Test files cleanup completed"
 echo "CLEANUP_METRICS:prod_role_has_access_to_bucket_through_resource_policy:cleanup_completed=true"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

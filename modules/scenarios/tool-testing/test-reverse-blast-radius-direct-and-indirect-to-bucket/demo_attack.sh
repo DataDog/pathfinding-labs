@@ -283,3 +283,6 @@ echo ""
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

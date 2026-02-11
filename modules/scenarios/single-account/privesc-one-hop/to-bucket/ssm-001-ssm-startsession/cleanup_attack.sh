@@ -92,3 +92,6 @@ echo -e "${BLUE}Session activity is logged in CloudTrail with the following even
 echo -e "${BLUE}  - StartSession (when session starts)${NC}"
 echo -e "${BLUE}  - TerminateSession (when session ends)${NC}"
 echo -e "${BLUE}  - ResumeSession (if session is resumed)${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

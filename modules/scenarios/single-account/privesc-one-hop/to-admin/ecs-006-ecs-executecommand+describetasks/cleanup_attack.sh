@@ -75,3 +75,6 @@ echo "3. Avoid assigning overly-privileged roles (like AdministratorAccess) to E
 echo "4. Enable CloudTrail logging for ECS ExecuteCommand events"
 echo "5. Consider using VPC endpoints to control metadata service access"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

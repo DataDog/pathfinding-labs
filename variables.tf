@@ -588,8 +588,20 @@ variable "enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_othe
   default     = false
 }
 
+variable "enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002" {
+  description = "Enable: single-account → privesc-multi-hop → to-admin → lambda-004-to-iam-002 (Lambda UpdateFunctionCode to CreateAccessKey chain)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   description = "Enable: single-account → privesc-multi-hop → to-admin → multiple-paths-combined"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
+  description = "Enable: single-account → privesc-multi-hop → to-admin → sts-001-to-ecs-002-to-admin"
   type        = bool
   default     = false
 }
@@ -639,11 +651,21 @@ variable "enable_tool_testing_test_effective_permissions_evaluation" {
 }
 
 ##############################################################################
-# SINGLE-ACCOUNT TOXIC-COMBO SCENARIOS
+# SINGLE-ACCOUNT CSPM-TOXIC-COMBO SCENARIOS
 ##############################################################################
 
-variable "enable_single_account_toxic_combo_public_lambda_with_admin" {
-  description = "Enable: single-account → toxic-combo → public-lambda-with-admin"
+variable "enable_single_account_cspm_toxic_combo_public_lambda_with_admin" {
+  description = "Enable: single-account → cspm-toxic-combo → public-lambda-with-admin"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# SINGLE-ACCOUNT CSPM-MISCONFIG SCENARIOS
+##############################################################################
+
+variable "enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role" {
+  description = "Enable: single-account → cspm-misconfig → cspm-ec2-001-instance-with-privileged-role"
   type        = bool
   default     = false
 }
@@ -690,4 +712,26 @@ variable "enable_cross_account_ops_to_prod_one_hop_simple_role_assumption" {
   description = "Enable: cross-account → ops-to-prod → one-hop → simple-role-assumption"
   type        = bool
   default     = false
+}
+
+##############################################################################
+# BUDGET ALERT CONFIGURATION
+##############################################################################
+
+variable "enable_budget_alerts" {
+  description = "Enable AWS Budget alerts for cost monitoring. First 2 budgets per account are FREE."
+  type        = bool
+  default     = false
+}
+
+variable "budget_alert_email" {
+  description = "Email address to receive budget alerts (required if enable_budget_alerts is true)"
+  type        = string
+  default     = ""
+}
+
+variable "budget_limit_usd" {
+  description = "Monthly budget limit in USD (applies to each enabled environment)"
+  type        = number
+  default     = 50
 }

@@ -26,7 +26,15 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Sync tfvars from config before running terraform
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync tfvars: %w", err)
+	}
 
 	cyan := color.New(color.FgCyan).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
@@ -35,7 +43,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	fmt.Println(cyan("Planning Pathfinding Labs deployment..."))
 
 	// Show mode indicator only in dev mode
-	if cfg != nil && cfg.DevMode {
+	if cfg.DevMode {
 		fmt.Println()
 		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
 	}

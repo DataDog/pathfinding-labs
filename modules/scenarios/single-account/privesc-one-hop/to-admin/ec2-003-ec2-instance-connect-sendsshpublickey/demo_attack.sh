@@ -330,3 +330,6 @@ echo "If the instance has a privileged role, this results in privilege escalatio
 echo -e "\n${YELLOW}To clean up:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"
