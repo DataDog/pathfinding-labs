@@ -4,7 +4,9 @@
 # This script stops active code interpreter sessions and removes temporary files
 # Note: The code interpreter itself is managed by Terraform and is NOT deleted here
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

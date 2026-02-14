@@ -3,7 +3,9 @@
 # Cleanup script for iam-passrole+sagemaker-createnotebookinstance privilege escalation demo
 # This script removes demo artifacts: deletes notebook instances and detaches admin policy from starting user
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

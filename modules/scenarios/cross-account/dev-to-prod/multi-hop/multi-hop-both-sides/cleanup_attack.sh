@@ -3,7 +3,9 @@
 # Cleanup script for x-account-from-dev-to-prod-multi-hop-privesc-both-sides attack path
 # This script removes any login profiles that may have been created during the attack demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

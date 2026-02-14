@@ -4,7 +4,9 @@
 # This is a read-only testing scenario that doesn't create any artifacts
 # This script verifies no modifications were made and removes any temporary files
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

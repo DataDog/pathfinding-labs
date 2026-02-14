@@ -4,7 +4,9 @@
 # This scenario demonstrates direct S3 access and indirect access via admin role
 # to validate reverse blast radius detection of administrative permissions
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 USER1_NAME="pl-prod-rbr-admin-user1"
@@ -101,6 +121,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify user1 identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -112,6 +133,7 @@ echo -e "${GREEN}✓ Verified user1 identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -120,6 +142,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Listing all S3 buckets with user1${NC}"
 echo "User1 has direct S3 permissions..."
 
+show_attack_cmd "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
 BUCKETS=$(aws s3api list-buckets --query 'Buckets[*].Name' --output text)
 echo "Found buckets:"
 for bucket in $BUCKETS; do
@@ -136,6 +159,7 @@ echo -e "${YELLOW}Step 5: Accessing target bucket directly with user1${NC}"
 echo "Target bucket: $BUCKET_NAME"
 
 echo "Listing objects in bucket..."
+show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents${NC}\n"
 
@@ -144,6 +168,7 @@ echo -e "${YELLOW}Step 6: Reading sensitive data with user1${NC}"
 echo "Downloading sensitive-data.txt..."
 
 TEMP_FILE="/tmp/user1-sensitive-data.txt"
+show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE
 
 echo -e "${GREEN}✓ Successfully downloaded file${NC}"
@@ -172,6 +197,7 @@ export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
 # Verify user2 identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -185,6 +211,7 @@ echo -e "${GREEN}✓ Verified user2 identity${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying user2 doesn't have direct S3 access${NC}"
 echo "Attempting to list buckets with user2..."
 
+show_cmd "aws s3api list-buckets --output text"
 if aws s3api list-buckets --output text &> /dev/null; then
     echo -e "${YELLOW}⚠ Unexpectedly can list buckets (user2 may have some S3 permissions)${NC}"
 else
@@ -192,6 +219,7 @@ else
 fi
 
 echo "Attempting to access target bucket directly..."
+show_cmd "aws s3 ls s3://$BUCKET_NAME/"
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${YELLOW}⚠ Unexpectedly can access bucket (user2 may have direct access)${NC}"
 else
@@ -204,6 +232,7 @@ echo -e "${YELLOW}Step 9: Assuming role3 (admin role)${NC}"
 echo "Role ARN: $ROLE3_ARN"
 echo "This role has AdministratorAccess..."
 
+show_attack_cmd "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-admin-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE3_ARN \
     --role-session-name demo-admin-session \
@@ -217,6 +246,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 
@@ -230,6 +260,7 @@ echo -e "${GREEN}✓ Successfully assumed role3 (admin role)${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying admin permissions${NC}"
 echo "Testing administrative access with IAM ListUsers..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -243,6 +274,7 @@ echo ""
 echo -e "${YELLOW}Step 11: Listing all S3 buckets as admin${NC}"
 echo "Admin role has full S3 access via AdministratorAccess..."
 
+show_attack_cmd "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
 BUCKETS=$(aws s3api list-buckets --query 'Buckets[*].Name' --output text)
 echo "Found buckets:"
 for bucket in $BUCKETS; do
@@ -260,6 +292,7 @@ echo "Target bucket: $BUCKET_NAME"
 echo "Access is granted through AdministratorAccess policy..."
 
 echo "Listing objects in bucket..."
+show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents${NC}\n"
 
@@ -268,6 +301,7 @@ echo -e "${YELLOW}Step 13: Reading sensitive data via admin role${NC}"
 echo "Downloading sensitive-data.txt..."
 
 TEMP_FILE="/tmp/admin-sensitive-data.txt"
+show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE
 
 echo -e "${GREEN}✓ Successfully downloaded file via admin role${NC}"
@@ -307,7 +341,15 @@ echo "  ✓ user2 has indirect access via admin role assumption"
 echo "  ✓ role3 has AdministratorAccess (broad permissions)"
 echo "  ✓ Both principals can access the same sensitive resource"
 echo ""
-echo -e "${YELLOW}MITRE ATT&CK Mapping:${NC}"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
+echo -e "\n${YELLOW}MITRE ATT&CK Mapping:${NC}"
 echo "  - T1078: Valid Accounts"
 echo "  - T1098: Account Manipulation"
 echo "  - T1530: Data from Cloud Storage Object"

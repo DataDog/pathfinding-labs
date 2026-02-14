@@ -8,7 +8,9 @@
 # This is designed to test reverse blast radius queries in security tools:
 # "Which principals have access to this sensitive bucket?"
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -16,6 +18,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Reverse Blast Radius Test Demo${NC}"
@@ -104,6 +124,7 @@ export AWS_SECRET_ACCESS_KEY=$USER1_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo ""
@@ -119,6 +140,7 @@ export AWS_SECRET_ACCESS_KEY=$USER1_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -132,6 +154,7 @@ echo -e "${GREEN}✓ Verified user1 identity${NC}\n"
 echo -e "${YELLOW}Step 3: Listing S3 buckets with user1 (direct access)${NC}"
 echo "Attempting to list all S3 buckets..."
 
+show_cmd "aws s3 ls"
 if aws s3 ls 2>/dev/null | head -5; then
     echo -e "${GREEN}✓ Successfully listed buckets${NC}"
 else
@@ -145,6 +168,7 @@ echo "Bucket: $BUCKET_NAME"
 echo ""
 
 echo "Listing objects in the sensitive bucket..."
+show_attack_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully listed objects in bucket${NC}"
 else
@@ -154,6 +178,7 @@ fi
 echo ""
 
 echo "Downloading sensitive-data.txt..."
+show_attack_cmd "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-user1.txt"
 if aws s3 cp "s3://$BUCKET_NAME/sensitive-data.txt" /tmp/sensitive-user1.txt 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully downloaded file${NC}"
     echo ""
@@ -178,6 +203,7 @@ export AWS_SECRET_ACCESS_KEY=$USER2_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -191,6 +217,7 @@ echo -e "${GREEN}✓ Verified user2 identity${NC}\n"
 echo -e "${YELLOW}Step 6: Verifying user2 lacks direct bucket access${NC}"
 echo "Attempting to access bucket directly (should fail)..."
 
+show_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${RED}⚠ Unexpectedly have direct bucket access${NC}"
 else
@@ -202,6 +229,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Assuming role3 with user2 credentials${NC}"
 echo "Role ARN: $ROLE3_ARN"
 
+show_attack_cmd "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE3_ARN \
     --role-session-name demo-session \
@@ -219,6 +247,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role3${NC}\n"
@@ -229,6 +258,7 @@ echo "Bucket: $BUCKET_NAME"
 echo ""
 
 echo "Listing objects in the sensitive bucket..."
+show_attack_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully listed objects in bucket${NC}"
 else
@@ -238,6 +268,7 @@ fi
 echo ""
 
 echo "Downloading sensitive-data.txt..."
+show_attack_cmd "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-role3.txt"
 if aws s3 cp "s3://$BUCKET_NAME/sensitive-data.txt" /tmp/sensitive-role3.txt 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully downloaded file${NC}"
     echo ""
@@ -271,7 +302,15 @@ echo "Should detect BOTH principals:"
 echo "  ✓ $USER1_NAME (direct IAM permissions)"
 echo "  ✓ $USER2_NAME (indirect via role3)"
 echo ""
-echo -e "${YELLOW}Artifacts Created:${NC}"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
+echo -e "\n${YELLOW}Artifacts Created:${NC}"
 echo "  - /tmp/sensitive-user1.txt (downloaded by user1)"
 echo "  - /tmp/sensitive-role3.txt (downloaded by role3)"
 echo ""

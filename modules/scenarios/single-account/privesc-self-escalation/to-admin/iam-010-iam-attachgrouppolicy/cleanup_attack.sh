@@ -3,7 +3,6 @@
 # Cleanup script for iam:AttachGroupPolicy privilege escalation demo
 # This script detaches the AdministratorAccess policy from the group
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

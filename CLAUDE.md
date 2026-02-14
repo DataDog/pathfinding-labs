@@ -38,25 +38,26 @@ pathfinding-labs/
 │   ├── repo/                 # Repository management
 │   └── demo/                 # Demo script execution
 │
-├── environments/             # Base infrastructure (always deployed)
-│   ├── prod/                 # Production environment base resources
-│   ├── dev/                  # Development environment base resources (optional)
-│   └── operations/           # Operations environment base resources (optional)
-│
-├── modules/scenarios/        # Attack scenarios (opt-in via boolean flags)
-│   ├── prod/                 # Single-account scenarios (PRIMARY)
-│   │   ├── one-hop/
-│   │   │   ├── to-admin/    # Single-step privilege escalation to admin
-│   │   │   └── to-bucket/   # Single-step escalation to S3 access
-│   │   ├── multi-hop/
-│   │   │   ├── to-admin/    # Multi-step escalation to admin
-│   │   │   └── to-bucket/   # Multi-step escalation to S3 access
-│   │   ├── cspm-misconfig/  # Single-condition security misconfigurations
-│   │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
-│   ├── tool-testing/         # Edge cases for testing detection engines
-│   └── cross-account/
-│       ├── dev-to-prod/     # Dev → Prod attack paths
-│       └── ops-to-prod/     # Ops → Prod attack paths
+├── modules/
+│   ├── environments/         # Base infrastructure (always deployed)
+│   │   ├── prod/             # Production environment base resources
+│   │   ├── dev/              # Development environment base resources (optional)
+│   │   └── operations/       # Operations environment base resources (optional)
+│   │
+│   └── scenarios/            # Attack scenarios (opt-in via boolean flags)
+│       ├── prod/                 # Single-account scenarios (PRIMARY)
+│       │   ├── one-hop/
+│       │   │   ├── to-admin/    # Single-step privilege escalation to admin
+│       │   │   └── to-bucket/   # Single-step escalation to S3 access
+│       │   ├── multi-hop/
+│       │   │   ├── to-admin/    # Multi-step escalation to admin
+│       │   │   └── to-bucket/   # Multi-step escalation to S3 access
+│       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
+│       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
+│       ├── tool-testing/         # Edge cases for testing detection engines
+│       └── cross-account/
+│           ├── dev-to-prod/     # Dev → Prod attack paths
+│           └── ops-to-prod/     # Ops → Prod attack paths
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario

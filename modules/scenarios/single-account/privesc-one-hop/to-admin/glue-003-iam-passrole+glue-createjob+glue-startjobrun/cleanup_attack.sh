@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + glue:CreateJob + glue:StartJobRun privilege escalation demo
 # This script removes the AdministratorAccess policy and Glue jobs created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

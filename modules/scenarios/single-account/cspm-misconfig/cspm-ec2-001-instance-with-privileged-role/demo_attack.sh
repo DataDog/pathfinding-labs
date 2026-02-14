@@ -8,7 +8,9 @@
 # The demo shows that anyone with SSM access to this instance can extract
 # administrative credentials from the Instance Metadata Service (IMDS).
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -17,6 +19,23 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 DEMO_USER="pl-cspm-ec2-001-demo-user"
@@ -94,6 +113,7 @@ export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
 # Verify demo user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 echo -e "${GREEN}✓ Authenticated as user with SSM access${NC}\n"
@@ -101,6 +121,7 @@ echo -e "${GREEN}✓ Authenticated as user with SSM access${NC}\n"
 # Step 3: Show the user does NOT have admin permissions
 echo -e "${YELLOW}Step 3: Verifying demo user has limited permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ User unexpectedly has IAM permissions${NC}"
 else
@@ -173,6 +194,7 @@ echo "Press ENTER to start the SSM session..."
 read
 
 # Start the interactive session
+show_attack_cmd aws ssm start-session --region $AWS_REGION --target $INSTANCE_ID
 aws ssm start-session \
     --region $AWS_REGION \
     --target $INSTANCE_ID
@@ -180,6 +202,13 @@ aws ssm start-session \
 # After session ends
 echo ""
 echo -e "${GREEN}✓ SSM session ended${NC}\n"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 # Step 6: Summarize the risk
 echo -e "${CYAN}========================================${NC}"

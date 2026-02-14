@@ -3,7 +3,9 @@
 # Cleanup script for iam-createpolicyversion+iam-updateassumerolepolicy privilege escalation demo
 # This script deletes the malicious policy version v2, restores v1 as default, and restores the original trust policy
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

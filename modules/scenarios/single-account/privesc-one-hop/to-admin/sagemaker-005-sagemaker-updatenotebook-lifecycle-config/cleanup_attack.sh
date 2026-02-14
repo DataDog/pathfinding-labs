@@ -3,7 +3,9 @@
 # Cleanup script for SageMaker UpdateNotebook Lifecycle Config privilege escalation demo
 # This script removes the admin policy from the starting user and cleans up the lifecycle config
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

@@ -3,7 +3,9 @@
 # Cleanup script for apprunner:UpdateService privilege escalation demo
 # This script restores the App Runner service to its original configuration and detaches the admin policy
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

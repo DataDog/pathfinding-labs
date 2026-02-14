@@ -3,7 +3,6 @@
 # Cleanup script for sts:AssumeRole to S3 bucket access demo
 # This script removes temporary files and test objects created during the demo
 
-set -e
 
 # Colors for output
 RED='\033[0;31m'

@@ -43,6 +43,11 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 		enabledVars = cfg.GetEnabledScenarioVars()
 	}
 
+	// Validate AWS credentials before running cleanup
+	if err := validateAWSCredentials(cfg); err != nil {
+		return err
+	}
+
 	// Get deployment status
 	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
 	var outputs terraform.Outputs

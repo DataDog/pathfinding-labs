@@ -3,7 +3,9 @@
 # Cleanup script for glue:UpdateDevEndpoint privilege escalation demo
 # This script removes the attacker's SSH key from the endpoint and cleans up temporary files
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

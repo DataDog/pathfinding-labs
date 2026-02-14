@@ -4,7 +4,9 @@
 # This script terminates instances, restores the original launch template default version,
 # and removes the AdministratorAccess policy from the starting user
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

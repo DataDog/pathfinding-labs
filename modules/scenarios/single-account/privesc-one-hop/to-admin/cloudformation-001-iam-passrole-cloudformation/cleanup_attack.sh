@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + cloudformation:CreateStack privilege escalation demo
 # This script deletes the CloudFormation stack and removes the escalated role
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

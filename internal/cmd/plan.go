@@ -31,6 +31,11 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Validate AWS credentials before running terraform
+	if err := validateAWSCredentials(cfg); err != nil {
+		return err
+	}
+
 	// Sync tfvars from config before running terraform
 	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync tfvars: %w", err)

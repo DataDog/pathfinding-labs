@@ -3,7 +3,9 @@
 # Cleanup script for iam:DeleteAccessKey + iam:CreateAccessKey privilege escalation demo
 # This script removes the newly created access key and notes about the deleted key
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

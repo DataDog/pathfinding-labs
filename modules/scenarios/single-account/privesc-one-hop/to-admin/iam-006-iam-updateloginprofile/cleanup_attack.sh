@@ -3,7 +3,6 @@
 # Cleanup script for iam:UpdateLoginProfile privilege escalation demo
 # This script restores the original password for the admin user
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

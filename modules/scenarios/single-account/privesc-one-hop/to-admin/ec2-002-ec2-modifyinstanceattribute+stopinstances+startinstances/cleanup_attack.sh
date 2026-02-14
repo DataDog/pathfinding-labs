@@ -3,7 +3,9 @@
 # Cleanup script for ec2:ModifyInstanceAttribute privilege escalation demo
 # This script restores the EC2 instance to its original state
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

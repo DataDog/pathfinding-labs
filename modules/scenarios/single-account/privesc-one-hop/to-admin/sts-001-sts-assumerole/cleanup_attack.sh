@@ -3,7 +3,9 @@
 # Cleanup script for sts:AssumeRole to admin demo
 # Since this scenario only involves role assumption, there are no artifacts to clean up
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

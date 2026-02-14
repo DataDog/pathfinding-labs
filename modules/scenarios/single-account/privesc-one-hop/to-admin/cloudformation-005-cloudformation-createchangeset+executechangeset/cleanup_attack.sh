@@ -3,7 +3,9 @@
 # Cleanup script for cloudformation:CreateChangeSet and ExecuteChangeSet privilege escalation demo
 # This script removes the escalated role and restores the stack to its original state
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

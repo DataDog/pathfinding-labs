@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask privilege escalation demo
 # This script removes the ECS cluster, task definitions, and IAM policy attachment created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

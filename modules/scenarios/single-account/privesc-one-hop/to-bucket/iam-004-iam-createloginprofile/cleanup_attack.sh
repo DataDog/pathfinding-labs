@@ -3,7 +3,9 @@
 # Cleanup script for iam:CreateLoginProfile to S3 bucket access demo
 # This script removes the login profile created during the attack demonstration
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + ec2:RunInstances privilege escalation demo
 # This script terminates the EC2 instance and restores the admin role's trust policy
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

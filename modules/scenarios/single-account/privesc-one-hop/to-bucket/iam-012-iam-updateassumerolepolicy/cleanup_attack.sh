@@ -3,7 +3,6 @@
 # Cleanup script for iam:UpdateAssumeRolePolicy to S3 bucket demo
 # This script restores the original trust policy on the target role
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

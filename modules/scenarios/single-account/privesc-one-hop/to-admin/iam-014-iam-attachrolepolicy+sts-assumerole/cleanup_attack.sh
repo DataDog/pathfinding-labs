@@ -3,7 +3,9 @@
 # Cleanup script for iam-attachrolepolicy+sts-assumerole privilege escalation demo
 # This script detaches the AdministratorAccess policy from the target role
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

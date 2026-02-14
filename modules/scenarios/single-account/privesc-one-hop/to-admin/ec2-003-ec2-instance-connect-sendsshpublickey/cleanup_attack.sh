@@ -3,7 +3,9 @@
 # Cleanup script for ec2-instance-connect:SendSSHPublicKey privilege escalation demo
 # This script removes temporary SSH keys created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

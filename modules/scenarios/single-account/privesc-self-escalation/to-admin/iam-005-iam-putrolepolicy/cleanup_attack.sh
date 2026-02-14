@@ -3,7 +3,6 @@
 # Cleanup script for iam:PutRolePolicy privilege escalation demo
 # This script removes the self-admin-policy inline policy attached during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

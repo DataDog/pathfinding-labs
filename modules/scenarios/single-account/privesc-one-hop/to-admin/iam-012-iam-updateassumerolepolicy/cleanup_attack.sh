@@ -3,7 +3,6 @@
 # Cleanup script for iam-updateassumerolepolicy privilege escalation demo
 # This script restores the original trust policy of the target admin role
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

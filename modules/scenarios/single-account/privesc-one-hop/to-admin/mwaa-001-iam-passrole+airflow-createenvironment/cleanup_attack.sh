@@ -5,7 +5,9 @@
 #
 # IMPORTANT: Run this script immediately after the demo to avoid ongoing MWAA charges!
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

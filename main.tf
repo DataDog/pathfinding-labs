@@ -74,7 +74,7 @@ resource "random_string" "resource_suffix" {
 # Prod environment (enabled by default)
 module "prod_environment" {
   count  = var.enable_prod_environment ? 1 : 0
-  source = "./environments/prod"
+  source = "./modules/environments/prod"
   providers = {
     aws = aws.prod
   }
@@ -92,7 +92,7 @@ module "prod_environment" {
 # Dev environment is optional (for cross-account scenarios)
 module "dev_environment" {
   count  = var.enable_dev_environment ? 1 : 0
-  source = "./environments/dev"
+  source = "./modules/environments/dev"
   providers = {
     aws = aws.dev
   }
@@ -110,7 +110,7 @@ module "dev_environment" {
 # Ops environment is optional (for cross-account scenarios)
 module "ops_environment" {
   count  = var.enable_ops_environment ? 1 : 0
-  source = "./environments/ops"
+  source = "./modules/environments/ops"
   providers = {
     aws = aws.operations
   }

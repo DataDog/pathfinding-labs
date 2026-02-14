@@ -3,7 +3,9 @@
 # Cleanup script for lambda:UpdateFunctionCode + lambda:AddPermission privilege escalation demo
 # This script removes the attack artifacts and restores the Lambda function
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

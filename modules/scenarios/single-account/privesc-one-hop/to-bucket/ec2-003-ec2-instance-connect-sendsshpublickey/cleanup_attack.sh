@@ -4,7 +4,9 @@
 # This scenario creates temporary SSH keys and extracts instance credentials
 # This script cleans up local files and environment variables
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

@@ -3,7 +3,9 @@
 # Cleanup script for prod_role_with_multiple_privesc_paths module
 # This script removes all changes made by the demo_attack.sh script
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

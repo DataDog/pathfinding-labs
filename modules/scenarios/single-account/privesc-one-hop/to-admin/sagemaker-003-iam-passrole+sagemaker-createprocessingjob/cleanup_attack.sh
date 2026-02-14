@@ -3,7 +3,9 @@
 # Cleanup script for iam-passrole+sagemaker-createprocessingjob privilege escalation demo
 # This script removes attack artifacts created during the demonstration
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

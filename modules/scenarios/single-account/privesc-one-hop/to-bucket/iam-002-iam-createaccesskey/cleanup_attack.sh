@@ -3,7 +3,9 @@
 # Cleanup script for iam:CreateAccessKey to S3 bucket demo
 # This script removes the access keys created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

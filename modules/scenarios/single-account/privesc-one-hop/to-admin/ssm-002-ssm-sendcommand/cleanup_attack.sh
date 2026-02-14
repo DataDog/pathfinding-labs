@@ -3,7 +3,9 @@
 # Cleanup script for ssm:SendCommand privilege escalation demo
 # This script cleans up any SSM command history (though AWS automatically cleans up after 30 days)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

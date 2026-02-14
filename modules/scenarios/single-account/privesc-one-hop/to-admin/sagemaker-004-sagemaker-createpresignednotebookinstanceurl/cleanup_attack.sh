@@ -3,7 +3,9 @@
 # Cleanup script for SageMaker CreatePresignedNotebookInstanceUrl privilege escalation demo
 # This script removes the AdministratorAccess policy attached during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

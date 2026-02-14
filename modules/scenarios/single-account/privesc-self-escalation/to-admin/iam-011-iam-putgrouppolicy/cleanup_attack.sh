@@ -3,7 +3,6 @@
 # Cleanup script for iam:PutGroupPolicy privilege escalation demo
 # This script removes the inline policy added to the group during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

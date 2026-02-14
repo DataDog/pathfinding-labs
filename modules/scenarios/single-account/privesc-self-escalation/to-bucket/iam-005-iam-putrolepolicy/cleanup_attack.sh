@@ -3,7 +3,6 @@
 # Cleanup script for iam:PutRolePolicy to S3 bucket demo
 # This script removes the escalated inline policy from the starting role
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

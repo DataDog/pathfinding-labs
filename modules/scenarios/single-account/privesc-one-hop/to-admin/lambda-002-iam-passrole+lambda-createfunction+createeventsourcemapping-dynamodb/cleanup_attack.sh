@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + lambda:CreateFunction + lambda:CreateEventSourceMapping (DynamoDB) privilege escalation demo
 # This script removes the Lambda function, event source mapping, and IAM policy attachment created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

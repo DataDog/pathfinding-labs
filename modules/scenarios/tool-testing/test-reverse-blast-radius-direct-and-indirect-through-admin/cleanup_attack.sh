@@ -3,7 +3,9 @@
 # Cleanup script for test-reverse-blast-radius-direct-and-indirect-through-admin
 # This script verifies that no persistent artifacts were created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

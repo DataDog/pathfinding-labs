@@ -4,7 +4,9 @@
 # This script removes the AdministratorAccess policy from the starting user,
 # deletes the exploit script from S3, and cleans up local files
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

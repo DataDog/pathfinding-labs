@@ -3,7 +3,9 @@
 # Cleanup script for Data Pipeline resource policy bypass privilege escalation demo
 # This script removes the Data Pipeline, EC2 instances, and exfiltrated data
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

@@ -3,7 +3,9 @@
 # Cleanup script for Lambda UpdateFunctionCode + IAM CreateAccessKey multi-hop privilege escalation demo
 # This script restores the original Lambda function code and deletes access keys created during the attack
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

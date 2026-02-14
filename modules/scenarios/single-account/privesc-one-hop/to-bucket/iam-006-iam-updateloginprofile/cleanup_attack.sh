@@ -3,7 +3,9 @@
 # Cleanup script for iam:UpdateLoginProfile to S3 bucket access demo
 # This script restores the original password for the bucket user and removes artifacts
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

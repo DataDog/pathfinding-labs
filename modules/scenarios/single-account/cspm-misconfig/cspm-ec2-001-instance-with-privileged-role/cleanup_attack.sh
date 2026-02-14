@@ -6,6 +6,9 @@
 # is logged but no persistent changes are made. This script exists for
 # consistency with other scenarios.
 
+# Disable AWS CLI paging
+export AWS_PAGER=""
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

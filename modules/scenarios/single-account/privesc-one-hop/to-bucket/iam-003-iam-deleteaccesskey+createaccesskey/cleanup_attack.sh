@@ -4,7 +4,9 @@
 # This script removes the newly created access key and ensures the target user
 # has 2 access keys again (restoring the original scenario state)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

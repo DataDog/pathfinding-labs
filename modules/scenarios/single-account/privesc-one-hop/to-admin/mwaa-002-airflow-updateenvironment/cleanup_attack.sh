@@ -14,7 +14,9 @@
 #
 # Note: This does NOT delete the MWAA environment - Terraform manages that.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

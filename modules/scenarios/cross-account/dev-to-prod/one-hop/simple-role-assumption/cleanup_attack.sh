@@ -3,7 +3,9 @@
 # Cleanup script for cross-account simple-role-assumption privilege escalation demo
 # This script verifies no persistent artifacts were created
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

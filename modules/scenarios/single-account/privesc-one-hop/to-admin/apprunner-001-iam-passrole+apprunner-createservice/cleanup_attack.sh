@@ -3,7 +3,9 @@
 # Cleanup script for iam:PassRole + apprunner:CreateService privilege escalation demo
 # This script removes the App Runner service and detaches the admin policy
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

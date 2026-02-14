@@ -3,7 +3,9 @@
 # Cleanup script for ecs:ExecuteCommand privilege escalation demo
 # This scenario does not create any persistent artifacts - cleanup is minimal
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

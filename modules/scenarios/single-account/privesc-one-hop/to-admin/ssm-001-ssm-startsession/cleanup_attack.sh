@@ -3,7 +3,9 @@
 # Cleanup script for ssm:StartSession privilege escalation demo
 # This scenario is read-only and does not create persistent artifacts
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

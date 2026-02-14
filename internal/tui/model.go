@@ -1678,6 +1678,9 @@ func (m *Model) updateLayout() {
 
 	// Main content height (leave room for status bar)
 	mainHeight := m.termHeight - 1
+	if mainHeight < 1 {
+		mainHeight = 1
+	}
 
 	// Info pane height (allows for wrapped directory path)
 	infoHeight := 12
@@ -1698,7 +1701,7 @@ func (m *Model) updateLayout() {
 	m.info.SetSize(leftWidth, infoHeight)
 	m.environment.SetSize(leftWidth, envHeight)
 	m.actions.SetSize(leftWidth, actionsHeight)
-	m.scenariosPane.SetSize(centerWidth, mainHeight+1) // +1 to align bottom border with details pane
+	m.scenariosPane.SetSize(centerWidth, mainHeight)
 	m.details.SetSize(rightWidth, mainHeight)
 	m.overlay.SetSize(m.termWidth, m.termHeight)
 

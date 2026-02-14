@@ -3,7 +3,6 @@
 # Cleanup script for iam:CreatePolicyVersion privilege escalation demo
 # This script removes the malicious policy version created during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

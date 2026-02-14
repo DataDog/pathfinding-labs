@@ -4,7 +4,9 @@
 # This scenario does not create persistent artifacts - it's a read-only attack
 # This script cleans up any local files and environment variables
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'

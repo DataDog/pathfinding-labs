@@ -3,7 +3,6 @@
 # Cleanup script for iam:AttachRolePolicy to S3 bucket demo
 # This script detaches the escalated S3 access policy from the starting role
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

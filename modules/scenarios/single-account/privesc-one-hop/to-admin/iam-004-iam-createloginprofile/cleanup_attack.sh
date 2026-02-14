@@ -3,7 +3,6 @@
 # Cleanup script for iam:CreateLoginProfile privilege escalation demo
 # This script removes the login profile created during the attack
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

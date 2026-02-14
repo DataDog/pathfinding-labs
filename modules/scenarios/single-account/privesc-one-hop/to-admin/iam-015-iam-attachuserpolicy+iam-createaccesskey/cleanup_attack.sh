@@ -3,7 +3,6 @@
 # Cleanup script for iam:AttachUserPolicy + iam:CreateAccessKey privilege escalation demo
 # This script removes the attached policy and access keys created during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""

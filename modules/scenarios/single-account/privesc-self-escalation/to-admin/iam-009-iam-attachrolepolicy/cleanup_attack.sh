@@ -3,7 +3,6 @@
 # Cleanup script for iam:AttachRolePolicy privilege escalation demo
 # This script removes the AdministratorAccess policy attached during the demo
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
