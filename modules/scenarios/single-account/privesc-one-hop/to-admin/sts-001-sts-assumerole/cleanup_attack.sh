@@ -3,7 +3,9 @@
 # Cleanup script for sts:AssumeRole to admin demo
 # Since this scenario only involves role assumption, there are no artifacts to clean up
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -40,3 +42,5 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup Check Complete${NC}"
 echo -e "${GREEN}========================================${NC}"
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

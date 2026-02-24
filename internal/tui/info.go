@@ -27,6 +27,7 @@ type InfoPane struct {
 	totalScenarios      int
 	deployedCount       int     // Number of deployed scenarios
 	enabledCount        int     // Number of enabled scenarios
+	demoActiveCount     int     // Number of scenarios with active demos
 	runningCostPerMonth float64 // Aggregate cost of enabled+deployed scenarios
 	width               int
 	height              int
@@ -67,6 +68,11 @@ func (i *InfoPane) SetTotalScenarios(count int) {
 func (i *InfoPane) SetDeploymentCounts(enabled, deployed int) {
 	i.enabledCount = enabled
 	i.deployedCount = deployed
+}
+
+// SetDemoActiveCount sets the number of scenarios with active demos
+func (i *InfoPane) SetDemoActiveCount(count int) {
+	i.demoActiveCount = count
 }
 
 // SetRunningCost sets the aggregate monthly cost of deployed scenarios
@@ -170,6 +176,15 @@ func (i *InfoPane) View() string {
 	} else {
 		sb.WriteString(labelStyle.Render("Running cost "))
 		sb.WriteString(dimStyle.Render("$0/mo"))
+		sb.WriteString("\n")
+	}
+
+	// Demo active warning
+	if i.demoActiveCount > 0 {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
+		sb.WriteString(labelStyle.Render("Demos active "))
+		sb.WriteString(warningStyle.Render(fmt.Sprintf("%d \u26a0", i.demoActiveCount)))
+		sb.WriteString(dimStyle.Render(" (run cleanup)"))
 		sb.WriteString("\n")
 	}
 

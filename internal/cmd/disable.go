@@ -47,7 +47,7 @@ var (
 
 func init() {
 	disableCmd.Flags().BoolVar(&disableAllFlag, "all", false, "Disable all enabled scenarios")
-	disableCmd.Flags().StringVar(&disableCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, toxic-combo, cross-account)")
+	disableCmd.Flags().StringVar(&disableCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, cross-account, cspm-misconfig, cspm-toxic-combo)")
 	disableCmd.Flags().StringVar(&disableTarget, "target", "", "Filter by target (admin, bucket)")
 	disableCmd.Flags().BoolVarP(&disableYes, "yes", "y", false, "Skip confirmation prompts")
 	disableCmd.Flags().BoolVar(&disableDeploy, "deploy", false, "Deploy immediately after disabling (destroys disabled scenarios)")

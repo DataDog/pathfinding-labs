@@ -3,7 +3,9 @@
 # Cross-Account Lambda Function Code Update Attack Cleanup
 # This script restores the original Lambda function code and removes malicious changes
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 echo "🧹 Starting Cross-Account Lambda Attack Cleanup"
 echo "=============================================="
@@ -121,3 +123,6 @@ rm -f /tmp/restore_lambda.py /tmp/restore_lambda.zip /tmp/restore_response.json
 echo ""
 echo "✅ Cleanup completed successfully!"
 echo "The prod Lambda function has been restored to its original state."
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

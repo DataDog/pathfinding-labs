@@ -31,10 +31,14 @@ type KeyMap struct {
 	Config  key.Binding
 
 	// Filter
-	Filter            key.Binding
-	ClearFilter       key.Binding
-	ToggleEnabledOnly key.Binding
-	ToggleCosts       key.Binding
+	Filter             key.Binding
+	ClearFilter        key.Binding
+	ToggleEnabledOnly  key.Binding
+	ToggleDemoActive   key.Binding
+	ToggleCosts        key.Binding
+
+	// Category collapse
+	ToggleCollapseAll key.Binding
 
 	// Help and quit
 	Help key.Binding
@@ -139,9 +143,19 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys("."),
 			key.WithHelp(".", "toggle enabled only"),
 		),
+		ToggleDemoActive: key.NewBinding(
+			key.WithKeys("!"),
+			key.WithHelp("!", "demo active only"),
+		),
 		ToggleCosts: key.NewBinding(
 			key.WithKeys("$"),
 			key.WithHelp("$", "toggle costs"),
+		),
+
+		// Category collapse
+		ToggleCollapseAll: key.NewBinding(
+			key.WithKeys(","),
+			key.WithHelp(",", "toggle collapse all"),
 		),
 
 		// Help and quit
@@ -180,7 +194,8 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		{k.Tab, k.Toggle, k.Enable},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup},
 		{k.Destroy, k.Config},
-		{k.Filter, k.ToggleEnabledOnly, k.ToggleCosts},
+		{k.Filter, k.ToggleEnabledOnly, k.ToggleDemoActive, k.ToggleCosts},
+		{k.ToggleCollapseAll},
 		{k.Help, k.Quit},
 	}
 }

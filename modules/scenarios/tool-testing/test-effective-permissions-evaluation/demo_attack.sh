@@ -3,7 +3,9 @@
 # Comprehensive Effective Permissions Evaluation Test Suite
 # Tests 40 principals (15 isAdmin, 24 notAdmin, 1 starting user)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Color codes for output
 RED='\033[0;31m'
@@ -12,6 +14,23 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${CYAN}Effective Permissions Evaluation Test (40 Principals)${NC}"
@@ -459,3 +478,13 @@ echo ""
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${CYAN}Admin Definition: You have * on * without any IAM denies${NC}"
 echo -e "${CYAN}================================================================${NC}"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

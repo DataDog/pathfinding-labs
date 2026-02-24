@@ -38,24 +38,26 @@ pathfinding-labs/
 │   ├── repo/                 # Repository management
 │   └── demo/                 # Demo script execution
 │
-├── environments/             # Base infrastructure (always deployed)
-│   ├── prod/                 # Production environment base resources
-│   ├── dev/                  # Development environment base resources (optional)
-│   └── operations/           # Operations environment base resources (optional)
-│
-├── modules/scenarios/        # Attack scenarios (opt-in via boolean flags)
-│   ├── prod/                 # Single-account scenarios (PRIMARY)
-│   │   ├── one-hop/
-│   │   │   ├── to-admin/    # Single-step privilege escalation to admin
-│   │   │   └── to-bucket/   # Single-step escalation to S3 access
-│   │   ├── multi-hop/
-│   │   │   ├── to-admin/    # Multi-step escalation to admin
-│   │   │   └── to-bucket/   # Multi-step escalation to S3 access
-│   │   └── toxic-combo/     # Multiple misconfigurations combined
-│   ├── tool-testing/         # Edge cases for testing detection engines
-│   └── cross-account/
-│       ├── dev-to-prod/     # Dev → Prod attack paths
-│       └── ops-to-prod/     # Ops → Prod attack paths
+├── modules/
+│   ├── environments/         # Base infrastructure (always deployed)
+│   │   ├── prod/             # Production environment base resources
+│   │   ├── dev/              # Development environment base resources (optional)
+│   │   └── operations/       # Operations environment base resources (optional)
+│   │
+│   └── scenarios/            # Attack scenarios (opt-in via boolean flags)
+│       ├── prod/                 # Single-account scenarios (PRIMARY)
+│       │   ├── one-hop/
+│       │   │   ├── to-admin/    # Single-step privilege escalation to admin
+│       │   │   └── to-bucket/   # Single-step escalation to S3 access
+│       │   ├── multi-hop/
+│       │   │   ├── to-admin/    # Multi-step escalation to admin
+│       │   │   └── to-bucket/   # Multi-step escalation to S3 access
+│       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
+│       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
+│       ├── tool-testing/         # Edge cases for testing detection engines
+│       └── cross-account/
+│           ├── dev-to-prod/     # Dev → Prod attack paths
+│           └── ops-to-prod/     # Ops → Prod attack paths
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario
@@ -79,10 +81,16 @@ pathfinding-labs/
 - Examples: Role chains, multiple privilege escalation steps
 - Deploy to: **prod account only** (for single-account) or **cross-account**
 
-**Toxic Combinations**
-- Multiple security misconfigurations that amplify risk
+**CSPM Misconfig**
+- Single-condition security misconfigurations
+- Examples: EC2 with admin role, S3 bucket publicly accessible
+- Focus on CSPM detection of individual misconfigurations
+- Deploy to: **prod account only**
+
+**CSPM Toxic Combinations**
+- Multiple compounding security misconfigurations
 - Examples: Public Lambda + Admin Role, Public S3 + Sensitive Data
-- Focus on CSPM detection scenarios
+- Focus on CSPM detection of combined risk scenarios
 - Deploy to: **prod account only**
 
 **Cross-Account Privilege Escalation**
@@ -103,7 +111,7 @@ pathfinding-labs/
 **Prod Account (PRIMARY)**
 - All one-hop scenarios (to-admin and to-bucket)
 - All single-account multi-hop scenarios
-- All toxic-combo scenarios
+- All CSPM scenarios (cspm-misconfig and cspm-toxic-combo)
 - **Users with only ONE AWS account can use just prod!**
 
 **Dev/Ops Accounts (OPTIONAL)**
@@ -618,7 +626,8 @@ scenario-name/
    - One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/scenario-name/`
    - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/scenario-name/`
    - Multi-hop to bucket: `modules/scenarios/single-account/privesc-multi-hop/to-bucket/scenario-name/`
-   - Toxic combo: `modules/scenarios/single-account/toxic-combo/scenario-name/`
+   - CSPM Misconfig: `modules/scenarios/single-account/cspm-misconfig/scenario-name/`
+   - CSPM Toxic combo: `modules/scenarios/single-account/cspm-toxic-combo/scenario-name/`
    - Tool testing: `modules/scenarios/tool-testing/scenario-name/`
    - Cross-account: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
 
@@ -779,7 +788,7 @@ prod_account_aws_profile = "my-playground-account"
 # Enable specific scenarios (use pathfinding.cloud IDs)
 enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
 enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
-enable_single_account_toxic_combo_public_lambda_with_admin = true
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
 
 # Keep everything else disabled
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = false
@@ -883,7 +892,7 @@ Each scenario documents what a properly configured CSPM should detect:
 ### 1. CSPM Validation
 Deploy known vulnerabilities and verify your CSPM detects them:
 ```bash
-enable_single_account_toxic_combo_public_lambda_with_admin = true
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
 terraform apply
 # Check if CSPM alerts on: Lambda function publicly accessible + administrative permissions
 ```

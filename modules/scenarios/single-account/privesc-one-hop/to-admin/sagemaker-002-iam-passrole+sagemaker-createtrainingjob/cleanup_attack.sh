@@ -4,7 +4,9 @@
 # This script removes the AdministratorAccess policy from the starting user,
 # deletes the exploit script from S3, and cleans up local files
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -190,3 +192,6 @@ echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false a
 
 echo -e "${BLUE}Note: Completed training jobs are automatically cleaned up by AWS${NC}"
 echo -e "${BLUE}and do not need manual deletion.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

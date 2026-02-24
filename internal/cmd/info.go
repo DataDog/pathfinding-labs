@@ -134,10 +134,9 @@ func runInfo(cmd *cobra.Command, args []string) error {
 				fmt.Printf("    %s: %d\n", cat, count)
 			}
 
-			// Count enabled
-			tfvars := terraform.NewTFVars(paths.TFVarsPath)
-			enabledVars, err := tfvars.GetEnabledScenarios()
-			if err == nil {
+			// Count enabled from config (source of truth)
+			if cfg != nil {
+				enabledVars := cfg.GetEnabledScenarioVars()
 				enabledCount := 0
 				for _, enabled := range enabledVars {
 					if enabled {

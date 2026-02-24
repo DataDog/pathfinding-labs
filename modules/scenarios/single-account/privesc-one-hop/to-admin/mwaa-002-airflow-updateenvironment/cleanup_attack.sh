@@ -14,7 +14,9 @@
 #
 # Note: This does NOT delete the MWAA environment - Terraform manages that.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -333,3 +335,6 @@ echo -e "${YELLOW}The MWAA infrastructure (environment, VPC, buckets) remains de
 echo -e "${YELLOW}MWAA costs ~\$37/month while running.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply.${NC}"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

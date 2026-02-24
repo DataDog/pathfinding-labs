@@ -3,7 +3,9 @@
 # Cleanup script for x-account-from-dev-to-prod-multi-hop-privesc-both-sides attack path
 # This script removes any login profiles that may have been created during the attack demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -132,3 +134,6 @@ echo ""
 echo "CLEANUP_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:SUCCESS"
 echo "CLEANUP_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Login profiles cleanup completed"
 echo "CLEANUP_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:cleanup_completed=true"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

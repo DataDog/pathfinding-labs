@@ -3,7 +3,9 @@
 # Cleanup script for glue:UpdateDevEndpoint privilege escalation demo
 # This script removes the attacker's SSH key from the endpoint (does NOT delete the endpoint)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -213,3 +215,6 @@ echo -e "${YELLOW}To stop all costs and remove infrastructure:${NC}"
 echo "  1. Set enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint = false in terraform.tfvars"
 echo "  2. Run: terraform apply"
 echo ""
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

@@ -3,7 +3,9 @@
 # Cleanup script for cross-account root-trust-role-assumption privilege escalation demo
 # This script verifies no persistent artifacts were created
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -57,3 +59,6 @@ echo "  3. Implement least privilege access controls"
 
 echo -e "\n${GREEN}The environment is already in its original state.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

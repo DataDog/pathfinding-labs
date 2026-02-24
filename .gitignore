@@ -72,4 +72,6 @@ Thumbs.db
 
 .infracost
 
-.demo_active
+# Demo active marker files
+**/.demo_active
+
