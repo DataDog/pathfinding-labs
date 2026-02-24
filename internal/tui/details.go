@@ -17,16 +17,17 @@ func hyperlink(url, text string) string {
 
 // DetailsPane displays detailed information about the selected scenario
 type DetailsPane struct {
-	styles    *Styles
-	scenario  *scenarios.Scenario
-	enabled   bool
-	deployed  bool
-	creds     *terraform.Credentials
-	resources []string // ARNs of deployed resources
-	focused   bool
-	width     int
-	height    int
-	scroll    int
+	styles     *Styles
+	scenario   *scenarios.Scenario
+	enabled    bool
+	deployed   bool
+	demoActive bool
+	creds      *terraform.Credentials
+	resources  []string // ARNs of deployed resources
+	focused    bool
+	width      int
+	height     int
+	scroll     int
 }
 
 // NewDetailsPane creates a new details pane
@@ -37,10 +38,11 @@ func NewDetailsPane(styles *Styles) *DetailsPane {
 }
 
 // SetScenario updates the displayed scenario
-func (d *DetailsPane) SetScenario(s *scenarios.Scenario, enabled, deployed bool) {
+func (d *DetailsPane) SetScenario(s *scenarios.Scenario, enabled, deployed, demoActive bool) {
 	d.scenario = s
 	d.enabled = enabled
 	d.deployed = deployed
+	d.demoActive = demoActive
 	d.scroll = 0
 }
 
@@ -195,6 +197,13 @@ func (d *DetailsPane) buildContent() []string {
 		statusLine += d.styles.ScenarioDisabled.Render("○ Disabled")
 	}
 	lines = append(lines, statusLine)
+
+	// Demo active warning
+	if d.demoActive {
+		demoLine := d.styles.DetailLabel.Render("Demo       ") + d.styles.DemoActiveLabel.Render("\u26a0 Active \u2014 run cleanup to remove artifacts")
+		lines = append(lines, demoLine)
+	}
+
 	lines = append(lines, "") // blank line
 
 	// Metadata fields

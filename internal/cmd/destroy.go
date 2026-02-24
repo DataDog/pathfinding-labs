@@ -63,7 +63,7 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
 	}
 
-	// Require explicit flag
+	// Require explicit flag (check before validating credentials)
 	if !destroyAll && !destroyScenariosOnly {
 		fmt.Println()
 		fmt.Println(yellow("Please specify what to destroy:"))
@@ -72,6 +72,11 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  %s             Destroy ALL infrastructure\n", cyan("plabs destroy --all"))
 		fmt.Println()
 		return nil
+	}
+
+	// Validate AWS credentials before running terraform
+	if err := validateAWSCredentials(cfg); err != nil {
+		return err
 	}
 
 	// Handle --scenarios-only: disable all scenarios and deploy

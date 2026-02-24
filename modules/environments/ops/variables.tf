@@ -118,9 +118,15 @@ variable "operations_account_id" {
   default     = ""
 }
 
-variable "prod_account_aws_profile" {
-  description = "AWS profile for prod account"
+variable "operations_account_aws_profile" {
+  description = "AWS profile for operations account"
   default     = ""
+}
+
+variable "github_repo" {
+  description = "The github repo for the OIDC-GitHub challenge"
+  type        = string
+  default     = null
 }
 
 variable "resource_suffix" {
@@ -128,8 +134,24 @@ variable "resource_suffix" {
   type        = string
 }
 
-variable "github_repo" {
-  description = "The github repo for the OIDC-GitHub challenge"
+##############################################################################
+# BUDGET ALERT CONFIGURATION
+##############################################################################
+
+variable "enable_budget_alerts" {
+  description = "Enable AWS Budget alerts for this environment"
+  type        = bool
+  default     = false
+}
+
+variable "budget_alert_email" {
+  description = "Email address to receive budget alerts"
   type        = string
-  default     = null
+  default     = ""
+}
+
+variable "budget_limit_usd" {
+  description = "Monthly budget limit in USD"
+  type        = number
+  default     = 50
 }

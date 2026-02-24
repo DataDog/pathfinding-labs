@@ -1,0 +1,82 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "cspm-ec2-001-instance-with-privileged-role"
+description: "EC2 instance with a highly privileged IAM role attached - validates CSPM detection"
+cost_estimate: "$5/mo"
+pathfinding-cloud-id: "cspm-ec2-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "CSPM Misconfiguration"
+sub_category: "Compute"
+path_type: "single-condition"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# CSPM DETECTION
+# =============================================================================
+cspm_detection:
+  rule_id: "aws-ec2-instance-ec2-instance-should-not-have-a-highly-privileged-iam-role-attached-to-it"
+  description: "EC2 instances should not have highly privileged IAM roles attached"
+  severity: "high"
+
+  expected_finding:
+    resource_type: "aws_ec2_instance"
+    resource_id: "pl-cspm-ec2-001-instance"
+    finding: "Instance has role with AdministratorAccess policy attached"
+
+# =============================================================================
+# RISK DESCRIPTION
+# =============================================================================
+risk:
+  summary: "Anyone with access to this EC2 instance can leverage the administrative IAM role"
+
+  impact:
+    - "Instance compromise leads to full AWS account compromise"
+    - "Credentials can be extracted from IMDS (Instance Metadata Service)"
+    - "Lateral movement to any AWS resource is possible"
+    - "Data exfiltration across the entire account"
+
+  access_vectors:
+    - "SSM Session Manager access"
+    - "SSH access (if enabled)"
+    - "RDP access (for Windows instances)"
+    - "Exploitation of vulnerable software on the instance"
+    - "Supply chain attacks via compromised AMIs or packages"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# REMEDIATION
+# =============================================================================
+remediation:
+  summary: "Follow the principle of least privilege for EC2 instance roles"
+
+  recommendations:
+    - "Remove AdministratorAccess policy from the instance role"
+    - "Grant only the specific permissions required by applications on the instance"
+    - "Use separate roles for different workloads"
+    - "Implement IMDSv2 to require session tokens for metadata access"
+    - "Monitor for unusual IMDS access patterns"
+    - "Consider using AWS Secrets Manager instead of instance roles for sensitive operations"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role"
+  module_path: "modules/scenarios/single-account/cspm-misconfig/cspm-ec2-001-instance-with-privileged-role"

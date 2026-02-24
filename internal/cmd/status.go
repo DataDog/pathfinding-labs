@@ -144,6 +144,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s Enabled Scenarios (%d)\n", cyan("---"), len(enabled))
 		fmt.Println()
 
+		warnStyle := color.New(color.FgHiYellow).SprintFunc()
+
 		for _, s := range enabled {
 			deployed := isScenarioDeployed(s, outputs, deployedModules)
 
@@ -162,6 +164,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 				line += fmt.Sprintf(" [%s]", s.CostEstimate)
 			}
 
+			// Demo active indicator
+			if s.HasDemoActive() {
+				line += " " + warnStyle("\u26a0 demo active")
+			}
+
 			fmt.Println(line)
 		}
 	} else {
@@ -176,19 +183,45 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	// Summary
 	deployedCount := 0
 	pendingCount := 0
+	demoActiveCount := 0
+	var runningCost float64
 	for _, s := range enabled {
 		if isScenarioDeployed(s, outputs, deployedModules) {
 			deployedCount++
+			runningCost += parseCostString(s.CostEstimate)
 		} else {
 			pendingCount++
 		}
+		if s.HasDemoActive() {
+			demoActiveCount++
+		}
 	}
 
+	costColor := color.New(color.FgHiYellow).SprintFunc()
+
 	fmt.Println(dim("---------------------------------------------------------"))
-	fmt.Printf("Total: %d enabled | %s deployed | %s pending\n",
-		len(enabled),
-		green(fmt.Sprintf("%d", deployedCount)),
-		yellow(fmt.Sprintf("%d", pendingCount)))
+
+	summaryParts := []string{
+		fmt.Sprintf("Total: %d enabled", len(enabled)),
+		fmt.Sprintf("%s deployed", green(fmt.Sprintf("%d", deployedCount))),
+		fmt.Sprintf("%s pending", yellow(fmt.Sprintf("%d", pendingCount))),
+	}
+
+	if demoActiveCount > 0 {
+		summaryParts = append(summaryParts, fmt.Sprintf("%s demo active", costColor(fmt.Sprintf("%d \u26a0", demoActiveCount))))
+	}
+
+	if runningCost > 0 {
+		costPerDay := runningCost / 30
+		summaryParts = append(summaryParts,
+			fmt.Sprintf("Running cost: %s %s",
+				costColor(fmt.Sprintf("$%.0f/mo", runningCost)),
+				dim(fmt.Sprintf("($%.2f/day)", costPerDay))))
+	} else {
+		summaryParts = append(summaryParts, fmt.Sprintf("Running cost: %s", dim("$0/mo")))
+	}
+
+	fmt.Println(strings.Join(summaryParts, " | "))
 
 	if pendingCount > 0 {
 		fmt.Println()

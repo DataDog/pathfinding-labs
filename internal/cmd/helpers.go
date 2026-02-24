@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+
+	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -126,6 +129,62 @@ func confirmAction(prompt string) bool {
 	}
 	response = strings.TrimSpace(strings.ToLower(response))
 	return response == "y" || response == "yes"
+}
+
+// validateAWSCredentials checks that the configured AWS profiles have valid credentials
+// before running terraform or AWS operations. Returns nil if valid, error if not.
+func validateAWSCredentials(cfg *config.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("configuration not loaded — run 'plabs init' to configure")
+	}
+
+	profile := cfg.AWS.Prod.Profile
+	if profile == "" {
+		red := color.New(color.FgRed).SprintFunc()
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Println()
+		fmt.Println(red("AWS Credentials Error"))
+		fmt.Println()
+		fmt.Println("No AWS profile configured.")
+		fmt.Printf("Run %s to configure.\n", cyan("plabs init"))
+		fmt.Println()
+		return fmt.Errorf("no AWS profile configured")
+	}
+
+	// Collect all unique profiles that need validation
+	profiles := plabsaws.GetUniqueProfiles(
+		cfg.AWS.Prod.Profile,
+		cfg.AWS.Dev.Profile,
+		cfg.AWS.Ops.Profile,
+	)
+
+	results, err := plabsaws.ValidateProfiles(profiles)
+	if err != nil {
+		red := color.New(color.FgRed).SprintFunc()
+		yellow := color.New(color.FgYellow).SprintFunc()
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Println()
+		fmt.Println(red("AWS Credentials Error"))
+		fmt.Println()
+		fmt.Println("One or more AWS profiles have expired or invalid credentials:")
+		fmt.Println()
+		for _, r := range results {
+			if !r.Valid {
+				fmt.Printf("  %s Profile: %s\n", red("✗"), yellow(r.Profile))
+			}
+		}
+		fmt.Println()
+		fmt.Println("Run these commands to authenticate:")
+		for _, r := range results {
+			if !r.Valid {
+				fmt.Printf("  %s\n", cyan(fmt.Sprintf("aws sso login --profile %s", r.Profile)))
+			}
+		}
+		fmt.Println()
+		return fmt.Errorf("AWS credential validation failed")
+	}
+
+	return nil
 }
 
 // syncTFVars regenerates terraform.tfvars from the config

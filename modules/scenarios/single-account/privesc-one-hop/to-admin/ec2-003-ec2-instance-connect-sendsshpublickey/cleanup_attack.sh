@@ -3,7 +3,9 @@
 # Cleanup script for ec2-instance-connect:SendSSHPublicKey privilege escalation demo
 # This script removes temporary SSH keys created during the demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -127,3 +129,6 @@ echo ""
 echo -e "${BLUE}Note: The SSH public key pushed to the instance automatically expires after 60 seconds.${NC}"
 echo -e "${BLUE}The extracted instance role credentials are temporary and will expire.${NC}"
 echo -e "${BLUE}The AdministratorAccess policy has been removed from the starting user.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

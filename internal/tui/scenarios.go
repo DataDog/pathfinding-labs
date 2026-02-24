@@ -5,14 +5,17 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 )
 
 // ScenarioItem represents a scenario in the list with its state
 type ScenarioItem struct {
-	Scenario *scenarios.Scenario
-	Enabled  bool
-	Deployed bool
+	Scenario   *scenarios.Scenario
+	Enabled    bool
+	Deployed   bool
+	DemoActive bool
 }
 
 // ScenariosPane displays the main scenario list
@@ -29,8 +32,9 @@ type ScenariosPane struct {
 	filterText      string
 	showGrouped     bool
 	collapsed       map[string]bool // category name -> collapsed state
-	showOnlyEnabled bool            // filter to show only enabled scenarios
-	showCosts       bool            // show cost estimates next to scenario names
+	showOnlyEnabled    bool // filter to show only enabled scenarios
+	showOnlyDemoActive bool // filter to show only demo-active scenarios
+	showCosts          bool // show cost estimates next to scenario names
 }
 
 // NewScenariosPane creates a new scenarios pane
@@ -54,11 +58,11 @@ func (s *ScenariosPane) SetScenarios(items []ScenarioItem) {
 	s.items = items
 	s.applyFilter()
 
-	// Initialize all categories as expanded by default
+	// Initialize all categories as collapsed by default
 	for _, item := range items {
 		cat := item.Scenario.CategoryShort()
 		if _, exists := s.collapsed[cat]; !exists {
-			s.collapsed[cat] = false // expanded by default
+			s.collapsed[cat] = true // collapsed by default
 		}
 	}
 }
@@ -94,6 +98,19 @@ func (s *ScenariosPane) ToggleShowOnlyEnabled() {
 // IsShowingOnlyEnabled returns whether only enabled scenarios are shown
 func (s *ScenariosPane) IsShowingOnlyEnabled() bool {
 	return s.showOnlyEnabled
+}
+
+// ToggleShowOnlyDemoActive toggles the filter to show only demo-active scenarios
+func (s *ScenariosPane) ToggleShowOnlyDemoActive() {
+	s.showOnlyDemoActive = !s.showOnlyDemoActive
+	s.applyFilter()
+	s.cursor = 0
+	s.offset = 0
+}
+
+// IsShowingOnlyDemoActive returns whether only demo-active scenarios are shown
+func (s *ScenariosPane) IsShowingOnlyDemoActive() bool {
+	return s.showOnlyDemoActive
 }
 
 // ToggleShowCosts toggles the display of cost estimates
@@ -138,6 +155,17 @@ func (s *ScenariosPane) applyFilter() {
 		var result []ScenarioItem
 		for _, item := range s.filtered {
 			if item.Enabled {
+				result = append(result, item)
+			}
+		}
+		s.filtered = result
+	}
+
+	// Filter by demo-active state if requested
+	if s.showOnlyDemoActive {
+		var result []ScenarioItem
+		for _, item := range s.filtered {
+			if item.DemoActive {
 				result = append(result, item)
 			}
 		}
@@ -406,6 +434,25 @@ func (s *ScenariosPane) CollapseAll() {
 	}
 }
 
+// ToggleCollapseAll toggles between all collapsed and all expanded
+func (s *ScenariosPane) ToggleCollapseAll() {
+	// Check if any category is expanded
+	anyExpanded := false
+	for _, isCollapsed := range s.collapsed {
+		if !isCollapsed {
+			anyExpanded = true
+			break
+		}
+	}
+
+	// If any are expanded, collapse all; otherwise expand all
+	if anyExpanded {
+		s.CollapseAll()
+	} else {
+		s.ExpandAll()
+	}
+}
+
 // UpdateEnabled updates the enabled state from external source
 func (s *ScenariosPane) UpdateEnabled(varName string, enabled bool) {
 	for i := range s.items {
@@ -476,6 +523,33 @@ func (s *ScenariosPane) GetDeployedCount() int {
 	return count
 }
 
+// GetDemoActiveCount returns the count of scenarios with active demos
+func (s *ScenariosPane) GetDemoActiveCount() int {
+	count := 0
+	for _, item := range s.items {
+		if item.DemoActive {
+			count++
+		}
+	}
+	return count
+}
+
+// UpdateDemoActive updates the demo-active state
+func (s *ScenariosPane) UpdateDemoActive(varName string, active bool) {
+	for i := range s.items {
+		if s.items[i].Scenario.Terraform.VariableName == varName {
+			s.items[i].DemoActive = active
+			break
+		}
+	}
+	for i := range s.filtered {
+		if s.filtered[i].Scenario.Terraform.VariableName == varName {
+			s.filtered[i].DemoActive = active
+			break
+		}
+	}
+}
+
 // HasPendingChanges returns true if there are enabled/deployed mismatches
 func (s *ScenariosPane) HasPendingChanges() bool {
 	for _, item := range s.items {
@@ -490,7 +564,71 @@ func (s *ScenariosPane) HasPendingChanges() bool {
 
 func (s *ScenariosPane) visibleRows() int {
 	// Account for panel borders and title
-	return s.height - 6
+	return s.height - 3
+}
+
+func (s *ScenariosPane) contentWidth() int {
+	width := s.width - 4
+	if width < 1 {
+		width = 1
+	}
+	return width
+}
+
+func (s *ScenariosPane) wrapLines(line string) []string {
+	wrapped := lipgloss.NewStyle().Width(s.contentWidth()).Render(line)
+	lines := strings.Split(wrapped, "\n")
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	return lines
+}
+
+func (s *ScenariosPane) lineHeight(line string) int {
+	return len(s.wrapLines(line))
+}
+
+func (s *ScenariosPane) categoryCounts(category string) (int, int) {
+	enabledCount := 0
+	totalCount := 0
+	for _, item := range s.filtered {
+		if item.Scenario.CategoryShort() == category {
+			totalCount++
+			if item.Enabled {
+				enabledCount++
+			}
+		}
+	}
+	return enabledCount, totalCount
+}
+
+func (s *ScenariosPane) renderCategoryHeaderLine(category string, enabledCount, totalCount int, highlight bool) string {
+	collapseIndicator := "▾ "
+	if s.collapsed[category] {
+		collapseIndicator = "▸ "
+	}
+	headerText := fmt.Sprintf("%s%s (%d/%d)", collapseIndicator, CategoryDisplayName(category), enabledCount, totalCount)
+	headerStyle := s.styles.CategoryHeader
+	if highlight {
+		headerStyle = headerStyle.Bold(true).Foreground(s.styles.ScenarioCursor.GetForeground())
+	}
+	return headerStyle.Render(headerText)
+}
+
+func (s *ScenariosPane) categoryHeaderHeight(category string) int {
+	enabledCount, totalCount := s.categoryCounts(category)
+	headerLine := s.renderCategoryHeaderLine(category, enabledCount, totalCount, false)
+	return s.lineHeight(headerLine)
+}
+
+func (s *ScenariosPane) appendVisibleLines(sb *strings.Builder, lines []string, visualRow *int, offset, visible int) {
+	for _, line := range lines {
+		if *visualRow >= offset && *visualRow < offset+visible {
+			sb.WriteString("\n")
+			sb.WriteString(line)
+		}
+		*visualRow++
+	}
 }
 
 // getVisualRow calculates the visual row for a given cursor position,
@@ -500,7 +638,6 @@ func (s *ScenariosPane) getVisualRow() int {
 		return 0
 	}
 
-	// Group by category to calculate visual position
 	visualRow := 0
 	currentCat := ""
 
@@ -508,26 +645,24 @@ func (s *ScenariosPane) getVisualRow() int {
 		item := s.filtered[i]
 		cat := item.Scenario.CategoryShort()
 
-		// New category? Add header row
 		if cat != currentCat {
-			visualRow++ // category header
+			headerHeight := s.categoryHeaderHeight(cat)
+			if i == s.cursor && s.collapsed[cat] {
+				return visualRow
+			}
+			visualRow += headerHeight
 			currentCat = cat
 		}
 
-		// If this is our cursor position, we're done
 		if i == s.cursor {
-			// If category is collapsed, cursor is on the header row
 			if s.collapsed[cat] {
-				// visualRow already includes the header
-			} else {
-				visualRow++ // add the scenario row
+				return visualRow
 			}
-			break
+			return visualRow
 		}
 
-		// Only count scenario rows if category is expanded
 		if !s.collapsed[cat] {
-			visualRow++
+			visualRow += s.lineHeight(s.renderScenarioLine(item, false))
 		}
 	}
 
@@ -543,12 +678,12 @@ func (s *ScenariosPane) getTotalVisualRows() int {
 		cat := item.Scenario.CategoryShort()
 
 		if cat != currentCat {
-			visualRows++ // category header
+			visualRows += s.categoryHeaderHeight(cat)
 			currentCat = cat
 		}
 
 		if !s.collapsed[cat] {
-			visualRows++ // scenario row
+			visualRows += s.lineHeight(s.renderScenarioLine(item, false))
 		}
 	}
 
@@ -581,8 +716,14 @@ func (s *ScenariosPane) ensureVisible() {
 
 	// Adjust visual row to include header if at first item in category
 	targetRow := visualRow
-	if isFirstInCategory && visualRow > 0 {
-		targetRow = visualRow - 1 // Include the header
+	if isFirstInCategory {
+		currentCat := s.filtered[s.cursor].Scenario.CategoryShort()
+		headerHeight := s.categoryHeaderHeight(currentCat)
+		if visualRow >= headerHeight {
+			targetRow = visualRow - headerHeight
+		} else {
+			targetRow = 0
+		}
 	}
 
 	if targetRow < s.offset {
@@ -603,12 +744,18 @@ func (s *ScenariosPane) View() string {
 
 	// Title with filter info
 	titleText := "Scenarios"
-	if s.showOnlyEnabled && s.filterText != "" {
-		titleText = fmt.Sprintf("Scenarios [enabled] [/%s]", s.filterText)
-	} else if s.showOnlyEnabled {
-		titleText = "Scenarios [enabled]"
-	} else if s.filterText != "" {
-		titleText = fmt.Sprintf("Scenarios [/%s]", s.filterText)
+	var filters []string
+	if s.showOnlyEnabled {
+		filters = append(filters, "enabled")
+	}
+	if s.showOnlyDemoActive {
+		filters = append(filters, "demo active")
+	}
+	if s.filterText != "" {
+		filters = append(filters, fmt.Sprintf("/%s", s.filterText))
+	}
+	if len(filters) > 0 {
+		titleText = fmt.Sprintf("Scenarios [%s]", strings.Join(filters, "] ["))
 	}
 	titleStyle := s.styles.PanelTitle.Width(s.width - 4)
 	sb.WriteString(titleStyle.Render(titleText))
@@ -681,7 +828,6 @@ func (s *ScenariosPane) renderGrouped() string {
 		isCollapsed := s.collapsed[cat]
 		isCatSelected := cat == selectedCat
 
-		// Count enabled in this category
 		enabledCount := 0
 		for _, item := range items {
 			if item.Enabled {
@@ -689,38 +835,16 @@ func (s *ScenariosPane) renderGrouped() string {
 			}
 		}
 
-		// Category header with collapse indicator
-		if visualRow >= s.offset && visualRow < s.offset+visible {
-			var collapseIndicator string
-			if isCollapsed {
-				collapseIndicator = "▸ "
-			} else {
-				collapseIndicator = "▾ "
-			}
+		headerLine := s.renderCategoryHeaderLine(cat, enabledCount, len(items), isCatSelected && isCollapsed && s.focused)
+		headerLines := s.wrapLines(headerLine)
+		s.appendVisibleLines(&sb, headerLines, &visualRow, s.offset, visible)
 
-			headerText := fmt.Sprintf("%s%s (%d/%d)", collapseIndicator, CategoryDisplayName(cat), enabledCount, len(items))
-
-			// Highlight the category header if it's selected and collapsed
-			headerStyle := s.styles.CategoryHeader
-			if isCatSelected && isCollapsed && s.focused {
-				headerStyle = headerStyle.Bold(true).Foreground(s.styles.ScenarioCursor.GetForeground())
-			}
-
-			sb.WriteString("\n")
-			sb.WriteString(headerStyle.Render(headerText))
-		}
-		visualRow++
-
-		// Scenarios in this category (only if expanded)
 		if !isCollapsed {
 			for _, item := range items {
-				if visualRow >= s.offset && visualRow < s.offset+visible {
-					// Compare by scenario ID, not by index
-					isSelected := item.Scenario.UniqueID() == selectedID
-					sb.WriteString("\n")
-					sb.WriteString(s.renderScenarioLine(item, isSelected))
-				}
-				visualRow++
+				isSelected := item.Scenario.UniqueID() == selectedID
+				scenarioLine := s.renderScenarioLine(item, isSelected)
+				scenarioLines := s.wrapLines(scenarioLine)
+				s.appendVisibleLines(&sb, scenarioLines, &visualRow, s.offset, visible)
 			}
 		}
 	}
@@ -732,16 +856,12 @@ func (s *ScenariosPane) renderFlat() string {
 	var sb strings.Builder
 
 	visible := s.visibleRows()
-	start := s.offset
-	end := s.offset + visible
-	if end > len(s.filtered) {
-		end = len(s.filtered)
-	}
+	visualRow := 0
 
-	for i := start; i < end; i++ {
-		item := s.filtered[i]
-		sb.WriteString("\n")
-		sb.WriteString(s.renderScenarioLine(item, i == s.cursor))
+	for i, item := range s.filtered {
+		line := s.renderScenarioLine(item, i == s.cursor)
+		lines := s.wrapLines(line)
+		s.appendVisibleLines(&sb, lines, &visualRow, s.offset, visible)
 	}
 
 	return sb.String()
@@ -821,6 +941,12 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 		}
 	}
 
+	// Demo active indicator
+	if item.DemoActive {
+		parts = append(parts, " ")
+		parts = append(parts, s.styles.DemoActiveLabel.Render("\u26a0 demo active"))
+	}
+
 	return strings.Join(parts, "")
 }
 
@@ -829,6 +955,12 @@ func (s *ScenariosPane) wrapInPanel(content string) string {
 	if s.focused {
 		panelStyle = s.styles.PanelFocused
 	}
+
+	contentHeight := s.height - 2
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	content = lipgloss.NewStyle().Height(contentHeight).MaxHeight(contentHeight).Render(content)
 
 	panelStyle = panelStyle.Width(s.width - 2)
 	return panelStyle.Render(content)

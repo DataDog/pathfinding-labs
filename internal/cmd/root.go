@@ -57,6 +57,7 @@ func init() {
 	rootCmd.AddCommand(destroyCmd)
 	rootCmd.AddCommand(demoCmd)
 	rootCmd.AddCommand(cleanupCmd)
+	rootCmd.AddCommand(credentialsCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

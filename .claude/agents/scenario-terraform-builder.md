@@ -19,7 +19,7 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
   - `pl-prod-iam-005-to-admin-starting-role`
   - `pl-prod-lambda-001-to-admin-admin-role`
 
-**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account)**, use descriptive shorthand:
+**For other scenarios (multi-hop, cspm-misconfig, cspm-toxic-combo, tool-testing, cross-account)**, use descriptive shorthand:
 - Pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
 - Examples:
   - `pl-prod-multi-hop-role-chain-starting-user`
@@ -38,9 +38,9 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **attack_path.principals**: Ordered list of all principals in the attack
@@ -347,7 +347,7 @@ Pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
 Examples:
 - `pl-prod-multi-hop-role-chain-starting-user` (multi-hop)
 - `pl-prod-multi-hop-role-chain-intermediate-role` (multi-hop)
-- `pl-prod-toxic-public-lambda-admin-role` (toxic combo)
+- `pl-prod-cspm-toxic-public-lambda-admin-role` (cspm-toxic-combo)
 
 ### S3 Buckets (Globally Unique)
 
@@ -360,7 +360,24 @@ Pattern: `pl-sensitive-data-${var.account_id}-${var.resource_suffix}`
 
 ## Provider Configuration
 
+**CRITICAL**: All scenario modules MUST include a `terraform` block with `configuration_aliases` at the top of main.tf. This allows the root module to pass in provider configurations.
+
 ### Single Account (Prod)
+
+**Required terraform block at the top of main.tf:**
+```hcl
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      version               = "~> 5.0"
+      configuration_aliases = [aws.prod]
+    }
+  }
+}
+```
+
+**Then use `provider = aws.prod` on all resources:**
 ```hcl
 resource "aws_iam_role" "example" {
   provider = aws.prod
@@ -369,7 +386,21 @@ resource "aws_iam_role" "example" {
 ```
 
 ### Cross-Account
-Specify the appropriate provider for each resource:
+
+**Required terraform block with multiple aliases:**
+```hcl
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      version               = "~> 5.0"
+      configuration_aliases = [aws.dev, aws.prod]
+    }
+  }
+}
+```
+
+**Then specify the appropriate provider for each resource:**
 ```hcl
 # Resource in dev account
 resource "aws_iam_role" "dev_role" {
@@ -383,6 +414,8 @@ resource "aws_iam_role" "prod_role" {
   # ...
 }
 ```
+
+**Why this matters:** The `configuration_aliases` declaration tells Terraform that this module expects to receive aliased providers. The root main.tf must then pass `aws.prod = aws.prod` (not `aws = aws.prod`) when calling the module.
 
 ## Common Patterns
 

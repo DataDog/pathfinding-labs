@@ -5,7 +5,9 @@
 #
 # IMPORTANT: Run this script immediately after the demo to avoid ongoing MWAA charges!
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -279,3 +281,6 @@ echo -e "${GREEN}MWAA billing should stop once deletion is complete.${NC}"
 echo ""
 echo -e "${YELLOW}The infrastructure (users, roles, VPC, S3 bucket) remains deployed.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

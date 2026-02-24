@@ -125,8 +125,10 @@ enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession        
 enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand            = false
 
 # SINGLE-ACCOUNT MULTI-HOP TO-ADMIN
+enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002             = false
 enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined           = false
 enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other            = false
+enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin       = false
 
 # SINGLE-ACCOUNT MULTI-HOP TO-BUCKET
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3                 = false
@@ -138,8 +140,8 @@ enable_tool_testing_test_effective_permissions_evaluation                       
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin    = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket        = false
 
-# SINGLE-ACCOUNT TOXIC-COMBO
-enable_single_account_toxic_combo_public_lambda_with_admin                         = false
+# SINGLE-ACCOUNT CSPM-TOXIC-COMBO
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin                    = false
 
 # CROSS-ACCOUNT DEV-TO-PROD
 enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update                    = false
@@ -150,3 +152,19 @@ enable_cross_account_dev_to_prod_one_hop_simple_role_assumption                 
 
 # CROSS-ACCOUNT OPS-TO-PROD
 enable_cross_account_ops_to_prod_one_hop_simple_role_assumption                    = false
+
+##############################################################################
+# BUDGET ALERTS (OPTIONAL)
+##############################################################################
+# Protect yourself from unexpected AWS costs with email notifications.
+# First 2 budgets per account are FREE - see https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/
+#
+# Alerts are sent at:
+#   - 50% actual spend ("You've spent half your budget")
+#   - 80% actual spend ("Approaching your budget limit")
+#   - 100% actual spend ("Budget exceeded")
+#   - 100% forecasted spend ("On track to exceed budget this month")
+
+# enable_budget_alerts = true
+# budget_alert_email   = "your-email@example.com"
+# budget_limit_usd     = 50

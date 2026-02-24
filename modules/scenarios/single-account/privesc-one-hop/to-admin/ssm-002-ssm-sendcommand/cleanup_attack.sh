@@ -3,7 +3,9 @@
 # Cleanup script for ssm:SendCommand privilege escalation demo
 # This script cleans up any SSM command history (though AWS automatically cleans up after 30 days)
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -109,3 +111,6 @@ echo ""
 echo -e "${BLUE}Note: This scenario does not create persistent artifacts that require cleanup.${NC}"
 echo -e "${BLUE}The SSM command executed during the demo is stored in AWS Systems Manager${NC}"
 echo -e "${BLUE}command history and will be automatically deleted after 30 days.${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

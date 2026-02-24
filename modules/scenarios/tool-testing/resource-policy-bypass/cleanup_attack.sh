@@ -3,7 +3,9 @@
 # Cleanup script for prod_role_has_access_to_bucket_through_resource_policy attack path
 # This script removes any test files that may have been created during the attack demo
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -175,3 +177,6 @@ echo ""
 echo "CLEANUP_RESULT:prod_role_has_access_to_bucket_through_resource_policy:SUCCESS"
 echo "CLEANUP_DETAILS:prod_role_has_access_to_bucket_through_resource_policy:Test files cleanup completed"
 echo "CLEANUP_METRICS:prod_role_has_access_to_bucket_through_resource_policy:cleanup_completed=true"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

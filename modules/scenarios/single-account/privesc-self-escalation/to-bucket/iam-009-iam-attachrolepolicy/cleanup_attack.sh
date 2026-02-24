@@ -3,7 +3,6 @@
 # Cleanup script for iam:AttachRolePolicy to S3 bucket demo
 # This script detaches the escalated S3 access policy from the starting role
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -87,3 +86,6 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}The escalated S3 access policy has been detached${NC}"
 echo -e "${YELLOW}The infrastructure (bucket, roles, sensitive-data.txt) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

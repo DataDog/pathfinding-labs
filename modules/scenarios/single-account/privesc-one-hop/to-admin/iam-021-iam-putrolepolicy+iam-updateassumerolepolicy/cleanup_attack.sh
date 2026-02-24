@@ -3,7 +3,6 @@
 # Cleanup script for iam-putrolepolicy+iam-updateassumerolepolicy privilege escalation demo
 # This script removes the inline admin policy and restores the original trust policy
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -200,3 +199,6 @@ echo "- Target role restored to original permissions"
 echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
 echo -e "${YELLOW}The infrastructure (users and roles) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

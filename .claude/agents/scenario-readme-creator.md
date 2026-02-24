@@ -16,7 +16,7 @@ You are a specialized agent for creating comprehensive README.md documentation f
 - Directory: `{path-id}-{scenario-name}/` (e.g., `iam-002-iam-createaccesskey/`)
 - Resources: `pl-{env}-{path-id}-to-{target}-{purpose}` (e.g., `pl-prod-iam-002-to-admin-starting-user`)
 
-**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account)**, use descriptive shorthand without path IDs.
+**For other scenarios (multi-hop, cspm-misconfig, cspm-toxic-combo, tool-testing, cross-account)**, use descriptive shorthand without path IDs.
 
 ## Core Responsibility
 
@@ -33,9 +33,9 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 **From scenario.yaml you will use:**
 - **name**: Scenario identifier
 - **description**: One-line scenario description
-- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved
 - **attack_path.principals**: Ordered list of all principals in the attack
@@ -59,9 +59,9 @@ Follow this EXACT structure (from iam-createaccesskey/README.md):
 ```markdown
 # {Scenario Title}
 
-**Category:** {Privilege Escalation|Regular Finding|Toxic Combination}
-**Sub-Category:** {self-escalation|principal-access|new-passrole|existing-passrole|credential-access|privilege-chaining|cross-account-escalation}
-**Path Type:** {self-escalation|one-hop|multi-hop|cross-account}
+**Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing}
+**Sub-Category:** {self-escalation|principal-access|new-passrole|existing-passrole|credential-access} *(only for privesc self-escalation/one-hop)*
+**Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination}
 **Target:** {to-admin|to-bucket}
 **Environments:** {prod|dev|operations}
 **Pathfinding.cloud ID:** {path-id} *(optional, only if present in scenario.yaml)*
@@ -156,7 +156,7 @@ cd modules/scenarios/{path-to-scenario}
 
 ### Title and Metadata
 - Title should be human-readable (e.g., "Privilege Escalation via iam:CreateAccessKey")
-- **Category**: Use exact values from scenario.yaml ("Privilege Escalation", "Regular Finding", "Toxic Combination")
+- **Category**: Use exact values from scenario.yaml ("Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing")
 - **Sub-Category**: Use exact values from scenario.yaml (e.g., "self-escalation", "principal-access", "privilege-chaining", "cross-account-escalation")
 - **Path Type**: "self-escalation", "one-hop", "multi-hop", or "cross-account" from scenario.yaml
 - **Target**: "to-admin" or "to-bucket" from scenario.yaml

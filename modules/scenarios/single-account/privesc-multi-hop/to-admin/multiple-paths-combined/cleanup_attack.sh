@@ -3,7 +3,9 @@
 # Cleanup script for prod_role_with_multiple_privesc_paths module
 # This script removes all changes made by the demo_attack.sh script
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -178,3 +180,6 @@ echo ""
 echo -e "${GREEN}=== Cleanup Complete ===${NC}"
 echo "All resources created by the demo have been cleaned up."
 echo "The original module resources remain intact."
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

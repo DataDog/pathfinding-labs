@@ -26,9 +26,9 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 **From scenario.yaml you will use:**
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
-- **category**: "Privilege Escalation", "Regular Finding", "Toxic Combination", or "Tool Testing"
-- **sub_category**: "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access", "privilege-chaining", "cross-account-escalation", "edge-case-detection", "false-positive-test", "policy-parsing-edge-case", etc.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **cost_estimate**: Scenarios that have cost assoicated with them will be grouped together within the terraform.tfvars and terraform.tfvars.example files 
@@ -62,9 +62,10 @@ Examples:
 
 **For other scenarios (no path IDs):**
 - `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
-- `enable_single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
+- `enable_single_account_cspm_misconfig_{id}_{name}` (cspm-misconfig)
+- `enable_single_account_cspm_toxic_combo_public_lambda_with_admin` (cspm-toxic-combo)
 - `enable_tool_testing_resource_policy_bypass` (tool testing)
-- `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
+- `enable_cross_account_dev_to_prod_simple_role_assumption` (cross-account)
 
 #### Variable Format
 
@@ -138,23 +139,38 @@ Examples:
 
 **For other scenarios (no path IDs):**
 - `single_account_privesc_multi_hop_to_bucket_role_chain_to_s3` (multi-hop)
-- `single_account_toxic_combo_public_lambda_with_admin` (toxic combo)
-- `cross_account_dev_to_prod_one_hop_simple_role_assumption` (cross-account)
+- `single_account_cspm_misconfig_{id}_{name}` (cspm-misconfig)
+- `single_account_cspm_toxic_combo_public_lambda_with_admin` (cspm-toxic-combo)
+- `cross_account_dev_to_prod_simple_role_assumption` (cross-account)
 
 #### Module Format for Single-Account
+
+**CRITICAL - Provider Configuration:**
+- Scenario modules use `configuration_aliases = [aws.prod]`
+- Therefore, you MUST pass the provider as `aws.prod = aws.prod` (NOT `aws = aws.prod`)
+- Using `aws = aws.prod` will cause Terraform init to fail with "Missing required provider configuration"
+
 ```hcl
 module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
   count  = var.enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} ? 1 : 0
   source = "./{relative-path-to-scenario}"
 
+  # CORRECT: Use aws.prod = aws.prod (matches module's configuration_aliases)
   providers = {
     aws.prod = aws.prod
   }
 
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
 }
+```
+
+**WRONG** (do not do this):
+```hcl
+  providers = {
+    aws = aws.prod  # WRONG - causes "Missing required provider configuration" error
+  }
 ```
 
 Note: Use the exact module path from `scenario.yaml` field `terraform.module_path`.
@@ -437,19 +453,19 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
 }
 ```
 
-### Toxic Combination Scenario
+### CSPM Toxic Combination Scenario
 ```hcl
 # variables.tf
-variable "enable_single_account_toxic_combo_public_lambda_with_admin" {
-  description = "Enable: single-account → toxic-combo → public-lambda-with-admin"
+variable "enable_single_account_cspm_toxic_combo_public_lambda_with_admin" {
+  description = "Enable: single-account → cspm-toxic-combo → public-lambda-with-admin"
   type        = bool
   default     = false
 }
 
 # main.tf
-module "single_account_toxic_combo_public_lambda_with_admin" {
-  count  = var.enable_single_account_toxic_combo_public_lambda_with_admin ? 1 : 0
-  source = "./modules/scenarios/single-account/toxic-combo/public-lambda-with-admin"
+module "single_account_cspm_toxic_combo_public_lambda_with_admin" {
+  count  = var.enable_single_account_cspm_toxic_combo_public_lambda_with_admin ? 1 : 0
+  source = "./modules/scenarios/single-account/cspm-toxic-combo/public-lambda-with-admin"
 
   providers = {
     aws.prod = aws.prod
@@ -521,8 +537,9 @@ Examples:
 - `Enable: single-account → privesc-self-escalation → to-admin → iam-putrolepolicy`
 - `Enable: single-account → privesc-one-hop → to-admin → iam-createaccesskey`
 - `Enable: single-account → privesc-one-hop → to-bucket → iam-createaccesskey`
-- `Enable: single-account → toxic-combo → public-lambda-with-admin`
-- `Enable: cross-account → dev-to-prod → one-hop → simple-role-assumption`
+- `Enable: single-account → cspm-misconfig → cspm-ec2-001-instance-with-privileged-role`
+- `Enable: single-account → cspm-toxic-combo → public-lambda-with-admin`
+- `Enable: cross-account → dev-to-prod → simple-role-assumption`
 
 ## Error Handling
 

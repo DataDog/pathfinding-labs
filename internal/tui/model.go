@@ -313,9 +313,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var items []ScenarioItem
 		for _, s := range msg.scenarios {
 			items = append(items, ScenarioItem{
-				Scenario: s,
-				Enabled:  msg.enabled[s.Terraform.VariableName],
-				Deployed: msg.deployed[s.Terraform.VariableName],
+				Scenario:   s,
+				Enabled:    msg.enabled[s.Terraform.VariableName],
+				Deployed:   msg.deployed[s.Terraform.VariableName],
+				DemoActive: s.HasDemoActive(),
 			})
 		}
 		m.scenariosPane.SetScenarios(items)
@@ -342,6 +343,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Calculate running cost of deployed scenarios
 		m.updateRunningCost()
+
+		// Calculate demo-active count
+		m.updateDemoActiveCount()
 
 		// Cache outputs, then update details for initially selected scenario
 		m.cachedOutputs = msg.outputs
@@ -449,6 +453,41 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Success - reload to refresh state
 		return m, m.loadScenarios
+
+	case budgetWizardMsg:
+		if msg.err != nil {
+			m.overlay.Show(OverlayError, "Budget Configuration", fmt.Sprintf("Error: %v", msg.err))
+			return m, nil
+		}
+
+		// Apply budget changes
+		if msg.result != nil {
+			m.config.Budget.Enabled = msg.result.Enabled
+			m.config.Budget.Email = msg.result.Email
+			m.config.Budget.LimitUSD = msg.result.LimitUSD
+
+			// Save config
+			if err := m.config.Save(); err != nil {
+				m.overlay.Show(OverlayError, "Budget Configuration", fmt.Sprintf("Failed to save config: %v", err))
+				return m, nil
+			}
+
+			// Update tfvars
+			if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+				m.overlay.Show(OverlayError, "Budget Configuration", fmt.Sprintf("Failed to update tfvars: %v", err))
+				return m, nil
+			}
+
+			// Show success message
+			var statusMsg string
+			if msg.result.Enabled {
+				statusMsg = fmt.Sprintf("Budget alerts enabled!\nEmail: %s\nLimit: $%d/month", msg.result.Email, msg.result.LimitUSD)
+			} else {
+				statusMsg = "Budget alerts disabled"
+			}
+			m.overlay.Show(OverlayInfo, "Budget Configuration", statusMsg+"\n\nRun 'deploy' to apply changes to AWS.")
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
@@ -689,8 +728,18 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateDetailsForSelected()
 		return m, nil
 
+	case key.Matches(msg, m.keys.ToggleDemoActive):
+		m.scenariosPane.ToggleShowOnlyDemoActive()
+		m.actions.SetShowOnlyDemoActive(m.scenariosPane.IsShowingOnlyDemoActive())
+		m.updateDetailsForSelected()
+		return m, nil
+
 	case key.Matches(msg, m.keys.ToggleCosts):
 		m.scenariosPane.ToggleShowCosts()
+		return m, nil
+
+	case key.Matches(msg, m.keys.ToggleCollapseAll):
+		m.scenariosPane.ToggleCollapseAll()
 		return m, nil
 
 	case key.Matches(msg, m.keys.Tab):
@@ -836,15 +885,15 @@ func (m *Model) updatePaneFocus() {
 func (m *Model) updateDetails() {
 	selected := m.scenariosPane.Selected()
 	if selected == nil {
-		m.details.SetScenario(nil, false, false)
+		m.details.SetScenario(nil, false, false, false)
 		m.details.ClearCredentials()
 		m.details.ClearResources()
-		m.actions.SetScenario(nil, false, false)
+		m.actions.SetScenario(nil, false, false, false)
 		return
 	}
 
-	m.details.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed)
-	m.actions.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed)
+	m.details.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed, selected.DemoActive)
+	m.actions.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed, selected.DemoActive)
 
 	// Get credentials if deployed (using cached outputs)
 	if selected.Deployed && m.cachedOutputs != nil {
@@ -919,6 +968,7 @@ func (m *Model) updateInfoCounts() {
 		}
 	}
 	m.info.SetDeploymentCounts(enabledCount, deployedCount)
+	m.updateDemoActiveCount()
 }
 
 func (m *Model) runDeploy() tea.Cmd {
@@ -1289,8 +1339,22 @@ func (m *Model) renderSettingsMenu() string {
 	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
 	sb.WriteString("\n")
 
+	// Budget Alerts section
+	sb.WriteString("\n\nBudget Alerts (Cost Protection)\n")
+	sb.WriteString("----------------------------------------\n\n")
+
+	if m.config.Budget.Enabled {
+		sb.WriteString("  [b] Status:  Enabled\n")
+		sb.WriteString(fmt.Sprintf("      Email:   %s\n", m.config.Budget.Email))
+		sb.WriteString(fmt.Sprintf("      Limit:   $%d/month\n", m.config.Budget.LimitUSD))
+	} else {
+		sb.WriteString("  [b] Status:  Disabled\n")
+		sb.WriteString("      (alerts at 50%, 80%, 100% spend)\n")
+	}
+
 	sb.WriteString("\n----------------------------------------\n")
 	sb.WriteString("Press 1/2/3 to change a profile\n")
+	sb.WriteString("Press b to configure budget alerts\n")
 	sb.WriteString("Press Esc to close\n")
 
 	return sb.String()
@@ -1324,6 +1388,9 @@ func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "3":
 		m.overlay.Hide()
 		return m, m.runProfileWizard("ops")
+	case "b", "B":
+		m.overlay.Hide()
+		return m, m.runBudgetWizard()
 	case "esc":
 		m.overlay.Hide()
 		return m, nil
@@ -1385,6 +1452,50 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 				return profileWizardMsg{envName: envName, err: err}
 			}
 			return profileWizardMsg{envName: envName, err: fmt.Errorf("wizard cancelled")}
+		}
+	})
+}
+
+// budgetWizardMsg is sent when the budget wizard completes
+type budgetWizardMsg struct {
+	result *config.BudgetResult
+	err    error
+}
+
+// budgetWizardCmd wraps the budget wizard execution for tea.Exec
+type budgetWizardCmd struct {
+	currentBudget config.BudgetConfig
+	result        chan budgetWizardMsg
+}
+
+func (b *budgetWizardCmd) Run() error {
+	wizard := config.NewWizard()
+	result, err := wizard.RunForBudget(b.currentBudget)
+	b.result <- budgetWizardMsg{result: result, err: err}
+	return nil
+}
+
+func (b *budgetWizardCmd) SetStdin(r io.Reader)   {}
+func (b *budgetWizardCmd) SetStdout(wr io.Writer) {}
+func (b *budgetWizardCmd) SetStderr(wr io.Writer) {}
+
+// runBudgetWizard runs the wizard for budget configuration
+func (m *Model) runBudgetWizard() tea.Cmd {
+	resultChan := make(chan budgetWizardMsg, 1)
+	cmd := &budgetWizardCmd{
+		currentBudget: m.config.Budget,
+		result:        resultChan,
+	}
+
+	return tea.Exec(cmd, func(err error) tea.Msg {
+		select {
+		case msg := <-resultChan:
+			return msg
+		default:
+			if err != nil {
+				return budgetWizardMsg{err: err}
+			}
+			return budgetWizardMsg{err: fmt.Errorf("wizard cancelled")}
 		}
 	})
 }
@@ -1567,6 +1678,9 @@ func (m *Model) updateLayout() {
 
 	// Main content height (leave room for status bar)
 	mainHeight := m.termHeight - 1
+	if mainHeight < 1 {
+		mainHeight = 1
+	}
 
 	// Info pane height (allows for wrapped directory path)
 	infoHeight := 12
@@ -1587,7 +1701,7 @@ func (m *Model) updateLayout() {
 	m.info.SetSize(leftWidth, infoHeight)
 	m.environment.SetSize(leftWidth, envHeight)
 	m.actions.SetSize(leftWidth, actionsHeight)
-	m.scenariosPane.SetSize(centerWidth, mainHeight+1) // +1 to align bottom border with details pane
+	m.scenariosPane.SetSize(centerWidth, mainHeight)
 	m.details.SetSize(rightWidth, mainHeight)
 	m.overlay.SetSize(m.termWidth, m.termHeight)
 
@@ -1693,11 +1807,20 @@ func (m *Model) renderStatusBar() string {
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Background(statusBg)       // Light gray for keys
 	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Background(statusBg)      // Dim for descriptions
 
+	demoActiveStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg) // Warning yellow
+
 	// Build left side - status counts
 	var leftParts []string
 	leftParts = append(leftParts, enabledStyle.Render(fmt.Sprintf("%d enabled", enabledCount)))
 	leftParts = append(leftParts, separatorStyle.Render(" . "))
 	leftParts = append(leftParts, deployedStyle.Render(fmt.Sprintf("%d deployed", deployedCount)))
+
+	// Show demo-active count if any
+	demoActiveCount := m.scenariosPane.GetDemoActiveCount()
+	if demoActiveCount > 0 {
+		leftParts = append(leftParts, separatorStyle.Render(" . "))
+		leftParts = append(leftParts, demoActiveStyle.Render(fmt.Sprintf("%d demo active \u26a0", demoActiveCount)))
+	}
 
 	// Check if deploy is needed
 	if m.scenariosPane.HasPendingChanges() {
@@ -1883,4 +2006,10 @@ func (m *Model) calculateRunningCost() float64 {
 func (m *Model) updateRunningCost() {
 	cost := m.calculateRunningCost()
 	m.info.SetRunningCost(cost)
+}
+
+// updateDemoActiveCount recalculates and updates the demo-active count in the info pane
+func (m *Model) updateDemoActiveCount() {
+	count := m.scenariosPane.GetDemoActiveCount()
+	m.info.SetDemoActiveCount(count)
 }

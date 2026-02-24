@@ -4,7 +4,9 @@
 # This scenario creates temporary SSH keys and extracts instance credentials
 # This script cleans up local files and environment variables
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -112,3 +114,6 @@ echo -e "${BLUE}Connection activity is logged in CloudTrail with the following e
 echo -e "${BLUE}  - ec2-instance-connect:SendSSHPublicKey (when key is pushed)${NC}"
 echo -e "${BLUE}  - SSH connection logs (in instance syslog)${NC}"
 echo -e "${BLUE}  - S3 API calls (GetObject, ListBucket) using extracted credentials${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

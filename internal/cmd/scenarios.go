@@ -49,28 +49,37 @@ Filter by MITRE technique:
   plabs scenarios list --mitre=T1098
 
 Show only enabled:
-  plabs scenarios list --enabled`,
+  plabs scenarios list --enabled
+
+Show only deployed:
+  plabs scenarios list --deployed`,
 	RunE: runScenariosList,
 }
 
 var (
-	filterCategory string
-	filterTarget   string
-	filterCost     string
-	filterMitre    string
-	filterEnabled  bool
-	wideOutput     bool
+	filterCategory   string
+	filterTarget     string
+	filterCost       string
+	filterMitre      string
+	filterEnabled    bool
+	filterDeployed   bool
+	filterDemoActive bool
+	wideOutput       bool
 )
 
 func init() {
-	scenariosListCmd.Flags().StringVar(&filterCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, toxic-combo, tool-testing, cross-account)")
+	scenariosListCmd.Flags().StringVar(&filterCategory, "category", "", "Filter by category (self-escalation, one-hop, multi-hop, cross-account, cspm-misconfig, cspm-toxic-combo, tool-testing)")
 	scenariosListCmd.Flags().StringVar(&filterTarget, "target", "", "Filter by target (admin, bucket)")
 	scenariosListCmd.Flags().StringVar(&filterCost, "cost", "", "Filter by cost estimate (free, low, medium)")
 	scenariosListCmd.Flags().StringVar(&filterMitre, "mitre", "", "Filter by MITRE ATT&CK technique ID (e.g., T1098)")
 	scenariosListCmd.Flags().BoolVar(&filterEnabled, "enabled", false, "Show only enabled scenarios")
+	scenariosListCmd.Flags().BoolVar(&filterDeployed, "deployed", false, "Show only deployed scenarios")
+	scenariosListCmd.Flags().BoolVar(&filterDemoActive, "demo-active", false, "Show only scenarios with active demos")
 	scenariosListCmd.Flags().BoolVar(&wideOutput, "wide", false, "Show full descriptions (no truncation)")
 
 	scenariosCmd.AddCommand(scenariosListCmd)
+	scenariosCmd.AddCommand(showCmd)
+	scenariosCmd.AddCommand(credentialsAliasCmd)
 
 	// Add enable, disable, demo, cleanup as subcommands of scenarios
 	// (they also exist at top level as aliases)
@@ -97,11 +106,31 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to discover scenarios: %w", err)
 	}
 
-	// Get enabled status
-	tfvars := terraform.NewTFVars(paths.TFVarsPath)
-	enabledVars, err := tfvars.GetEnabledScenarios()
-	if err != nil {
-		enabledVars = make(map[string]bool)
+	// Get enabled status from config (source of truth)
+	enabledVars := make(map[string]bool)
+	if cfg != nil {
+		enabledVars = cfg.GetEnabledScenarioVars()
+	}
+
+	// Load deployment state for 4-state indicators and --deployed filter
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	var outputs terraform.Outputs
+	var deployedModules map[string]bool
+
+	if runner.IsInitialized() {
+		outputJSON, err := runner.OutputJSON()
+		if err == nil && outputJSON != "" {
+			outputs, _ = terraform.ParseOutputs(outputJSON)
+		}
+		deployedModules = runner.GetDeployedModules()
+	}
+
+	// Build deployed lookup
+	deployedVars := make(map[string]bool)
+	for _, s := range allScenarios {
+		if isScenarioDeployed(s, outputs, deployedModules) {
+			deployedVars[s.Terraform.VariableName] = true
+		}
 	}
 
 	// Apply filters
@@ -115,11 +144,36 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 
 	filtered := scenarios.FilterScenarios(allScenarios, filter, enabledVars)
 
+	// Apply --deployed filter
+	if filterDeployed {
+		var deployedFiltered []*scenarios.Scenario
+		for _, s := range filtered {
+			if deployedVars[s.Terraform.VariableName] {
+				deployedFiltered = append(deployedFiltered, s)
+			}
+		}
+		filtered = deployedFiltered
+	}
+
+	// Apply --demo-active filter
+	if filterDemoActive {
+		var demoActiveFiltered []*scenarios.Scenario
+		for _, s := range filtered {
+			if s.HasDemoActive() {
+				demoActiveFiltered = append(demoActiveFiltered, s)
+			}
+		}
+		filtered = demoActiveFiltered
+	}
+
 	// Colors
 	green := color.New(color.FgGreen).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	dim := color.New(color.Faint).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
+	costColor := color.New(color.FgHiYellow).SprintFunc()
 
 	fmt.Println()
 	fmt.Printf("%s (%d scenarios)\n", bold("Available Scenarios"), len(filtered))
@@ -139,7 +193,8 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	oneHopBucket := scenarioGroup{}
 	multiHopBucket := scenarioGroup{}
 
-	// Single Account - Other
+	// Single Account - CSPM
+	cspmMisconfig := scenarioGroup{}
 	toxicCombo := scenarioGroup{}
 	toolTesting := scenarioGroup{}
 
@@ -156,8 +211,10 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 			crossAccountDevToProd.scenarios = append(crossAccountDevToProd.scenarios, s)
 		case strings.Contains(path, "cross-account/ops-to-prod"):
 			crossAccountOpsToProd.scenarios = append(crossAccountOpsToProd.scenarios, s)
-		case strings.Contains(path, "toxic-combo"):
+		case strings.Contains(path, "cspm-toxic-combo"):
 			toxicCombo.scenarios = append(toxicCombo.scenarios, s)
+		case strings.Contains(path, "cspm-misconfig"):
+			cspmMisconfig.scenarios = append(cspmMisconfig.scenarios, s)
 		case strings.Contains(path, "tool-testing"):
 			toolTesting.scenarios = append(toolTesting.scenarios, s)
 		case strings.Contains(path, "privesc-self-escalation") && strings.Contains(path, "to-admin"):
@@ -186,42 +243,71 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s%s (%d)\n", indent, bold(title), len(group.scenarios))
 		for _, s := range group.scenarios {
 			isEnabled := enabledVars[s.Terraform.VariableName]
+			isDeployed := deployedVars[s.Terraform.VariableName]
 			isCrossAccountUnavailable := singleAccountMode && s.RequiresMultiAccount()
 
 			id := s.UniqueID()
+
+			// 4-state status indicator
 			var status string
-			if isEnabled {
-				status = green("●")
+			if isEnabled && isDeployed {
+				status = green("●") // enabled + deployed
+			} else if isEnabled && !isDeployed {
+				status = yellow("●") // enabled, pending deploy
+			} else if !isEnabled && isDeployed {
+				status = red("●") // disabled, pending destroy
 			} else if isCrossAccountUnavailable {
-				status = dim("○")
+				status = dim("○") // unavailable
 			} else {
-				status = "○"
+				status = dim("○") // disabled
 			}
 
 			idStr := fmt.Sprintf("%-24s", id)
 
+			// Cost suffix
+			costSuffix := ""
+			if s.CostEstimate != "" {
+				costSuffix = fmt.Sprintf(" (%s)", s.CostEstimate)
+			}
+			costSuffixLen := len(costSuffix)
+
 			// Calculate available width for description
-			// Format: indent + "  " + status + " " + id (24) + " " + description
-			usedWidth := len(indent) + 2 + 1 + 1 + 24 + 1
+			// Format: indent + "  " + status + " " + id (24) + " " + description + costSuffix
+			usedWidth := len(indent) + 2 + 1 + 1 + 24 + 1 + costSuffixLen
 			descWidth := termWidth - usedWidth
 			if descWidth < 20 {
 				descWidth = 20 // minimum description width
+			}
+
+			// Color the cost suffix
+			var coloredCostSuffix string
+			if costSuffix != "" {
+				if s.CostEstimate != "$0/mo" && s.CostEstimate != "$0" {
+					coloredCostSuffix = costColor(costSuffix)
+				} else {
+					coloredCostSuffix = dim(costSuffix)
+				}
+			}
+
+			// Demo active indicator
+			demoActiveSuffix := ""
+			if s.HasDemoActive() {
+				demoActiveSuffix = costColor(" \u26a0 demo active")
 			}
 
 			if isCrossAccountUnavailable {
 				desc := s.Description
 				suffix := " [requires multi-account]"
 				if !wideOutput {
-					// Account for the suffix in truncation
 					desc = truncate(desc, descWidth-len(suffix))
 				}
-				fmt.Printf("%s  %s %s %s\n", indent, status, dim(idStr), dim(desc+suffix))
+				fmt.Printf("%s  %s %s %s%s%s\n", indent, status, dim(idStr), dim(desc+suffix), coloredCostSuffix, demoActiveSuffix)
 			} else {
 				desc := s.Description
 				if !wideOutput {
 					desc = truncate(desc, descWidth)
 				}
-				fmt.Printf("%s  %s %s %s\n", indent, status, cyan(idStr), desc)
+				fmt.Printf("%s  %s %s %s%s%s\n", indent, status, cyan(idStr), desc, coloredCostSuffix, demoActiveSuffix)
 			}
 		}
 	}
@@ -230,7 +316,7 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	hasSingleAccount := len(selfEscalationAdmin.scenarios) > 0 || len(oneHopAdmin.scenarios) > 0 ||
 		len(multiHopAdmin.scenarios) > 0 || len(selfEscalationBucket.scenarios) > 0 ||
 		len(oneHopBucket.scenarios) > 0 || len(multiHopBucket.scenarios) > 0 ||
-		len(toxicCombo.scenarios) > 0 || len(toolTesting.scenarios) > 0
+		len(cspmMisconfig.scenarios) > 0 || len(toxicCombo.scenarios) > 0 || len(toolTesting.scenarios) > 0
 
 	if hasSingleAccount {
 		fmt.Println()
@@ -258,10 +344,13 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 			printSection("Multi-Hop", multiHopBucket, "    ")
 		}
 
-		// Toxic Combinations
-		if len(toxicCombo.scenarios) > 0 {
+		// CSPM
+		hasCSPM := len(cspmMisconfig.scenarios) > 0 || len(toxicCombo.scenarios) > 0
+		if hasCSPM {
 			fmt.Println()
-			printSection("Toxic Combinations", toxicCombo, "  ")
+			fmt.Printf("  %s\n", bold("CSPM"))
+			printSection("Misconfig", cspmMisconfig, "    ")
+			printSection("Toxic Combo", toxicCombo, "    ")
 		}
 
 		// Tool Testing
@@ -288,27 +377,86 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 
 	// Summary
 	enabledCount := 0
+	deployedCount := 0
+	demoActiveCount := 0
+	var runningCost float64
 	for _, s := range filtered {
-		if enabledVars[s.Terraform.VariableName] {
+		isEnabled := enabledVars[s.Terraform.VariableName]
+		isDeployed := deployedVars[s.Terraform.VariableName]
+		if isEnabled {
 			enabledCount++
+		}
+		if isDeployed {
+			deployedCount++
+		}
+		if isEnabled && isDeployed {
+			runningCost += parseCostString(s.CostEstimate)
+		}
+		if s.HasDemoActive() {
+			demoActiveCount++
 		}
 	}
 
 	fmt.Println(dim("─────────────────────────────────────────────────────────────"))
-	fmt.Printf("Total: %d scenarios | Enabled: %s | %s = enabled\n",
-		len(filtered),
-		green(fmt.Sprintf("%d", enabledCount)),
-		green("●"))
+
+	// Status legend
+	legendParts := []string{
+		fmt.Sprintf("%s = deployed", green("●")),
+		fmt.Sprintf("%s = pending", yellow("●")),
+		fmt.Sprintf("%s = pending destroy", red("●")),
+		fmt.Sprintf("%s = disabled", dim("○")),
+	}
+
+	// Build summary line
+	summaryParts := []string{
+		fmt.Sprintf("Total: %d scenarios", len(filtered)),
+		fmt.Sprintf("Enabled: %s", green(fmt.Sprintf("%d", enabledCount))),
+		fmt.Sprintf("Deployed: %s", green(fmt.Sprintf("%d", deployedCount))),
+	}
+
+	if demoActiveCount > 0 {
+		summaryParts = append(summaryParts, fmt.Sprintf("Demo active: %s", costColor(fmt.Sprintf("%d \u26a0", demoActiveCount))))
+	}
+
+	if runningCost > 0 {
+		costPerDay := runningCost / 30
+		summaryParts = append(summaryParts,
+			fmt.Sprintf("Running cost: %s %s",
+				costColor(fmt.Sprintf("$%.0f/mo", runningCost)),
+				dim(fmt.Sprintf("($%.2f/day)", costPerDay))))
+	} else {
+		summaryParts = append(summaryParts, fmt.Sprintf("Running cost: %s", dim("$0/mo")))
+	}
+
+	fmt.Println(strings.Join(summaryParts, " | "))
+	fmt.Printf("%s\n", dim(strings.Join(legendParts, "  ")))
 	fmt.Println()
 	fmt.Printf("Use %s to enable a scenario\n", cyan("plabs scenarios enable <id>"))
-	fmt.Printf("Use %s to filter by category\n", cyan("plabs scenarios list --category=<cat>"))
+	fmt.Printf("Use %s to view scenario details\n", cyan("plabs scenarios show <id>"))
 	fmt.Println()
 
 	return nil
 }
 
+// parseCostString extracts the numeric value from a cost string like "$8/mo"
+func parseCostString(cost string) float64 {
+	if cost == "" {
+		return 0
+	}
+	cost = strings.TrimPrefix(cost, "$")
+	cost = strings.TrimSuffix(cost, "/mo")
+	cost = strings.TrimSuffix(cost, "/month")
+
+	var value float64
+	fmt.Sscanf(cost, "%f", &value)
+	return value
+}
+
 // truncate shortens a string to maxLen characters
 func truncate(s string, maxLen int) string {
+	if maxLen <= 3 {
+		return s
+	}
 	if len(s) <= maxLen {
 		return s
 	}

@@ -3,7 +3,9 @@
 # Cleanup script for SageMaker UpdateNotebook Lifecycle Config privilege escalation demo
 # This script removes the admin policy from the starting user and cleans up the lifecycle config
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -156,3 +158,6 @@ echo "- Deleted malicious lifecycle configuration: $LIFECYCLE_CONFIG_NAME"
 echo -e "\n${GREEN}The environment has been restored to its original state.${NC}"
 echo -e "${YELLOW}The infrastructure (users, roles, notebook) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
+
+# Clear demo active marker for plabs tracking
+rm -f "$(dirname "$0")/.demo_active"

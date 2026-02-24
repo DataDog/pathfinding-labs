@@ -100,10 +100,10 @@ resource "aws_iam_role_policy_attachment" "notebook_role_admin_access" {
 
 # Create the existing SageMaker notebook instance with admin role
 resource "aws_sagemaker_notebook_instance" "target_notebook" {
-  provider              = aws.prod
-  name                  = "pl-${var.environment}-sagemaker-004-to-admin-notebook"
-  role_arn              = aws_iam_role.notebook_execution_role.arn
-  instance_type         = "ml.t3.medium"
+  provider               = aws.prod
+  name                   = "pl-${var.environment}-sagemaker-004-to-admin-notebook"
+  role_arn               = aws_iam_role.notebook_execution_role.arn
+  instance_type          = "ml.t3.medium"
   direct_internet_access = "Enabled"
 
   tags = {

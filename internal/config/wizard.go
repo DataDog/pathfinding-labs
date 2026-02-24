@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -189,6 +190,69 @@ func (w *Wizard) Run() (*Config, error) {
 		cfg.AWS.Ops.Region = opsRegion
 	}
 
+	// Budget alerts section
+	fmt.Println()
+	budgetHeaderStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("214")). // Orange for cost/money
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+	fmt.Println(budgetHeaderStyle.Render(" Cost Protection "))
+	fmt.Println(dimStyle.Render("   Set up AWS Budget alerts to avoid unexpected charges."))
+	fmt.Println(dimStyle.Render("   First 2 budgets per account are FREE."))
+	fmt.Println()
+
+	var enableBudget bool
+	budgetForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Enable budget alerts?").
+				Description("Get email notifications when AWS costs approach your limit").
+				Value(&enableBudget),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := budgetForm.Run(); err != nil {
+		return nil, err
+	}
+
+	if enableBudget {
+		var budgetEmail string
+		var budgetLimit string
+
+		budgetDetailsForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title("Email for budget alerts").
+					Description("AWS will send notifications to this address").
+					Value(&budgetEmail).
+					Validate(func(s string) error {
+						if !strings.Contains(s, "@") {
+							return fmt.Errorf("please enter a valid email address")
+						}
+						return nil
+					}),
+				huh.NewInput().
+					Title("Monthly budget limit (USD)").
+					Description("Alerts at 50%, 80%, 100% actual and 100% forecasted").
+					Placeholder("50").
+					Value(&budgetLimit),
+			),
+		).WithTheme(huh.ThemeCatppuccin())
+
+		if err := budgetDetailsForm.Run(); err != nil {
+			return nil, err
+		}
+
+		cfg.Budget.Enabled = true
+		cfg.Budget.Email = budgetEmail
+		if limit, err := strconv.Atoi(budgetLimit); err == nil && limit > 0 {
+			cfg.Budget.LimitUSD = limit
+		} else {
+			cfg.Budget.LimitUSD = 50 // default
+		}
+	}
+
 	cfg.Initialized = true
 
 	// Summary
@@ -211,6 +275,11 @@ func (w *Wizard) Run() (*Config, error) {
 	if cfg.AWS.Ops.Profile != "" {
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.AWS.Ops.Profile))
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.AWS.Ops.Region))
+	}
+	if cfg.Budget.Enabled {
+		fmt.Printf("%s %s\n", labelStyle.Render("Budget alerts:"), valueStyle.Render("Enabled"))
+		fmt.Printf("%s %s\n", labelStyle.Render("Alert email:"), valueStyle.Render(cfg.Budget.Email))
+		fmt.Printf("%s %s\n", labelStyle.Render("Budget limit:"), valueStyle.Render(fmt.Sprintf("$%d/month", cfg.Budget.LimitUSD)))
 	}
 
 	// Mode description
@@ -299,6 +368,98 @@ func (w *Wizard) RunForEnvironment(envName string, currentProfile string) (strin
 	}
 
 	return selectedProfile, nil
+}
+
+// BudgetResult contains the result from budget configuration
+type BudgetResult struct {
+	Enabled  bool
+	Email    string
+	LimitUSD int
+}
+
+// RunForBudget runs the wizard for budget configuration
+// Returns the updated budget settings
+func (w *Wizard) RunForBudget(current BudgetConfig) (*BudgetResult, error) {
+	// Styling
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("214")). // Orange for cost/money
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+
+	fmt.Println()
+	fmt.Println(headerStyle.Render(" Budget Alerts (Cost Protection) "))
+	fmt.Println(dimStyle.Render("   Get email notifications when AWS costs approach your limit."))
+	fmt.Println(dimStyle.Render("   First 2 budgets per account are FREE."))
+	fmt.Println()
+
+	var enableBudget bool = current.Enabled
+	enableForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Enable budget alerts?").
+				Description("Get email notifications when AWS costs approach your limit").
+				Value(&enableBudget),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := enableForm.Run(); err != nil {
+		return nil, err
+	}
+
+	result := &BudgetResult{
+		Enabled:  enableBudget,
+		Email:    current.Email,
+		LimitUSD: current.LimitUSD,
+	}
+
+	if !enableBudget {
+		return result, nil
+	}
+
+	// If enabling, ask for email and limit
+	budgetEmail := current.Email
+	budgetLimit := ""
+	if current.LimitUSD > 0 {
+		budgetLimit = strconv.Itoa(current.LimitUSD)
+	}
+
+	detailsForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Email for budget alerts").
+				Description("AWS will send notifications to this address").
+				Value(&budgetEmail).
+				Validate(func(s string) error {
+					if s == "" {
+						return fmt.Errorf("email is required when budget alerts are enabled")
+					}
+					if !strings.Contains(s, "@") {
+						return fmt.Errorf("please enter a valid email address")
+					}
+					return nil
+				}),
+			huh.NewInput().
+				Title("Monthly budget limit (USD)").
+				Description("Alerts at 50%, 80%, 100% actual and 100% forecasted").
+				Placeholder("50").
+				Value(&budgetLimit),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := detailsForm.Run(); err != nil {
+		return nil, err
+	}
+
+	result.Email = budgetEmail
+	if limit, err := strconv.Atoi(budgetLimit); err == nil && limit > 0 {
+		result.LimitUSD = limit
+	} else {
+		result.LimitUSD = 50 // default
+	}
+
+	return result, nil
 }
 
 // Common AWS regions for selection

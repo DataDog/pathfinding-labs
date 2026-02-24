@@ -249,9 +249,9 @@ resource "aws_cloudformation_stack_set" "vulnerable_stackset" {
 
 # Deploy stack instance to current account and region
 resource "aws_cloudformation_stack_set_instance" "stackset_instance" {
-  provider       = aws.prod
-  stack_set_name = aws_cloudformation_stack_set.vulnerable_stackset.name
-  account_id     = var.account_id
+  provider                  = aws.prod
+  stack_set_name            = aws_cloudformation_stack_set.vulnerable_stackset.name
+  account_id                = var.account_id
   stack_set_instance_region = data.aws_region.current.id
 
   depends_on = [

