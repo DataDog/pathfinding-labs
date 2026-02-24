@@ -272,6 +272,24 @@ variable "enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecomm
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-008-iam-passrole+ecs-runtask"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ecs-009-iam-passrole+ecs-starttask"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
   description = "Enable: single-account → privesc-one-hop → to-admin → sts-001-sts-assumerole"
   type        = bool

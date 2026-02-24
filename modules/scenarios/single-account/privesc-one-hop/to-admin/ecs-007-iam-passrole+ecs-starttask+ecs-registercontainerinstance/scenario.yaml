@@ -1,0 +1,92 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
+description: "User with iam:PassRole, ecs:StartTask, and access to an unregistered EC2 can register it to an ECS cluster and override task commands to escalate to admin"
+cost_estimate: "$8/mo"
+pathfinding-cloud-id: "ecs-007"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ecs-007-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ecs-007-to-admin-target-role"
+
+  summary: "starting_user → (ssm:SendCommand to register EC2 to ECS cluster) → (ecs:StartTask with --overrides passing admin role) → ECS task attaches admin policy to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-execution-role"
+
+    - permission: "ecs:StartTask"
+      resource: "*"
+
+    - permission: "ssm:SendCommand"
+      resource: "*"
+      purpose: "Reconfigure ECS agent on unregistered EC2 to join the target cluster, triggering ecs:RegisterContainerInstance"
+
+  helpful:
+    - permission: "ecs:ListContainerInstances"
+      purpose: "Verify container instance registered and retrieve its ARN for StartTask"
+
+    - permission: "ecs:ListTaskDefinitions"
+      purpose: "Discover existing task definitions to exploit"
+
+    - permission: "ecs:DescribeTasks"
+      purpose: "Monitor task execution status and verify task completion"
+
+    - permission: "ecs:ListClusters"
+      purpose: "Discover available ECS clusters"
+
+    - permission: "ecs:StopTask"
+      purpose: "Stop running tasks during cleanup"
+
+    - permission: "ssm:GetCommandInvocation"
+      purpose: "Check status of SSM command sent to register the instance"
+
+    - permission: "ssm:ListCommandInvocations"
+      purpose: "Monitor SSM command execution progress"
+
+    - permission: "ec2:DescribeInstances"
+      purpose: "Find the unregistered EC2 instance"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1610 - Deploy Container"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance"
