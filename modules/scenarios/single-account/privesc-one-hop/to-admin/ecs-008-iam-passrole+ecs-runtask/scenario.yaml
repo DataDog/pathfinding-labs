@@ -33,7 +33,7 @@ attack_path:
 permissions:
   required:
     - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-target-role"
+      resource: "arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-execution-role"
 
     - permission: "ecs:RunTask"
       resource: "*"

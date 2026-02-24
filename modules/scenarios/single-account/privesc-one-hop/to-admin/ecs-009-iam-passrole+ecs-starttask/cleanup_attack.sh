@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Cleanup script for iam:PassRole + ecs:RunTask privilege escalation demo (ECS-008)
-# This script detaches the AdministratorAccess policy from the starting user
-# and stops any running tasks in the cluster
+# Cleanup script for iam:PassRole + ecs:StartTask privilege escalation demo
+# This script detaches the AdministratorAccess policy from the starting user and stops any running tasks
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
@@ -14,12 +13,12 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER="pl-prod-ecs-008-to-admin-starting-user"
-EXISTING_TASK_FAMILY="pl-prod-ecs-008-existing-task"
+STARTING_USER="pl-prod-ecs-009-to-admin-starting-user"
+EXISTING_TASK_FAMILY="pl-prod-ecs-009-existing-task"
 ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cleanup: PassRole + ECS RunTask (Command Override)${NC}"
+echo -e "${GREEN}Cleanup: PassRole + ECS StartTask Override (ECS-009)${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Step 1: Get admin credentials and region from Terraform
@@ -60,46 +59,19 @@ echo "Account ID: $ACCOUNT_ID"
 
 # Get cluster name from terraform outputs
 cd ../../../../../..
-CLUSTER_NAME=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask.value.cluster_name // empty')
+ECS_CLUSTER_NAME=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask.value.cluster_name // empty')
 cd - > /dev/null
 
-if [ -z "$CLUSTER_NAME" ]; then
+if [ -z "$ECS_CLUSTER_NAME" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve ECS cluster name from Terraform${NC}"
-    CLUSTER_NAME="pl-prod-ecs-008-cluster"
+    ECS_CLUSTER_NAME="pl-prod-ecs-009-cluster"
 fi
 
-echo "ECS Cluster: $CLUSTER_NAME"
+echo "ECS Cluster: $ECS_CLUSTER_NAME"
 echo ""
 
-# Step 2: Stop any running tasks
-echo -e "${YELLOW}Step 2: Stopping any running ECS tasks${NC}"
-echo "Checking for running tasks in cluster: $CLUSTER_NAME"
-
-# List all running tasks in the cluster
-RUNNING_TASKS=$(aws ecs list-tasks \
-    --region $CURRENT_REGION \
-    --cluster $CLUSTER_NAME \
-    --query 'taskArns[*]' \
-    --output text 2>/dev/null || echo "")
-
-if [ -n "$RUNNING_TASKS" ] && [ "$RUNNING_TASKS" != "None" ]; then
-    echo "Found running tasks. Stopping them..."
-    for TASK_ARN in $RUNNING_TASKS; do
-        echo "Stopping task: $TASK_ARN"
-        aws ecs stop-task \
-            --region $CURRENT_REGION \
-            --cluster $CLUSTER_NAME \
-            --task $TASK_ARN \
-            --output text > /dev/null 2>&1 || true
-        echo -e "${GREEN}✓ Stopped task: $TASK_ARN${NC}"
-    done
-else
-    echo -e "${YELLOW}No running tasks found (may already be stopped)${NC}"
-fi
-echo ""
-
-# Step 3: Detach AdministratorAccess policy from starting user
-echo -e "${YELLOW}Step 3: Detaching AdministratorAccess policy from starting user${NC}"
+# Step 2: Detach AdministratorAccess policy from starting user
+echo -e "${YELLOW}Step 2: Detaching AdministratorAccess policy from starting user${NC}"
 echo "User: $STARTING_USER"
 echo "Policy: $ADMIN_POLICY_ARN"
 
@@ -121,21 +93,46 @@ else
 fi
 echo ""
 
-# Step 4: Verify cleanup
-echo -e "${YELLOW}Step 4: Verifying cleanup${NC}"
+# Step 3: Stop any running tasks
+echo -e "${YELLOW}Step 3: Stopping any running ECS tasks${NC}"
+echo "Checking for running tasks in cluster: $ECS_CLUSTER_NAME"
 
-# Verify no running tasks
-REMAINING_TASKS=$(aws ecs list-tasks \
+# List all tasks in the cluster (not filtered by family since we used overrides on existing task)
+RUNNING_TASKS=$(aws ecs list-tasks \
     --region $CURRENT_REGION \
-    --cluster $CLUSTER_NAME \
+    --cluster $ECS_CLUSTER_NAME \
+    --desired-status RUNNING \
     --query 'taskArns[*]' \
     --output text 2>/dev/null || echo "")
 
-if [ -z "$REMAINING_TASKS" ] || [ "$REMAINING_TASKS" == "None" ]; then
-    echo -e "${GREEN}✓ No running tasks found${NC}"
+if [ -n "$RUNNING_TASKS" ]; then
+    echo "Found running tasks. Checking if they are from the demo..."
+    for TASK_ARN in $RUNNING_TASKS; do
+        # Get task details to check if it used our task family
+        TASK_FAMILY=$(aws ecs describe-tasks \
+            --region $CURRENT_REGION \
+            --cluster $ECS_CLUSTER_NAME \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].group' \
+            --output text 2>/dev/null || echo "")
+
+        if [[ "$TASK_FAMILY" == *"$EXISTING_TASK_FAMILY"* ]]; then
+            echo "Stopping task: $TASK_ARN"
+            aws ecs stop-task \
+                --region $CURRENT_REGION \
+                --cluster $ECS_CLUSTER_NAME \
+                --task $TASK_ARN \
+                --output text > /dev/null 2>&1 || true
+            echo -e "${GREEN}✓ Stopped task: $TASK_ARN${NC}"
+        fi
+    done
 else
-    echo -e "${YELLOW}Warning: Some tasks may still be running${NC}"
+    echo -e "${YELLOW}No running tasks found (may already be stopped)${NC}"
 fi
+echo ""
+
+# Step 4: Verify cleanup
+echo -e "${YELLOW}Step 4: Verifying cleanup${NC}"
 
 # Verify policy is detached
 ATTACHED_POLICIES_AFTER=$(aws iam list-attached-user-policies \
@@ -149,16 +146,33 @@ else
     echo -e "${GREEN}✓ AdministratorAccess policy successfully detached${NC}"
 fi
 
+# Verify no running tasks from the demo
+REMAINING_TASKS=$(aws ecs list-tasks \
+    --region $CURRENT_REGION \
+    --cluster $ECS_CLUSTER_NAME \
+    --family $EXISTING_TASK_FAMILY \
+    --query 'taskArns[*]' \
+    --output text 2>/dev/null || echo "")
+
+if [ -z "$REMAINING_TASKS" ]; then
+    echo -e "${GREEN}✓ No running tasks found for task family${NC}"
+else
+    echo -e "${YELLOW}Warning: Some tasks may still be running${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}CLEANUP COMPLETE${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
-echo "- Stopped any running ECS tasks in cluster: $CLUSTER_NAME"
 echo "- Detached AdministratorAccess policy from: $STARTING_USER"
+echo "- Stopped any running ECS tasks from the demo"
+echo ""
+echo -e "${YELLOW}Note: No task definitions were created during the demo (existing task${NC}"
+echo -e "${YELLOW}definition was used with --overrides), so no deregistration is needed.${NC}"
 echo ""
 echo -e "${GREEN}The environment has been restored to its original state.${NC}"
-echo -e "${YELLOW}The infrastructure (users, roles, ECS cluster, and task definition) remains deployed${NC}"
+echo -e "${YELLOW}The infrastructure (users, roles, ECS cluster, and EC2 instance) remains deployed${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
 
 # Clear demo active marker for plabs tracking

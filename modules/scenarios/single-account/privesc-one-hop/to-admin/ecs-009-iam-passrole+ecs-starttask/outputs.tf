@@ -66,7 +66,7 @@ output "existing_task_definition_arn" {
 # =============================================================================
 
 output "container_instance_id" {
-  description = "ID of the EC2 container instance (NOT registered to cluster at deploy time)"
+  description = "ID of the EC2 container instance"
   value       = aws_instance.container_instance.id
 }
 
@@ -76,5 +76,5 @@ output "container_instance_id" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ssm:SendCommand to reconfigure ECS agent on unregistered EC2) -> (ecs:RegisterContainerInstance triggered by ECS agent) -> (ecs:StartTask with command override, passing admin role) -> ECS task attaches admin policy to starting user -> admin access"
+  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ecs:StartTask with command override on existing task definition, passing admin role) -> ECS task attaches admin policy to starting user -> admin access"
 }

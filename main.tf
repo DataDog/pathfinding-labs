@@ -448,6 +448,17 @@ module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-009-iam-passrole+ecs-starttask"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sts-001-sts-assumerole"

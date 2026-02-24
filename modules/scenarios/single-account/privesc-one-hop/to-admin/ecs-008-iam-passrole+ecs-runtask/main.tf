@@ -61,7 +61,10 @@ resource "aws_iam_user_policy" "starting_user_required" {
         Action = [
           "iam:PassRole"
         ]
-        Resource = aws_iam_role.target_role.arn
+        Resource = [
+          aws_iam_role.target_role.arn,
+          aws_iam_role.execution_role.arn
+        ]
       },
       {
         Sid    = "requiredPermissions2"
