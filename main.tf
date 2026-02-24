@@ -411,6 +411,28 @@ module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-008-iam-passrole+ecs-runtask"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/sts-001-sts-assumerole"

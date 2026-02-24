@@ -601,6 +601,41 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
+  description = "All outputs for ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_name
+    cluster_name                    = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_name
+    cluster_arn                     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_arn
+    existing_task_definition_arn    = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].existing_task_definition_arn
+    container_instance_id           = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].container_instance_id
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
+  description = "All outputs for ecs-008-iam-passrole+ecs-runtask one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].target_role_name
+    cluster_name                    = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].cluster_name
+    cluster_arn                     = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].cluster_arn
+    existing_task_definition_arn    = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].existing_task_definition_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "All outputs for glue-001-iam-passrole+glue-createdevendpoint one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint ? {

@@ -6,7 +6,7 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-93-blue?style=for-the-badge)
+![Scenarios](https://img.shields.io/badge/Scenarios-95-blue?style=for-the-badge)
 ![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
 
 [Quick Start](#quick-start) • [Scenarios](#available-scenarios---single-account) • [Documentation](#architecture) • [Contributing](#contributing)
@@ -189,7 +189,7 @@ In these scenarios, an IAM principal has the permission to update their own perm
 | [`iam-011-iam-putgrouppolicy`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-011-iam-putgrouppolicy/README.md) | User modifies group inline policy to grant admin access |
 | [`iam-013-iam-addusertogroup`](modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam-addusertogroup/README.md) | User adds themselves to an admin group |
 
-#### One-Hop to Admin (57 scenarios)
+#### One-Hop to Admin (59 scenarios)
 
 In these scenarios, one principal has enough permissions to gain access to another principal, and that principal has administrative access.
 
@@ -219,6 +219,8 @@ In these scenarios, one principal has enough permissions to gain access to anoth
 | [`ecs-004-iam-passrole+ecs-registertaskdefinition+ecs-runtask`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-004-iam-passrole+ecs-registertaskdefinition+ecs-runtask/README.md) | User registers task definition with admin role and runs task |
 | [`ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask/README.md) | User registers ECS task definition with admin role and starts task |
 | [`ecs-006-ecs-executecommand`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand/README.md) | User shells into running ECS task with admin role to extract credentials |
+| [`ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance/README.md) | User with iam:PassRole, ecs:StartTask, and ecs:RegisterContainerInstance can override existing task definition commands to escalate to admin |
+| [`ecs-008-iam-passrole+ecs-runtask`](modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-008-iam-passrole+ecs-runtask/README.md) | User with iam:PassRole and ecs:RunTask can override existing task definition commands to escalate to admin via Fargate |
 | [`glue-001-iam-passrole+glue-createdevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/README.md) | User creates Glue dev endpoint with admin role |
 | [`glue-002-glue-updatedevendpoint`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-002-glue-updatedevendpoint/README.md) | User updates existing Glue dev endpoint with admin role |
 | [`glue-003-iam-passrole+glue-createjob+glue-startjobrun`](modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/README.md) | User creates Glue job with admin role and starts job run |
@@ -739,10 +741,10 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ## Current Status
 
-- ✅ **93 scenarios** available
+- ✅ **95 scenarios** available
   - 8 Self-Escalation to Admin
   - 2 Self-Escalation to Bucket
-  - 57 One-Hop to Admin
+  - 59 One-Hop to Admin
   - 11 One-Hop to Bucket
   - 1 Multi-Hop to Admin
   - 1 Multi-Hop to Bucket
