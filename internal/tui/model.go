@@ -1344,7 +1344,7 @@ func (m *Model) renderSettingsMenu() string {
 	sb.WriteString("----------------------------------------\n\n")
 
 	if m.config.Budget.Enabled {
-		sb.WriteString(fmt.Sprintf("  [b] Status:  Enabled\n"))
+		sb.WriteString("  [b] Status:  Enabled\n")
 		sb.WriteString(fmt.Sprintf("      Email:   %s\n", m.config.Budget.Email))
 		sb.WriteString(fmt.Sprintf("      Limit:   $%d/month\n", m.config.Budget.LimitUSD))
 	} else {
