@@ -1,27 +1,15 @@
 # =============================================================================
-# STARTING USER OUTPUTS (Required for all scenarios)
+# STARTING PRINCIPAL OUTPUTS (EC2 Instance Role)
 # =============================================================================
 
-output "starting_user_name" {
-  description = "Name of the starting IAM user"
-  value       = aws_iam_user.starting_user.name
+output "starting_principal_arn" {
+  description = "ARN of the starting principal (EC2 instance role)"
+  value       = aws_iam_role.container_instance.arn
 }
 
-output "starting_user_arn" {
-  description = "ARN of the starting IAM user"
-  value       = aws_iam_user.starting_user.arn
-}
-
-output "starting_user_access_key_id" {
-  description = "Access key ID for the starting user"
-  value       = aws_iam_access_key.starting_user.id
-  sensitive   = true
-}
-
-output "starting_user_secret_access_key" {
-  description = "Secret access key for the starting user"
-  value       = aws_iam_access_key.starting_user.secret
-  sensitive   = true
+output "starting_principal_name" {
+  description = "Name of the starting principal (EC2 instance role)"
+  value       = aws_iam_role.container_instance.name
 }
 
 # =============================================================================
@@ -76,5 +64,5 @@ output "container_instance_id" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ssm:SendCommand to reconfigure ECS agent on unregistered EC2) -> (ecs:RegisterContainerInstance triggered by ECS agent) -> (ecs:StartTask with command override, passing admin role) -> ECS task attaches admin policy to starting user -> admin access"
+  value       = "instance_role (${aws_iam_role.container_instance.name}) on EC2 (${aws_instance.container_instance.id}) -> (attacker has RCE) -> ecs:RegisterContainerInstance (direct API call with IMDS identity docs) -> reconfigure ECS agent -> ecs:StartTask with --overrides (iam:PassRole admin role + command override) -> ECS task attaches AdministratorAccess to instance role -> admin access"
 }

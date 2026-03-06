@@ -338,6 +338,7 @@ func (o *Overlay) RenderHelpOverlay() string {
 				{"p", "Plan (preview changes)"},
 				{"r", "Run attack demo"},
 				{"c", "Cleanup attack demo artifacts"},
+				{"C", "Cleanup all active demos"},
 				{"D", "Destroy scenarios or environments"},
 				{"s", "Settings"},
 			},

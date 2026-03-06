@@ -3,9 +3,10 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
-description: "User with iam:PassRole, ecs:StartTask, and access to an unregistered EC2 can register it to an ECS cluster and override task commands to escalate to admin"
+description: "Attacker with RCE on an EC2 instance can register it to an ECS cluster and override task commands to escalate to admin, using only ecs:RegisterContainerInstance, ecs:StartTask, iam:PassRole, and ecs:DeregisterContainerInstance on the instance role"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ecs-007"
+reference: "https://labs.reversec.com/posts/2025/08/another-ecs-privilege-escalation-path"
 
 # =============================================================================
 # CLASSIFICATION
@@ -22,29 +23,69 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-prod-ecs-007-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ecs-007-to-admin-instance-role"
     - "arn:aws:iam::{account_id}:role/pl-prod-ecs-007-to-admin-target-role"
 
-  summary: "starting_user → (ssm:SendCommand to register EC2 to ECS cluster) → (ecs:StartTask with --overrides passing admin role) → ECS task attaches admin policy to starting user → admin access"
+  starting_principal: "arn:aws:iam::{account_id}:role/pl-prod-ecs-007-to-admin-instance-role"
+  starting_principal_type: "ec2-instance-role"
+
+  summary: "instance_role (RCE on EC2) -> ecs:RegisterContainerInstance (direct API call with IMDS identity docs) -> reconfigure ECS agent -> ecs:StartTask with --overrides (iam:PassRole admin role + command override) -> ECS task attaches admin policy to instance role -> admin access"
+
+  prerequisite: "Attacker has Remote Code Execution (RCE) on the EC2 instance"
 
 # =============================================================================
 # PERMISSIONS
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-execution-role"
+    - permission: "ecs:RegisterContainerInstance"
+      resource: "*"
+      principal: "EC2 instance role"
+      purpose: "Register the EC2 instance to the target ECS cluster via direct API call (using IMDS identity documents)"
 
     - permission: "ecs:StartTask"
       resource: "*"
+      principal: "EC2 instance role"
+      purpose: "Start a task on the registered container instance with --overrides to override taskRoleArn and container command"
 
-    - permission: "ssm:SendCommand"
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-execution-role"
+      principal: "EC2 instance role"
+      purpose: "Pass the admin target role as the task role override in ecs:StartTask"
+
+    - permission: "ecs:DeregisterContainerInstance"
       resource: "*"
-      purpose: "Reconfigure ECS agent on unregistered EC2 to join the target cluster, triggering ecs:RegisterContainerInstance"
+      principal: "EC2 instance role"
+      purpose: "Deregister the container instance from the cluster (cleanup)"
+
+  agent_operational:
+    - permission: "ecs:DiscoverPollEndpoint"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - discover the polling endpoint to receive task assignments"
+
+    - permission: "ecs:Poll"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - poll for and receive task assignments from ECS control plane"
+
+    - permission: "ecs:SubmitTaskStateChange"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - report task execution status"
+
+    - permission: "ecs:SubmitContainerStateChange"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - report container execution status"
+
+    - permission: "ecs:StartTelemetrySession"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - telemetry reporting"
+
+    - permission: "ecs:SubmitAttachment"
+      principal: "EC2 instance role"
+      purpose: "Standard ECS agent permission - submit attachment state changes"
 
   helpful:
     - permission: "ecs:ListContainerInstances"
-      purpose: "Verify container instance registered and retrieve its ARN for StartTask"
+      purpose: "Verify container instance registered and retrieve its ARN"
 
     - permission: "ecs:ListTaskDefinitions"
       purpose: "Discover existing task definitions to exploit"
@@ -52,26 +93,12 @@ permissions:
     - permission: "ecs:DescribeTasks"
       purpose: "Monitor task execution status and verify task completion"
 
-    - permission: "ecs:ListClusters"
-      purpose: "Discover available ECS clusters"
-
-    - permission: "ecs:StopTask"
-      purpose: "Stop running tasks during cleanup"
+  lab_simulation:
+    - permission: "ssm:SendCommand"
+      purpose: "Used in the demo to simulate RCE (initial access to the EC2 instance). In the real world, the attacker would have shell access via an application vulnerability."
 
     - permission: "ssm:GetCommandInvocation"
-      purpose: "Check status of SSM command sent to register the instance"
-
-    - permission: "ssm:ListCommandInvocations"
-      purpose: "Monitor SSM command execution progress"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Find the unregistered EC2 instance"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+      purpose: "Used in the demo to retrieve command output from the simulated RCE."
 
 # =============================================================================
 # MITRE ATT&CK

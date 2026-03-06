@@ -58,11 +58,11 @@ func (s *ScenariosPane) SetScenarios(items []ScenarioItem) {
 	s.items = items
 	s.applyFilter()
 
-	// Initialize all categories as collapsed by default
+	// Initialize all categories as expanded by default
 	for _, item := range items {
 		cat := item.Scenario.CategoryShort()
 		if _, exists := s.collapsed[cat]; !exists {
-			s.collapsed[cat] = true // collapsed by default
+			s.collapsed[cat] = false // expanded by default
 		}
 	}
 }
@@ -548,6 +548,28 @@ func (s *ScenariosPane) UpdateDemoActive(varName string, active bool) {
 			break
 		}
 	}
+}
+
+// GetDemoActiveScenarioIDs returns UniqueIDs of all scenarios with DemoActive=true and HasCleanup()=true
+func (s *ScenariosPane) GetDemoActiveScenarioIDs() []string {
+	var ids []string
+	for _, item := range s.items {
+		if item.DemoActive && item.Scenario.HasCleanup() {
+			ids = append(ids, item.Scenario.UniqueID())
+		}
+	}
+	return ids
+}
+
+// GetDisabledDemoActiveScenarioIDs returns UniqueIDs where Deployed=true, Enabled=false, DemoActive=true, and HasCleanup()=true
+func (s *ScenariosPane) GetDisabledDemoActiveScenarioIDs() []string {
+	var ids []string
+	for _, item := range s.items {
+		if item.Deployed && !item.Enabled && item.DemoActive && item.Scenario.HasCleanup() {
+			ids = append(ids, item.Scenario.UniqueID())
+		}
+	}
+	return ids
 }
 
 // HasPendingChanges returns true if there are enabled/deployed mismatches

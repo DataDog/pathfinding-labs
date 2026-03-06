@@ -26,8 +26,9 @@ type KeyMap struct {
 	Deploy  key.Binding
 	Plan    key.Binding
 	RunDemo key.Binding
-	Cleanup key.Binding
-	Destroy key.Binding
+	Cleanup    key.Binding
+	CleanupAll key.Binding
+	Destroy    key.Binding
 	Config  key.Binding
 
 	// Filter
@@ -121,6 +122,10 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys("c"),
 			key.WithHelp("c", "cleanup"),
 		),
+		CleanupAll: key.NewBinding(
+			key.WithKeys("C"),
+			key.WithHelp("C", "cleanup all"),
+		),
 		Destroy: key.NewBinding(
 			key.WithKeys("D"),
 			key.WithHelp("D", "destroy"),
@@ -192,7 +197,7 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Tab, k.Toggle, k.Enable},
-		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup},
+		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup, k.CleanupAll},
 		{k.Destroy, k.Config},
 		{k.Filter, k.ToggleEnabledOnly, k.ToggleDemoActive, k.ToggleCosts},
 		{k.ToggleCollapseAll},

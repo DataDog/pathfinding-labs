@@ -1,11 +1,14 @@
 #!/bin/bash
 
-# Cleanup script for iam:PassRole + ecs:StartTask + ecs:RegisterContainerInstance privilege escalation demo
-# This script detaches the AdministratorAccess policy from the starting user, stops any running tasks,
+# Cleanup script for ecs:RegisterContainerInstance + iam:PassRole + ecs:StartTask privilege escalation demo
+# This script detaches the AdministratorAccess policy from the instance role, stops any running tasks,
 # deregisters the container instance from the cluster, and resets the ECS agent to the holding cluster
 
 # Disable AWS CLI paging
 export AWS_PAGER=""
+
+# Disable OpenTelemetry traces (causes terraform output to fail)
+unset OTEL_TRACES_EXPORTER 2>/dev/null
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,14 +17,14 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-STARTING_USER="pl-prod-ecs-007-to-admin-starting-user"
+INSTANCE_ROLE_NAME="pl-prod-ecs-007-to-admin-instance-role"
 EXISTING_TASK_FAMILY="pl-prod-ecs-007-existing-task"
 ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
 HOLDING_CLUSTER="pl-prod-ecs-007-holding"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Cleanup: PassRole + ECS StartTask Override${NC}"
-echo -e "${GREEN}+ RegisterContainerInstance (ECS-007)${NC}"
+echo -e "${GREEN}Cleanup: ECS RegisterContainerInstance${NC}"
+echo -e "${GREEN}+ PassRole + StartTask (ECS-007)${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Step 1: Get admin credentials and region from Terraform
@@ -80,26 +83,26 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo ""
 
-# Step 2: Detach AdministratorAccess policy from starting user
-echo -e "${YELLOW}Step 2: Detaching AdministratorAccess policy from starting user${NC}"
-echo "User: $STARTING_USER"
+# Step 2: Detach AdministratorAccess policy from instance role
+echo -e "${YELLOW}Step 2: Detaching AdministratorAccess policy from instance role${NC}"
+echo "Role: $INSTANCE_ROLE_NAME"
 echo "Policy: $ADMIN_POLICY_ARN"
 
 # Check if the policy is attached
-ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
-    --user-name $STARTING_USER \
+ATTACHED_POLICIES=$(aws iam list-attached-role-policies \
+    --role-name "$INSTANCE_ROLE_NAME" \
     --query 'AttachedPolicies[*].PolicyArn' \
-    --output text)
+    --output text 2>/dev/null)
 
 if echo "$ATTACHED_POLICIES" | grep -q "$ADMIN_POLICY_ARN"; then
     echo "AdministratorAccess policy is attached. Detaching..."
-    aws iam detach-user-policy \
-        --user-name $STARTING_USER \
-        --policy-arn $ADMIN_POLICY_ARN
+    aws iam detach-role-policy \
+        --role-name "$INSTANCE_ROLE_NAME" \
+        --policy-arn "$ADMIN_POLICY_ARN"
 
-    echo -e "${GREEN}✓ Detached AdministratorAccess policy from $STARTING_USER${NC}"
+    echo -e "${GREEN}✓ Detached AdministratorAccess policy from $INSTANCE_ROLE_NAME${NC}"
 else
-    echo -e "${YELLOW}AdministratorAccess policy not found attached to user (may already be detached)${NC}"
+    echo -e "${YELLOW}AdministratorAccess policy not found attached to role (may already be detached)${NC}"
 fi
 echo ""
 
@@ -109,8 +112,8 @@ echo "Checking for running tasks in cluster: $ECS_CLUSTER_NAME"
 
 # List all tasks in the cluster
 RUNNING_TASKS=$(aws ecs list-tasks \
-    --region $CURRENT_REGION \
-    --cluster $ECS_CLUSTER_NAME \
+    --region "$CURRENT_REGION" \
+    --cluster "$ECS_CLUSTER_NAME" \
     --desired-status RUNNING \
     --query 'taskArns[*]' \
     --output text 2>/dev/null || echo "")
@@ -120,18 +123,18 @@ if [ -n "$RUNNING_TASKS" ]; then
     for TASK_ARN in $RUNNING_TASKS; do
         # Get task details to check if it used our task family
         TASK_FAMILY=$(aws ecs describe-tasks \
-            --region $CURRENT_REGION \
-            --cluster $ECS_CLUSTER_NAME \
-            --tasks $TASK_ARN \
+            --region "$CURRENT_REGION" \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --tasks "$TASK_ARN" \
             --query 'tasks[0].group' \
             --output text 2>/dev/null || echo "")
 
         if [[ "$TASK_FAMILY" == *"$EXISTING_TASK_FAMILY"* ]]; then
             echo "Stopping task: $TASK_ARN"
             aws ecs stop-task \
-                --region $CURRENT_REGION \
-                --cluster $ECS_CLUSTER_NAME \
-                --task $TASK_ARN \
+                --region "$CURRENT_REGION" \
+                --cluster "$ECS_CLUSTER_NAME" \
+                --task "$TASK_ARN" \
                 --output text > /dev/null 2>&1 || true
             echo -e "${GREEN}✓ Stopped task: $TASK_ARN${NC}"
         fi
@@ -146,8 +149,8 @@ echo -e "${YELLOW}Step 4: Deregistering container instance from ECS cluster${NC}
 echo "Checking for container instances in cluster: $ECS_CLUSTER_NAME"
 
 CONTAINER_INSTANCE_ARNS=$(aws ecs list-container-instances \
-    --region $CURRENT_REGION \
-    --cluster $ECS_CLUSTER_NAME \
+    --region "$CURRENT_REGION" \
+    --cluster "$ECS_CLUSTER_NAME" \
     --query 'containerInstanceArns' \
     --output json 2>/dev/null || echo "[]")
 
@@ -158,8 +161,8 @@ if [ "$INSTANCE_COUNT" != "0" ]; then
     for CI_ARN in $(echo "$CONTAINER_INSTANCE_ARNS" | jq -r '.[]'); do
         echo "Deregistering container instance: $CI_ARN"
         aws ecs deregister-container-instance \
-            --region $CURRENT_REGION \
-            --cluster $ECS_CLUSTER_NAME \
+            --region "$CURRENT_REGION" \
+            --cluster "$ECS_CLUSTER_NAME" \
             --container-instance "$CI_ARN" \
             --force 2>/dev/null || true
         echo -e "${GREEN}✓ Deregistered container instance: $CI_ARN${NC}"
@@ -180,7 +183,7 @@ if [ -n "$EC2_INSTANCE_ID" ]; then
         --instance-ids "$EC2_INSTANCE_ID" \
         --document-name "AWS-RunShellScript" \
         --parameters "commands=[\"sed -i 's/$ECS_CLUSTER_NAME/$HOLDING_CLUSTER/' /etc/ecs/ecs.config && systemctl restart ecs\"]" \
-        --region $CURRENT_REGION \
+        --region "$CURRENT_REGION" \
         --output json 2>/dev/null || echo "")
 
     if [ -n "$COMMAND_RESULT" ]; then
@@ -199,7 +202,7 @@ if [ -n "$EC2_INSTANCE_ID" ]; then
                 COMMAND_STATUS=$(aws ssm get-command-invocation \
                     --command-id "$COMMAND_ID" \
                     --instance-id "$EC2_INSTANCE_ID" \
-                    --region $CURRENT_REGION \
+                    --region "$CURRENT_REGION" \
                     --query 'Status' \
                     --output text 2>/dev/null || echo "InProgress")
 
@@ -231,22 +234,22 @@ echo ""
 # Step 6: Verify cleanup
 echo -e "${YELLOW}Step 6: Verifying cleanup${NC}"
 
-# Verify policy is detached
-ATTACHED_POLICIES_AFTER=$(aws iam list-attached-user-policies \
-    --user-name $STARTING_USER \
+# Verify policy is detached from instance role
+ATTACHED_POLICIES_AFTER=$(aws iam list-attached-role-policies \
+    --role-name "$INSTANCE_ROLE_NAME" \
     --query 'AttachedPolicies[*].PolicyArn' \
-    --output text)
+    --output text 2>/dev/null)
 
 if echo "$ATTACHED_POLICIES_AFTER" | grep -q "$ADMIN_POLICY_ARN"; then
-    echo -e "${YELLOW}Warning: AdministratorAccess policy still attached to user${NC}"
+    echo -e "${YELLOW}Warning: AdministratorAccess policy still attached to instance role${NC}"
 else
-    echo -e "${GREEN}✓ AdministratorAccess policy successfully detached${NC}"
+    echo -e "${GREEN}✓ AdministratorAccess policy successfully detached from instance role${NC}"
 fi
 
 # Verify no container instances in cluster
 REMAINING_INSTANCES=$(aws ecs list-container-instances \
-    --region $CURRENT_REGION \
-    --cluster $ECS_CLUSTER_NAME \
+    --region "$CURRENT_REGION" \
+    --cluster "$ECS_CLUSTER_NAME" \
     --query 'containerInstanceArns' \
     --output json 2>/dev/null || echo "[]")
 
@@ -259,9 +262,9 @@ fi
 
 # Verify no running tasks from the demo
 REMAINING_TASKS=$(aws ecs list-tasks \
-    --region $CURRENT_REGION \
-    --cluster $ECS_CLUSTER_NAME \
-    --family $EXISTING_TASK_FAMILY \
+    --region "$CURRENT_REGION" \
+    --cluster "$ECS_CLUSTER_NAME" \
+    --family "$EXISTING_TASK_FAMILY" \
     --query 'taskArns[*]' \
     --output text 2>/dev/null || echo "")
 
@@ -276,7 +279,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}CLEANUP COMPLETE${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
-echo "- Detached AdministratorAccess policy from: $STARTING_USER"
+echo "- Detached AdministratorAccess policy from instance role: $INSTANCE_ROLE_NAME"
 echo "- Stopped any running ECS tasks from the demo"
 echo "- Deregistered container instance(s) from cluster: $ECS_CLUSTER_NAME"
 echo "- Reset ECS agent on EC2 instance to point back to: $HOLDING_CLUSTER"
@@ -285,7 +288,7 @@ echo -e "${YELLOW}Note: No task definitions were created during the demo (existi
 echo -e "${YELLOW}definition was used with --overrides), so no deregistration is needed.${NC}"
 echo ""
 echo -e "${GREEN}The environment has been restored to its original state.${NC}"
-echo -e "${YELLOW}The infrastructure (users, roles, ECS cluster, and EC2 instance) remains deployed${NC}"
+echo -e "${YELLOW}The infrastructure (roles, ECS cluster, and EC2 instance) remains deployed.${NC}"
 echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false and run terraform apply${NC}\n"
 
 # Clear demo active marker for plabs tracking

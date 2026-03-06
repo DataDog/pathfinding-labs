@@ -604,17 +604,15 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
 output "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
   description = "All outputs for ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_user_secret_access_key
-    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_arn
-    target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_name
-    cluster_name                    = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_name
-    cluster_arn                     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_arn
-    existing_task_definition_arn    = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].existing_task_definition_arn
-    container_instance_id           = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].container_instance_id
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].attack_path
+    starting_principal_arn       = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_principal_arn
+    starting_principal_name      = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].starting_principal_name
+    target_role_arn              = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_arn
+    target_role_name             = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].target_role_name
+    cluster_name                 = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_name
+    cluster_arn                  = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].cluster_arn
+    existing_task_definition_arn = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].existing_task_definition_arn
+    container_instance_id        = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].container_instance_id
+    attack_path                  = module.single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance[0].attack_path
   } : null
   sensitive = true
 }

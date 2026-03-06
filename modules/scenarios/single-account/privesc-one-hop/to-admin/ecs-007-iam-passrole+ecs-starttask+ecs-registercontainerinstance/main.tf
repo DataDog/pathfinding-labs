@@ -9,147 +9,27 @@ terraform {
 
 # iam-passrole+ecs-starttask+ecs-registercontainerinstance privilege escalation scenario
 #
-# This scenario demonstrates how a user with iam:PassRole, ecs:StartTask, and
-# ssm:SendCommand can escalate privileges when an EC2 instance exists that is NOT
-# registered to the target ECS cluster. Unlike ecs-009 (where the container instance
-# is already registered), the attacker must first use SSM to reconfigure the ECS agent
-# on the EC2 instance to join the target cluster, triggering ecs:RegisterContainerInstance.
-# The attack flow:
-# 1. An EC2 instance (ECS-optimized) exists but is pointed at a non-existent cluster
-# 2. The attacker uses ssm:SendCommand to reconfigure the ECS agent to join the real cluster
-# 3. The ECS agent calls ecs:RegisterContainerInstance, registering the EC2 to the cluster
-# 4. The attacker uses ecs:StartTask with --overrides to override the container command
-#    AND the taskRoleArn, passing the admin role
-# 5. The overridden command attaches AdministratorAccess to the starting user
-# 6. The starting user now has admin access
+# Based on: https://labs.reversec.com/posts/2025/08/another-ecs-privilege-escalation-path
+#
+# This scenario demonstrates how an attacker with RCE on an EC2 instance can
+# escalate to admin if the instance role has ecs:RegisterContainerInstance,
+# ecs:StartTask, iam:PassRole, and ecs:DeregisterContainerInstance.
+#
+# The starting principal is the EC2 instance role. The attacker (with RCE):
+# 1. Retrieves instance identity document + signature from IMDS
+# 2. Calls ecs:RegisterContainerInstance directly via the API to register
+#    the EC2 to the target ECS cluster
+# 3. Reconfigures the ECS agent to join the cluster (so it can execute tasks)
+# 4. Calls ecs:StartTask with --overrides to override the taskRoleArn (passing
+#    the admin role) and the container command
+# 5. The overridden command attaches AdministratorAccess to the instance role
+# 6. The EC2 instance now has admin access
+#
+# The demo uses SSM SendCommand to simulate RCE (initial access to the EC2).
+# SSM is NOT part of the attack permissions - it's a lab simulation mechanism.
 
 # Resource naming convention: pl-prod-ecs-007-to-admin-{resource-type}
 # ecs-007 = Pathfinding.cloud ID for this scenario
-
-# =============================================================================
-# STARTING USER (Initial Access Point)
-# =============================================================================
-
-# Scenario-specific starting user
-resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-007-to-admin-starting-user"
-
-  tags = {
-    Name        = "pl-prod-ecs-007-to-admin-starting-user"
-    Environment = var.environment
-    Scenario    = "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
-    Purpose     = "starting-user"
-  }
-}
-
-# Create access keys for the starting user
-resource "aws_iam_access_key" "starting_user" {
-  provider = aws.prod
-  user     = aws_iam_user.starting_user.name
-}
-
-# Required permissions policy for exploitation
-resource "aws_iam_user_policy" "starting_user_required" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-007-to-admin-required-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "requiredPermissions1"
-        Effect = "Allow"
-        Action = [
-          "iam:PassRole"
-        ]
-        Resource = [
-          aws_iam_role.target_role.arn,
-          aws_iam_role.execution_role.arn
-        ]
-      },
-      {
-        Sid    = "requiredPermissions2"
-        Effect = "Allow"
-        Action = [
-          "ecs:StartTask"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "requiredPermissions3"
-        Effect = "Allow"
-        Action = [
-          "ssm:SendCommand"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Helpful additional permissions for demonstration and cleanup
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-007-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "ecs:ListContainerInstances",
-          "ecs:ListTaskDefinitions",
-          "ecs:DescribeTasks",
-          "ecs:ListClusters",
-          "ecs:StopTask"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "ssm:GetCommandInvocation",
-          "ssm:ListCommandInvocations"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeInstances",
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ec2:DescribeSecurityGroups"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions4"
-        Effect = "Allow"
-        Action = [
-          "iam:DetachUserPolicy",
-          "iam:ListAttachedUserPolicies"
-        ]
-        Resource = aws_iam_user.starting_user.arn
-      }
-    ]
-  })
-}
 
 # =============================================================================
 # TARGET ADMIN ROLE (Privilege Escalation Target)
@@ -195,7 +75,7 @@ resource "aws_iam_role_policy_attachment" "target_role_admin" {
 
 # ECS cluster for running tasks on EC2 instances
 # This cluster starts EMPTY - the EC2 instance is NOT registered to it
-# The attacker must use SSM to reconfigure the ECS agent to join this cluster
+# The attacker must call ecs:RegisterContainerInstance directly to register
 resource "aws_ecs_cluster" "cluster" {
   provider = aws.prod
   name     = "pl-prod-ecs-007-cluster"
@@ -287,14 +167,24 @@ resource "aws_ecs_task_definition" "existing_task" {
 }
 
 # =============================================================================
-# EC2 CONTAINER INSTANCE INFRASTRUCTURE (NOT registered to cluster)
+# EC2 CONTAINER INSTANCE INFRASTRUCTURE (STARTING PRINCIPAL)
 # =============================================================================
-# The EC2 instance uses an ECS-optimized AMI but is configured to point at a
+# The EC2 instance role is the STARTING PRINCIPAL for this scenario.
+# It represents a compromised EC2 instance where the attacker has RCE.
+#
+# The instance uses an ECS-optimized AMI but is configured to point at a
 # NON-EXISTENT cluster ("pl-prod-ecs-007-holding"). This means:
 # - The ECS agent starts but CANNOT register (the holding cluster doesn't exist)
-# - The SSM agent runs and can receive commands
-# - The attacker must use ssm:SendCommand to reconfigure the ECS agent to join
-#   the real cluster (pl-prod-ecs-007-cluster), triggering RegisterContainerInstance
+# - The attacker calls ecs:RegisterContainerInstance directly via the API
+# - The attacker then reconfigures the ECS agent to join the real cluster
+#
+# The instance role has ONLY the 4 permissions from the original research:
+# - ecs:RegisterContainerInstance
+# - ecs:StartTask
+# - ecs:DeregisterContainerInstance
+# - iam:PassRole (scoped to target + execution roles)
+#
+# SSM is attached separately for demo simulation of RCE (not an attack permission).
 
 # Get the latest ECS-optimized AMI
 data "aws_ami" "ecs_optimized" {
@@ -352,7 +242,8 @@ resource "aws_security_group" "container_instance" {
   }
 }
 
-# IAM role for EC2 instance (allows ECS agent and SSM agent to function)
+# IAM role for EC2 instance - THIS IS THE STARTING PRINCIPAL
+# Has the 4 attack permissions from the original research
 resource "aws_iam_role" "container_instance" {
   provider = aws.prod
   name     = "pl-prod-ecs-007-to-admin-instance-role"
@@ -374,18 +265,79 @@ resource "aws_iam_role" "container_instance" {
     Name        = "pl-prod-ecs-007-to-admin-instance-role"
     Environment = var.environment
     Scenario    = "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
-    Purpose     = "IAM role for ECS container instance"
+    Purpose     = "starting-principal"
   }
 }
 
-# Attach the ECS policy to the instance role (includes ecs:RegisterContainerInstance)
-resource "aws_iam_role_policy_attachment" "container_instance_ecs" {
-  provider   = aws.prod
-  role       = aws_iam_role.container_instance.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+# Attack permissions - the 4 permissions from the original research
+# Ref: https://labs.reversec.com/posts/2025/08/another-ecs-privilege-escalation-path
+resource "aws_iam_role_policy" "container_instance_attack_permissions" {
+  provider = aws.prod
+  name     = "pl-prod-ecs-007-to-admin-attack-permissions"
+  role     = aws_iam_role.container_instance.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ecsPermissions"
+        Effect = "Allow"
+        Action = [
+          "ecs:RegisterContainerInstance",
+          "ecs:DeregisterContainerInstance",
+          "ecs:StartTask"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "passRole"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          aws_iam_role.target_role.arn,
+          aws_iam_role.execution_role.arn
+        ]
+      }
+    ]
+  })
 }
 
-# Attach SSM policy to the instance role (allows SSM agent to receive commands)
+# ECS agent operational permissions - NOT attack permissions
+# These are standard permissions that the ECS agent needs to communicate with the
+# ECS control plane (discover endpoint, poll for tasks, report status). Any EC2
+# instance running the ECS agent would normally have these via the managed policy
+# AmazonEC2ContainerServiceforEC2Role. They are separated from the attack permissions
+# to clearly distinguish between:
+# - Attack permissions (the 4 from the research that enable the escalation)
+# - Agent permissions (standard ECS infrastructure that was already present)
+resource "aws_iam_role_policy" "container_instance_agent_permissions" {
+  provider = aws.prod
+  name     = "pl-prod-ecs-007-to-admin-agent-permissions"
+  role     = aws_iam_role.container_instance.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ecsAgentOperational"
+        Effect = "Allow"
+        Action = [
+          "ecs:DiscoverPollEndpoint",
+          "ecs:Poll",
+          "ecs:StartTelemetrySession",
+          "ecs:SubmitTaskStateChange",
+          "ecs:SubmitContainerStateChange",
+          "ecs:SubmitAttachment"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# SSM policy - NOT an attack permission, only used for demo simulation of RCE
 resource "aws_iam_role_policy_attachment" "container_instance_ssm" {
   provider   = aws.prod
   role       = aws_iam_role.container_instance.name
@@ -407,7 +359,7 @@ resource "aws_iam_instance_profile" "container_instance" {
 
 # EC2 instance with ECS agent pointed at a NON-EXISTENT cluster
 # The ECS agent will start but fail to register because the holding cluster doesn't exist.
-# The attacker uses ssm:SendCommand to reconfigure the agent to join the real cluster.
+# The attacker calls ecs:RegisterContainerInstance directly via the API.
 resource "aws_instance" "container_instance" {
   provider               = aws.prod
   ami                    = data.aws_ami.ecs_optimized.id
@@ -417,24 +369,18 @@ resource "aws_instance" "container_instance" {
   subnet_id              = tolist(data.aws_subnets.default.ids)[0]
 
   # Intentionally set a non-existent cluster to prevent auto-registration
-  # The demo script will use SSM to reconfigure the agent to join the real cluster
+  # The attacker will call RegisterContainerInstance directly for the real cluster
+  # Install AWS CLI - the ECS-optimized AMI doesn't include it by default
   user_data = <<-EOF
               #!/bin/bash
               echo ECS_CLUSTER=pl-prod-ecs-007-holding >> /etc/ecs/ecs.config
+              yum install -y awscli
               EOF
 
   tags = {
     Name        = "pl-prod-ecs-007-to-admin-instance"
     Environment = var.environment
     Scenario    = "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
-    Purpose     = "Unregistered ECS container instance for RegisterContainerInstance + StartTask override privilege escalation"
+    Purpose     = "Compromised EC2 for RegisterContainerInstance + StartTask override privilege escalation"
   }
 }
-
-# Note: Container instance ARN is not available via Terraform data source.
-# The EC2 instance is NOT registered to any cluster at deploy time.
-# The demo script will:
-# 1. Use ssm:SendCommand to reconfigure the ECS agent to join the real cluster
-# 2. Wait for ecs:RegisterContainerInstance to complete
-# 3. Retrieve the container instance ARN via AWS CLI
-# 4. Use ecs:StartTask with --overrides to escalate privileges

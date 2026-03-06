@@ -73,8 +73,15 @@ type Model struct {
 	patternInput       textinput.Model // input for pattern entry
 
 	// Simple action confirmation state (for deploy, demo, cleanup, plan)
-	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup"
+	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
 	pendingScenarioID  string // scenario ID for demo/cleanup actions
+
+	// Cleanup queue state (for cleanup all)
+	cleanupQueue       []string // scenario IDs to clean up sequentially
+	cleanupQueueAction string   // action after queue drains: "" or "deploy"
+
+	// Deploy warning state (for demo-active disabled scenarios)
+	deployWarningIDs []string // scenario IDs being disabled with active demos
 
 	// Credential validation state
 	validatingCredentials bool   // true while checking AWS credentials
@@ -363,6 +370,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.scenariosPane.SetLoading(false)
 		m.environment.SetLoading(false)
 
+		// Continue cleanup queue if active
+		if len(m.cleanupQueue) > 0 || m.cleanupQueueAction != "" {
+			return m, m.executeCleanupQueue()
+		}
+
 		// Start async resource loading if terraform is initialized
 		if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 			return m, m.loadResources
@@ -403,6 +415,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.executeDemo(scenarioID)
 		case "cleanup":
 			return m, m.executeCleanup(scenarioID)
+		case "cleanupAll":
+			return m, m.executeCleanupQueue()
 		}
 		return m, nil
 
@@ -607,7 +621,36 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle simple action confirmation (deploy, plan, demo, cleanup)
+	// Handle deploy warning (demo-active scenarios being disabled)
+	if m.pendingAction == "deployWarning" {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.pendingAction = ""
+			m.deployWarningIDs = nil
+			return m, nil
+		case msg.String() == "c" || msg.String() == "C":
+			// Cleanup first, then deploy
+			m.cleanupQueue = m.deployWarningIDs
+			m.cleanupQueueAction = "deploy"
+			m.deployWarningIDs = nil
+			m.pendingAction = ""
+			// Start credential validation for cleanupAll
+			m.validatingForAction = "cleanupAll"
+			m.validatingCredentials = true
+			return m, m.validateCredentialsAsync()
+		case msg.Type == tea.KeyEnter:
+			// Deploy anyway without cleanup
+			m.deployWarningIDs = nil
+			m.pendingAction = ""
+			m.validatingForAction = "deploy"
+			m.validatingCredentials = true
+			return m, m.validateCredentialsAsync()
+		}
+		// Ignore other keys while warning
+		return m, nil
+	}
+
+	// Handle simple action confirmation (deploy, plan, demo, cleanup, cleanupAll)
 	if m.pendingAction != "" {
 		switch {
 		case key.Matches(msg, m.keys.Esc):
@@ -761,6 +804,9 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Cleanup):
 		return m, m.runCleanup()
+
+	case key.Matches(msg, m.keys.CleanupAll):
+		return m, m.runCleanupAll()
 
 	case key.Matches(msg, m.keys.Destroy):
 		return m, m.showDestroyTypeChoice()
@@ -972,6 +1018,14 @@ func (m *Model) updateInfoCounts() {
 }
 
 func (m *Model) runDeploy() tea.Cmd {
+	// Check for disabled scenarios with active demos
+	warningIDs := m.scenariosPane.GetDisabledDemoActiveScenarioIDs()
+	if len(warningIDs) > 0 {
+		m.deployWarningIDs = warningIDs
+		m.pendingAction = "deployWarning"
+		return nil
+	}
+
 	// Show confirmation prompt
 	m.pendingAction = "deploy"
 	return nil
@@ -1072,6 +1126,34 @@ func (m *Model) runCleanup() tea.Cmd {
 	m.pendingAction = "cleanup"
 	m.pendingScenarioID = selected.Scenario.UniqueID()
 	return nil
+}
+
+func (m *Model) runCleanupAll() tea.Cmd {
+	ids := m.scenariosPane.GetDemoActiveScenarioIDs()
+	if len(ids) == 0 {
+		m.overlay.Show(OverlayError, "Cleanup All", "No scenarios have active demos to clean up.")
+		return nil
+	}
+
+	m.cleanupQueue = ids
+	m.pendingAction = "cleanupAll"
+	return nil
+}
+
+func (m *Model) executeCleanupQueue() tea.Cmd {
+	if len(m.cleanupQueue) == 0 {
+		if m.cleanupQueueAction == "deploy" {
+			m.cleanupQueueAction = ""
+			return m.executeDeploy()
+		}
+		m.cleanupQueueAction = ""
+		return nil
+	}
+
+	// Pop the first ID from the queue
+	nextID := m.cleanupQueue[0]
+	m.cleanupQueue = m.cleanupQueue[1:]
+	return m.executeCleanup(nextID)
 }
 
 func (m *Model) executeCleanup(scenarioID string) tea.Cmd {
@@ -1894,6 +1976,18 @@ func (m *Model) renderActionConfirmBar() string {
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
 
+	// Deploy warning gets its own rendering
+	if m.pendingAction == "deployWarning" {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+		return warningStyle.Render(fmt.Sprintf("WARNING: %d scenario(s) being disabled have active demos. Cleanup won't work after deploy.  ", len(m.deployWarningIDs))) +
+			keyStyle.Render("[c]") +
+			dimStyle.Render(" cleanup first  ") +
+			keyStyle.Render("Enter") +
+			dimStyle.Render(" deploy anyway  ") +
+			keyStyle.Render("Esc") +
+			dimStyle.Render(" cancel")
+	}
+
 	var actionStyle lipgloss.Style
 	var actionText string
 	var description string
@@ -1923,6 +2017,10 @@ func (m *Model) renderActionConfirmBar() string {
 		} else {
 			description = "Execute cleanup_attack.sh"
 		}
+	case "cleanupAll":
+		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true) // Yellow/Orange
+		actionText = "CLEANUP ALL"
+		description = fmt.Sprintf("Run cleanup for %d scenario(s) with active demos", len(m.cleanupQueue))
 	default:
 		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
 		actionText = "ACTION"
@@ -2008,8 +2106,9 @@ func (m *Model) updateRunningCost() {
 	m.info.SetRunningCost(cost)
 }
 
-// updateDemoActiveCount recalculates and updates the demo-active count in the info pane
+// updateDemoActiveCount recalculates and updates the demo-active count in the info and actions panes
 func (m *Model) updateDemoActiveCount() {
 	count := m.scenariosPane.GetDemoActiveCount()
 	m.info.SetDemoActiveCount(count)
+	m.actions.SetDemoActiveCount(count)
 }

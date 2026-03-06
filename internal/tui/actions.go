@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -13,6 +14,7 @@ type ActionsPane struct {
 	enabled            bool
 	deployed           bool
 	demoActive         bool
+	demoActiveCount    int  // total number of scenarios with active demos
 	showOnlyEnabled    bool
 	showOnlyDemoActive bool
 	focusedPane        Pane // Which pane is currently focused
@@ -36,6 +38,11 @@ func (a *ActionsPane) SetScenario(s *scenarios.Scenario, enabled, deployed, demo
 	a.enabled = enabled
 	a.deployed = deployed
 	a.demoActive = demoActive
+}
+
+// SetDemoActiveCount updates the total demo-active count
+func (a *ActionsPane) SetDemoActiveCount(count int) {
+	a.demoActiveCount = count
 }
 
 // SetShowOnlyDemoActive updates the demo-active filter state for display
@@ -194,6 +201,11 @@ func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
 			} else {
 				sb.WriteString(a.styles.HelpDesc.Render("     cleanup demo artifacts"))
 			}
+			sb.WriteString("\n")
+		}
+		if a.demoActiveCount > 0 {
+			sb.WriteString(a.styles.HelpKey.Render(" C"))
+			sb.WriteString(a.styles.DemoActiveLabel.Render(fmt.Sprintf("     cleanup all demos (%d)", a.demoActiveCount)))
 			sb.WriteString("\n")
 		}
 		sb.WriteString(a.styles.HelpKey.Render(" D"))
