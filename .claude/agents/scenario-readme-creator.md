@@ -41,7 +41,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
 - **permissions.required**: Required IAM permissions
-- **permissions.helpful**: Optional helpful permissions
+- **permissions.helpful**: Optional helpful permissions (for documentation/CSPM context only -- not attached to the starting user in Terraform; admin cleanup user handles observation steps in demo scripts)
 - **mitre_attack.tactics**: MITRE ATT&CK tactics
 - **mitre_attack.techniques**: MITRE ATT&CK techniques
 - **terraform.module_path**: Scenario location

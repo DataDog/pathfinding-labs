@@ -95,29 +95,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
   })
 }
 
-# Helpful additional permissions for demonstration
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-006-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "helpfulAdditionalPermissions"
-        Effect = "Allow"
-        Action = [
-          "ecs:ListTasks",
-          "ecs:DescribeTaskDefinition",
-          "ecs:ListClusters"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
 # =============================================================================
 # TARGET ADMIN ROLE (Task Role - Privilege Escalation Target)
 # =============================================================================

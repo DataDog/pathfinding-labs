@@ -10,8 +10,9 @@ terraform {
 locals {
   # Fall back to prod profile when dev/ops profiles are not configured
   # This allows single-account mode to work without errors
-  effective_dev_profile = coalesce(var.dev_account_aws_profile, var.prod_account_aws_profile)
-  effective_ops_profile = coalesce(var.operations_account_aws_profile, var.prod_account_aws_profile)
+  effective_dev_profile      = coalesce(var.dev_account_aws_profile, var.prod_account_aws_profile)
+  effective_ops_profile      = coalesce(var.operations_account_aws_profile, var.prod_account_aws_profile)
+  effective_attacker_profile = coalesce(var.attacker_account_aws_profile, var.prod_account_aws_profile)
 }
 
 provider "aws" {
@@ -29,6 +30,12 @@ provider "aws" {
 provider "aws" {
   alias   = "prod"
   profile = var.prod_account_aws_profile
+  region  = var.aws_region
+}
+
+provider "aws" {
+  alias   = "attacker"
+  profile = local.effective_attacker_profile
   region  = var.aws_region
 }
 
@@ -50,12 +57,17 @@ data "aws_caller_identity" "operations" {
   provider = aws.operations
 }
 
+data "aws_caller_identity" "attacker" {
+  provider = aws.attacker
+}
+
 locals {
   # Derive account IDs from the configured profiles
   # If a user provides an explicit account ID variable, use that instead (for backward compatibility)
   prod_account_id       = var.prod_account_id != "" ? var.prod_account_id : data.aws_caller_identity.prod.account_id
   dev_account_id        = var.dev_account_id != "" ? var.dev_account_id : data.aws_caller_identity.dev.account_id
   operations_account_id = var.operations_account_id != "" ? var.operations_account_id : data.aws_caller_identity.operations.account_id
+  attacker_account_id   = var.attacker_account_id != "" ? var.attacker_account_id : data.aws_caller_identity.attacker.account_id
 }
 
 # Random suffix for globally namespaced resources to prevent conflicts
@@ -123,6 +135,17 @@ module "ops_environment" {
   enable_budget_alerts = var.enable_budget_alerts
   budget_alert_email   = var.budget_alert_email
   budget_limit_usd     = var.budget_limit_usd
+}
+
+# Attacker environment is optional (for adversary-controlled resources)
+module "attacker_environment" {
+  count  = var.enable_attacker_environment ? 1 : 0
+  source = "./modules/environments/attacker"
+  providers = {
+    aws = aws.attacker
+  }
+  attacker_account_id = local.attacker_account_id
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 ##############################################################################

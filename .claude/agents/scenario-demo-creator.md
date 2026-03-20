@@ -35,12 +35,21 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials
+# Extract starting user credentials
 STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
 STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
 if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Extract admin cleanup credentials for observation/polling steps
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -59,6 +68,18 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 ```
 
 **Example for specific scenario**:
@@ -72,15 +93,22 @@ MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_priv
 
 ### Step 2: Export to Environment (REQUIRED PATTERN)
 ```bash
-# Step 2: Configure AWS credentials with starting user
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 ```
+
+### Credential Context Rules (CRITICAL)
+
+Every step in the demo script must be categorized as either **EXPLOIT** or **OBSERVATION**:
+
+- **`# [EXPLOIT]`** steps use `use_starting_user_creds()` -- these are the actual attack actions (PassRole, CreateFunction, AssumeRole, etc.)
+- **`# [OBSERVATION]`** steps use `use_admin_creds()` -- these are non-exploit actions (polling status, listing resources, VPC/subnet discovery, verifying policy attachments, checking logs)
+
+**Key principle**: The starting user should ONLY have the permissions needed for the exploit. All observation, polling, and verification steps use the admin cleanup user. This ensures the Terraform permissions accurately reflect what's truly needed for the attack.
 
 ## CRITICAL: AWS Region Handling Rules
 
@@ -100,11 +128,12 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
 
-# When switching back to starting user
-unset AWS_SESSION_TOKEN
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-# Keep region consistent
+# When switching to starting user for exploit steps
+use_starting_user_creds
+export AWS_REGION=$AWS_REGION
+
+# When switching to admin for observation steps
+use_admin_creds
 export AWS_REGION=$AWS_REGION
 ```
 
@@ -286,12 +315,21 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials from the grouped output
+# Extract starting user credentials from the grouped output
 STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
 STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
 if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Extract admin cleanup credentials for observation/polling steps
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -311,12 +349,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -901,20 +949,23 @@ Before completing, verify:
 8. ✅ **Attack Commands summary section** in the final summary block (iterates over `ATTACK_COMMANDS` array)
 9. ✅ **`touch "$(dirname "$0")/.demo_active"`** at the very end of the script
 10. ✅ Resource names match Terraform outputs
-11. ✅ **Credentials retrieved from grouped Terraform outputs using jq**
-12. ✅ **Region retrieved from Terraform output**
-13. ✅ **Region re-exported at every credential switch**
-14. ✅ **All EC2 commands have explicit --region flags**
-15. ✅ **All Lambda commands have explicit --region flags**
-16. ✅ **All IAM policy propagation waits are 15 seconds (not 5)**
-17. ✅ **Cleanup script gets admin credentials from Terraform (not AWS profiles)**
-18. ✅ **Cleanup script retrieves region from Terraform**
-19. ✅ **Cleanup script uses region in all EC2 commands**
-20. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
-21. ✅ Error handling for missing resources in cleanup
-22. ✅ Clear step numbering and descriptions
-23. ✅ Final summary is accurate
-24. ✅ Scripts will be made executable (chmod +x)
+11. ✅ **Both credential sets retrieved**: starting user from grouped output, admin cleanup from `prod_admin_user_for_cleanup_*`
+12. ✅ **`use_starting_user_creds()` and `use_admin_creds()` helper functions defined**
+13. ✅ **Every step marked with `# [EXPLOIT]` or `# [OBSERVATION]`**
+14. ✅ **Exploit steps use `use_starting_user_creds()`**, observation steps use `use_admin_creds()`
+15. ✅ **Region retrieved from Terraform output**
+16. ✅ **Region re-exported at every credential switch**
+17. ✅ **All EC2 commands have explicit --region flags**
+18. ✅ **All Lambda commands have explicit --region flags**
+19. ✅ **All IAM policy propagation waits are 15 seconds (not 5)**
+20. ✅ **Cleanup script gets admin credentials from Terraform (not AWS profiles)**
+21. ✅ **Cleanup script retrieves region from Terraform**
+22. ✅ **Cleanup script uses region in all EC2 commands**
+23. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
+24. ✅ Error handling for missing resources in cleanup
+25. ✅ Clear step numbering and descriptions
+26. ✅ Final summary is accurate
+27. ✅ Scripts will be made executable (chmod +x)
 
 ## File Permissions
 

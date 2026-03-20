@@ -120,35 +120,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
   })
 }
 
-# Helpful additional permissions for demonstration
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-mwaa-002-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "airflowManagement"
-        Effect = "Allow"
-        Action = [
-          "airflow:GetEnvironment"
-        ]
-        Resource = "arn:aws:airflow:${data.aws_region.current.id}:${var.account_id}:environment/pl-prod-mwaa-002-to-admin-env"
-      },
-      {
-        Sid    = "verifyPrivilegeEscalation"
-        Effect = "Allow"
-        Action = [
-          "iam:ListAttachedUserPolicies"
-        ]
-        Resource = aws_iam_user.starting_user.arn
-      }
-    ]
-  })
-}
-
 # =============================================================================
 # TARGET ADMIN ROLE (MWAA Execution Role - Already attached to environment)
 # =============================================================================

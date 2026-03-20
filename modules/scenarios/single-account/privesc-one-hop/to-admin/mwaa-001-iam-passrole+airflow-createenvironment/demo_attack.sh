@@ -86,6 +86,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve admin cleanup credentials
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Extract infrastructure details
 ADMIN_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.admin_role_arn')
 VPC_ID=$(echo "$MODULE_OUTPUT" | jq -r '.vpc_id')
@@ -117,12 +126,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -155,7 +174,9 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
 # Step 5: Create MWAA environment with admin role and malicious startup script
+use_starting_user_creds
 echo -e "${YELLOW}Step 5: Creating MWAA environment with admin execution role${NC}"
 echo "This is the privilege escalation vector - passing the admin role to MWAA..."
 echo ""
@@ -198,7 +219,9 @@ else
 fi
 echo ""
 
+# [OBSERVATION]
 # Step 6: Wait for MWAA environment to be available
+use_admin_creds
 echo -e "${YELLOW}Step 6: Waiting for MWAA environment to be available${NC}"
 echo -e "${BLUE}This typically takes 20-30 minutes. Please be patient...${NC}"
 echo ""
@@ -254,7 +277,9 @@ echo "Waiting 30 seconds for the startup script to execute and IAM changes to pr
 sleep 30
 echo -e "${GREEN}✓ Startup script should have executed${NC}\n"
 
+# [OBSERVATION]
 # Step 8: Verify admin access
+use_admin_creds
 echo -e "${YELLOW}Step 8: Verifying administrator access${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 

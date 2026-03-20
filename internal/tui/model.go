@@ -302,8 +302,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Load enabled states for environments
 		if m.tfvars != nil {
-			prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
-			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled)
+			prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
+			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled, attackerEnabled)
 		}
 
 		// Load deployed states for environments
@@ -313,6 +313,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				deployed["prod_environment"],
 				deployed["dev_environment"],
 				deployed["ops_environment"],
+				deployed["attacker_environment"],
 			)
 		}
 
@@ -361,8 +362,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Set derived account IDs from terraform outputs
 		if msg.outputs != nil {
-			prodID, devID, opsID := msg.outputs.GetAccountIDs()
-			m.environment.SetDerivedAccountIDs(prodID, devID, opsID)
+			prodID, devID, opsID, attackerID := msg.outputs.GetAccountIDs()
+			m.environment.SetDerivedAccountIDs(prodID, devID, opsID, attackerID)
 		}
 
 		// Done loading (UI is ready, resources will load in background)
@@ -1394,7 +1395,7 @@ func (m *Model) renderSettingsMenu() string {
 	var sb strings.Builder
 
 	// Get environment states
-	prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, _, _ := m.tfvars.GetEnabledEnvironments()
 	deployed := make(map[string]bool)
 	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		deployed = m.tfRunner.GetDeployedModules()
@@ -1592,7 +1593,7 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	var currentProfile string
 	var isEnabled bool
 
-	prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, _, _ := m.tfvars.GetEnabledEnvironments()
 
 	switch envName {
 	case "prod":

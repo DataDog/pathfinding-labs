@@ -86,50 +86,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
   })
 }
 
-# Helpful additional permissions for demonstration and cleanup
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-009-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "ecs:ListContainerInstances",
-          "ecs:ListTaskDefinitions",
-          "ecs:DescribeTasks",
-          "ecs:ListClusters",
-          "ecs:StopTask"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ec2:DescribeSecurityGroups"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "iam:DetachUserPolicy",
-          "iam:ListAttachedUserPolicies"
-        ]
-        Resource = aws_iam_user.starting_user.arn
-      }
-    ]
-  })
-}
-
 # =============================================================================
 # TARGET ADMIN ROLE (Privilege Escalation Target)
 # =============================================================================

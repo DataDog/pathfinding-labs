@@ -41,9 +41,10 @@ type Config struct {
 
 // AWSConfig contains AWS account settings for all environments
 type AWSConfig struct {
-	Prod AccountConfig `yaml:"prod"`
-	Dev  AccountConfig `yaml:"dev,omitempty"`
-	Ops  AccountConfig `yaml:"ops,omitempty"`
+	Prod     AccountConfig `yaml:"prod"`
+	Dev      AccountConfig `yaml:"dev,omitempty"`
+	Ops      AccountConfig `yaml:"ops,omitempty"`
+	Attacker AccountConfig `yaml:"attacker,omitempty"`
 }
 
 // AccountConfig contains settings for a single AWS account/environment
@@ -216,6 +217,11 @@ func (c *Config) SaveToPath(path string) error {
 	return nil
 }
 
+// HasAttackerAccount returns true if an attacker account is configured
+func (c *Config) HasAttackerAccount() bool {
+	return c.AWS.Attacker.Profile != ""
+}
+
 // IsSingleAccountMode returns true if only the prod account is configured
 func (c *Config) IsSingleAccountMode() bool {
 	return c.AWS.Dev.Profile == "" && c.AWS.Ops.Profile == ""
@@ -318,6 +324,14 @@ func (c *Config) GenerateTFVars() string {
 		lines = append(lines, "# Ops Environment (for cross-account scenarios)")
 		lines = append(lines, "enable_ops_environment         = true")
 		lines = append(lines, fmt.Sprintf("operations_account_aws_profile = %q", c.AWS.Ops.Profile))
+		lines = append(lines, "")
+	}
+
+	// Attacker environment (optional)
+	if c.AWS.Attacker.Profile != "" {
+		lines = append(lines, "# Attacker Environment (adversary-controlled account)")
+		lines = append(lines, "enable_attacker_environment    = true")
+		lines = append(lines, fmt.Sprintf("attacker_account_aws_profile   = %q", c.AWS.Attacker.Profile))
 		lines = append(lines, "")
 	}
 

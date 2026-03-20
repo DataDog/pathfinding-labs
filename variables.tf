@@ -40,6 +40,17 @@ variable "dev_account_id" {
   default     = ""
 }
 
+variable "attacker_account_aws_profile" {
+  description = "AWS profile for attacker account (leave empty to use prod profile)"
+  default     = ""
+}
+
+variable "attacker_account_id" {
+  description = "Attacker account ID (optional - auto-derived from profile)"
+  type        = string
+  default     = ""
+}
+
 variable "github_repo" {
   description = "The github repo for the OIDC-GitHub challenge"
   type        = string
@@ -64,6 +75,12 @@ variable "enable_dev_environment" {
 
 variable "enable_ops_environment" {
   description = "Enable the ops environment (requires operations_account_id and operations_account_aws_profile)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_attacker_environment" {
+  description = "Enable the attacker environment"
   type        = bool
   default     = false
 }

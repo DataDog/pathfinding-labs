@@ -93,6 +93,11 @@ output "operations_account_id" {
   value       = local.operations_account_id
 }
 
+output "attacker_account_id" {
+  description = "ID of the attacker account (derived from AWS profile)"
+  value       = local.attacker_account_id
+}
+
 output "aws_region" {
   description = "AWS region for resources"
   value       = var.aws_region

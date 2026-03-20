@@ -190,6 +190,58 @@ func (w *Wizard) Run() (*Config, error) {
 		cfg.AWS.Ops.Region = opsRegion
 	}
 
+	// Attacker account section (optional, independent of victim account count)
+	fmt.Println()
+	attackerHeaderStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("196")). // Red for attacker
+		Background(lipgloss.Color("236")).
+		Padding(0, 1)
+	fmt.Println(attackerHeaderStyle.Render(" Attacker Account (optional) "))
+	fmt.Println(dimStyle.Render("   A separate AWS account for adversary-controlled infrastructure"))
+	fmt.Println(dimStyle.Render("   (e.g., ECR repos, S3 buckets used in attack scenarios)."))
+	fmt.Println()
+
+	var hasAttackerAccount bool
+	attackerForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("Do you have a separate attacker-controlled AWS account?").
+				Description("Optional - not required for most scenarios").
+				Value(&hasAttackerAccount),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := attackerForm.Run(); err != nil {
+		return nil, err
+	}
+
+	if hasAttackerAccount {
+		var attackerProfile string
+		attackerProfileForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Select AWS profile for ATTACKER account").
+					Description("Type to filter, arrows to navigate, enter to select").
+					Options(profileOptions...).
+					Filtering(true).
+					Height(15).
+					Value(&attackerProfile),
+			),
+		).WithTheme(huh.ThemeCatppuccin())
+
+		if err := attackerProfileForm.Run(); err != nil {
+			return nil, err
+		}
+		cfg.AWS.Attacker.Profile = attackerProfile
+
+		attackerRegion, err := askForRegion("attacker", attackerProfile)
+		if err != nil {
+			return nil, err
+		}
+		cfg.AWS.Attacker.Region = attackerRegion
+	}
+
 	// Budget alerts section
 	fmt.Println()
 	budgetHeaderStyle := lipgloss.NewStyle().
@@ -276,6 +328,10 @@ func (w *Wizard) Run() (*Config, error) {
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.AWS.Ops.Profile))
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.AWS.Ops.Region))
 	}
+	if cfg.AWS.Attacker.Profile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Attacker profile:"), valueStyle.Render(cfg.AWS.Attacker.Profile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Attacker region:"), valueStyle.Render(cfg.AWS.Attacker.Region))
+	}
 	if cfg.Budget.Enabled {
 		fmt.Printf("%s %s\n", labelStyle.Render("Budget alerts:"), valueStyle.Render("Enabled"))
 		fmt.Printf("%s %s\n", labelStyle.Render("Alert email:"), valueStyle.Render(cfg.Budget.Email))
@@ -341,6 +397,9 @@ func (w *Wizard) RunForEnvironment(envName string, currentProfile string) (strin
 	case "ops":
 		envTitle = " Operations Account (ops) "
 		envDesc = "Used as the source account for ops->prod attack scenarios."
+	case "attacker":
+		envTitle = " Attacker Account (attacker) "
+		envDesc = "Adversary-controlled account for attack infrastructure (ECR, S3, etc)."
 	default:
 		return "", fmt.Errorf("unknown environment: %s", envName)
 	}

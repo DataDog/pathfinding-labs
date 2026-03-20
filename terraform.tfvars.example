@@ -16,10 +16,15 @@ aws_region               = "us-west-2"  # Region where resources will be deploye
 # enable_ops_environment          = true
 # operations_account_aws_profile  = "your-ops-profile"
 
+# Optional: Attacker-controlled account (for scenarios with adversary-side infrastructure)
+# enable_attacker_environment    = true
+# attacker_account_aws_profile   = "your-attacker-profile"
+
 # Optional: Override auto-derived account IDs (rarely needed)
 # prod_account_id       = "111111111111"
 # dev_account_id        = "222222222222"
 # operations_account_id = "333333333333"
+# attacker_account_id  = "444444444444"
 
 # Optional: For OIDC-GitHub challenge
 # github_repo = "your-org/your-repo"

