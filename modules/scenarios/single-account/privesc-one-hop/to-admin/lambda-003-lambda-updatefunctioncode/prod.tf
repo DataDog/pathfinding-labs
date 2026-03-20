@@ -50,10 +50,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "lambda:UpdateFunctionCode",
           "lambda:InvokeFunction",
-          "lambda:GetFunction",
-          "lambda:ListFunctions"
+          "lambda:GetFunction"
         ]
         Resource = aws_lambda_function.target_function.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:ListFunctions"
+        ]
+        Resource = "*"
       },
       {
         Effect = "Allow"
