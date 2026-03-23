@@ -41,10 +41,22 @@ type Config struct {
 
 // AWSConfig contains AWS account settings for all environments
 type AWSConfig struct {
-	Prod     AccountConfig `yaml:"prod"`
-	Dev      AccountConfig `yaml:"dev,omitempty"`
-	Ops      AccountConfig `yaml:"ops,omitempty"`
-	Attacker AccountConfig `yaml:"attacker,omitempty"`
+	Prod     AccountConfig  `yaml:"prod"`
+	Dev      AccountConfig  `yaml:"dev,omitempty"`
+	Ops      AccountConfig  `yaml:"ops,omitempty"`
+	Attacker AttackerConfig `yaml:"attacker,omitempty"`
+}
+
+// AttackerConfig contains settings for the attacker AWS account
+// Supports two modes: "profile" (use AWS profile directly) and "iam-user"
+// (bootstrap an IAM admin user, then use its credentials going forward)
+type AttackerConfig struct {
+	Profile        string `yaml:"profile,omitempty"`
+	Region         string `yaml:"region,omitempty"`
+	Mode           string `yaml:"mode,omitempty"`               // "profile" or "iam-user"
+	SetupProfile   string `yaml:"setup_profile,omitempty"`      // original profile used for bootstrap/destroy in iam-user mode
+	IAMAccessKeyID string `yaml:"iam_access_key_id,omitempty"`  // stored after bootstrap
+	IAMSecretKey   string `yaml:"iam_secret_key,omitempty"`     // stored after bootstrap
 }
 
 // AccountConfig contains settings for a single AWS account/environment
@@ -210,7 +222,8 @@ func (c *Config) SaveToPath(path string) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	// Use 0600 permissions since config may contain IAM credentials
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
@@ -219,7 +232,12 @@ func (c *Config) SaveToPath(path string) error {
 
 // HasAttackerAccount returns true if an attacker account is configured
 func (c *Config) HasAttackerAccount() bool {
-	return c.AWS.Attacker.Profile != ""
+	return c.AWS.Attacker.Profile != "" || c.AWS.Attacker.IAMAccessKeyID != ""
+}
+
+// IsAttackerBootstrapped returns true if the attacker IAM user has been bootstrapped
+func (c *Config) IsAttackerBootstrapped() bool {
+	return c.AWS.Attacker.Mode == "iam-user" && c.AWS.Attacker.IAMAccessKeyID != ""
 }
 
 // IsSingleAccountMode returns true if only the prod account is configured
@@ -328,10 +346,25 @@ func (c *Config) GenerateTFVars() string {
 	}
 
 	// Attacker environment (optional)
-	if c.AWS.Attacker.Profile != "" {
+	if c.HasAttackerAccount() {
 		lines = append(lines, "# Attacker Environment (adversary-controlled account)")
 		lines = append(lines, "enable_attacker_environment    = true")
-		lines = append(lines, fmt.Sprintf("attacker_account_aws_profile   = %q", c.AWS.Attacker.Profile))
+
+		if c.AWS.Attacker.Mode == "iam-user" && c.AWS.Attacker.IAMAccessKeyID != "" {
+			// IAM user mode (bootstrapped): use IAM credentials
+			lines = append(lines, "attacker_account_use_iam_user  = true")
+			lines = append(lines, fmt.Sprintf("attacker_iam_user_access_key   = %q", c.AWS.Attacker.IAMAccessKeyID))
+			lines = append(lines, fmt.Sprintf("attacker_iam_user_secret_key   = %q", c.AWS.Attacker.IAMSecretKey))
+		} else {
+			// Profile mode, or IAM user mode not yet bootstrapped (use setup profile)
+			profile := c.AWS.Attacker.Profile
+			if profile == "" && c.AWS.Attacker.SetupProfile != "" {
+				profile = c.AWS.Attacker.SetupProfile
+			}
+			if profile != "" {
+				lines = append(lines, fmt.Sprintf("attacker_account_aws_profile   = %q", profile))
+			}
+		}
 		lines = append(lines, "")
 	}
 

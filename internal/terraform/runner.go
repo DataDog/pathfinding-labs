@@ -90,6 +90,26 @@ func (r *Runner) Apply(autoApprove bool) error {
 	return cmd.Run()
 }
 
+// ApplyTarget runs terraform apply targeting a specific module
+func (r *Runner) ApplyTarget(target string, autoApprove bool) error {
+	if err := r.ensureTerraform(); err != nil {
+		return err
+	}
+
+	args := []string{"apply", "-target=" + target}
+	if autoApprove {
+		args = append(args, "-auto-approve")
+	}
+
+	cmd := exec.Command(r.tfPath, args...)
+	cmd.Dir = r.workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	return cmd.Run()
+}
+
 // Destroy runs terraform destroy
 func (r *Runner) Destroy(autoApprove bool) error {
 	if err := r.ensureTerraform(); err != nil {

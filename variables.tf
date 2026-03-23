@@ -51,6 +51,26 @@ variable "attacker_account_id" {
   default     = ""
 }
 
+variable "attacker_account_use_iam_user" {
+  description = "Use IAM user credentials instead of AWS profile for attacker account"
+  type        = bool
+  default     = false
+}
+
+variable "attacker_iam_user_access_key" {
+  description = "Access key ID for the attacker IAM admin user (when use_iam_user is true)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "attacker_iam_user_secret_key" {
+  description = "Secret access key for the attacker IAM admin user (when use_iam_user is true)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "github_repo" {
   description = "The github repo for the OIDC-GitHub challenge"
   type        = string

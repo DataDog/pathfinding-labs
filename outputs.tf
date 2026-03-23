@@ -135,6 +135,18 @@ output "attacker_account_id" {
   value       = local.attacker_account_id
 }
 
+output "attacker_admin_user_access_key_id" {
+  description = "Access key ID for the attacker admin user"
+  value       = var.enable_attacker_environment ? module.attacker_environment[0].admin_user_access_key_id : null
+  sensitive   = true
+}
+
+output "attacker_admin_user_secret_access_key" {
+  description = "Secret access key for the attacker admin user"
+  value       = var.enable_attacker_environment ? module.attacker_environment[0].admin_user_secret_access_key : null
+  sensitive   = true
+}
+
 output "aws_region" {
   description = "AWS region for resources"
   value       = var.aws_region

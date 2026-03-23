@@ -152,10 +152,17 @@ func validateAWSCredentials(cfg *config.Config) error {
 	}
 
 	// Collect all unique profiles that need validation
+	// For attacker in IAM user mode (bootstrapped), skip profile validation
+	attackerProfile := cfg.AWS.Attacker.Profile
+	if cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.IAMAccessKeyID != "" {
+		attackerProfile = "" // skip profile validation; using IAM creds
+	}
+
 	profiles := plabsaws.GetUniqueProfiles(
 		cfg.AWS.Prod.Profile,
 		cfg.AWS.Dev.Profile,
 		cfg.AWS.Ops.Profile,
+		attackerProfile,
 	)
 
 	results, err := plabsaws.ValidateProfiles(profiles)

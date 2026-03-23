@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      configuration_aliases = [aws.prod]
+      configuration_aliases = [aws.prod, aws.attacker]
     }
   }
 }
@@ -35,13 +35,13 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# S3 bucket for Glue job scripts
+# S3 bucket for Glue job scripts (attacker-controlled)
 resource "aws_s3_bucket" "script_bucket" {
-  provider = aws.prod
-  bucket   = "pl-glue-scripts-glue-005-${var.account_id}-${var.resource_suffix}"
+  provider = aws.attacker
+  bucket   = "pl-glue-scripts-glue-005-${var.attacker_account_id}-${var.resource_suffix}"
 
   tags = {
-    Name        = "pl-glue-scripts-glue-005-${var.account_id}-${var.resource_suffix}"
+    Name        = "pl-glue-scripts-glue-005-${var.attacker_account_id}-${var.resource_suffix}"
     Environment = var.environment
     Scenario    = "iam-passrole+glue-updatejob+glue-startjobrun"
     Purpose     = "glue-job-scripts"
@@ -50,7 +50,7 @@ resource "aws_s3_bucket" "script_bucket" {
 
 # Block public access to the script bucket
 resource "aws_s3_bucket_public_access_block" "script_bucket_pab" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
 
   block_public_acls       = true
@@ -61,7 +61,7 @@ resource "aws_s3_bucket_public_access_block" "script_bucket_pab" {
 
 # Upload the benign script to S3
 resource "aws_s3_object" "benign_script" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
   key      = "benign_script.py"
   content  = <<-EOT
@@ -79,7 +79,7 @@ EOT
 
 # Upload the malicious script to S3
 resource "aws_s3_object" "malicious_script" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
   key      = "escalation_script.py"
   content  = <<-EOT
@@ -106,9 +106,9 @@ EOT
   }
 }
 
-# Bucket policy granting read access to all principals in the account
+# Bucket policy granting read access to all principals in the prod account
 resource "aws_s3_bucket_policy" "script_bucket_policy" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
 
   policy = jsonencode({
@@ -254,17 +254,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
         Resource = "*"
       },
-      {
-        Sid    = "HelpfulForDemoScript"
-        Effect = "Allow"
-        Action = [
-          "glue:GetJob",
-          "glue:GetJobRun",
-          "glue:GetJobRuns",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
     ]
   })
 }

@@ -233,13 +233,40 @@ func (w *Wizard) Run() (*Config, error) {
 		if err := attackerProfileForm.Run(); err != nil {
 			return nil, err
 		}
-		cfg.AWS.Attacker.Profile = attackerProfile
 
 		attackerRegion, err := askForRegion("attacker", attackerProfile)
 		if err != nil {
 			return nil, err
 		}
+
+		// Ask how to authenticate to the attacker account
+		var attackerAuthMode string
+		authModeForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("How should plabs authenticate to the attacker account?").
+					Options(
+						huh.NewOption("Use the AWS profile directly", "profile").Selected(true),
+						huh.NewOption("Create a dedicated IAM admin user (profile used once for setup, then IAM creds)", "iam-user"),
+					).
+					Value(&attackerAuthMode),
+			),
+		).WithTheme(huh.ThemeCatppuccin())
+
+		if err := authModeForm.Run(); err != nil {
+			return nil, err
+		}
+
 		cfg.AWS.Attacker.Region = attackerRegion
+		cfg.AWS.Attacker.Mode = attackerAuthMode
+
+		if attackerAuthMode == "iam-user" {
+			// Store profile as setup profile; it will be used for bootstrap and destroy
+			cfg.AWS.Attacker.SetupProfile = attackerProfile
+			cfg.AWS.Attacker.Profile = attackerProfile // temporary, until bootstrap replaces with IAM creds
+		} else {
+			cfg.AWS.Attacker.Profile = attackerProfile
+		}
 	}
 
 	// Budget alerts section
@@ -328,9 +355,18 @@ func (w *Wizard) Run() (*Config, error) {
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.AWS.Ops.Profile))
 		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.AWS.Ops.Region))
 	}
-	if cfg.AWS.Attacker.Profile != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Attacker profile:"), valueStyle.Render(cfg.AWS.Attacker.Profile))
+	if cfg.HasAttackerAccount() {
+		attackerProfile := cfg.AWS.Attacker.Profile
+		if attackerProfile == "" {
+			attackerProfile = cfg.AWS.Attacker.SetupProfile
+		}
+		fmt.Printf("%s %s\n", labelStyle.Render("Attacker profile:"), valueStyle.Render(attackerProfile))
 		fmt.Printf("%s %s\n", labelStyle.Render("Attacker region:"), valueStyle.Render(cfg.AWS.Attacker.Region))
+		if cfg.AWS.Attacker.Mode == "iam-user" {
+			fmt.Printf("%s %s\n", labelStyle.Render("Attacker auth mode:"), valueStyle.Render("IAM admin user (bootstrapped on first deploy)"))
+		} else {
+			fmt.Printf("%s %s\n", labelStyle.Render("Attacker auth mode:"), valueStyle.Render("AWS profile"))
+		}
 	}
 	if cfg.Budget.Enabled {
 		fmt.Printf("%s %s\n", labelStyle.Render("Budget alerts:"), valueStyle.Render("Enabled"))

@@ -34,9 +34,11 @@ provider "aws" {
 }
 
 provider "aws" {
-  alias   = "attacker"
-  profile = local.effective_attacker_profile
-  region  = var.aws_region
+  alias      = "attacker"
+  profile    = var.attacker_account_use_iam_user ? null : local.effective_attacker_profile
+  access_key = var.attacker_account_use_iam_user ? var.attacker_iam_user_access_key : null
+  secret_key = var.attacker_account_use_iam_user ? var.attacker_iam_user_secret_key : null
+  region     = var.aws_region
 }
 
 # =============================================================================
@@ -816,44 +818,52 @@ module "single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_creat
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-004-iam-passrole+glue-createjob+glue-createtrigger"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-005-iam-passrole+glue-updatejob+glue-startjobrun"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-006-iam-passrole+glue-updatejob+glue-createtrigger"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement" {

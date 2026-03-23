@@ -19,6 +19,12 @@ aws_region               = "us-west-2"  # Region where resources will be deploye
 # Optional: Attacker-controlled account (for scenarios with adversary-side infrastructure)
 # enable_attacker_environment    = true
 # attacker_account_aws_profile   = "your-attacker-profile"
+#
+# Advanced: Use IAM user credentials instead of AWS profile for attacker account
+# (managed automatically by plabs CLI when "Create IAM admin user" mode is selected)
+# attacker_account_use_iam_user  = true
+# attacker_iam_user_access_key   = "AKIA..."
+# attacker_iam_user_secret_key   = "..."
 
 # Optional: Override auto-derived account IDs (rarely needed)
 # prod_account_id       = "111111111111"

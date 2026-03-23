@@ -103,13 +103,8 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{scenario-shorthand}-role"
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
+      # NOTE: Do NOT add sts:GetCallerIdentity or observation-only actions here.
+      # The readonly user handles identity checks and polling.
     ]
   })
 }
@@ -567,8 +562,15 @@ Before considering your work done:
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
 8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", etc.
-9. **Do NOT create `starting_user_helpful` policies** - Starting users should only get `starting_user_required` with exploit permissions + `sts:GetCallerIdentity`. Non-exploit permissions (polling, listing, cleanup) are handled by the admin cleanup user in demo scripts.
-10. When scenarios need attacker-side infrastructure, use the `aws.attacker` provider alias for attacker-controlled resources (ECR repos, S3 buckets, etc.).
+9. **Do NOT create `starting_user_helpful` policies** - Starting users should ONLY get permissions required for the exploit itself. Do NOT include `sts:GetCallerIdentity`, `HelpfulForDemoScript`, `helpfulAdditionalPermissions`, or any observation-only actions (`Describe*`, `List*`, `Get*` for non-exploit purposes). Non-exploit permissions (polling, listing, identity checks, cleanup) are handled by the readonly user and admin cleanup user in demo scripts.
+10. When scenarios need attacker-side infrastructure (S3 buckets with exploit scripts, ECR repos, etc.), use the `aws.attacker` provider alias. This requires:
+    - Adding `aws.attacker` to `configuration_aliases`: `configuration_aliases = [aws.prod, aws.attacker]`
+    - Using `provider = aws.attacker` on attacker-controlled resources (S3 buckets, objects, bucket policies, PABs)
+    - Using `var.attacker_account_id` in bucket names (not `var.account_id`)
+    - Adding a bucket policy granting the prod account (`var.account_id`) read access via resource policy
+    - Adding `attacker_account_id` variable to variables.tf
+    - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
+11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` pattern for all Statement Ids (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `RequiredForExploitationLambda`).
 
 ## Output Format
 
