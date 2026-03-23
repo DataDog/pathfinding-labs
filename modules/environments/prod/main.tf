@@ -95,6 +95,27 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# Create readonly user for demo script observation steps
+resource "aws_iam_user" "readonly_user" {
+  name = "pl-readonly-user-prod"
+  tags = {
+    Name        = "pl-readonly-user-prod"
+    Environment = "prod"
+    Purpose     = "readonly-for-demo-scripts"
+  }
+}
+
+# Attach ReadOnlyAccess policy to readonly user
+resource "aws_iam_user_policy_attachment" "readonly_user_access" {
+  user       = aws_iam_user.readonly_user.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+# Access key for the readonly user
+resource "aws_iam_access_key" "readonly_user" {
+  user = aws_iam_user.readonly_user.name
+}
+
 
 
 # data "aws_ami" "bastion" {

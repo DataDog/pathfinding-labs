@@ -107,8 +107,8 @@ func DefaultKeyMap() *KeyMap {
 			key.WithHelp("e", "enable"),
 		),
 		Deploy: key.NewBinding(
-			key.WithKeys("d"),
-			key.WithHelp("d", "deploy"),
+			key.WithKeys("a"),
+			key.WithHelp("a", "apply"),
 		),
 		Plan: key.NewBinding(
 			key.WithKeys("p"),

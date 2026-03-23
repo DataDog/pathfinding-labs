@@ -14,9 +14,10 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy enabled scenarios to AWS",
-	Long: `Deploy all enabled scenarios to your AWS account(s).
+	Use:     "apply",
+	Aliases: []string{"deploy"},
+	Short:   "Apply enabled scenarios to AWS",
+	Long: `Apply all enabled scenarios to your AWS account(s).
 
 This runs 'terraform apply' to create the AWS resources for enabled scenarios.
 
@@ -57,7 +58,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	dim := color.New(color.Faint).SprintFunc()
 
 	fmt.Println()
-	fmt.Println(cyan("Deploying Pathfinding Labs..."))
+	fmt.Println(cyan("Applying Pathfinding Labs..."))
 
 	// Show mode indicator only in dev mode
 	if cfg.DevMode {
@@ -112,7 +113,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		response = strings.ToLower(strings.TrimSpace(response))
 		if response != "y" && response != "yes" {
-			fmt.Println("Deployment cancelled.")
+			fmt.Println("Apply cancelled.")
 			return nil
 		}
 	}
@@ -128,7 +129,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println(green("========================================================"))
-	fmt.Println(green("  Deployment complete!"))
+	fmt.Println(green("  Apply complete!"))
 	fmt.Println(green("========================================================"))
 	fmt.Println()
 	fmt.Printf("Run %s to see deployment status\n", cyan("plabs status"))

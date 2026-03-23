@@ -28,12 +28,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -113,7 +115,7 @@ export AWS_REGION=$AWS_REGION
 unset AWS_SESSION_TOKEN
 
 # Verify demo user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 echo -e "${GREEN}✓ Authenticated as user with SSM access${NC}\n"
@@ -121,7 +123,7 @@ echo -e "${GREEN}✓ Authenticated as user with SSM access${NC}\n"
 # Step 3: Show the user does NOT have admin permissions
 echo -e "${YELLOW}Step 3: Verifying demo user has limited permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ User unexpectedly has IAM permissions${NC}"
 else
@@ -194,7 +196,7 @@ echo "Press ENTER to start the SSM session..."
 read
 
 # Start the interactive session
-show_attack_cmd aws ssm start-session --region $AWS_REGION --target $INSTANCE_ID
+show_attack_cmd "Attacker" "aws ssm start-session --region $AWS_REGION --target $INSTANCE_ID"
 aws ssm start-session \
     --region $AWS_REGION \
     --target $INSTANCE_ID

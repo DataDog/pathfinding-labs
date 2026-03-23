@@ -301,19 +301,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.environment.SetConfig(cfg)
 
 		// Load enabled states for environments
+		var attackerEnabled bool
 		if m.tfvars != nil {
-			prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
+			var prodEnabled, devEnabled, opsEnabled bool
+			prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ = m.tfvars.GetEnabledEnvironments()
 			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled, attackerEnabled)
 		}
 
 		// Load deployed states for environments
 		if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 			deployed := m.tfRunner.GetDeployedModules()
+			// Attacker module has no resources in state (it's a pass-through),
+			// so treat it as deployed when enabled and terraform is initialized
+			attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 			m.environment.SetDeploymentStatus(
 				deployed["prod_environment"],
 				deployed["dev_environment"],
 				deployed["ops_environment"],
-				deployed["attacker_environment"],
+				attackerDeployed,
 			)
 		}
 
@@ -437,8 +442,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.overlay.SetComplete()
 		if msg.err != nil {
 			m.overlay.AppendContent(fmt.Sprintf("\n[Error: %v]", msg.err))
-		} else {
-			m.overlay.AppendContent("\n[Done - press Esc to close]")
 		}
 		// Ensure the done message is visible
 		m.overlay.ScrollToBottom()
@@ -533,6 +536,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.runningCmd.Process.Kill()
 				m.runningCmd = nil
 			}
+			m.overlay.Hide()
+			return m, nil
+		}
+		// Enter also closes overlay when command is complete (not running)
+		if msg.String() == "enter" && m.runningCmd == nil {
 			m.overlay.Hide()
 			return m, nil
 		}
@@ -1033,7 +1041,7 @@ func (m *Model) runDeploy() tea.Cmd {
 }
 
 func (m *Model) executeDeploy() tea.Cmd {
-	m.overlay.ShowRunning(OverlayTerraform, "Deploy")
+	m.overlay.ShowRunning(OverlayTerraform, "Apply")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
 	return m.runCommandStreaming(cmd)
 }
@@ -1395,7 +1403,7 @@ func (m *Model) renderSettingsMenu() string {
 	var sb strings.Builder
 
 	// Get environment states
-	prodEnabled, devEnabled, opsEnabled, _, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
 	deployed := make(map[string]bool)
 	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		deployed = m.tfRunner.GetDeployedModules()
@@ -1403,23 +1411,35 @@ func (m *Model) renderSettingsMenu() string {
 	prodDeployed := deployed["prod_environment"]
 	devDeployed := deployed["dev_environment"]
 	opsDeployed := deployed["ops_environment"]
+	// Attacker module has no resources in state (it's a pass-through),
+	// so treat it as deployed when enabled and terraform is initialized
+	attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 
 	sb.WriteString("AWS Profiles\n")
 	sb.WriteString("----------------------------------------\n\n")
 
 	// Prod
-	sb.WriteString(fmt.Sprintf("  [1] prod:  %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
+	sb.WriteString(fmt.Sprintf("  [1] prod:      %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
 	sb.WriteString(m.envStatusSuffix(prodEnabled, prodDeployed))
 	sb.WriteString("\n")
 
 	// Dev
-	sb.WriteString(fmt.Sprintf("  [2] dev:   %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
+	sb.WriteString(fmt.Sprintf("  [2] dev:       %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
 	sb.WriteString(m.envStatusSuffix(devEnabled, devDeployed))
 	sb.WriteString("\n")
 
 	// Ops
-	sb.WriteString(fmt.Sprintf("  [3] ops:   %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
+	sb.WriteString(fmt.Sprintf("  [3] ops:       %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
 	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
+	sb.WriteString("\n")
+
+	// Attacker
+	sb.WriteString(fmt.Sprintf("  [4] attacker:  %s", m.valueOrNotSet(m.config.AWS.Attacker.Profile)))
+	if m.config.AWS.Attacker.Profile == "" {
+		sb.WriteString("  (optional, for adversary-side infrastructure)")
+	} else {
+		sb.WriteString(m.envStatusSuffix(attackerEnabled, attackerDeployed))
+	}
 	sb.WriteString("\n")
 
 	// Budget Alerts section
@@ -1436,7 +1456,7 @@ func (m *Model) renderSettingsMenu() string {
 	}
 
 	sb.WriteString("\n----------------------------------------\n")
-	sb.WriteString("Press 1/2/3 to change a profile\n")
+	sb.WriteString("Press 1/2/3/4 to change a profile\n")
 	sb.WriteString("Press b to configure budget alerts\n")
 	sb.WriteString("Press Esc to close\n")
 
@@ -1471,6 +1491,9 @@ func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "3":
 		m.overlay.Hide()
 		return m, m.runProfileWizard("ops")
+	case "4":
+		m.overlay.Hide()
+		return m, m.runProfileWizard("attacker")
 	case "b", "B":
 		m.overlay.Hide()
 		return m, m.runBudgetWizard()
@@ -1517,6 +1540,8 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 		currentProfile = m.config.AWS.Dev.Profile
 	case "ops":
 		currentProfile = m.config.AWS.Ops.Profile
+	case "attacker":
+		currentProfile = m.config.AWS.Attacker.Profile
 	}
 
 	resultChan := make(chan profileWizardMsg, 1)
@@ -1593,7 +1618,7 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	var currentProfile string
 	var isEnabled bool
 
-	prodEnabled, devEnabled, opsEnabled, _, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
 
 	switch envName {
 	case "prod":
@@ -1605,6 +1630,9 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	case "ops":
 		currentProfile = m.config.AWS.Ops.Profile
 		isEnabled = opsEnabled
+	case "attacker":
+		currentProfile = m.config.AWS.Attacker.Profile
+		isEnabled = attackerEnabled
 	}
 
 	// If same profile, nothing to do
@@ -1634,6 +1662,8 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 		m.config.AWS.Dev.Profile = newProfile
 	case "ops":
 		m.config.AWS.Ops.Profile = newProfile
+	case "attacker":
+		m.config.AWS.Attacker.Profile = newProfile
 	}
 
 	// Save config (single source of truth)
@@ -1908,7 +1938,7 @@ func (m *Model) renderStatusBar() string {
 	// Check if deploy is needed
 	if m.scenariosPane.HasPendingChanges() {
 		leftParts = append(leftParts, separatorStyle.Render(" . "))
-		leftParts = append(leftParts, pendingStyle.Render("[d] to deploy changes"))
+		leftParts = append(leftParts, pendingStyle.Render("[a] to apply changes"))
 	}
 
 	leftText := strings.Join(leftParts, "")
@@ -1984,7 +2014,7 @@ func (m *Model) renderActionConfirmBar() string {
 			keyStyle.Render("[c]") +
 			dimStyle.Render(" cleanup first  ") +
 			keyStyle.Render("Enter") +
-			dimStyle.Render(" deploy anyway  ") +
+			dimStyle.Render(" apply anyway  ") +
 			keyStyle.Render("Esc") +
 			dimStyle.Render(" cancel")
 	}
@@ -1996,7 +2026,7 @@ func (m *Model) renderActionConfirmBar() string {
 	switch m.pendingAction {
 	case "deploy":
 		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true) // Green
-		actionText = "DEPLOY"
+		actionText = "APPLY"
 		description = "Run terraform apply to deploy enabled scenarios"
 	case "plan":
 		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true) // Cyan

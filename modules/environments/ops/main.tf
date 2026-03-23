@@ -85,6 +85,27 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# Create readonly user for demo script observation steps
+resource "aws_iam_user" "readonly_user" {
+  name = "pl-readonly-user-ops"
+  tags = {
+    Name        = "pl-readonly-user-ops"
+    Environment = "ops"
+    Purpose     = "readonly-for-demo-scripts"
+  }
+}
+
+# Attach ReadOnlyAccess policy to readonly user
+resource "aws_iam_user_policy_attachment" "readonly_user_access" {
+  user       = aws_iam_user.readonly_user.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+# Access key for the readonly user
+resource "aws_iam_access_key" "readonly_user" {
+  user = aws_iam_user.readonly_user.name
+}
+
 # Basic policy for the pathfinding starting user (minimal permissions)
 resource "aws_iam_user_policy" "pathfinding_starting_user_basic" {
   name = "pl-pathfinding-starting-user-basic-policy"

