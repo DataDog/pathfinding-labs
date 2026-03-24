@@ -250,6 +250,20 @@ variable "resource_suffix" {
 }
 ```
 
+**When the scenario deploys compute resources (EC2, ECS, SSM on EC2, etc.) that require a VPC**, also add:
+
+```hcl
+variable "vpc_id" {
+  description = "VPC ID to deploy resources into"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "Subnet ID to deploy resources into"
+  type        = string
+}
+```
+
 ### 3. outputs.tf Template
 
 **CRITICAL**: All scenario outputs must be individual outputs (NOT grouped). The root `outputs.tf` will group them together.
@@ -549,6 +563,48 @@ tags = {
   Purpose     = "{starting-role|intermediate-role|admin-target|target-bucket|etc}"
 }
 ```
+
+## VPC Usage
+
+**NEVER use the AWS default VPC.** Scenarios that require networking (EC2 instances, ECS container instances, SSM on EC2, security groups, etc.) must accept the environment VPC as input variables.
+
+### Correct pattern — accept VPC as variables:
+
+```hcl
+# Security group using the environment VPC
+resource "aws_security_group" "target_sg" {
+  provider    = aws.prod
+  name        = "pl-prod-{scenario}-sg"
+  description = "Security group for {scenario}"
+  vpc_id      = var.vpc_id
+  # ...
+}
+
+# EC2 instance in the environment subnet
+resource "aws_instance" "target_instance" {
+  provider  = aws.prod
+  subnet_id = var.subnet_id
+  # ...
+}
+```
+
+### Wrong patterns — do NOT use:
+
+```hcl
+# WRONG: looks up the default VPC at apply time — fragile if default VPC is deleted
+data "aws_vpc" "default" {
+  default = true
+}
+
+# WRONG: creates a scenario-specific VPC — unnecessary redundancy
+resource "aws_vpc" "target_vpc" {
+  cidr_block = "10.0.0.0/16"
+}
+```
+
+The `vpc_id` and `subnet_id` values are passed from the root module using the prod environment's pre-created VPC (`module.prod_environment[0].vpc_id` and `module.prod_environment[0].subnet1_id`). See the project-updator agent for how these are wired into the module block.
+
+**Exception**: MWAA scenarios require their own custom VPC with private subnets and a NAT gateway — this is a hard AWS requirement and is the only legitimate exception.
 
 ## Validation Before Completion
 

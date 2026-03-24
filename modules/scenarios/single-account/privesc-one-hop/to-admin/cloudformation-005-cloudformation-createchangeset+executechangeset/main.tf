@@ -46,7 +46,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationCreateChangeSet"
         Effect = "Allow"
         Action = [
           "cloudformation:CreateChangeSet"
@@ -54,7 +54,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationExecuteChangeSet"
         Effect = "Allow"
         Action = [
           "cloudformation:ExecuteChangeSet"
@@ -62,40 +62,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "cloudformation:DescribeChangeSet"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "cloudformation:DescribeStacks"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "cloudformation:DescribeStackResource",
-          "cloudformation:GetTemplate"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions4"
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions5"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"

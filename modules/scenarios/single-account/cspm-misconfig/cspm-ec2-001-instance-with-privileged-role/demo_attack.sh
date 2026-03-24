@@ -81,6 +81,15 @@ if [ "$DEMO_ACCESS_KEY_ID" == "null" ] || [ -z "$DEMO_ACCESS_KEY_ID" ]; then
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 if [ "$INSTANCE_ID" == "null" ] || [ -z "$INSTANCE_ID" ]; then
     echo -e "${RED}Error: Could not extract instance ID from terraform output${NC}"
     echo "The EC2 instance may not be ready yet. Wait a few minutes and try again."
@@ -99,6 +108,8 @@ echo -e "${CYAN}Misconfiguration Detected:${NC}"
 echo "  $MISCONFIG_SUMMARY"
 echo ""
 echo "Demo User: $DEMO_USER"
+echo "Access Key ID: ${DEMO_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Instance ID: $INSTANCE_ID"
 echo "Privileged Role: $EC2_ROLE_NAME"
 echo "Region: $AWS_REGION"
@@ -107,12 +118,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with demo user (simulating someone with SSM access)
+# Credential switching helpers
+use_demo_creds() {
+    export AWS_ACCESS_KEY_ID="$DEMO_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$DEMO_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with demo user (simulating someone with SSM access)
 echo -e "${YELLOW}Step 2: Simulating a user with SSM access to this instance${NC}"
-export AWS_ACCESS_KEY_ID=$DEMO_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$DEMO_SECRET_ACCESS_KEY
+use_demo_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 # Verify demo user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -120,8 +141,9 @@ CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 echo -e "${GREEN}✓ Authenticated as user with SSM access${NC}\n"
 
-# Step 3: Show the user does NOT have admin permissions
+# [EXPLOIT] Step 3: Show the user does NOT have admin permissions
 echo -e "${YELLOW}Step 3: Verifying demo user has limited permissions${NC}"
+use_demo_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -131,8 +153,9 @@ else
 fi
 echo ""
 
-# Step 4: Check SSM agent status
+# [OBSERVATION] Step 4: Check SSM agent status
 echo -e "${YELLOW}Step 4: Checking if instance is ready for SSM session${NC}"
+use_readonly_creds
 
 MAX_RETRIES=5
 RETRY_COUNT=0
@@ -165,8 +188,9 @@ if [ "$SSM_READY" = false ]; then
 fi
 echo ""
 
-# Step 5: Interactive SSM session
+# [EXPLOIT] Step 5: Interactive SSM session
 echo -e "${YELLOW}Step 5: Demonstrating the risk - SSM access to privileged instance${NC}"
+use_demo_creds
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}THE RISK: SSM ACCESS = ADMIN ACCESS${NC}"
 echo -e "${CYAN}========================================${NC}"

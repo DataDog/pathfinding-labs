@@ -48,23 +48,20 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions"
+        Sid    = "RequiredForExploitationEC2LaunchTemplate"
         Effect = "Allow"
         Action = [
           "ec2:CreateLaunchTemplateVersion",
-          "ec2:ModifyLaunchTemplate"
+          "ec2:ModifyLaunchTemplate",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeLaunchTemplateVersions"
         ]
         Resource = "*"
       },
       {
-        Sid    = "helpfulAdditionalPermissions"
+        Sid    = "RequiredForExploitationTriggerLaunch"
         Effect = "Allow"
         Action = [
-          "iam:ListRoles",
-          "ec2:DescribeLaunchTemplates",
-          "ec2:DescribeLaunchTemplateVersions",
-          "autoscaling:DescribeAutoScalingGroups",
-          "ec2:DescribeInstances",
           "autoscaling:SetDesiredCapacity"
         ]
         Resource = "*"
@@ -202,27 +199,13 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# Get default VPC
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
 # Get default subnets
-data "aws_subnets" "default" {
-  provider = aws.prod
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # Security group for instances (minimal access)
 resource "aws_security_group" "victim_sg" {
   provider    = aws.prod
   name        = "pl-prod-ec2-005-to-admin-victim-sg"
   description = "Security group for victim launch template instances"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   # Allow outbound traffic for user data execution
   egress {
@@ -291,7 +274,7 @@ resource "aws_launch_template" "victim_template" {
 resource "aws_autoscaling_group" "victim_asg" {
   provider            = aws.prod
   name                = "pl-prod-ec2-005-to-admin-victim-asg"
-  vpc_zone_identifier = data.aws_subnets.default.ids
+  vpc_zone_identifier = [var.subnet_id]
   desired_capacity    = 0
   max_size            = 2
   min_size            = 0

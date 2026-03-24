@@ -37,12 +37,6 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# Data source to get available AZs
-data "aws_availability_zones" "available" {
-  provider = aws.prod
-  state    = "available"
-}
-
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
   provider = aws.prod
@@ -72,6 +66,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationEC2Modify"
         Effect = "Allow"
         Action = [
           "ec2:ModifyInstanceAttribute",
@@ -81,17 +76,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:ec2:*:*:instance/*"
       },
       {
+        Sid    = "RequiredForExploitationEC2Describe"
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceAttribute"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }
@@ -144,81 +133,12 @@ resource "aws_iam_instance_profile" "target_profile" {
   }
 }
 
-# VPC for the EC2 instance
-resource "aws_vpc" "target_vpc" {
-  provider             = aws.prod
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Name        = "pl-prod-ec2-002-to-admin-vpc"
-    Environment = var.environment
-    Scenario    = "ec2-modifyinstanceattribute+stopinstances+startinstances"
-    Purpose     = "target-vpc"
-  }
-}
-
-# Subnet for the EC2 instance
-resource "aws_subnet" "target_subnet" {
-  provider                = aws.prod
-  vpc_id                  = aws_vpc.target_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "pl-prod-ec2-002-to-admin-subnet"
-    Environment = var.environment
-    Scenario    = "ec2-modifyinstanceattribute+stopinstances+startinstances"
-    Purpose     = "target-subnet"
-  }
-}
-
-# Internet Gateway for the VPC
-resource "aws_internet_gateway" "target_igw" {
-  provider = aws.prod
-  vpc_id   = aws_vpc.target_vpc.id
-
-  tags = {
-    Name        = "pl-prod-ec2-002-to-admin-igw"
-    Environment = var.environment
-    Scenario    = "ec2-modifyinstanceattribute+stopinstances+startinstances"
-    Purpose     = "target-igw"
-  }
-}
-
-# Route table for the subnet
-resource "aws_route_table" "target_route_table" {
-  provider = aws.prod
-  vpc_id   = aws_vpc.target_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.target_igw.id
-  }
-
-  tags = {
-    Name        = "pl-prod-ec2-002-to-admin-route-table"
-    Environment = var.environment
-    Scenario    = "ec2-modifyinstanceattribute+stopinstances+startinstances"
-    Purpose     = "target-route-table"
-  }
-}
-
-# Route table association
-resource "aws_route_table_association" "target_route_table_assoc" {
-  provider       = aws.prod
-  subnet_id      = aws_subnet.target_subnet.id
-  route_table_id = aws_route_table.target_route_table.id
-}
-
 # Security group for the EC2 instance (restrictive - no inbound)
 resource "aws_security_group" "target_sg" {
   provider    = aws.prod
   name        = "pl-prod-ec2-002-to-admin-sg"
   description = "Security group for EC2 ModifyInstanceAttribute scenario"
-  vpc_id      = aws_vpc.target_vpc.id
+  vpc_id      = var.vpc_id
 
   # Allow all outbound traffic
   egress {
@@ -242,7 +162,7 @@ resource "aws_instance" "target_instance" {
   ami                         = data.aws_ami.amazon_linux_2023.id
   instance_type               = "t3.micro"
   iam_instance_profile        = aws_iam_instance_profile.target_profile.name
-  subnet_id                   = aws_subnet.target_subnet.id
+  subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [aws_security_group.target_sg.id]
   associate_public_ip_address = true
 

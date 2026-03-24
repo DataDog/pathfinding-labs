@@ -55,20 +55,12 @@ resource "aws_iam_user_policy" "privesc_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPutGroupPolicy"
         Effect = "Allow"
         Action = [
           "iam:PutGroupPolicy"
         ]
         Resource = aws_iam_group.target_group.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetGroup",
-          "iam:ListGroupPolicies",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

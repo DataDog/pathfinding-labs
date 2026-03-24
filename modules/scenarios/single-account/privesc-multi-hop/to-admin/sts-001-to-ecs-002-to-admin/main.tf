@@ -54,20 +54,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
         Resource = aws_iam_role.starting_role.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -115,7 +107,7 @@ resource "aws_iam_role_policy" "starting_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -123,51 +115,12 @@ resource "aws_iam_role_policy" "starting_role_policy" {
         Resource = aws_iam_role.admin_role.arn
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationECS"
         Effect = "Allow"
         Action = [
           "ecs:CreateCluster",
           "ecs:RegisterTaskDefinition",
           "ecs:RunTask"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ecs:DescribeTasks"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles",
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "cleanupPermissions1"
-        Effect = "Allow"
-        Action = [
-          "ecs:StopTask",
-          "ecs:DeregisterTaskDefinition",
-          "ecs:DeleteCluster",
-          "iam:ListAttachedUserPolicies",
-          "iam:DetachUserPolicy"
         ]
         Resource = "*"
       }

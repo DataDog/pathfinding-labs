@@ -50,22 +50,12 @@ resource "aws_iam_user_policy" "privesc_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAddUserToGroup"
         Effect = "Allow"
         Action = [
           "iam:AddUserToGroup"
         ]
         Resource = aws_iam_group.admin_group.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetGroup",
-          "iam:ListGroupsForUser",
-          "iam:ListGroups",
-          "iam:GetUser",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

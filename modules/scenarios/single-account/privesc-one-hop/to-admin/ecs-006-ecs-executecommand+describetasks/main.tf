@@ -82,14 +82,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
             "ecs:cluster" = "arn:aws:ecs:*:${var.account_id}:cluster/${aws_ecs_cluster.cluster.name}"
           }
         }
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -209,26 +201,13 @@ data "aws_region" "current" {
 # =============================================================================
 
 # Get default VPC for Fargate tasks
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
 # Get subnets in the VPC
-data "aws_subnets" "default" {
-  provider = aws.prod
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # Security group for ECS tasks
 resource "aws_security_group" "ecs_tasks" {
   provider    = aws.prod
   name        = "pl-prod-ecs-006-to-admin-sg"
   description = "Security group for ECS ExecuteCommand scenario tasks"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   # Allow all outbound traffic (needed for metadata service and image pulls)
   egress {
@@ -343,7 +322,7 @@ resource "aws_ecs_service" "service" {
   enable_execute_command = true
 
   network_configuration {
-    subnets          = data.aws_subnets.default.ids
+    subnets          = [var.subnet_id]
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }

@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationCreateLifecycleConfig"
         Effect = "Allow"
         Action = [
           "sagemaker:CreateNotebookInstanceLifecycleConfig"
@@ -53,7 +53,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationNotebookManagement"
         Effect = "Allow"
         Action = [
           "sagemaker:StopNotebookInstance",
@@ -61,32 +61,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sagemaker:StartNotebookInstance"
         ]
         Resource = "arn:aws:sagemaker:*:${var.account_id}:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "sagemaker:DescribeNotebookInstance",
-          "sagemaker:ListNotebookInstances",
-          "iam:ListAttachedRolePolicies"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

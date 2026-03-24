@@ -166,6 +166,27 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
 }
 ```
 
+**When the scenario declares `vpc_id` and `subnet_id` variables** (i.e., it deploys compute resources like EC2, ECS, SSM on EC2), also pass the environment VPC:
+
+```hcl
+module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
+  count  = var.enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} ? 1 : 0
+  source = "./{relative-path-to-scenario}"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+}
+```
+
+**How to detect**: Check if the scenario's `variables.tf` declares `vpc_id` and `subnet_id` variables.
+
 **WRONG** (do not do this):
 ```hcl
   providers = {

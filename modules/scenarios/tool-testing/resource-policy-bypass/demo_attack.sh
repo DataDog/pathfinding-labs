@@ -68,17 +68,38 @@ BUCKET_ACCESS_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.bucket_access_role_arn'
 SENSITIVE_BUCKET=$(echo "$MODULE_OUTPUT" | jq -r '.sensitive_bucket_name')
 STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
 
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}✅ Retrieved credentials for starting user: $STARTING_USER_NAME${NC}"
 echo "📋 Bucket Access Role ARN: $BUCKET_ACCESS_ROLE_ARN"
 echo "📋 Sensitive Bucket: $SENSITIVE_BUCKET"
 
-# Set environment variables for starting user
-export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+cd - > /dev/null
+
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 export AWS_DEFAULT_REGION="us-west-2"
 
+# [OBSERVATION] Step 1: Verify current identity
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --output json"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --output json"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
 echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
@@ -96,12 +117,14 @@ fi
 ACCOUNT_ID=$(echo "$CURRENT_IDENTITY" | jq -r '.Account')
 echo "Current account: $ACCOUNT_ID"
 
+# [OBSERVATION] Step 2: Test initial permissions (should be limited)
 echo -e "${YELLOW}Step 2: Testing initial permissions (should be limited)${NC}"
 echo "Testing what we can access with current permissions..."
+use_readonly_creds
 
 # Test S3 access with current permissions
 echo "Attempting to list all S3 buckets..."
-show_cmd "Attacker" "aws s3api list-buckets --output json"
+show_cmd "ReadOnly" "aws s3api list-buckets --output json"
 if BUCKETS=$(aws s3api list-buckets --output json 2>/dev/null); then
     echo -e "${GREEN}✓ Can list S3 buckets${NC}"
     echo "Available buckets:"
@@ -114,8 +137,10 @@ else
 fi
 
 echo ""
+# [EXPLOIT] Step 3: Assume the bucket access role
 echo -e "${YELLOW}Step 3: Assuming the bucket access role${NC}"
 echo "Attempting to assume the pl-bucket-access-role..."
+use_starting_creds
 
 BUCKET_ACCESS_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/pl-bucket-access-role"
 echo "Attempting to assume role: $BUCKET_ACCESS_ROLE_ARN"

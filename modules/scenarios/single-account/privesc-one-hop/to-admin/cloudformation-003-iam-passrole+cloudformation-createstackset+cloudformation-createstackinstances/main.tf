@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -56,7 +56,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationCloudFormation"
         Effect = "Allow"
         Action = [
           "cloudformation:CreateStackSet",
@@ -65,34 +65,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "cloudformation:DescribeStackSet",
-          "cloudformation:DescribeStackSetOperation",
-          "cloudformation:ListStackInstances",
-          "cloudformation:DeleteStackInstances",
-          "cloudformation:DeleteStackSet",
-          "iam:ListRoles",
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-cloudformation-003-to-admin-escalated-role"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

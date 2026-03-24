@@ -69,7 +69,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -77,7 +77,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.passable_role.arn
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationSageMaker"
         Effect = "Allow"
         Action = [
           "sagemaker:CreateProcessingJob"
@@ -85,46 +85,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "requiredPermissions3"
+        Sid    = "RequiredForExploitationS3"
         Effect = "Allow"
         Action = [
           "s3:PutObject",
           "s3:GetObject"
         ]
         Resource = "${aws_s3_bucket.processing_bucket.arn}/*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles",
-          "iam:GetRole"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "sagemaker:DescribeProcessingJob"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions3"
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket"
-        ]
-        Resource = aws_s3_bucket.processing_bucket.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions4"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

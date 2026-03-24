@@ -37,14 +37,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
+        Sid    = "RequiredForExploitationAssumeStartingRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -155,25 +148,15 @@ resource "aws_iam_role_policy" "starting_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowPutRolePolicyOnSelf"
+        Sid    = "RequiredForExploitationPutRolePolicy"
         Effect = "Allow"
         Action = [
-          "iam:PutRolePolicy",
-          "iam:GetRole",
-          "iam:GetRolePolicy"
+          "iam:PutRolePolicy"
         ]
         Resource = aws_iam_role.starting_role.arn
       },
       {
-        Sid    = "AllowSelfIdentification"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowAssumeTargetRole"
+        Sid    = "RequiredForExploitationAssumeTargetRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"

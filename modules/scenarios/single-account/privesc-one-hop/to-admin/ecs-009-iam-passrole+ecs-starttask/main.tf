@@ -73,14 +73,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "ecs:StartTask"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -241,26 +233,13 @@ data "aws_ami" "ecs_optimized" {
 }
 
 # Get default VPC for EC2 instance
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
 # Get default subnets in the VPC
-data "aws_subnets" "default" {
-  provider = aws.prod
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # Security group for ECS container instance
 resource "aws_security_group" "container_instance" {
   provider    = aws.prod
   name        = "pl-prod-ecs-009-to-admin-sg"
   description = "Security group for ECS container instance in StartTask override scenario"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   # Allow outbound traffic (needed for ECS agent to communicate)
   egress {
@@ -332,7 +311,7 @@ resource "aws_instance" "container_instance" {
   instance_type          = "t3.micro"
   iam_instance_profile   = aws_iam_instance_profile.container_instance.name
   vpc_security_group_ids = [aws_security_group.container_instance.id]
-  subnet_id              = tolist(data.aws_subnets.default.ids)[0]
+  subnet_id              = var.subnet_id
 
   user_data = <<-EOF
               #!/bin/bash

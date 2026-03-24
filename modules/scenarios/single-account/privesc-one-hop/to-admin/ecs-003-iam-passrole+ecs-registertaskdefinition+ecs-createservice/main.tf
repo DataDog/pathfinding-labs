@@ -68,14 +68,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "ecs:CreateService"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

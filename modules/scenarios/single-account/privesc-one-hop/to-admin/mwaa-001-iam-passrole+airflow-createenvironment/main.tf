@@ -115,14 +115,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "s3:GetEncryptionConfiguration"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

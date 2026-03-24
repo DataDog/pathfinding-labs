@@ -72,6 +72,11 @@ type Model struct {
 	enteringPattern    bool            // true when entering a pattern
 	patternInput       textinput.Model // input for pattern entry
 
+	// Disable operation state
+	choosingDisableType bool            // true when showing disable type choice
+	enteringDisablePattern bool         // true when entering a disable pattern
+	disablePatternInput    textinput.Model // input for disable pattern entry
+
 	// Simple action confirmation state (for deploy, demo, cleanup, plan)
 	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
 	pendingScenarioID  string // scenario ID for demo/cleanup actions
@@ -169,21 +174,27 @@ func NewModel(paths *repo.Paths) *Model {
 	pi.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
 	pi.CharLimit = 50
 
+	// Pattern input for disable operations
+	di := textinput.New()
+	di.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
+	di.CharLimit = 50
+
 	m := &Model{
-		paths:         paths,
-		styles:        styles,
-		keys:          keys,
-		info:          NewInfoPane(styles),
-		environment:   NewEnvironmentPane(styles),
-		scenariosPane: NewScenariosPane(styles),
-		details:       NewDetailsPane(styles),
-		actions:       NewActionsPane(styles),
-		overlay:       NewOverlay(styles),
-		filterInput:   ti,
-		confirmInput:  ci,
-		patternInput:  pi,
-		currentPane:   PaneScenarios,
-		loading:       true,
+		paths:               paths,
+		styles:              styles,
+		keys:                keys,
+		info:                NewInfoPane(styles),
+		environment:         NewEnvironmentPane(styles),
+		scenariosPane:       NewScenariosPane(styles),
+		details:             NewDetailsPane(styles),
+		actions:             NewActionsPane(styles),
+		overlay:             NewOverlay(styles),
+		filterInput:         ti,
+		confirmInput:        ci,
+		patternInput:        pi,
+		disablePatternInput: di,
+		currentPane:         PaneScenarios,
+		loading:             true,
 	}
 
 	return m
@@ -733,6 +744,50 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle disable type choice
+	if m.choosingDisableType {
+		switch msg.String() {
+		case "a", "A", "1":
+			m.choosingDisableType = false
+			return m, m.executeDisableAll()
+		case "p", "P", "2":
+			m.choosingDisableType = false
+			m.enteringDisablePattern = true
+			m.disablePatternInput.SetValue("")
+			m.disablePatternInput.Focus()
+			return m, textinput.Blink
+		case "esc", "q":
+			m.choosingDisableType = false
+			return m, nil
+		}
+		// Ignore other keys while choosing
+		return m, nil
+	}
+
+	// Handle disable pattern entry
+	if m.enteringDisablePattern {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.enteringDisablePattern = false
+			m.disablePatternInput.Blur()
+			m.disablePatternInput.SetValue("")
+			return m, nil
+		case msg.Type == tea.KeyEnter:
+			pattern := m.disablePatternInput.Value()
+			m.enteringDisablePattern = false
+			m.disablePatternInput.Blur()
+			m.disablePatternInput.SetValue("")
+			if pattern != "" {
+				return m, m.executeDisablePattern(pattern)
+			}
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.disablePatternInput, cmd = m.disablePatternInput.Update(msg)
+			return m, cmd
+		}
+	}
+
 	// Handle filter mode
 	if m.filtering {
 		switch {
@@ -822,6 +877,9 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Enable):
 		return m, m.showEnableTypeChoice()
+
+	case key.Matches(msg, m.keys.Disable):
+		return m, m.showDisableTypeChoice()
 
 	case key.Matches(msg, m.keys.Config):
 		m.showConfig()
@@ -1386,6 +1444,108 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 	return nil
 }
 
+func (m *Model) showDisableTypeChoice() tea.Cmd {
+	m.choosingDisableType = true
+	return nil
+}
+
+func (m *Model) executeDisableAll() tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Disable All", "Configuration not loaded.")
+		return nil
+	}
+
+	disabledCount := 0
+	for _, s := range m.allScenarios {
+		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.DisableScenario(s.Terraform.VariableName)
+			disabledCount++
+		}
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+	m.updateInfoCounts()
+
+	msg := fmt.Sprintf("Disabled %d scenario(s).", disabledCount)
+	m.overlay.Show(OverlayInfo, "Disable All", msg)
+	return nil
+}
+
+func (m *Model) executeDisablePattern(pattern string) tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Disable Pattern", "Configuration not loaded.")
+		return nil
+	}
+
+	disabledCount := 0
+	var disabledNames []string
+
+	for _, s := range m.allScenarios {
+		if !m.matchesPattern(s.UniqueID(), pattern) && !m.matchesPattern(s.ID(), pattern) {
+			continue
+		}
+		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.DisableScenario(s.Terraform.VariableName)
+			disabledCount++
+			disabledNames = append(disabledNames, s.UniqueID())
+		}
+	}
+
+	if disabledCount == 0 {
+		m.overlay.Show(OverlayError, "Disable Pattern", fmt.Sprintf("No enabled scenarios match pattern: %s", pattern))
+		return nil
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+	m.updateInfoCounts()
+
+	// Show result
+	msg := fmt.Sprintf("Pattern: %s\n\nDisabled %d scenario(s):", pattern, disabledCount)
+	for i, name := range disabledNames {
+		if i >= 10 {
+			msg += fmt.Sprintf("\n  ... and %d more", len(disabledNames)-10)
+			break
+		}
+		msg += fmt.Sprintf("\n  - %s", name)
+	}
+	m.overlay.Show(OverlayInfo, "Disable Pattern", msg)
+	return nil
+}
+
 // matchesPattern checks if a string matches a glob pattern
 func (m *Model) matchesPattern(s, pattern string) bool {
 	matched, err := filepath.Match(pattern, s)
@@ -1904,6 +2064,16 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderEnablePatternBar()
 	}
 
+	// Disable type choice overlay
+	if m.choosingDisableType {
+		return content + "\n" + m.renderDisableTypeChoiceBar()
+	}
+
+	// Disable pattern input overlay
+	if m.enteringDisablePattern {
+		return content + "\n" + m.renderDisablePatternBar()
+	}
+
 	return content
 }
 
@@ -2099,6 +2269,31 @@ func (m *Model) renderEnablePatternBar() string {
 	return enableStyle.Render("ENABLE ") +
 		promptStyle.Render("Enter pattern: ") +
 		m.patternInput.View() +
+		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+func (m *Model) renderDisableTypeChoiceBar() string {
+	disableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	return disableStyle.Render("DISABLE ") +
+		promptStyle.Render("What to disable? ") +
+		keyStyle.Render("[a]") +
+		dimStyle.Render("ll scenarios  ") +
+		keyStyle.Render("[p]") +
+		dimStyle.Render("attern (e.g., iam-*, lambda-001)  ") +
+		dimStyle.Render("(Esc to cancel)")
+}
+
+func (m *Model) renderDisablePatternBar() string {
+	disableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+
+	return disableStyle.Render("DISABLE ") +
+		promptStyle.Render("Enter pattern: ") +
+		m.disablePatternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
 }
 

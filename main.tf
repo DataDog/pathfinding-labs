@@ -361,6 +361,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
@@ -372,6 +374,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
@@ -383,6 +387,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplate
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
@@ -416,6 +422,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
@@ -449,6 +457,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
@@ -460,6 +470,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_startta
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
@@ -482,6 +494,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_startta
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
@@ -735,6 +749,8 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
@@ -746,6 +762,8 @@ module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild" {
@@ -779,6 +797,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sen
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
@@ -790,6 +810,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
@@ -1093,6 +1115,8 @@ module "single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
@@ -1104,6 +1128,8 @@ module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 ##############################################################################
@@ -1249,6 +1275,8 @@ module "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 ##############################################################################
