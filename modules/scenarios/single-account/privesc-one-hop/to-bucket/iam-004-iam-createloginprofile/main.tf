@@ -47,20 +47,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowCreateLoginProfile"
+        Sid    = "RequiredForExploitationCreateLoginProfile"
         Effect = "Allow"
         Action = [
           "iam:CreateLoginProfile"
         ]
         Resource = aws_iam_user.hop1_user.arn
-      },
-      {
-        Sid    = "AllowGetCallerIdentity"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

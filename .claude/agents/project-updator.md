@@ -166,6 +166,27 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
 }
 ```
 
+**When the scenario declares `vpc_id` and `subnet_id` variables** (i.e., it deploys compute resources like EC2, ECS, SSM on EC2), also pass the environment VPC:
+
+```hcl
+module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
+  count  = var.enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} ? 1 : 0
+  source = "./{relative-path-to-scenario}"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+}
+```
+
+**How to detect**: Check if the scenario's `variables.tf` declares `vpc_id` and `subnet_id` variables.
+
 **WRONG** (do not do this):
 ```hcl
   providers = {
@@ -194,6 +215,29 @@ module "cross_account_dev_to_prod_{path_type}_{scenario_name}" {
 ```
 
 Note: Provider configuration depends on the `environments` field in scenario.yaml.
+
+#### Module Format for Scenarios with Attacker-Controlled Resources
+
+When a scenario has attacker-controlled S3 buckets (exploit scripts, payloads), the module needs the `aws.attacker` provider and `attacker_account_id`:
+
+```hcl
+module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun"
+
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+}
+```
+
+**How to detect**: Check if the scenario's `configuration_aliases` includes `aws.attacker`, or if the scenario has `attacker_account_id` in its variables.tf.
 
 #### Placement Strategy
 Find the appropriate section in main.tf:

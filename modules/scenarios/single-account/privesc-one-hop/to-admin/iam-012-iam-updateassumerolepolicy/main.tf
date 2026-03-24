@@ -41,7 +41,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowUpdateAssumeRolePolicy"
+        Sid    = "RequiredForExploitationUpdateAssumeRolePolicy"
         Effect = "Allow"
         Action = [
           "iam:UpdateAssumeRolePolicy"
@@ -49,23 +49,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.target_role.arn
       },
       {
-        Sid    = "AllowAssumeTargetRole"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
         Resource = aws_iam_role.target_role.arn
-      },
-      {
-        Sid    = "HelpfulPermissions"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser",
-          "iam:GetRole",
-          "iam:ListRoles"
-        ]
-        Resource = "*"
       }
     ]
   })

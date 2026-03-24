@@ -46,6 +46,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -53,20 +54,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.pipeline_role.arn
       },
       {
+        Sid    = "RequiredForExploitationDataPipeline"
         Effect = "Allow"
         Action = [
           "datapipeline:CreatePipeline",
           "datapipeline:PutPipelineDefinition",
-          "datapipeline:ActivatePipeline",
-          "datapipeline:DescribePipelines",
-          "datapipeline:GetPipelineDefinition"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "datapipeline:ActivatePipeline"
         ]
         Resource = "*"
       }

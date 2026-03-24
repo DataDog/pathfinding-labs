@@ -233,8 +233,29 @@ Compare script variables to Terraform outputs:
 - No verification of initial lack of permissions
 - Missing error handling
 
-#### Validate permisisons used in demo script
-For any command used in the demo script, make sure that the princpial executing that command has those permissions in terraform. If the permission is missing, add it to the helpful permissions statement. 
+#### Validate permissions used in demo script
+For any command used in the demo script, determine whether it is an exploit step or an observation step:
+- **Exploit steps** should use starting user credentials. Verify the starting user has the required permissions in Terraform (`starting_user_required` or `starting_user_policy`).
+- **Observation steps** (polling, listing, status checks, VPC discovery, policy verification) should use readonly credentials via `use_readonly_creds()`. These do NOT need permissions on the starting user.
+- Validate that the demo script contains `use_starting_creds()` and `use_readonly_creds()` helper functions (or the `use_starting_user_creds()` variant).
+- Validate that the starting user does NOT have a `starting_user_helpful` policy -- if one exists, flag it for removal.
+
+#### Validate minimal permissions pattern (CRITICAL)
+Check that the starting user's IAM policies in main.tf do NOT contain any of the following:
+- `sts:GetCallerIdentity` -- identity checks use the readonly user
+- Sids containing `HelpfulForDemoScript` or `helpfulAdditionalPermissions`
+- Separate `starting_user_helpful` policy resources
+- Observation-only actions that should use readonly creds: `Describe*`, `List*`, `Get*` for non-exploit purposes (e.g., `glue:GetJobRun`, `ec2:DescribeVpcs`, `sagemaker:DescribeTrainingJob`, `iam:ListUsers`, `iam:ListAttachedUserPolicies`, `codebuild:BatchGetBuilds`, `cloudformation:DescribeStacks`)
+
+Sids should follow the `RequiredForExploitation{Purpose}` naming pattern.
+
+#### Validate attacker provider pattern (if applicable)
+If the scenario has attacker-controlled S3 buckets (exploit scripts, payloads):
+- Verify `aws.attacker` is in `configuration_aliases`
+- Verify attacker S3 resources use `provider = aws.attacker`
+- Verify bucket names use `var.attacker_account_id` (not `var.account_id`)
+- Verify `attacker_account_id` variable exists in variables.tf
+- Verify the root main.tf passes `aws.attacker = aws.attacker` and `attacker_account_id = local.attacker_account_id`
 
 ### 4. Cleanup Script Validation
 

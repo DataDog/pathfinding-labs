@@ -38,21 +38,7 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 # Get default VPC for simplicity
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
 # Get default subnets
-data "aws_subnets" "default" {
-  provider = aws.prod
-
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # ==============================================================================
 # TARGET S3 BUCKET
 # ==============================================================================
@@ -146,16 +132,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "BasicIdentityPermissions"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "SSMSendCommandForPrivesc"
+        Sid    = "RequiredForExploitationSSMSendCommand"
         Effect = "Allow"
         Action = [
           "ssm:SendCommand"
@@ -164,17 +141,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           aws_instance.target.arn,
           "arn:aws:ssm:*:*:document/AWS-RunShellScript"
         ]
-      },
-      {
-        Sid    = "SSMHelpfulForDemo"
-        Effect = "Allow"
-        Action = [
-          "ssm:ListCommands",
-          "ssm:ListCommandInvocations",
-          "ssm:DescribeInstanceInformation",
-          "ec2:DescribeInstances"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -269,7 +235,7 @@ resource "aws_security_group" "target_instance" {
   provider    = aws.prod
   name        = "pl-prod-ssm-002-to-bucket-sg"
   description = "Security group for SSM SendCommand scenario target instance"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   egress {
     from_port   = 0
@@ -293,7 +259,7 @@ resource "aws_instance" "target" {
   ami                  = data.aws_ami.amazon_linux_2023.id
   instance_type        = "t3.micro"
   iam_instance_profile = aws_iam_instance_profile.ec2_bucket.name
-  subnet_id            = tolist(data.aws_subnets.default.ids)[0]
+  subnet_id            = var.subnet_id
   vpc_security_group_ids = [
     aws_security_group.target_instance.id
   ]

@@ -37,6 +37,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAttachRolePolicy"
         Effect = "Allow"
         Action = [
           "iam:AttachRolePolicy"
@@ -44,21 +45,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-iam-014-to-admin-target-role"
       },
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-iam-014-to-admin-target-role"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:ListRoles",
-          "iam:GetRole",
-          "iam:ListAttachedRolePolicies"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -89,25 +81,4 @@ resource "aws_iam_role" "target_role" {
     Scenario    = "iam-attachrolepolicy+sts-assumerole"
     Purpose     = "target-role"
   }
-}
-
-# Minimal initial policy for the target role (read-only)
-# This demonstrates that the role starts with minimal permissions
-resource "aws_iam_role_policy" "target_role_minimal_policy" {
-  provider = aws.prod
-  name     = "pl-prod-iam-014-to-admin-minimal-policy"
-  role     = aws_iam_role.target_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
 }

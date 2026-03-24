@@ -27,7 +27,7 @@ resource "aws_iam_access_key" "starting_user" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Basic policy for starting user (allows assuming the admin role)
+# Policy for starting user with required permissions only
 resource "aws_iam_user_policy" "starting_user_basic" {
   provider = aws.prod
   name     = "pl-prod-sts-001-to-admin-starting-user-policy"
@@ -37,14 +37,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"

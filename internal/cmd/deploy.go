@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -14,9 +15,10 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy enabled scenarios to AWS",
-	Long: `Deploy all enabled scenarios to your AWS account(s).
+	Use:     "apply",
+	Aliases: []string{"deploy"},
+	Short:   "Apply enabled scenarios to AWS",
+	Long: `Apply all enabled scenarios to your AWS account(s).
 
 This runs 'terraform apply' to create the AWS resources for enabled scenarios.
 
@@ -56,8 +58,30 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	dim := color.New(color.Faint).SprintFunc()
 
+	// Create runner early so bootstrap can use it
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+
+	// Bootstrap attacker IAM user if needed
+	if cfg.HasAttackerAccount() && cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.IAMAccessKeyID == "" {
+		fmt.Println()
+		fmt.Println(cyan("Bootstrapping attacker account IAM admin user..."))
+		fmt.Println()
+
+		if err := bootstrapAttackerIAMUser(runner, cfg); err != nil {
+			return fmt.Errorf("attacker IAM user bootstrap failed: %w", err)
+		}
+
+		// Re-sync tfvars now that bootstrap credentials are stored
+		if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+			return fmt.Errorf("failed to sync tfvars after bootstrap: %w", err)
+		}
+
+		fmt.Println(green("Attacker IAM admin user bootstrapped successfully."))
+		fmt.Println()
+	}
+
 	fmt.Println()
-	fmt.Println(cyan("Deploying Pathfinding Labs..."))
+	fmt.Println(cyan("Applying Pathfinding Labs..."))
 
 	// Show mode indicator only in dev mode
 	if cfg.DevMode {
@@ -79,9 +103,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Show terraform directory
 	fmt.Printf("%s Terraform directory: %s\n", dim("->"), paths.TerraformDir)
 	fmt.Println()
-
-	// Create runner
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 
 	// Ensure terraform is initialized
 	if !runner.IsInitialized() {
@@ -112,7 +133,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		response = strings.ToLower(strings.TrimSpace(response))
 		if response != "y" && response != "yes" {
-			fmt.Println("Deployment cancelled.")
+			fmt.Println("Apply cancelled.")
 			return nil
 		}
 	}
@@ -128,12 +149,72 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println(green("========================================================"))
-	fmt.Println(green("  Deployment complete!"))
+	fmt.Println(green("  Apply complete!"))
 	fmt.Println(green("========================================================"))
 	fmt.Println()
 	fmt.Printf("Run %s to see deployment status\n", cyan("plabs status"))
 	fmt.Printf("Run %s to run a demo attack\n", cyan("plabs demo <scenario-id>"))
 	fmt.Println()
+
+	return nil
+}
+
+// bootstrapAttackerIAMUser performs the one-time bootstrap of the attacker IAM admin user.
+// It uses the setup profile to deploy the attacker environment module, extracts the
+// generated IAM credentials, and stores them in the config for future use.
+func bootstrapAttackerIAMUser(runner *terraform.Runner, cfg *config.Config) error {
+	// Ensure terraform is initialized before bootstrap
+	if !runner.IsInitialized() {
+		if err := runner.Init(); err != nil {
+			return fmt.Errorf("terraform init failed: %w", err)
+		}
+	}
+
+	// Apply only the attacker environment module
+	if err := runner.ApplyTarget("module.attacker_environment", true); err != nil {
+		return fmt.Errorf("failed to apply attacker environment: %w", err)
+	}
+
+	// Extract credentials from terraform output
+	outputJSON, err := runner.OutputJSON()
+	if err != nil {
+		return fmt.Errorf("failed to read terraform outputs: %w", err)
+	}
+
+	var outputs map[string]struct {
+		Value     interface{} `json:"value"`
+		Sensitive bool        `json:"sensitive"`
+	}
+	if err := json.Unmarshal([]byte(outputJSON), &outputs); err != nil {
+		return fmt.Errorf("failed to parse terraform outputs: %w", err)
+	}
+
+	accessKeyOutput, ok := outputs["attacker_admin_user_access_key_id"]
+	if !ok {
+		return fmt.Errorf("attacker_admin_user_access_key_id output not found")
+	}
+	secretKeyOutput, ok := outputs["attacker_admin_user_secret_access_key"]
+	if !ok {
+		return fmt.Errorf("attacker_admin_user_secret_access_key output not found")
+	}
+
+	accessKeyID, ok := accessKeyOutput.Value.(string)
+	if !ok || accessKeyID == "" {
+		return fmt.Errorf("attacker_admin_user_access_key_id output is empty or not a string")
+	}
+	secretKey, ok := secretKeyOutput.Value.(string)
+	if !ok || secretKey == "" {
+		return fmt.Errorf("attacker_admin_user_secret_access_key output is empty or not a string")
+	}
+
+	// Store credentials in config
+	cfg.AWS.Attacker.IAMAccessKeyID = accessKeyID
+	cfg.AWS.Attacker.IAMSecretKey = secretKey
+
+	// Save updated config
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config with attacker credentials: %w", err)
+	}
 
 	return nil
 }

@@ -68,59 +68,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "ecs:CreateService"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Helpful additional permissions for demonstration and cleanup
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-003-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "helpfulAdditionalPermissions"
-        Effect = "Allow"
-        Action = [
-          "ecs:DescribeServices",
-          "ecs:DescribeTasks",
-          "ecs:DeleteService",
-          "ecs:UpdateService",
-          "ecs:DeregisterTaskDefinition",
-          "ecs:ListTasks",
-          "ecs:StopTask"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "networkDiscoveryPermissions"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "selfCleanupPermissions"
-        Effect = "Allow"
-        Action = [
-          "iam:DetachUserPolicy",
-          "iam:ListAttachedUserPolicies"
-        ]
-        Resource = aws_iam_user.starting_user.arn
       }
     ]
   })

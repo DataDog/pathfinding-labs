@@ -46,33 +46,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationUpdateService"
         Effect = "Allow"
         Action = [
           "apprunner:UpdateService"
         ]
         Resource = "arn:aws:apprunner:*:${var.account_id}:service/pl-apprunner-002-to-admin/*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "apprunner:DescribeService",
-          "apprunner:ListServices"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

@@ -10,8 +10,9 @@ terraform {
 locals {
   # Fall back to prod profile when dev/ops profiles are not configured
   # This allows single-account mode to work without errors
-  effective_dev_profile = coalesce(var.dev_account_aws_profile, var.prod_account_aws_profile)
-  effective_ops_profile = coalesce(var.operations_account_aws_profile, var.prod_account_aws_profile)
+  effective_dev_profile      = coalesce(var.dev_account_aws_profile, var.prod_account_aws_profile)
+  effective_ops_profile      = coalesce(var.operations_account_aws_profile, var.prod_account_aws_profile)
+  effective_attacker_profile = coalesce(var.attacker_account_aws_profile, var.prod_account_aws_profile)
 }
 
 provider "aws" {
@@ -32,6 +33,14 @@ provider "aws" {
   region  = var.aws_region
 }
 
+provider "aws" {
+  alias      = "attacker"
+  profile    = var.attacker_account_use_iam_user ? null : local.effective_attacker_profile
+  access_key = var.attacker_account_use_iam_user ? var.attacker_iam_user_access_key : null
+  secret_key = var.attacker_account_use_iam_user ? var.attacker_iam_user_secret_key : null
+  region     = var.aws_region
+}
+
 # =============================================================================
 # AUTOMATIC ACCOUNT ID DISCOVERY
 # =============================================================================
@@ -50,12 +59,17 @@ data "aws_caller_identity" "operations" {
   provider = aws.operations
 }
 
+data "aws_caller_identity" "attacker" {
+  provider = aws.attacker
+}
+
 locals {
   # Derive account IDs from the configured profiles
   # If a user provides an explicit account ID variable, use that instead (for backward compatibility)
   prod_account_id       = var.prod_account_id != "" ? var.prod_account_id : data.aws_caller_identity.prod.account_id
   dev_account_id        = var.dev_account_id != "" ? var.dev_account_id : data.aws_caller_identity.dev.account_id
   operations_account_id = var.operations_account_id != "" ? var.operations_account_id : data.aws_caller_identity.operations.account_id
+  attacker_account_id   = var.attacker_account_id != "" ? var.attacker_account_id : data.aws_caller_identity.attacker.account_id
 }
 
 # Random suffix for globally namespaced resources to prevent conflicts
@@ -123,6 +137,17 @@ module "ops_environment" {
   enable_budget_alerts = var.enable_budget_alerts
   budget_alert_email   = var.budget_alert_email
   budget_limit_usd     = var.budget_limit_usd
+}
+
+# Attacker environment is optional (for adversary-controlled resources)
+module "attacker_environment" {
+  count  = var.enable_attacker_environment ? 1 : 0
+  source = "./modules/environments/attacker"
+  providers = {
+    aws = aws.attacker
+  }
+  attacker_account_id = local.attacker_account_id
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 ##############################################################################
@@ -336,6 +361,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
@@ -347,6 +374,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
@@ -358,6 +387,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplate
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
@@ -391,6 +422,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
@@ -424,6 +457,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
@@ -435,6 +470,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_startta
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
@@ -457,6 +494,8 @@ module "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_startta
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
@@ -710,6 +749,8 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
@@ -721,6 +762,8 @@ module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild" {
@@ -754,6 +797,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sen
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
@@ -765,6 +810,8 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
@@ -793,44 +840,52 @@ module "single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_creat
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-004-iam-passrole+glue-createjob+glue-createtrigger"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-005-iam-passrole+glue-updatejob+glue-startjobrun"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-006-iam-passrole+glue-updatejob+glue-createtrigger"
   providers = {
-    aws.prod = aws.prod
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement" {
@@ -1060,6 +1115,8 @@ module "single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
@@ -1071,6 +1128,8 @@ module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 ##############################################################################
@@ -1216,6 +1275,8 @@ module "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  vpc_id    = module.prod_environment[0].vpc_id
+  subnet_id = module.prod_environment[0].subnet1_id
 }
 
 ##############################################################################

@@ -34,7 +34,7 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Policy for the starting user - can start build batches and discover projects
+# Policy for the starting user - only the permission required to perform the exploit
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-codebuild-003-to-admin-starting-user-policy"
@@ -44,19 +44,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationStartBuildBatch"
         Effect = "Allow"
         Action = [
-          "codebuild:StartBuildBatch",
-          "codebuild:BatchGetBuildBatches",
-          "codebuild:ListProjects",
-          "codebuild:BatchGetProjects"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "codebuild:StartBuildBatch"
         ]
         Resource = "*"
       }

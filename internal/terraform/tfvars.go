@@ -77,20 +77,21 @@ func (t *TFVars) ListEnabledScenarios() ([]string, error) {
 
 // GetEnabledEnvironments returns the enabled state of each environment
 // by reading the terraform.tfvars file.
-func (t *TFVars) GetEnabledEnvironments() (prod, dev, ops bool, err error) {
+func (t *TFVars) GetEnabledEnvironments() (prod, dev, ops, attacker bool, err error) {
 	if !t.Exists() {
-		return true, false, false, nil // Default: only prod enabled
+		return true, false, false, false, nil // Default: only prod enabled
 	}
 
 	content, err := t.readContent()
 	if err != nil {
-		return false, false, false, err
+		return false, false, false, false, err
 	}
 
 	// Parse environment enabled flags
 	prodPattern := regexp.MustCompile(`(?m)^\s*enable_prod_environment\s*=\s*(true|false)`)
 	devPattern := regexp.MustCompile(`(?m)^\s*enable_dev_environment\s*=\s*(true|false)`)
 	opsPattern := regexp.MustCompile(`(?m)^\s*enable_ops_environment\s*=\s*(true|false)`)
+	attackerPattern := regexp.MustCompile(`(?m)^\s*enable_attacker_environment\s*=\s*(true|false)`)
 
 	// Default prod to true if not specified
 	prod = true
@@ -106,7 +107,11 @@ func (t *TFVars) GetEnabledEnvironments() (prod, dev, ops bool, err error) {
 		ops = matches[1] == "true"
 	}
 
-	return prod, dev, ops, nil
+	if matches := attackerPattern.FindStringSubmatch(content); len(matches) == 2 {
+		attacker = matches[1] == "true"
+	}
+
+	return prod, dev, ops, attacker, nil
 }
 
 // GetProfiles returns the AWS profiles configured in tfvars

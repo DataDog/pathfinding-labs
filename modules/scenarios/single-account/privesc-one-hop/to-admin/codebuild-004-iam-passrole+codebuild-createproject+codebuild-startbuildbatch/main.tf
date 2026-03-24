@@ -46,6 +46,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -53,25 +54,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.target_role.arn
       },
       {
+        Sid    = "RequiredForExploitationCodeBuild"
         Effect = "Allow"
         Action = [
           "codebuild:CreateProject",
-          "codebuild:StartBuildBatch",
-          "codebuild:BatchGetBuilds",
-          "codebuild:BatchGetBuildBatches",
-          "codebuild:ListProjects"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["iam:ListRoles"]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "codebuild:StartBuildBatch"
         ]
         Resource = "*"
       }

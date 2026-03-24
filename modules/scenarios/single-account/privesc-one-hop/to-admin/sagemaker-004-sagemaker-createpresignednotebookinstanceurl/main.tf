@@ -45,21 +45,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationCreatePresignedUrl"
         Effect = "Allow"
         Action = [
           "sagemaker:CreatePresignedNotebookInstanceUrl"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "sagemaker:ListNotebookInstances",
-          "sagemaker:DescribeNotebookInstance",
-          "iam:GetRole",
-          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }

@@ -373,14 +373,10 @@ resource "aws_iam_user_policy" "starting_user" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "RequiredForExploitationAssumeRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-epe-role-*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = "sts:GetCallerIdentity"
-        Resource = "*"
       }
     ]
   })

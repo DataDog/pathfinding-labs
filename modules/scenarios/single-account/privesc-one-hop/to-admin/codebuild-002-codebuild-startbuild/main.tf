@@ -49,28 +49,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "BasicIdentityPermissions"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "CodeBuildStartBuildForPrivesc"
+        Sid    = "RequiredForExploitationStartBuild"
         Effect = "Allow"
         Action = [
           "codebuild:StartBuild"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "CodeBuildHelpfulForDemo"
-        Effect = "Allow"
-        Action = [
-          "codebuild:ListProjects",
-          "codebuild:BatchGetProjects",
-          "codebuild:BatchGetBuilds"
         ]
         Resource = "*"
       }

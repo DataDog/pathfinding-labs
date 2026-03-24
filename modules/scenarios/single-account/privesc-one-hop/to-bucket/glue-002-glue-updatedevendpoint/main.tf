@@ -38,7 +38,7 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Policy allowing UpdateDevEndpoint and discovery permissions
+# Policy with required permissions for exploitation
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-glue-002-to-bucket-starting-user-policy"
@@ -48,18 +48,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationGlue"
         Effect = "Allow"
         Action = [
-          "glue:UpdateDevEndpoint",
-          "glue:GetDevEndpoint",
-          "glue:GetDevEndpoints"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "glue:UpdateDevEndpoint"
         ]
         Resource = "*"
       }

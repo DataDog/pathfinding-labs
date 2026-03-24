@@ -28,6 +28,7 @@ type Overlay struct {
 	title        string
 	content      []string
 	isRunning    bool
+	wasRunning   bool
 	width        int
 	height       int
 	scroll       int
@@ -57,6 +58,7 @@ func (o *Overlay) ShowRunning(overlayType OverlayType, title string) {
 	o.title = title
 	o.content = []string{"Running..."}
 	o.isRunning = true
+	o.wasRunning = true
 	o.scroll = 0
 }
 
@@ -85,6 +87,7 @@ func (o *Overlay) Hide() {
 	o.content = nil
 	o.title = ""
 	o.isRunning = false
+	o.wasRunning = false
 }
 
 // IsVisible returns whether the overlay is visible
@@ -219,8 +222,10 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 	sb.WriteString("\n")
 	if o.isRunning {
 		sb.WriteString(o.styles.OverlayDimmed.Render("Running... (↑/↓ scroll, Esc cancel)"))
+	} else if o.wasRunning {
+		sb.WriteString(o.styles.OverlayDimmed.Render("[Done - press Enter to close]"))
 	} else {
-		sb.WriteString(o.styles.OverlayDimmed.Render("[Press Esc to close]"))
+		sb.WriteString(o.styles.OverlayDimmed.Render("[Press Enter to close]"))
 	}
 
 	// Apply overlay style
@@ -334,7 +339,7 @@ func (o *Overlay) RenderHelpOverlay() string {
 			keys: [][]string{
 				{"Space", "Toggle scenario enabled/disabled"},
 				{"e", "Enable scenarios (all or by pattern)"},
-				{"d", "Deploy scenarios and environments"},
+				{"a", "Apply (deploy scenarios and environments)"},
 				{"p", "Plan (preview changes)"},
 				{"r", "Run attack demo"},
 				{"c", "Cleanup attack demo artifacts"},

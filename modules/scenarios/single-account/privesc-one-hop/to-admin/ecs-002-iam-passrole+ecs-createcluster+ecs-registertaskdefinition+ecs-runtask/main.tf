@@ -49,7 +49,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions"
+        Sid    = "RequiredForExploitationECS"
         Effect = "Allow"
         Action = [
           "ecs:CreateCluster",
@@ -59,28 +59,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "requiredPassRole"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
         ]
         Resource = aws_iam_role.target_role.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ecs:DescribeTasks",
-          "ecs:StopTask",
-          "ecs:DeregisterTaskDefinition",
-          "ecs:DeleteCluster",
-          "iam:ListAttachedUserPolicies",
-          "iam:DetachUserPolicy",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

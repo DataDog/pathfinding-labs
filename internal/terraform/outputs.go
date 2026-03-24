@@ -148,9 +148,10 @@ func (o Outputs) GetDeployedScenarios() []string {
 }
 
 // GetAccountIDs returns the derived account IDs from terraform outputs
-func (o Outputs) GetAccountIDs() (prod, dev, ops string) {
+func (o Outputs) GetAccountIDs() (prod, dev, ops, attacker string) {
 	prod, _ = o.Get("prod_account_id")
 	dev, _ = o.Get("dev_account_id")
 	ops, _ = o.Get("operations_account_id")
-	return prod, dev, ops
+	attacker, _ = o.Get("attacker_account_id")
+	return prod, dev, ops, attacker
 }

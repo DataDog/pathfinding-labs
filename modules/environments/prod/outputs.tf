@@ -21,6 +21,18 @@ output "admin_user_for_cleanup_secret_access_key" {
   sensitive   = true
 }
 
+output "readonly_user_access_key_id" {
+  description = "Access key ID for the readonly user in prod environment"
+  value       = aws_iam_access_key.readonly_user.id
+  sensitive   = true
+}
+
+output "readonly_user_secret_access_key" {
+  description = "Secret access key for the readonly user in prod environment"
+  value       = aws_iam_access_key.readonly_user.secret
+  sensitive   = true
+}
+
 output "apprunner_service_linked_role_id" {
   description = "ID of the App Runner service-linked role"
   value       = aws_iam_service_linked_role.apprunner.id

@@ -46,7 +46,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -54,7 +54,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-lambda-006-to-admin-target-role"
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationLambda"
         Effect = "Allow"
         Action = [
           "lambda:CreateFunction",
@@ -64,21 +64,10 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "requiredPermissions3"
+        Sid    = "RequiredForExploitationIdentity"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles",
-          "lambda:GetFunction",
-          "lambda:GetPolicy",
-          "lambda:DeleteFunction"
         ]
         Resource = "*"
       }

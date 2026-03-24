@@ -20,6 +20,18 @@ output "pathfinding_starting_user_secret_access_key" {
   sensitive   = true
 }
 
+output "readonly_user_access_key_id" {
+  description = "Access key ID for the readonly user in operations environment"
+  value       = aws_iam_access_key.readonly_user.id
+  sensitive   = true
+}
+
+output "readonly_user_secret_access_key" {
+  description = "Secret access key for the readonly user in operations environment"
+  value       = aws_iam_access_key.readonly_user.secret
+  sensitive   = true
+}
+
 output "admin_user_for_cleanup_name" {
   description = "Name of the admin user for cleanup scripts in operations environment"
   value       = aws_iam_user.admin_user_for_cleanup.name

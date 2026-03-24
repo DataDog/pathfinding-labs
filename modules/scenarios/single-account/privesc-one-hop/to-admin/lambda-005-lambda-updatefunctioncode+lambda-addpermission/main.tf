@@ -49,31 +49,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationLambda"
         Effect = "Allow"
         Action = [
           "lambda:UpdateFunctionCode",
           "lambda:AddPermission"
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.id}:${var.account_id}:function:pl-prod-lambda-005-to-admin-target-lambda"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "lambda:GetFunction",
-          "lambda:GetPolicy",
-          "lambda:ListFunctions"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions2"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

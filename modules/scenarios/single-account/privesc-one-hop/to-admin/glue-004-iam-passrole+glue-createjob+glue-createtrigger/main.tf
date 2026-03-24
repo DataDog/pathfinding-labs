@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      configuration_aliases = [aws.prod]
+      configuration_aliases = [aws.prod, aws.attacker]
     }
   }
 }
@@ -35,13 +35,13 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# S3 bucket for Glue job scripts
+# S3 bucket for Glue job scripts (attacker-controlled)
 resource "aws_s3_bucket" "script_bucket" {
-  provider = aws.prod
-  bucket   = "pl-glue-scripts-glue-004-${var.account_id}-${var.resource_suffix}"
+  provider = aws.attacker
+  bucket   = "pl-glue-scripts-glue-004-${var.attacker_account_id}-${var.resource_suffix}"
 
   tags = {
-    Name        = "pl-glue-scripts-glue-004-${var.account_id}-${var.resource_suffix}"
+    Name        = "pl-glue-scripts-glue-004-${var.attacker_account_id}-${var.resource_suffix}"
     Environment = var.environment
     Scenario    = "iam-passrole+glue-createjob+glue-createtrigger"
     Purpose     = "glue-job-scripts"
@@ -50,7 +50,7 @@ resource "aws_s3_bucket" "script_bucket" {
 
 # Block public access to the script bucket
 resource "aws_s3_bucket_public_access_block" "script_bucket_pab" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
 
   block_public_acls       = true
@@ -61,7 +61,7 @@ resource "aws_s3_bucket_public_access_block" "script_bucket_pab" {
 
 # Upload the attack script to S3
 resource "aws_s3_object" "attack_script" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
   key      = "escalation_script.py"
   content  = <<-EOT
@@ -88,10 +88,10 @@ EOT
   }
 }
 
-# Bucket policy granting read access to all principals in the account
+# Bucket policy granting read access to all principals in the prod account
 # This simulates an attacker-controlled bucket that grants access to specific accounts
 resource "aws_s3_bucket_policy" "script_bucket_policy" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.script_bucket.id
 
   policy = jsonencode({
@@ -122,6 +122,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -129,21 +130,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.target_role.arn
       },
       {
+        Sid    = "RequiredForExploitationGlue"
         Effect = "Allow"
         Action = [
           "glue:CreateJob",
-          "glue:CreateTrigger",
-          "glue:GetJob",
-          "glue:GetTrigger",
-          "glue:GetJobRun",
-          "glue:GetJobRuns"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "glue:CreateTrigger"
         ]
         Resource = "*"
       }

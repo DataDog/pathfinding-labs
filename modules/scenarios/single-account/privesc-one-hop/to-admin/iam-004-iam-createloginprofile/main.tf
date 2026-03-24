@@ -43,14 +43,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -118,22 +111,12 @@ resource "aws_iam_role_policy" "starting_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowCreateLoginProfile"
+        Sid    = "RequiredForExploitationCreateLoginProfile"
         Effect = "Allow"
         Action = [
-          "iam:CreateLoginProfile",
-          "iam:GetLoginProfile" # To check if login profile exists
+          "iam:CreateLoginProfile"
         ]
         Resource = aws_iam_user.admin_user.arn
-      },
-      {
-        Sid    = "AllowSelfIdentification"
-        Effect = "Allow"
-        Action = [
-          "iam:GetUser",          # To get user details
-          "sts:GetCallerIdentity" # For identity verification
-        ]
-        Resource = "*"
       }
     ]
   })

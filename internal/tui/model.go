@@ -72,6 +72,11 @@ type Model struct {
 	enteringPattern    bool            // true when entering a pattern
 	patternInput       textinput.Model // input for pattern entry
 
+	// Disable operation state
+	choosingDisableType bool            // true when showing disable type choice
+	enteringDisablePattern bool         // true when entering a disable pattern
+	disablePatternInput    textinput.Model // input for disable pattern entry
+
 	// Simple action confirmation state (for deploy, demo, cleanup, plan)
 	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
 	pendingScenarioID  string // scenario ID for demo/cleanup actions
@@ -169,21 +174,27 @@ func NewModel(paths *repo.Paths) *Model {
 	pi.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
 	pi.CharLimit = 50
 
+	// Pattern input for disable operations
+	di := textinput.New()
+	di.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
+	di.CharLimit = 50
+
 	m := &Model{
-		paths:         paths,
-		styles:        styles,
-		keys:          keys,
-		info:          NewInfoPane(styles),
-		environment:   NewEnvironmentPane(styles),
-		scenariosPane: NewScenariosPane(styles),
-		details:       NewDetailsPane(styles),
-		actions:       NewActionsPane(styles),
-		overlay:       NewOverlay(styles),
-		filterInput:   ti,
-		confirmInput:  ci,
-		patternInput:  pi,
-		currentPane:   PaneScenarios,
-		loading:       true,
+		paths:               paths,
+		styles:              styles,
+		keys:                keys,
+		info:                NewInfoPane(styles),
+		environment:         NewEnvironmentPane(styles),
+		scenariosPane:       NewScenariosPane(styles),
+		details:             NewDetailsPane(styles),
+		actions:             NewActionsPane(styles),
+		overlay:             NewOverlay(styles),
+		filterInput:         ti,
+		confirmInput:        ci,
+		patternInput:        pi,
+		disablePatternInput: di,
+		currentPane:         PaneScenarios,
+		loading:             true,
 	}
 
 	return m
@@ -301,18 +312,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.environment.SetConfig(cfg)
 
 		// Load enabled states for environments
+		var attackerEnabled bool
 		if m.tfvars != nil {
-			prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
-			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled)
+			var prodEnabled, devEnabled, opsEnabled bool
+			prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ = m.tfvars.GetEnabledEnvironments()
+			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled, attackerEnabled)
 		}
 
 		// Load deployed states for environments
 		if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 			deployed := m.tfRunner.GetDeployedModules()
+			// Attacker module has no resources in state (it's a pass-through),
+			// so treat it as deployed when enabled and terraform is initialized
+			attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 			m.environment.SetDeploymentStatus(
 				deployed["prod_environment"],
 				deployed["dev_environment"],
 				deployed["ops_environment"],
+				attackerDeployed,
 			)
 		}
 
@@ -361,8 +378,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Set derived account IDs from terraform outputs
 		if msg.outputs != nil {
-			prodID, devID, opsID := msg.outputs.GetAccountIDs()
-			m.environment.SetDerivedAccountIDs(prodID, devID, opsID)
+			prodID, devID, opsID, attackerID := msg.outputs.GetAccountIDs()
+			m.environment.SetDerivedAccountIDs(prodID, devID, opsID, attackerID)
 		}
 
 		// Done loading (UI is ready, resources will load in background)
@@ -436,8 +453,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.overlay.SetComplete()
 		if msg.err != nil {
 			m.overlay.AppendContent(fmt.Sprintf("\n[Error: %v]", msg.err))
-		} else {
-			m.overlay.AppendContent("\n[Done - press Esc to close]")
 		}
 		// Ensure the done message is visible
 		m.overlay.ScrollToBottom()
@@ -532,6 +547,11 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.runningCmd.Process.Kill()
 				m.runningCmd = nil
 			}
+			m.overlay.Hide()
+			return m, nil
+		}
+		// Enter also closes overlay when command is complete (not running)
+		if msg.String() == "enter" && m.runningCmd == nil {
 			m.overlay.Hide()
 			return m, nil
 		}
@@ -724,6 +744,50 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle disable type choice
+	if m.choosingDisableType {
+		switch msg.String() {
+		case "a", "A", "1":
+			m.choosingDisableType = false
+			return m, m.executeDisableAll()
+		case "p", "P", "2":
+			m.choosingDisableType = false
+			m.enteringDisablePattern = true
+			m.disablePatternInput.SetValue("")
+			m.disablePatternInput.Focus()
+			return m, textinput.Blink
+		case "esc", "q":
+			m.choosingDisableType = false
+			return m, nil
+		}
+		// Ignore other keys while choosing
+		return m, nil
+	}
+
+	// Handle disable pattern entry
+	if m.enteringDisablePattern {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.enteringDisablePattern = false
+			m.disablePatternInput.Blur()
+			m.disablePatternInput.SetValue("")
+			return m, nil
+		case msg.Type == tea.KeyEnter:
+			pattern := m.disablePatternInput.Value()
+			m.enteringDisablePattern = false
+			m.disablePatternInput.Blur()
+			m.disablePatternInput.SetValue("")
+			if pattern != "" {
+				return m, m.executeDisablePattern(pattern)
+			}
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.disablePatternInput, cmd = m.disablePatternInput.Update(msg)
+			return m, cmd
+		}
+	}
+
 	// Handle filter mode
 	if m.filtering {
 		switch {
@@ -813,6 +877,9 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Enable):
 		return m, m.showEnableTypeChoice()
+
+	case key.Matches(msg, m.keys.Disable):
+		return m, m.showDisableTypeChoice()
 
 	case key.Matches(msg, m.keys.Config):
 		m.showConfig()
@@ -1032,8 +1099,9 @@ func (m *Model) runDeploy() tea.Cmd {
 }
 
 func (m *Model) executeDeploy() tea.Cmd {
-	m.overlay.ShowRunning(OverlayTerraform, "Deploy")
+	m.overlay.ShowRunning(OverlayTerraform, "Apply")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1046,6 +1114,7 @@ func (m *Model) runPlan() tea.Cmd {
 func (m *Model) executePlan() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1240,12 +1309,14 @@ func (m *Model) executeDestroyScenarios() tea.Cmd {
 
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy Scenarios")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform apply -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
 func (m *Model) executeDestroyAll() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy All")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform destroy -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1377,6 +1448,108 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 	return nil
 }
 
+func (m *Model) showDisableTypeChoice() tea.Cmd {
+	m.choosingDisableType = true
+	return nil
+}
+
+func (m *Model) executeDisableAll() tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Disable All", "Configuration not loaded.")
+		return nil
+	}
+
+	disabledCount := 0
+	for _, s := range m.allScenarios {
+		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.DisableScenario(s.Terraform.VariableName)
+			disabledCount++
+		}
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+	m.updateInfoCounts()
+
+	msg := fmt.Sprintf("Disabled %d scenario(s).", disabledCount)
+	m.overlay.Show(OverlayInfo, "Disable All", msg)
+	return nil
+}
+
+func (m *Model) executeDisablePattern(pattern string) tea.Cmd {
+	if m.config == nil {
+		m.overlay.Show(OverlayError, "Disable Pattern", "Configuration not loaded.")
+		return nil
+	}
+
+	disabledCount := 0
+	var disabledNames []string
+
+	for _, s := range m.allScenarios {
+		if !m.matchesPattern(s.UniqueID(), pattern) && !m.matchesPattern(s.ID(), pattern) {
+			continue
+		}
+		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.DisableScenario(s.Terraform.VariableName)
+			disabledCount++
+			disabledNames = append(disabledNames, s.UniqueID())
+		}
+	}
+
+	if disabledCount == 0 {
+		m.overlay.Show(OverlayError, "Disable Pattern", fmt.Sprintf("No enabled scenarios match pattern: %s", pattern))
+		return nil
+	}
+
+	// Save config and sync tfvars
+	if err := m.config.Save(); err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Refresh the scenarios pane
+	items := m.scenariosPane.GetItems()
+	enabledVars := m.config.GetEnabledScenarioVars()
+	for i := range items {
+		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
+	}
+	m.scenariosPane.SetScenarios(items)
+	m.updateDetails()
+	m.updateInfoCounts()
+
+	// Show result
+	msg := fmt.Sprintf("Pattern: %s\n\nDisabled %d scenario(s):", pattern, disabledCount)
+	for i, name := range disabledNames {
+		if i >= 10 {
+			msg += fmt.Sprintf("\n  ... and %d more", len(disabledNames)-10)
+			break
+		}
+		msg += fmt.Sprintf("\n  - %s", name)
+	}
+	m.overlay.Show(OverlayInfo, "Disable Pattern", msg)
+	return nil
+}
+
 // matchesPattern checks if a string matches a glob pattern
 func (m *Model) matchesPattern(s, pattern string) bool {
 	matched, err := filepath.Match(pattern, s)
@@ -1394,7 +1567,7 @@ func (m *Model) renderSettingsMenu() string {
 	var sb strings.Builder
 
 	// Get environment states
-	prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
 	deployed := make(map[string]bool)
 	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		deployed = m.tfRunner.GetDeployedModules()
@@ -1402,23 +1575,35 @@ func (m *Model) renderSettingsMenu() string {
 	prodDeployed := deployed["prod_environment"]
 	devDeployed := deployed["dev_environment"]
 	opsDeployed := deployed["ops_environment"]
+	// Attacker module has no resources in state (it's a pass-through),
+	// so treat it as deployed when enabled and terraform is initialized
+	attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 
 	sb.WriteString("AWS Profiles\n")
 	sb.WriteString("----------------------------------------\n\n")
 
 	// Prod
-	sb.WriteString(fmt.Sprintf("  [1] prod:  %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
+	sb.WriteString(fmt.Sprintf("  [1] prod:      %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
 	sb.WriteString(m.envStatusSuffix(prodEnabled, prodDeployed))
 	sb.WriteString("\n")
 
 	// Dev
-	sb.WriteString(fmt.Sprintf("  [2] dev:   %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
+	sb.WriteString(fmt.Sprintf("  [2] dev:       %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
 	sb.WriteString(m.envStatusSuffix(devEnabled, devDeployed))
 	sb.WriteString("\n")
 
 	// Ops
-	sb.WriteString(fmt.Sprintf("  [3] ops:   %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
+	sb.WriteString(fmt.Sprintf("  [3] ops:       %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
 	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
+	sb.WriteString("\n")
+
+	// Attacker
+	sb.WriteString(fmt.Sprintf("  [4] attacker:  %s", m.valueOrNotSet(m.config.AWS.Attacker.Profile)))
+	if m.config.AWS.Attacker.Profile == "" {
+		sb.WriteString("  (optional, for adversary-side infrastructure)")
+	} else {
+		sb.WriteString(m.envStatusSuffix(attackerEnabled, attackerDeployed))
+	}
 	sb.WriteString("\n")
 
 	// Budget Alerts section
@@ -1435,7 +1620,7 @@ func (m *Model) renderSettingsMenu() string {
 	}
 
 	sb.WriteString("\n----------------------------------------\n")
-	sb.WriteString("Press 1/2/3 to change a profile\n")
+	sb.WriteString("Press 1/2/3/4 to change a profile\n")
 	sb.WriteString("Press b to configure budget alerts\n")
 	sb.WriteString("Press Esc to close\n")
 
@@ -1470,6 +1655,9 @@ func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "3":
 		m.overlay.Hide()
 		return m, m.runProfileWizard("ops")
+	case "4":
+		m.overlay.Hide()
+		return m, m.runProfileWizard("attacker")
 	case "b", "B":
 		m.overlay.Hide()
 		return m, m.runBudgetWizard()
@@ -1516,6 +1704,8 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 		currentProfile = m.config.AWS.Dev.Profile
 	case "ops":
 		currentProfile = m.config.AWS.Ops.Profile
+	case "attacker":
+		currentProfile = m.config.AWS.Attacker.Profile
 	}
 
 	resultChan := make(chan profileWizardMsg, 1)
@@ -1592,7 +1782,7 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	var currentProfile string
 	var isEnabled bool
 
-	prodEnabled, devEnabled, opsEnabled, _ := m.tfvars.GetEnabledEnvironments()
+	prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
 
 	switch envName {
 	case "prod":
@@ -1604,6 +1794,9 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	case "ops":
 		currentProfile = m.config.AWS.Ops.Profile
 		isEnabled = opsEnabled
+	case "attacker":
+		currentProfile = m.config.AWS.Attacker.Profile
+		isEnabled = attackerEnabled
 	}
 
 	// If same profile, nothing to do
@@ -1633,6 +1826,8 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 		m.config.AWS.Dev.Profile = newProfile
 	case "ops":
 		m.config.AWS.Ops.Profile = newProfile
+	case "attacker":
+		m.config.AWS.Attacker.Profile = newProfile
 	}
 
 	// Save config (single source of truth)
@@ -1673,6 +1868,17 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 		err := aws.ValidatePrimaryProfile(profile)
 		return credentialsValidatedMsg{valid: err == nil, profile: profile, err: err}
 	}
+}
+
+// buildTerraformEnv returns a clean subprocess environment with any attacker IAM
+// credentials injected as TF_VAR_* variables. Use this for all terraform invocations
+// so credentials never need to be written to terraform.tfvars.
+func (m *Model) buildTerraformEnv() []string {
+	env := terraform.CleanEnv()
+	if m.config != nil {
+		env = append(env, m.config.GetAttackerTFVarEnv()...)
+	}
+	return env
 }
 
 // runCommandStreaming runs a command and streams its output to the overlay
@@ -1873,6 +2079,16 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderEnablePatternBar()
 	}
 
+	// Disable type choice overlay
+	if m.choosingDisableType {
+		return content + "\n" + m.renderDisableTypeChoiceBar()
+	}
+
+	// Disable pattern input overlay
+	if m.enteringDisablePattern {
+		return content + "\n" + m.renderDisablePatternBar()
+	}
+
 	return content
 }
 
@@ -1907,7 +2123,7 @@ func (m *Model) renderStatusBar() string {
 	// Check if deploy is needed
 	if m.scenariosPane.HasPendingChanges() {
 		leftParts = append(leftParts, separatorStyle.Render(" . "))
-		leftParts = append(leftParts, pendingStyle.Render("[d] to deploy changes"))
+		leftParts = append(leftParts, pendingStyle.Render("[a] to apply changes"))
 	}
 
 	leftText := strings.Join(leftParts, "")
@@ -1983,7 +2199,7 @@ func (m *Model) renderActionConfirmBar() string {
 			keyStyle.Render("[c]") +
 			dimStyle.Render(" cleanup first  ") +
 			keyStyle.Render("Enter") +
-			dimStyle.Render(" deploy anyway  ") +
+			dimStyle.Render(" apply anyway  ") +
 			keyStyle.Render("Esc") +
 			dimStyle.Render(" cancel")
 	}
@@ -1995,7 +2211,7 @@ func (m *Model) renderActionConfirmBar() string {
 	switch m.pendingAction {
 	case "deploy":
 		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true) // Green
-		actionText = "DEPLOY"
+		actionText = "APPLY"
 		description = "Run terraform apply to deploy enabled scenarios"
 	case "plan":
 		actionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true) // Cyan
@@ -2068,6 +2284,31 @@ func (m *Model) renderEnablePatternBar() string {
 	return enableStyle.Render("ENABLE ") +
 		promptStyle.Render("Enter pattern: ") +
 		m.patternInput.View() +
+		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+func (m *Model) renderDisableTypeChoiceBar() string {
+	disableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	return disableStyle.Render("DISABLE ") +
+		promptStyle.Render("What to disable? ") +
+		keyStyle.Render("[a]") +
+		dimStyle.Render("ll scenarios  ") +
+		keyStyle.Render("[p]") +
+		dimStyle.Render("attern (e.g., iam-*, lambda-001)  ") +
+		dimStyle.Render("(Esc to cancel)")
+}
+
+func (m *Model) renderDisablePatternBar() string {
+	disableStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+
+	return disableStyle.Render("DISABLE ") +
+		promptStyle.Render("Enter pattern: ") +
+		m.disablePatternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
 }
 

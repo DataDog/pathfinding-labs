@@ -44,6 +44,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationListAccessKeys"
         Effect = "Allow"
         Action = [
           "iam:ListAccessKeys"
@@ -51,6 +52,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_user.target_user.arn
       },
       {
+        Sid    = "RequiredForExploitationDeleteAccessKey"
         Effect = "Allow"
         Action = [
           "iam:DeleteAccessKey"
@@ -58,18 +60,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_user.target_user.arn
       },
       {
+        Sid    = "RequiredForExploitationCreateAccessKey"
         Effect = "Allow"
         Action = [
           "iam:CreateAccessKey"
         ]
         Resource = aws_iam_user.target_user.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

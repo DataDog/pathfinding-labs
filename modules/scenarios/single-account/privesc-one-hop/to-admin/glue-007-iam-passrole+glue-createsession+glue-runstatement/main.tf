@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -53,29 +53,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.admin_role.arn
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationGlue"
         Effect = "Allow"
         Action = [
           "glue:CreateSession",
           "glue:RunStatement"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions1"
-        Effect = "Allow"
-        Action = [
-          "glue:GetSession",
-          "glue:GetStatement",
-          "glue:DeleteSession"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "identityPermissions"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }

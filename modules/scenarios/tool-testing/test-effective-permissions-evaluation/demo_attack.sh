@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -64,8 +66,28 @@ export AWS_REGION
 # Extract bucket info
 BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
 
+# Extract starting user credentials
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
+    echo -e "${RED}[ERROR]${NC} Could not extract starting user credentials from terraform output"
+    exit 1
+fi
+
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}[SUCCESS]${NC} Retrieved configuration"
 echo -e "${YELLOW}[INFO]${NC} Target bucket: $BUCKET_NAME"
+echo -e "${YELLOW}[INFO]${NC} Starting Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo -e "${YELLOW}[INFO]${NC} ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo ""
 
 # Results tracking (using simple counters for Bash 3.2+ compatibility)
@@ -78,6 +100,18 @@ NOTADMIN_FAIL=0
 
 # Return to scenario directory
 cd - > /dev/null
+
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
 
 # Test function for users
 test_user() {
@@ -154,14 +188,9 @@ test_role() {
     TEST_NUM=$((TEST_NUM + 1))
     echo -e "${CYAN}[TEST $TEST_NUM/$TOTAL_TESTS]${NC} Testing role: ${YELLOW}$role_name${NC} (expecting: $expected)"
 
-    # Get starting user creds
-    STARTING_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-    STARTING_SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
-
-    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_KEY"
+    # Switch to starting user credentials for role assumption
+    use_starting_creds
     export AWS_REGION
-    unset AWS_SESSION_TOKEN
 
     # Wait for IAM propagation
     sleep 1

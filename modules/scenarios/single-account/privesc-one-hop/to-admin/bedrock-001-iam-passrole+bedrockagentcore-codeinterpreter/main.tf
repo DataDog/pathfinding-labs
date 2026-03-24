@@ -49,7 +49,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AllowPassRoleToBedrockService"
+        Sid      = "RequiredForExploitationPassRole"
         Effect   = "Allow"
         Action   = "iam:PassRole"
         Resource = aws_iam_role.target_role.arn
@@ -60,24 +60,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         }
       },
       {
-        Sid    = "AllowCodeInterpreterCreationAndInvocation"
+        Sid    = "RequiredForExploitationBedrockAgentCore"
         Effect = "Allow"
         Action = [
           "bedrock-agentcore:CreateCodeInterpreter",
           "bedrock-agentcore:StartCodeInterpreterSession",
           "bedrock-agentcore:InvokeCodeInterpreter"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "HelpfulDiscoveryPermissions"
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles",
-          "iam:GetRole",
-          "bedrock-agentcore:ListCodeInterpreters",
-          "bedrock-agentcore:GetCodeInterpreter",
-          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }

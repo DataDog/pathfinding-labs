@@ -35,7 +35,7 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Policy for the starting user with required and helpful permissions
+# Policy for the starting user with required permissions
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-ecs-001-to-admin-starting-user-policy"
@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions"
+        Sid    = "RequiredForExploitationECS"
         Effect = "Allow"
         Action = [
           "ecs:CreateCluster",
@@ -55,33 +55,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "passRolePermission"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
         ]
         Resource = aws_iam_role.target_role.arn
-      },
-      {
-        Sid    = "helpfulAdditionalPermissions"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ecs:DescribeServices",
-          "ecs:DescribeTasks",
-          "ecs:ListTasks",
-          "ecs:UpdateService",
-          "ecs:DeleteService",
-          "ecs:StopTask",
-          "ecs:DeregisterTaskDefinition",
-          "ecs:DeleteCluster",
-          "iam:ListAttachedUserPolicies",
-          "iam:ListUsers",
-          "iam:DetachUserPolicy",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

@@ -45,7 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions"
+        Sid    = "RequiredForExploitationUpdateStack"
         Effect = "Allow"
         Action = [
           "cloudformation:UpdateStack"
@@ -53,37 +53,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:cloudformation:*:${var.account_id}:stack/pl-prod-cloudformation-002-to-admin-stack/*"
       },
       {
-        Sid    = "helpfulAdditionalPermissions"
-        Effect = "Allow"
-        Action = [
-          "cloudformation:DescribeStacks",
-          "cloudformation:GetTemplate"
-        ]
-        Resource = "arn:aws:cloudformation:*:${var.account_id}:stack/pl-prod-cloudformation-002-to-admin-stack/*"
-      },
-      {
-        Sid    = "verifyRoleCreation"
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole"
-        ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-cloudformation-002-to-admin-escalated-role"
-      },
-      {
-        Sid    = "assumeEscalatedRole"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-cloudformation-002-to-admin-escalated-role"
-      },
-      {
-        Sid    = "identityCheck"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

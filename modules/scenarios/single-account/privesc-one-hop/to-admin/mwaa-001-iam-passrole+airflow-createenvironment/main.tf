@@ -115,65 +115,6 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "s3:GetEncryptionConfiguration"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "identityPermission"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Helpful additional permissions for demonstration
-resource "aws_iam_user_policy" "starting_user_helpful" {
-  provider = aws.prod
-  name     = "pl-prod-mwaa-001-to-admin-helpful-permissions"
-  user     = aws_iam_user.starting_user.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "airflowManagement"
-        Effect = "Allow"
-        Action = [
-          "airflow:GetEnvironment",
-          "airflow:DeleteEnvironment",
-          "airflow:ListEnvironments"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "verifyPrivilegeEscalation"
-        Effect = "Allow"
-        Action = [
-          "iam:ListAttachedUserPolicies"
-        ]
-        Resource = aws_iam_user.starting_user.arn
-      },
-      {
-        Sid    = "additionalVpcDiscovery"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeRouteTables"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "readAttackerBucket"
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.attacker_bucket.arn,
-          "${aws_s3_bucket.attacker_bucket.arn}/*"
-        ]
       }
     ]
   })

@@ -85,7 +85,7 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle --all: full terraform destroy
-	return destroyEverything(paths, red, yellow, green)
+	return destroyEverything(paths, cfg, red, yellow, green)
 }
 
 func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(a ...interface{}) string) error {
@@ -151,7 +151,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 	return nil
 }
 
-func destroyEverything(paths *repo.Paths, red, yellow, green func(a ...interface{}) string) error {
+func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green func(a ...interface{}) string) error {
 	fmt.Println()
 	fmt.Println(red("+----------------------------------------------------------+"))
 	fmt.Println(red("|                         WARNING                          |"))
@@ -200,6 +200,26 @@ func destroyEverything(paths *repo.Paths, red, yellow, green func(a ...interface
 		}
 	}
 
+	// If attacker is in IAM user mode, switch to setup profile for destroy
+	// The IAM user can't destroy itself, so we need the original profile
+	if cfg != nil && cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.SetupProfile != "" {
+		fmt.Println("Switching attacker account to setup profile for teardown...")
+		originalIAMAccessKey := cfg.AWS.Attacker.IAMAccessKeyID
+		originalIAMSecretKey := cfg.AWS.Attacker.IAMSecretKey
+
+		// Temporarily clear IAM creds and set profile for destroy
+		cfg.AWS.Attacker.IAMAccessKeyID = ""
+		cfg.AWS.Attacker.IAMSecretKey = ""
+		cfg.AWS.Attacker.Profile = cfg.AWS.Attacker.SetupProfile
+
+		if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+			// Restore on failure
+			cfg.AWS.Attacker.IAMAccessKeyID = originalIAMAccessKey
+			cfg.AWS.Attacker.IAMSecretKey = originalIAMSecretKey
+			return fmt.Errorf("failed to sync tfvars for destroy: %w", err)
+		}
+	}
+
 	// Destroy
 	fmt.Println()
 	fmt.Println("Destroying infrastructure...")
@@ -207,6 +227,15 @@ func destroyEverything(paths *repo.Paths, red, yellow, green func(a ...interface
 
 	if err := runner.Destroy(true); err != nil {
 		return fmt.Errorf("terraform destroy failed: %w", err)
+	}
+
+	// Clean up attacker IAM user credentials from config after successful destroy
+	if cfg != nil && cfg.AWS.Attacker.Mode == "iam-user" {
+		cfg.AWS.Attacker.IAMAccessKeyID = ""
+		cfg.AWS.Attacker.IAMSecretKey = ""
+		if err := cfg.Save(); err != nil {
+			fmt.Printf("%s Failed to clean up attacker credentials from config: %v\n", yellow("!"), err)
+		}
 	}
 
 	fmt.Println()

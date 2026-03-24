@@ -133,20 +133,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationUpdateLoginProfile"
         Effect = "Allow"
         Action = [
-          "iam:UpdateLoginProfile",
-          "iam:GetLoginProfile"
+          "iam:UpdateLoginProfile"
         ]
         Resource = aws_iam_user.target_user.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetUser",
-          "sts:GetCallerIdentity"
-        ]
-        Resource = "*"
       }
     ]
   })

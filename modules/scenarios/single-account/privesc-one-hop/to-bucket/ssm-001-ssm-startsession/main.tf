@@ -38,21 +38,7 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 # Get default VPC for simplicity
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
 # Get default subnets
-data "aws_subnets" "default" {
-  provider = aws.prod
-
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # ==============================================================================
 # TARGET S3 BUCKET
 # ==============================================================================
@@ -146,16 +132,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "BasicIdentityPermissions"
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity",
-          "iam:GetUser"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "SSMStartSessionForPrivesc"
+        Sid    = "RequiredForExploitationStartSession"
         Effect = "Allow"
         Action = [
           "ssm:StartSession"
@@ -166,21 +143,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
       },
       {
-        Sid    = "SSMTerminateSession"
+        Sid    = "RequiredForExploitationTerminateSession"
         Effect = "Allow"
         Action = [
           "ssm:TerminateSession"
         ]
         Resource = "arn:aws:ssm:*:*:session/*"
-      },
-      {
-        Sid    = "SSMHelpfulForDemo"
-        Effect = "Allow"
-        Action = [
-          "ssm:DescribeInstanceInformation",
-          "ec2:DescribeInstances"
-        ]
-        Resource = "*"
       }
     ]
   })
@@ -275,7 +243,7 @@ resource "aws_security_group" "target_instance" {
   provider    = aws.prod
   name        = "pl-prod-ssm-001-to-bucket-sg"
   description = "Security group for SSM StartSession scenario target instance"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   egress {
     from_port   = 0
@@ -299,7 +267,7 @@ resource "aws_instance" "target" {
   ami                  = data.aws_ami.amazon_linux_2023.id
   instance_type        = "t3.nano"
   iam_instance_profile = aws_iam_instance_profile.ec2_bucket.name
-  subnet_id            = tolist(data.aws_subnets.default.ids)[0]
+  subnet_id            = var.subnet_id
   vpc_security_group_ids = [
     aws_security_group.target_instance.id
   ]

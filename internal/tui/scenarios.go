@@ -949,8 +949,8 @@ func (s *ScenariosPane) renderScenarioLine(item ScenarioItem, selected bool) str
 
 	if item.Enabled && !item.Deployed {
 		parts = append(parts, " ")
-		if availableWidth >= 27 { // len("[Enablement pending deploy]")
-			parts = append(parts, s.styles.PendingDeployLabel.Render("[Enablement pending deploy]"))
+		if availableWidth >= 27 { // len("[Enablement pending apply]")
+			parts = append(parts, s.styles.PendingDeployLabel.Render("[Enablement pending apply]"))
 		} else {
 			parts = append(parts, s.styles.PendingDeployLabel.Render("[pending]"))
 		}

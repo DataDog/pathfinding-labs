@@ -109,6 +109,9 @@ func runInfo(cmd *cobra.Command, args []string) error {
 		if cfg.AWS.Ops.Profile != "" {
 			fmt.Printf("  Operations: %s\n", dim("profile: "+cfg.AWS.Ops.Profile))
 		}
+		if cfg.AWS.Attacker.Profile != "" {
+			fmt.Printf("  Attacker:    %s\n", dim("profile: "+cfg.AWS.Attacker.Profile))
+		}
 
 		if !cfg.IsMultiAccountMode() {
 			fmt.Printf("  Mode: %s\n", "Single-account")

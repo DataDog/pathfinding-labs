@@ -8,21 +8,6 @@ terraform {
   }
 }
 
-# Get default VPC
-data "aws_vpc" "default" {
-  provider = aws.prod
-  default  = true
-}
-
-# Get default subnet
-data "aws_subnets" "default" {
-  provider = aws.prod
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 # Get latest Amazon Linux 2023 AMI
 data "aws_ami" "amazon_linux_2023" {
   provider    = aws.prod
@@ -149,7 +134,7 @@ resource "aws_security_group" "ec2_sg" {
   provider    = aws.prod
   name        = "pl-prod-ec2-004-to-admin-sg"
   description = "Security group for PassRole+RequestSpotInstances privilege escalation scenario"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   # Allow outbound HTTPS for AWS API calls
   egress {

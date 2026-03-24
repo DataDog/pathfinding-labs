@@ -31,13 +31,15 @@ var configSetCmd = &cobra.Command{
 	Long: `Set a configuration value.
 
 Available keys:
-  prod-profile     Production AWS CLI profile
-  prod-region      Production AWS region
-  dev-profile      Development AWS CLI profile
-  dev-region       Development AWS region
-  ops-profile      Operations AWS CLI profile
-  ops-region       Operations AWS region
-  dev-mode         Enable/disable development mode (true/false)`,
+  prod-profile       Production AWS CLI profile
+  prod-region        Production AWS region
+  dev-profile        Development AWS CLI profile
+  dev-region         Development AWS region
+  ops-profile        Operations AWS CLI profile
+  ops-region         Operations AWS region
+  attacker-profile   Attacker AWS CLI profile
+  attacker-region    Attacker AWS region
+  dev-mode           Enable/disable development mode (true/false)`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
 }
@@ -79,8 +81,10 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  prod-region:   %s\n", valueOrNotSet(cfg.AWS.Prod.Region))
 	fmt.Printf("  dev-profile:   %s\n", valueOrNotSet(cfg.AWS.Dev.Profile))
 	fmt.Printf("  dev-region:    %s\n", valueOrNotSet(cfg.AWS.Dev.Region))
-	fmt.Printf("  ops-profile:   %s\n", valueOrNotSet(cfg.AWS.Ops.Profile))
-	fmt.Printf("  ops-region:    %s\n", valueOrNotSet(cfg.AWS.Ops.Region))
+	fmt.Printf("  ops-profile:       %s\n", valueOrNotSet(cfg.AWS.Ops.Profile))
+	fmt.Printf("  ops-region:        %s\n", valueOrNotSet(cfg.AWS.Ops.Region))
+	fmt.Printf("  attacker-profile:  %s\n", valueOrNotSet(cfg.AWS.Attacker.Profile))
+	fmt.Printf("  attacker-region:   %s\n", valueOrNotSet(cfg.AWS.Attacker.Region))
 	fmt.Println()
 
 	fmt.Println("Mode:")
@@ -132,6 +136,10 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		cfg.AWS.Ops.Profile = value
 	case "ops-region":
 		cfg.AWS.Ops.Region = value
+	case "attacker-profile":
+		cfg.AWS.Attacker.Profile = value
+	case "attacker-region":
+		cfg.AWS.Attacker.Region = value
 	case "dev-mode":
 		lowerVal := strings.ToLower(value)
 		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
@@ -167,7 +175,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("invalid value for dev-mode: %s (use true/false)", value)
 		}
 	default:
-		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, dev-mode", key)
+		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode", key)
 	}
 
 	// Save config (single source of truth)

@@ -90,6 +90,26 @@ func (r *Runner) Apply(autoApprove bool) error {
 	return cmd.Run()
 }
 
+// ApplyTarget runs terraform apply targeting a specific module
+func (r *Runner) ApplyTarget(target string, autoApprove bool) error {
+	if err := r.ensureTerraform(); err != nil {
+		return err
+	}
+
+	args := []string{"apply", "-target=" + target}
+	if autoApprove {
+		args = append(args, "-auto-approve")
+	}
+
+	cmd := exec.Command(r.tfPath, args...)
+	cmd.Dir = r.workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	return cmd.Run()
+}
+
 // Destroy runs terraform destroy
 func (r *Runner) Destroy(autoApprove bool) error {
 	if err := r.ensureTerraform(); err != nil {
@@ -135,8 +155,9 @@ func (r *Runner) Output(name string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// cleanEnv returns a copy of the current environment with problematic variables removed
-func cleanEnv() []string {
+// CleanEnv returns a copy of the current environment with problematic variables removed.
+// Exported so callers can build on it when constructing terraform subprocess environments.
+func CleanEnv() []string {
 	var env []string
 	for _, e := range os.Environ() {
 		// Skip OTEL variables that cause terraform to fail
@@ -147,6 +168,9 @@ func cleanEnv() []string {
 	}
 	return env
 }
+
+// cleanEnv is the unexported alias kept for internal use.
+func cleanEnv() []string { return CleanEnv() }
 
 // OutputJSON runs terraform output -json and returns the result
 func (r *Runner) OutputJSON() (string, error) {

@@ -67,6 +67,43 @@ output "operations_admin_user_for_cleanup_secret_access_key" {
   sensitive   = true
 }
 
+# ReadOnly user outputs
+output "prod_readonly_user_access_key_id" {
+  description = "Access key ID for the readonly user in prod environment"
+  value       = var.enable_prod_environment ? module.prod_environment[0].readonly_user_access_key_id : null
+  sensitive   = true
+}
+
+output "prod_readonly_user_secret_access_key" {
+  description = "Secret access key for the readonly user in prod environment"
+  value       = var.enable_prod_environment ? module.prod_environment[0].readonly_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "dev_readonly_user_access_key_id" {
+  description = "Access key ID for the readonly user in dev environment"
+  value       = var.enable_dev_environment ? module.dev_environment[0].readonly_user_access_key_id : null
+  sensitive   = true
+}
+
+output "dev_readonly_user_secret_access_key" {
+  description = "Secret access key for the readonly user in dev environment"
+  value       = var.enable_dev_environment ? module.dev_environment[0].readonly_user_secret_access_key : null
+  sensitive   = true
+}
+
+output "operations_readonly_user_access_key_id" {
+  description = "Access key ID for the readonly user in operations environment"
+  value       = var.enable_ops_environment ? module.ops_environment[0].readonly_user_access_key_id : null
+  sensitive   = true
+}
+
+output "operations_readonly_user_secret_access_key" {
+  description = "Secret access key for the readonly user in operations environment"
+  value       = var.enable_ops_environment ? module.ops_environment[0].readonly_user_secret_access_key : null
+  sensitive   = true
+}
+
 ##############################################################################
 # CONDITIONAL SCENARIO OUTPUTS
 # Only output if the scenario is enabled
@@ -91,6 +128,23 @@ output "dev_account_id" {
 output "operations_account_id" {
   description = "ID of the operations account (derived from AWS profile)"
   value       = local.operations_account_id
+}
+
+output "attacker_account_id" {
+  description = "ID of the attacker account (derived from AWS profile)"
+  value       = local.attacker_account_id
+}
+
+output "attacker_admin_user_access_key_id" {
+  description = "Access key ID for the attacker admin user"
+  value       = var.enable_attacker_environment ? module.attacker_environment[0].admin_user_access_key_id : null
+  sensitive   = true
+}
+
+output "attacker_admin_user_secret_access_key" {
+  description = "Secret access key for the attacker admin user"
+  value       = var.enable_attacker_environment ? module.attacker_environment[0].admin_user_secret_access_key : null
+  sensitive   = true
 }
 
 output "aws_region" {
