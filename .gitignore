@@ -74,4 +74,4 @@ Thumbs.db
 
 # Demo active marker files
 **/.demo_active
-
+.test-results/

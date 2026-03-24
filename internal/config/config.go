@@ -240,6 +240,19 @@ func (c *Config) IsAttackerBootstrapped() bool {
 	return c.AWS.Attacker.Mode == "iam-user" && c.AWS.Attacker.IAMAccessKeyID != ""
 }
 
+// GetAttackerTFVarEnv returns TF_VAR_* environment variable strings for the attacker
+// IAM user credentials. These should be injected into terraform process environments
+// instead of writing credentials to terraform.tfvars.
+func (c *Config) GetAttackerTFVarEnv() []string {
+	if !c.IsAttackerBootstrapped() {
+		return nil
+	}
+	return []string{
+		"TF_VAR_attacker_iam_user_access_key=" + c.AWS.Attacker.IAMAccessKeyID,
+		"TF_VAR_attacker_iam_user_secret_key=" + c.AWS.Attacker.IAMSecretKey,
+	}
+}
+
 // IsSingleAccountMode returns true if only the prod account is configured
 func (c *Config) IsSingleAccountMode() bool {
 	return c.AWS.Dev.Profile == "" && c.AWS.Ops.Profile == ""
@@ -351,10 +364,9 @@ func (c *Config) GenerateTFVars() string {
 		lines = append(lines, "enable_attacker_environment    = true")
 
 		if c.AWS.Attacker.Mode == "iam-user" && c.AWS.Attacker.IAMAccessKeyID != "" {
-			// IAM user mode (bootstrapped): use IAM credentials
+			// IAM user mode (bootstrapped): credentials are injected via TF_VAR_* env vars
+			// at runtime — never written to disk. See GetAttackerTFVarEnv().
 			lines = append(lines, "attacker_account_use_iam_user  = true")
-			lines = append(lines, fmt.Sprintf("attacker_iam_user_access_key   = %q", c.AWS.Attacker.IAMAccessKeyID))
-			lines = append(lines, fmt.Sprintf("attacker_iam_user_secret_key   = %q", c.AWS.Attacker.IAMSecretKey))
 		} else {
 			// Profile mode, or IAM user mode not yet bootstrapped (use setup profile)
 			profile := c.AWS.Attacker.Profile

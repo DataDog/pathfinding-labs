@@ -1101,6 +1101,7 @@ func (m *Model) runDeploy() tea.Cmd {
 func (m *Model) executeDeploy() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Apply")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1113,6 +1114,7 @@ func (m *Model) runPlan() tea.Cmd {
 func (m *Model) executePlan() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1307,12 +1309,14 @@ func (m *Model) executeDestroyScenarios() tea.Cmd {
 
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy Scenarios")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform apply -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
 func (m *Model) executeDestroyAll() tea.Cmd {
 	m.overlay.ShowRunning(OverlayTerraform, "Destroy All")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform destroy -auto-approve", m.paths.TerraformDir))
+	cmd.Env = m.buildTerraformEnv()
 	return m.runCommandStreaming(cmd)
 }
 
@@ -1864,6 +1868,17 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 		err := aws.ValidatePrimaryProfile(profile)
 		return credentialsValidatedMsg{valid: err == nil, profile: profile, err: err}
 	}
+}
+
+// buildTerraformEnv returns a clean subprocess environment with any attacker IAM
+// credentials injected as TF_VAR_* variables. Use this for all terraform invocations
+// so credentials never need to be written to terraform.tfvars.
+func (m *Model) buildTerraformEnv() []string {
+	env := terraform.CleanEnv()
+	if m.config != nil {
+		env = append(env, m.config.GetAttackerTFVarEnv()...)
+	}
+	return env
 }
 
 // runCommandStreaming runs a command and streams its output to the overlay

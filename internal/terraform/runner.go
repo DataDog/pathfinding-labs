@@ -155,8 +155,9 @@ func (r *Runner) Output(name string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// cleanEnv returns a copy of the current environment with problematic variables removed
-func cleanEnv() []string {
+// CleanEnv returns a copy of the current environment with problematic variables removed.
+// Exported so callers can build on it when constructing terraform subprocess environments.
+func CleanEnv() []string {
 	var env []string
 	for _, e := range os.Environ() {
 		// Skip OTEL variables that cause terraform to fail
@@ -167,6 +168,9 @@ func cleanEnv() []string {
 	}
 	return env
 }
+
+// cleanEnv is the unexported alias kept for internal use.
+func cleanEnv() []string { return CleanEnv() }
 
 // OutputJSON runs terraform output -json and returns the result
 func (r *Runner) OutputJSON() (string, error) {
