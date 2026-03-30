@@ -1,0 +1,34 @@
+{
+  "eval_id": 1,
+  "run": "with_skill",
+  "expectations": [
+    {
+      "text": "Uses -y flag on plabs enable to skip confirmation prompt",
+      "passed": true,
+      "evidence": "Step 3 shows 'plabs enable iam-002 -y' with explicit explanation that -y auto-confirms the prompt"
+    },
+    {
+      "text": "Uses -y or --auto-approve on plabs deploy",
+      "passed": true,
+      "evidence": "Step 5 shows 'plabs deploy -y' with explanation of flag purpose"
+    },
+    {
+      "text": "Includes plabs credentials iam-002 command",
+      "passed": true,
+      "evidence": "Step 7 is explicitly 'plabs credentials iam-002'"
+    },
+    {
+      "text": "Does NOT suggest running bare plabs (TUI) or plabs tui",
+      "passed": true,
+      "evidence": "No mention of TUI anywhere; always uses specific subcommands"
+    },
+    {
+      "text": "Commands are in correct order: enable before deploy before credentials",
+      "passed": true,
+      "evidence": "Summary table shows exact sequence: enable(3) → deploy(5) → credentials(7)"
+    }
+  ],
+  "pass_count": 5,
+  "total_count": 5,
+  "pass_rate": 1.0
+}

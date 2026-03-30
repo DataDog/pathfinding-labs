@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "eval_name": "eval-enable-deploy-credentials",
+  "prompt": "I want to test the iam-002 scenario (createaccesskey one-hop to admin). Enable it and deploy it, then show me the starting credentials so I can try it manually.",
+  "assertions": [
+    {
+      "name": "uses_noninteractive_flag_on_enable",
+      "description": "Includes -y flag on plabs enable to skip confirmation prompt"
+    },
+    {
+      "name": "uses_noninteractive_flag_on_deploy",
+      "description": "Includes -y or --auto-approve on plabs deploy"
+    },
+    {
+      "name": "includes_credentials_command",
+      "description": "Includes plabs credentials iam-002 to show starting user credentials"
+    },
+    {
+      "name": "no_interactive_tui",
+      "description": "Does NOT suggest running bare plabs (TUI) or plabs tui"
+    },
+    {
+      "name": "correct_command_sequence",
+      "description": "Commands are in correct order: enable before deploy before credentials"
+    }
+  ]
+}

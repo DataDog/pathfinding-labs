@@ -1,0 +1,35 @@
+{
+  "eval_id": 1,
+  "run": "without_skill",
+  "expectations": [
+    {
+      "text": "Uses -y flag on plabs enable to skip confirmation prompt",
+      "passed": false,
+      "evidence": "Step 2 shows './plabs enable iam-002-to-admin' with NO -y flag. Non-interactive mode is only mentioned as optional for deploy, not for enable."
+    },
+    {
+      "text": "Uses -y or --auto-approve on plabs deploy",
+      "passed": false,
+      "evidence": "Step 4 shows './plabs deploy' as the primary command; --auto-approve is mentioned only as a secondary option. The canonical command sequence at the bottom also shows './plabs deploy' without -y."
+    },
+    {
+      "text": "Includes plabs credentials iam-002 command",
+      "passed": true,
+      "evidence": "Step 6 shows './plabs credentials iam-002-to-admin' (uses unique ID, which is acceptable)"
+    },
+    {
+      "text": "Does NOT suggest running bare plabs (TUI) or plabs tui",
+      "passed": true,
+      "evidence": "No mention of TUI"
+    },
+    {
+      "text": "Commands are in correct order: enable before deploy before credentials",
+      "passed": true,
+      "evidence": "Enable (Step 2) → Deploy (Step 4) → Credentials (Step 6) in correct order"
+    }
+  ],
+  "pass_count": 3,
+  "total_count": 5,
+  "pass_rate": 0.6,
+  "notes": "Also hallucinated --format=json and --format=profile flags for plabs credentials that don't exist. Wrong --category=one-hop flag value (one-hop is a subcategory)."
+}

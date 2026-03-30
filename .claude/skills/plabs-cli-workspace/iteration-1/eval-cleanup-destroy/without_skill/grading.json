@@ -1,0 +1,35 @@
+{
+  "eval_id": 3,
+  "run": "without_skill",
+  "expectations": [
+    {
+      "text": "Uses plabs scenarios list --demo-active to discover active demos",
+      "passed": false,
+      "evidence": "Uses 'plabs status' to find active demos (Step 1), NOT 'plabs scenarios list --demo-active'. The --demo-active flag is never mentioned."
+    },
+    {
+      "text": "Uses plabs cleanup <id> to remove demo artifacts",
+      "passed": true,
+      "evidence": "Step 2 runs 'plabs cleanup <scenario-id>' for each active demo with correct explanation"
+    },
+    {
+      "text": "Uses --scenarios-only on plabs destroy",
+      "passed": true,
+      "evidence": "'plabs destroy --scenarios-only --auto-approve' with comparison table"
+    },
+    {
+      "text": "Does NOT use plabs destroy --all",
+      "passed": true,
+      "evidence": "Explicitly warns against --all and explains why --scenarios-only is correct"
+    },
+    {
+      "text": "Uses -y or --auto-approve on plabs destroy",
+      "passed": true,
+      "evidence": "'--auto-approve' included on destroy command"
+    }
+  ],
+  "pass_count": 4,
+  "total_count": 5,
+  "pass_rate": 0.8,
+  "notes": "Baseline performed relatively well on this eval by reading source code. Main miss: uses plabs status to find active demos rather than the specific --demo-active flag. Used 43k tokens vs 28k with skill."
+}

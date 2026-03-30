@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "eval_name": "eval-cleanup-destroy",
+  "prompt": "Run the cleanup for all active demos and then destroy just the scenario infrastructure (leave the base environment in place). Use auto-approve so it doesn't prompt me.",
+  "assertions": [
+    {
+      "name": "finds_active_demos_first",
+      "description": "Uses plabs scenarios list --demo-active (or plabs demo --list) to discover which demos are active before cleaning up"
+    },
+    {
+      "name": "uses_cleanup_command",
+      "description": "Uses plabs cleanup <id> to remove demo artifacts (not just destroy)"
+    },
+    {
+      "name": "uses_scenarios_only_flag",
+      "description": "Uses --scenarios-only on plabs destroy (NOT --all)"
+    },
+    {
+      "name": "no_all_flag_on_destroy",
+      "description": "Does NOT use plabs destroy --all (which would remove base infrastructure)"
+    },
+    {
+      "name": "uses_auto_approve",
+      "description": "Uses -y or --auto-approve on plabs destroy as requested"
+    }
+  ]
+}

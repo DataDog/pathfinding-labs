@@ -1,0 +1,23 @@
+{
+  "skill_name": "plabs-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to test the iam-002 scenario (createaccesskey one-hop to admin). Enable it and deploy it, then show me the starting credentials so I can try it manually.",
+      "expected_output": "Agent correctly runs: plabs enable iam-002 -y, then plabs deploy -y (or uses --deploy flag), then plabs credentials iam-002. Agent should NOT use interactive TUI or forget -y flags. Should check status before/after.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "List all the privilege-escalation to-admin scenarios that are currently deployed and ready to demo. For any that are enabled but not yet deployed, tell me what I need to do.",
+      "expected_output": "Agent runs plabs scenarios list --category privilege-escalation --target to-admin --deployed (or plabs status), interprets the 4-state output correctly, and gives actionable guidance (run plabs deploy -y for yellow-state scenarios).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Run the cleanup for all active demos and then destroy just the scenario infrastructure (leave the base environment in place). Use auto-approve so it doesn't prompt me.",
+      "expected_output": "Agent runs: plabs scenarios list --demo-active to find active demos, then plabs cleanup <id> for each, then plabs destroy --scenarios-only -y. Should NOT use --all which would remove base infra.",
+      "files": []
+    }
+  ]
+}
