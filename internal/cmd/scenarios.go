@@ -80,6 +80,7 @@ func init() {
 	scenariosCmd.AddCommand(scenariosListCmd)
 	scenariosCmd.AddCommand(showCmd)
 	scenariosCmd.AddCommand(credentialsAliasCmd)
+	scenariosCmd.AddCommand(outputAliasCmd)
 
 	// Add enable, disable, demo, cleanup as subcommands of scenarios
 	// (they also exist at top level as aliases)
