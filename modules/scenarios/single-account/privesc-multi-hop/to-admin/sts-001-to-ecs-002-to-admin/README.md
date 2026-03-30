@@ -6,9 +6,17 @@
 * **Environments:** prod
 * **Pathfinding.cloud ID:** sts-001 + ecs-002
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
+* **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (sts:AssumeRole) → starting_role → (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask) → admin_role (via ECS task) → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-sts001-ecs002-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-starting-role`; `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-admin-role`
+* **Required Permissions:** `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-sts001-ecs002-starting-role`; `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role`; `ecs:CreateCluster` on `*`; `ecs:RegisterTaskDefinition` on `*`; `ecs:RunTask` on `*`
+* **Helpful Permissions:** `ec2:DescribeVpcs` (Find default VPC for Fargate network configuration); `ec2:DescribeSubnets` (Find subnets for Fargate network configuration); `ecs:DescribeTasks` (Monitor task status and completion); `iam:ListRoles` (Discover available roles that trust ecs-tasks.amazonaws.com); `iam:GetRole` (View role permissions and trust policies)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 * **Cost Estimate:** ~$1/mo (ECS Fargate tasks incur minimal charges when run briefly for demonstrations)
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated two-hop privilege escalation attack that chains role assumption with Amazon ECS Fargate exploitation. The attack path exploits a common pattern where users are granted the ability to assume roles for operational purposes, and those roles have overly permissive ECS and IAM PassRole permissions that can be abused to gain administrative access.
 
@@ -18,7 +26,16 @@ The second hop leverages these ECS permissions to create infrastructure that exe
 
 This attack chain is particularly insidious because ECS is a legitimate service for running containerized workloads, and the individual permissions involved are commonly granted for DevOps and automation purposes. Organizations often overlook this privilege escalation path because it requires multiple steps and relies on understanding how ECS task roles work.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactics**:
+  - TA0004 - Privilege Escalation
+  - TA0002 - Execution
+- **Techniques**:
+  - T1098.001 - Account Manipulation: Additional Cloud Credentials
+  - T1578 - Modify Cloud Compute Infrastructure
+  - T1078.004 - Valid Accounts: Cloud Accounts (role assumption)
+  - T1610 - Deploy Container
 
 ### Principals in the attack path
 
@@ -72,16 +89,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts001-ecs002-starting-role` | Intermediate role with ECS management permissions and iam:PassRole on the admin role |
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts001-ecs002-admin-role` | Target admin role with AdministratorAccess, trusts ecs-tasks.amazonaws.com (also serves as task execution role) |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-multi-hop/to-admin/sts-001-to-ecs-002-to-admin
-./demo_attack.sh
+plabs enable enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -93,7 +125,27 @@ The script will:
 7. Verify successful privilege escalation to administrator
 8. Output standardized test results for automation
 
-### Manual attack execution
+#### Resources created by attack script
+
+- ECS cluster (`pl-prod-sts001-ecs002-attack-cluster`)
+- ECS task definition (`pl-prod-sts001-ecs002-attack-task`) with admin role attached
+- CloudWatch log group (`/ecs/pl-sts001-ecs002-admin-escalation`)
+- Temporary task definition JSON file (`/tmp/task-definition.json`)
+
+#### With plabs non-interactive
+
+```bash
+plabs demo --list
+plabs demo sts-001-to-ecs-002-to-admin
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Executing the attack manually
 
 If you prefer to execute the attack manually:
 
@@ -183,24 +235,36 @@ aws iam list-users
 aws sts get-caller-identity
 ```
 
-### Cleaning up the attack artifacts
+### Cleanup
 
-After demonstrating the attack, clean up the ECS resources and any artifacts created:
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-multi-hop/to-admin/sts-001-to-ecs-002-to-admin
-./cleanup_attack.sh
+plabs cleanup --list
+plabs cleanup sts-001-to-ecs-002-to-admin
 ```
 
-The cleanup script will:
-1. Stop any running tasks in the attack cluster
-2. Deregister the malicious task definition
-3. Delete the ECS cluster created during the demo
-4. Delete the CloudWatch log group if created
-5. Remove temporary files created during the attack
-6. Preserve the deployed infrastructure for future demonstrations
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -223,15 +287,37 @@ A properly configured Cloud Security Posture Management tool should identify the
 - Path: `starting-user` -> `sts:AssumeRole` -> `starting-role` -> `iam:PassRole + ecs:*` -> `admin-role` (via ECS task)
 - Risk: Complete environment compromise through chained privilege escalation via container service
 
+### Prevention recommendations
+
+- **Restrict iam:PassRole with conditions**: Limit which roles can be passed and to which services using conditions: `"Condition": {"StringEquals": {"iam:PassedToService": "ecs-tasks.amazonaws.com"}, "ArnNotLike": {"iam:AssociatedResourceArn": "*admin*"}}`
+
+- **Separate ECS permissions from PassRole**: Avoid granting both `ecs:RegisterTaskDefinition` and `iam:PassRole` to the same principal - this combination enables task role injection attacks
+
+- **Use permission boundaries on task roles**: Apply permission boundaries that explicitly deny administrative actions to roles that trust `ecs-tasks.amazonaws.com`
+
+- **Restrict trust policies on administrative roles**: Administrative roles should not trust service principals like `ecs-tasks.amazonaws.com`. Use dedicated, least-privilege task roles instead
+
+- **Implement SCPs for ECS task roles**: Organization-level SCPs can prevent ECS tasks from using roles with administrative permissions regardless of their attached policies
+
+- **Monitor ECS task definitions**: Set up CloudWatch Events/EventBridge rules to alert when task definitions are registered with privileged task roles
+
+- **Use AWS Config rules**: Implement Config rules to detect IAM roles with AdministratorAccess that trust ECS service principals
+
+- **Require task definition review**: Implement approval workflows for task definition changes that include privileged roles
+
+- **Enable VPC Flow Logs**: Monitor network traffic from ECS tasks to detect credential exfiltration attempts via the container metadata service
+
+- **Limit sts:AssumeRole permissions**: Use resource-based conditions to restrict which roles users can assume, preventing lateral movement to roles with dangerous permissions
+
+## Detection Abuse (CloudSIEM)
+
 ### CloudTrail events to monitor
 
-| Event Name | Description | Severity |
-| -- | -- | -- |
-| `AssumeRole` | Role assumption (initial escalation step) | Medium |
-| `CreateCluster` | New ECS cluster created | Medium |
-| `RegisterTaskDefinition` | Task definition registered (check taskRoleArn) | High |
-| `RunTask` | Task execution initiated | High |
-| `PassRole` | Role passed to ECS service (implicit in RegisterTaskDefinition) | Critical |
+- `STS: AssumeRole` — Role assumption (initial escalation step); monitor for assumption of roles with ECS management permissions
+- `ECS: CreateCluster` — New ECS cluster created; suspicious when not part of a normal deployment workflow
+- `ECS: RegisterTaskDefinition` — Task definition registered; critical when `taskRoleArn` points to a privileged role
+- `ECS: RunTask` — Task execution initiated; high severity when combined with a recently registered task definition bearing an admin role
+- `IAM: PassRole` — Role passed to ECS service (implicit in RegisterTaskDefinition); critical when the passed role has AdministratorAccess
 
 ### Detection queries
 
@@ -256,48 +342,9 @@ WHERE eventName = 'RegisterTaskDefinition'
     AND requestParameters.taskRoleArn LIKE '%admin%'
 ```
 
-### MITRE ATT&CK Mapping
+### Detonation logs
 
-- **Tactics**:
-  - TA0004 - Privilege Escalation
-  - TA0002 - Execution
-- **Techniques**:
-  - T1098.001 - Account Manipulation: Additional Cloud Credentials
-  - T1578 - Modify Cloud Compute Infrastructure
-  - T1078.004 - Valid Accounts: Cloud Accounts (role assumption)
-  - T1610 - Deploy Container
-
-## Prevention recommendations
-
-- **Restrict iam:PassRole with conditions**: Limit which roles can be passed and to which services using conditions: `"Condition": {"StringEquals": {"iam:PassedToService": "ecs-tasks.amazonaws.com"}, "ArnNotLike": {"iam:AssociatedResourceArn": "*admin*"}}`
-
-- **Separate ECS permissions from PassRole**: Avoid granting both `ecs:RegisterTaskDefinition` and `iam:PassRole` to the same principal - this combination enables task role injection attacks
-
-- **Use permission boundaries on task roles**: Apply permission boundaries that explicitly deny administrative actions to roles that trust `ecs-tasks.amazonaws.com`
-
-- **Restrict trust policies on administrative roles**: Administrative roles should not trust service principals like `ecs-tasks.amazonaws.com`. Use dedicated, least-privilege task roles instead
-
-- **Implement SCPs for ECS task roles**: Organization-level SCPs can prevent ECS tasks from using roles with administrative permissions regardless of their attached policies
-
-- **Monitor ECS task definitions**: Set up CloudWatch Events/EventBridge rules to alert when task definitions are registered with privileged task roles
-
-- **Use AWS Config rules**: Implement Config rules to detect IAM roles with AdministratorAccess that trust ECS service principals
-
-- **Require task definition review**: Implement approval workflows for task definition changes that include privileged roles
-
-- **Enable VPC Flow Logs**: Monitor network traffic from ECS tasks to detect credential exfiltration attempts via the container metadata service
-
-- **Limit sts:AssumeRole permissions**: Use resource-based conditions to restrict which roles users can assume, preventing lateral movement to roles with dangerous permissions
-
-## Cost considerations
-
-This scenario incurs minimal costs when demonstrated:
-
-- **ECS Fargate**: The attack task runs briefly (typically < 1 minute) using the smallest Fargate configuration (0.25 vCPU, 0.5 GB memory). Cost per execution is approximately $0.01
-- **CloudWatch Logs**: Minimal log storage costs for task output
-- **VPC/Networking**: No additional costs if using default VPC
-
-The estimated monthly cost of ~$1 assumes occasional demonstration runs. Cleanup after each demo is recommended to avoid any recurring charges.
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 

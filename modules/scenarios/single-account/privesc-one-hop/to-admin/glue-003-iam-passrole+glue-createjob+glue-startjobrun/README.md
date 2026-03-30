@@ -5,17 +5,31 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Pathfinding.cloud ID:** glue-003
 * **Technique:** Pass privileged role to AWS Glue Job with inline Python script for privilege escalation
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PassRole + glue:CreateJob) → Create job with admin role → (glue:StartJobRun) → Job attaches AdministratorAccess to starting user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-glue-003-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-glue-003-to-admin-target-role`
+* **Required Permissions:** `iam:PassRole` on `*`; `glue:CreateJob` on `*`; `glue:StartJobRun` on `*`
+* **Helpful Permissions:** `glue:GetJob` (Retrieve job details and verify configuration); `glue:GetJobRun` (Get details about a specific job run); `glue:GetJobRuns` (List job runs to monitor execution status); `iam:ListUsers` (Verify admin access after privilege escalation)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
+
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation (TA0004)
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Sub-technique**: Creating cloud compute resources with elevated privileges to execute malicious code
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `iam:PassRole`, `glue:CreateJob`, and `glue:StartJobRun` permissions can create an AWS Glue ETL job with an administrative role and inline Python code that grants the starting user administrative access.
 
 AWS Glue jobs are serverless ETL (Extract, Transform, Load) workloads that run Python or Scala scripts to process data. When creating a Glue job, you can specify an IAM role that the job will assume during execution. If an attacker can pass a privileged role to a Glue job and control the job's code (via inline script or command parameters), they can execute arbitrary Python code with administrative permissions.
 
 This is a powerful "PassRole + Service" privilege escalation pattern similar to PassRole with Lambda, but using AWS Glue's job execution feature. Unlike the CreateDevEndpoint technique which requires SSH access and has high costs (~$2.20/hour), this attack uses Python shell jobs which are much more cost-effective (~$0.44/DPU-hour with 0.0625 DPU minimum), making it practical for demonstrations. The attacker creates a job with malicious inline Python code, manually starts the job execution, and the job modifies IAM permissions to grant the starting user administrative access.
-
-## Understanding the attack scenario
 
 ### Principals in the attack path
 
@@ -65,7 +79,29 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-003-to-admin-target-role` | Administrative role passed to Glue job |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-glue-003-to-admin-passrole-policy` | Policy allowing PassRole on target role, glue:CreateJob, and glue:StartJobRun |
 
-## Executing the attack
+## Attack Lab
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun
+plabs apply
+```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
 ### Cost Considerations
 
@@ -78,14 +114,7 @@ AWS Glue Python shell jobs cost approximately **$0.44 per DPU-hour**. Python she
 
 This is significantly more cost-effective than Glue development endpoints (~$2.20/hour) and makes it practical for frequent demonstrations and testing.
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun
-./demo_attack.sh
-```
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -97,21 +126,54 @@ The script will:
 7. Verify successful privilege escalation by demonstrating admin access
 8. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the Glue job and remove the AdministratorAccess policy from the starting user:
+- AWS Glue Python shell job with inline malicious Python code
+- AdministratorAccess policy attached to the starting user
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun
-./cleanup_attack.sh
+plabs demo --list
+plabs demo glue-003-iam-passrole+glue-createjob+glue-startjobrun
 ```
 
-The cleanup script will:
-- Delete the Glue job created during the demo
-- Detach the AdministratorAccess policy from the starting user
-- Remove any temporary resources
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup glue-003-iam-passrole+glue-createjob+glue-startjobrun
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -124,23 +186,7 @@ A properly configured CSPM solution should identify:
 - Privilege escalation path from user to admin via Glue job creation
 - Glue jobs created with inline commands (higher risk than S3-stored scripts)
 
-### Runtime Detection Indicators
-
-CloudTrail events to monitor:
-- **CreateJob** with inline `Command` parameter (not referencing S3 script)
-- **CreateJob** where the `Role` parameter references an administrative role
-- **StartJobRun** immediately after CreateJob (suspicious timing)
-- **AttachUserPolicy** or **PutUserPolicy** API calls from Glue service principal
-- Short-lived Glue jobs (created, run, and deleted quickly)
-- Glue jobs that make IAM modifications instead of typical ETL operations
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: Privilege Escalation (TA0004)
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Creating cloud compute resources with elevated privileges to execute malicious code
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole permissions**: Limit `iam:PassRole` to only the specific roles and services needed. Use resource-level restrictions:
   ```json
@@ -204,6 +250,20 @@ CloudTrail events to monitor:
 - **Use VPC endpoints and private subnets**: Configure Glue jobs to run within private VPCs without public internet access, reducing the attack surface even if a job is created with elevated privileges.
 
 - **Separate Glue accounts**: Consider running production Glue workloads in dedicated AWS accounts with strict cross-account access controls, limiting the blast radius of compromised Glue permissions.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Starting user passes admin role to Glue service; critical when the target role has elevated permissions
+- `Glue: CreateJob` — New Glue job created; high severity when using inline commands instead of S3-stored scripts or when the job role is administrative
+- `Glue: StartJobRun` — Glue job execution triggered; suspicious when immediately following job creation
+- `IAM: AttachUserPolicy` — Policy attached to an IAM user; critical when the source is the Glue service principal and policy grants admin access
+- `IAM: PutUserPolicy` — Inline policy added to an IAM user; critical when executed by Glue service principal
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 

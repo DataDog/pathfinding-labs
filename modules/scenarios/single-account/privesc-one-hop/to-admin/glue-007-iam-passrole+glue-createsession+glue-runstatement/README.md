@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** glue-007
 * **Technique:** Pass privileged role to AWS Glue Interactive Session and run Python code to escalate privileges
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PassRole + glue:CreateSession) → Glue Interactive Session with admin role → (glue:RunStatement with boto3) → attaches AdministratorAccess to starting_user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-glue-007-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-glue-007-to-admin-admin-role`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role`; `glue:CreateSession` on `*`; `glue:RunStatement` on `*`
+* **Helpful Permissions:** `glue:GetSession` (Check session status and wait for it to be ready); `glue:GetStatement` (Check statement execution status and retrieve output); `glue:DeleteSession` (Clean up the Glue Interactive Session after the attack)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098 - Account Manipulation
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `iam:PassRole`, `glue:CreateSession`, and `glue:RunStatement` permissions can create an AWS Glue Interactive Session with an administrative role and execute Python code that grants themselves administrative access.
 
@@ -16,7 +25,11 @@ AWS Glue Interactive Sessions provide a serverless, on-demand Spark or Python en
 
 This attack is particularly dangerous because it provides immediate, interactive access to execute code with administrative permissions. The attacker doesn't need to wait for job completion or extract credentials - they can directly call AWS APIs using boto3 (which is available by default in Glue sessions) to modify IAM permissions in real-time. The escalation path is straightforward: create a session with an admin role, run a Python statement that attaches AdministratorAccess to the starting user, and immediately gain full administrative access to the AWS environment.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation
+- **Technique**: T1098 - Account Manipulation
+- **Sub-technique**: Using cloud compute services with elevated privileges to modify account permissions
 
 ### Principals in the attack path
 
@@ -65,7 +78,29 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-007-to-admin-admin-role` | Administrative role passed to Glue Interactive Session |
 | Inline policy: `pl-prod-glue-007-to-admin-starting-user-policy` | Policy granting PassRole, CreateSession, RunStatement, GetSession, GetStatement, and DeleteSession permissions |
 
-## Executing the attack
+## Attack Lab
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement
+plabs apply
+```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
 ### Cost Considerations
 
@@ -78,14 +113,7 @@ AWS Glue Interactive Sessions cost approximately **$0.44 per DPU-hour**. Interac
 
 Sessions should be stopped after the demonstration to avoid ongoing charges, as idle sessions continue to incur costs.
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-007-iam-passrole+glue-createsession+glue-runstatement
-./demo_attack.sh
-```
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -96,21 +124,54 @@ The script will:
 6. Verify successful privilege escalation by demonstrating admin access
 7. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the Glue session and remove the AdministratorAccess policy from the starting user:
+- Glue Interactive Session with the admin role attached
+- `AdministratorAccess` managed policy attached to `pl-prod-glue-007-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-007-iam-passrole+glue-createsession+glue-runstatement
-./cleanup_attack.sh
+plabs demo --list
+plabs demo glue-007-iam-passrole+glue-createsession+glue-runstatement
 ```
 
-The cleanup script will:
-- Stop and delete the Glue Interactive Session created during the demo
-- Detach the AdministratorAccess policy from the starting user
-- Remove any temporary resources
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup glue-007-iam-passrole+glue-createsession+glue-runstatement
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -122,23 +183,7 @@ A properly configured CSPM solution should identify:
 - Glue trust policy allowing the Glue service to assume privileged roles
 - Privilege escalation path from user to admin via Glue Interactive Sessions
 
-### Runtime Detection Indicators
-
-CloudTrail events to monitor:
-- **CreateSession** where the `Role` parameter references an administrative role
-- **RunStatement** API calls executing code that makes IAM modifications
-- **AttachUserPolicy** or **PutUserPolicy** API calls from Glue service principal or session context
-- Sessions created by users who don't typically use Glue Interactive Sessions
-- Unusual patterns of CreateSession followed immediately by RunStatement with IAM-related code
-- Short-lived Interactive Sessions (created, used briefly, then stopped)
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation
-- **Technique**: T1098 - Account Manipulation
-- **Sub-technique**: Using cloud compute services with elevated privileges to modify account permissions
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole permissions**: Limit `iam:PassRole` to only the specific roles and services needed. Use resource-level restrictions:
   ```json
@@ -183,6 +228,21 @@ CloudTrail events to monitor:
 - **Implement session time limits**: Configure automatic session termination after a defined idle period to limit the window of opportunity for exploitation and reduce costs from forgotten sessions.
 
 - **Separate Glue accounts**: Consider running production Glue workloads in dedicated AWS accounts with strict cross-account access controls, limiting the blast radius of compromised Glue permissions.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Starting user passes the admin role to the Glue service; critical when the target role has elevated permissions
+- `Glue: CreateSession` — New Glue Interactive Session created; high severity when the `Role` parameter references an administrative role
+- `Glue: RunStatement` — Statement executed within a Glue Interactive Session; monitor for boto3 IAM operations in the statement code
+- `IAM: AttachUserPolicy` — Managed policy attached to an IAM user from a Glue session context; critical when the policy is `AdministratorAccess`
+- `IAM: PutUserPolicy` — Inline policy added to an IAM user from a Glue session context
+- `Glue: DeleteSession` — Session deleted after use; short-lived sessions (created, used briefly, then deleted) indicate potential abuse
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 

@@ -5,14 +5,28 @@
 * **Path Type:** self-escalation
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** iam-007
 * **Technique:** Self-modification via iam:PutUserPolicy to attach inline admin policy
+* **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PutUserPolicy on self) → inline admin policy → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-007-to-admin-starting-user`
+* **Required Permissions:** `iam:PutUserPolicy` on `*`
+* **Helpful Permissions:** `iam:GetUser` (View user details and verify policy attachment); `iam:ListUserPolicies` (List existing inline policies on users)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a principal has permission to put inline policies on IAM users, including themselves. The attacker can use `iam:PutUserPolicy` to attach an inline policy granting administrator access to their own user, immediately escalating their privileges.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation, Persistence
+- **Technique**: T1098 - Account Manipulation
+- **Sub-technique**: T1098.001 - Additional Cloud Credentials
+- **Additional**: T1078.004 - Cloud Accounts
 
 ### Principals in the attack path
 
@@ -39,16 +53,31 @@ graph LR
 | -- | -- |
 | `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-007-to-admin-starting-user` | User with PutUserPolicy permission on itself |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-007-iam-putuserpolicy
-./demo_attack.sh
+plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -56,25 +85,61 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the inline policy added during the demo:
+- Inline IAM policy attached to `pl-prod-iam-007-to-admin-starting-user` granting AdministratorAccess
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-007-iam-putuserpolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-007-iam-putuserpolicy
 ```
 
-## Detection and prevention
+#### With plabs tui
 
-### MITRE ATT&CK Mapping
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-- **Tactic**: Privilege Escalation, Persistence
-- **Technique**: T1098 - Account Manipulation
-- **Sub-technique**: T1098.001 - Additional Cloud Credentials
-- **Additional**: T1078.004 - Cloud Accounts
+### Cleanup
 
-## Prevention recommendations
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup iam-007-iam-putuserpolicy
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM user has `iam:PutUserPolicy` permission scoped to `*`, allowing self-modification
+- Privilege escalation path exists: user can attach an inline admin policy to themselves
+- No resource constraint prevents the user from modifying their own policies
+
+### Prevention recommendations
 
 - Never grant `iam:PutUserPolicy` permissions without strict resource constraints
 - Use SCPs to prevent inline policy attachments on privileged users
@@ -83,3 +148,13 @@ cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-007-iam
 - Use IAM Access Analyzer to identify privilege escalation paths
 - Prefer managed policies over inline policies for better visibility and control
 - Enable MFA requirements for sensitive IAM operations
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PutUserPolicy` — Inline policy added to an IAM user; critical when the target is the calling principal (self-escalation)
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

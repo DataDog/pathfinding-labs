@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** datapipeline-001
 * **Technique:** Create Data Pipeline with passed role to exfiltrate S3 data, bypassing IAM restrictions via overly permissive bucket resource policy
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (datapipeline:CreatePipeline + PutPipelineDefinition + ActivatePipeline) → EC2 with S3 read-only role → (aws s3 cp from sensitive bucket to exfil bucket) → resource policy allows write → starting_user reads exfiltrated data → bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-bucket-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-bucket-pipeline-role`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}`; `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-datapipeline-001-to-bucket-pipeline-role`; `datapipeline:CreatePipeline` on `*`; `datapipeline:PutPipelineDefinition` on `*`; `datapipeline:ActivatePipeline` on `*`; `s3:GetObject` on `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}/*`
+* **Helpful Permissions:** `datapipeline:DescribePipelines` (View pipeline status and configuration); `datapipeline:GetPipelineDefinition` (Retrieve pipeline definition for verification); `s3:ListBucket` (List objects in buckets for verification)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection, TA0010 - Exfiltration
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1530 - Data from Cloud Storage Object
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated privilege escalation and data exfiltration technique using AWS Data Pipeline combined with an overly permissive S3 bucket resource policy. An attacker with `iam:PassRole` and Data Pipeline permissions can create a pipeline that executes arbitrary shell commands on EC2 instances, allowing them to access and exfiltrate sensitive S3 data.
 
@@ -16,7 +25,16 @@ The critical vulnerability in this scenario is the combination of two security w
 
 This attack pattern is particularly dangerous because it demonstrates how resource policies can override restrictive IAM policies, creating unexpected privilege escalation paths. Security teams often focus on IAM policies while overlooking permissive resource policies, making this a common blind spot in cloud security posture. The scenario highlights the importance of analyzing both IAM and resource-based policies together to identify true access paths.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactics**:
+  - Privilege Escalation (TA0004)
+  - Collection (TA0009)
+  - Exfiltration (TA0010)
+- **Techniques**:
+  - T1098.001 - Account Manipulation: Additional Cloud Credentials
+  - T1578 - Modify Cloud Compute Infrastructure
+  - T1530 - Data from Cloud Storage Object
 
 ### Principals in the attack path
 
@@ -66,16 +84,31 @@ graph LR
 | `arn:aws:s3:::pl-sensitive-data-datapipeline-001-PROD_ACCOUNT-SUFFIX` | Sensitive data bucket containing secret data |
 | `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-PROD_ACCOUNT-SUFFIX` | Exfiltration bucket with overly permissive resource policy |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-passrole+datapipeline-pipeline
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -85,20 +118,59 @@ The script will:
 5. Verify successful data exfiltration from the sensitive bucket
 6. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the Data Pipeline, EC2 instances, and exfiltrated data:
+- Data Pipeline with ShellCommandActivity
+- Ephemeral EC2 instance launched by the pipeline
+- Exfiltrated data file written to the exfil bucket
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-passrole+datapipeline-pipeline
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-passrole+datapipeline-pipeline-to-bucket
 ```
 
-The cleanup script will delete the pipeline, terminate any running EC2 instances, and remove the exfiltrated data from the exfil bucket.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What should CSPM tools detect?
+### Cleanup
+
+After demonstrating the attack, clean up the Data Pipeline, EC2 instances, and exfiltrated data.
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup iam-passrole+datapipeline-pipeline-to-bucket
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should identify:
 
@@ -124,24 +196,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
    - Ability to execute arbitrary code through AWS services
    - Access to sensitive data buckets through compute services
 
-### MITRE ATT&CK Mapping
-
-- **Tactics**:
-  - Privilege Escalation (TA0004)
-  - Collection (TA0009)
-  - Exfiltration (TA0010)
-- **Techniques**:
-  - T1098.001 - Account Manipulation: Additional Cloud Credentials
-  - T1578 - Modify Cloud Compute Infrastructure
-  - T1530 - Data from Cloud Storage Object
-
-### References
-
-This scenario is based on privilege escalation techniques documented by:
-- [Bishop Fox - AWS IAM Privilege Escalation Techniques](https://bishopfox.com/blog/privilege-escalation-in-aws) - Documented by Rhino Security Labs
-- [AWS Data Pipeline Security Best Practices](https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-security-best-practices.html)
-
-## Prevention recommendations
+### Prevention recommendations
 
 1. **Implement Least Privilege for iam:PassRole**:
    - Restrict `iam:PassRole` to specific roles using resource-level conditions: `"Resource": "arn:aws:iam::ACCOUNT:role/specific-role"`
@@ -165,21 +220,14 @@ This scenario is based on privilege escalation techniques documented by:
    - Use VPC Endpoints with policies to restrict bucket access to specific VPCs: `"Condition": {"StringEquals": {"aws:SourceVpc": "vpc-xxxxx"}}`
    - Apply bucket policies that explicitly deny non-compliant access patterns
 
-5. **Monitor Data Pipeline and S3 Activity**:
-   - Create CloudWatch alerts for `datapipeline:CreatePipeline`, `datapipeline:PutPipelineDefinition`, and `datapipeline:ActivatePipeline` events
-   - Monitor for unusual S3 access patterns, especially cross-bucket copies
-   - Alert on `s3:PutObject` API calls to sensitive buckets from unexpected principals
-   - Use AWS GuardDuty to detect anomalous S3 data access and exfiltration patterns
-   - Enable CloudTrail logging and S3 access logs for forensic analysis
-
-6. **Regular Security Audits**:
+5. **Regular Security Audits**:
    - Periodically review all S3 bucket policies for overly permissive statements
    - Use IAM Access Analyzer to identify resources shared with external entities or with overly broad access
    - Audit all principals with `iam:PassRole` permissions and validate necessity
    - Review roles that can be passed to compute services for least privilege compliance
    - Test for resource policy bypass vulnerabilities using tools like Pathfinding Labs
 
-7. **Implement SCPs for Organizational Guardrails**:
+6. **Implement SCPs for Organizational Guardrails**:
    ```json
    {
      "Version": "2012-10-17",
@@ -200,3 +248,25 @@ This scenario is based on privilege escalation techniques documented by:
      ]
    }
    ```
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Role passed to Data Pipeline service; high severity when the role has access to sensitive S3 buckets
+- `DataPipeline: CreatePipeline` — New Data Pipeline created; investigate when combined with PassRole and PutPipelineDefinition
+- `DataPipeline: PutPipelineDefinition` — Pipeline definition set, potentially including ShellCommandActivity with arbitrary commands
+- `DataPipeline: ActivatePipeline` — Pipeline activated, triggering EC2 instance launch and command execution
+- `EC2: RunInstances` — EC2 instance launched by the Data Pipeline service role
+- `S3: GetObject` — Objects read from the sensitive data bucket by the pipeline EC2 instance
+- `S3: PutObject` — Objects written to the exfil bucket via resource policy bypass; critical when destination has permissive bucket policy
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+This scenario is based on privilege escalation techniques documented by:
+- [Bishop Fox - AWS IAM Privilege Escalation Techniques](https://bishopfox.com/blog/privilege-escalation-in-aws) - Documented by Rhino Security Labs
+- [AWS Data Pipeline Security Best Practices](https://docs.aws.amazon.com/datapipeline/latest/DeveloperGuide/dp-security-best-practices.html)

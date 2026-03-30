@@ -5,10 +5,20 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $37/mo
 * **Pathfinding.cloud ID:** mwaa-002
+* **Interactive Demo:** Yes
 * **Technique:** Update existing MWAA environment's DAG source bucket to attacker-controlled bucket containing malicious DAG that executes with admin credentials
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (airflow:UpdateEnvironment) → changes DAG source to attacker's bucket → (airflow:CreateCliToken) → triggers malicious DAG → DAG executes with admin execution role credentials → attaches AdministratorAccess to starting_user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-mwaa-002-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-mwaa-002-to-admin-admin-role`
+* **Required Permissions:** `airflow:UpdateEnvironment` on `arn:aws:airflow:*:*:environment/pl-prod-mwaa-002-to-admin-env`; `airflow:CreateCliToken` on `arn:aws:airflow:*:*:environment/pl-prod-mwaa-002-to-admin-env`; `ec2:DescribeSubnets` on `*`; `ec2:DescribeVpcs` on `*`; `ec2:DescribeSecurityGroups` on `*`; `s3:GetEncryptionConfiguration` on `*`
+* **Helpful Permissions:** `airflow:GetEnvironment` (Check environment status and wait for update to complete); `iam:ListAttachedUserPolicies` (Verify that AdministratorAccess was attached after the attack)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1098 - Account Manipulation, T1059 - Command and Scripting Interpreter
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `airflow:UpdateEnvironment` permission can exploit an existing Amazon Managed Workflows for Apache Airflow (MWAA) environment that has an administrative execution role attached. Unlike creating a new environment from scratch (mwaa-001), this attack leverages pre-existing infrastructure by updating the environment configuration to change the DAG source bucket to an attacker-controlled S3 bucket.
 
@@ -21,7 +31,12 @@ This attack is particularly dangerous because:
 3. **On-Demand Execution**: Unlike startup scripts which only run when the environment restarts, DAGs can be triggered immediately using `airflow:CreateCliToken` and the Airflow CLI API
 4. **Appears as Maintenance**: Environment updates look like routine configuration changes
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Technique**: T1098 - Account Manipulation
+- **Technique**: T1059 - Command and Scripting Interpreter
+- **Sub-technique**: Using managed service DAG execution to perform privileged operations
 
 ### Principals in the attack path
 
@@ -119,7 +134,29 @@ graph LR
 | `pl-mwaa-002-legitimate-bucket-{account_id}-{suffix}` (S3) | Original S3 bucket containing DAGs folder for the MWAA environment |
 | `pl-mwaa-002-attacker-bucket-{account_id}-{suffix}` (S3) | Attacker's S3 bucket containing the malicious DAG |
 
-## Executing the attack
+## Attack Lab
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment
+plabs apply
+```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
 ### Cost Considerations
 
@@ -141,14 +178,7 @@ graph LR
 3. Set up billing alerts for unexpected charges
 4. Consider using this scenario only when specifically testing MWAA-related detection capabilities
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-002-airflow-updateenvironment
-./demo_attack.sh
-```
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -160,23 +190,61 @@ The script will:
 7. Verify successful privilege escalation by demonstrating admin access
 8. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, **immediately** clean up to stop incurring costs and restore the environment:
+- AdministratorAccess policy attached to `pl-prod-mwaa-002-to-admin-starting-user`
+- MWAA environment source bucket updated to attacker's bucket (`pl-mwaa-002-attacker-bucket-{account_id}-{suffix}`)
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-002-airflow-updateenvironment
-./cleanup_attack.sh
+plabs demo --list
+plabs demo mwaa-002-airflow-updateenvironment
 ```
 
-The cleanup script will:
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+After demonstrating the attack, **immediately** clean up to stop incurring costs and restore the environment. The cleanup script will:
 - Detach the AdministratorAccess policy from the starting user
 - Restore the MWAA environment's original DAG source bucket configuration
 - Wait for environment update to complete (10-30 minutes)
 
 > **Important**: MWAA environment updates take 10-30 minutes. Verify in the AWS Console that the environment has been restored to avoid leaving the malicious configuration active.
 
-## Detection and prevention
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup mwaa-002-airflow-updateenvironment
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -187,37 +255,7 @@ A properly configured CSPM solution should identify:
 - IAM role with administrative permissions that can be assumed by the MWAA service
 - Privilege escalation path from user to admin via MWAA environment update and DAG execution
 
-### Runtime Detection Indicators
-
-CloudTrail events to monitor:
-- **UpdateEnvironment** API calls that modify `SourceBucketArn` or `DagS3Path`
-- **UpdateEnvironment** where the new source bucket references an external S3 bucket or different AWS account
-- **UpdateEnvironment** on environments with administrative execution roles
-- **CreateCliToken** API calls, especially after UpdateEnvironment operations
-- **AttachUserPolicy** or **PutUserPolicy** API calls originating from MWAA execution role
-- Rapid sequence of UpdateEnvironment → CreateCliToken → IAM policy modifications
-
-**CloudWatch Logs indicators:**
-- MWAA task logs showing unexpected AWS CLI commands or boto3 IAM operations
-- IAM API calls in MWAA worker logs that don't match expected workflow operations
-- Errors related to IAM modifications from MWAA context
-- New DAG files appearing with suspicious code patterns
-
-**Behavioral indicators:**
-- MWAA environment updates outside of change windows
-- Source bucket changes to buckets not owned by the organization
-- Environment updates performed by users who don't normally manage MWAA
-- CreateCliToken calls shortly after environment updates
-- Unusual DAG executions after environment configuration changes
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1098 - Account Manipulation
-- **Technique**: T1059 - Command and Scripting Interpreter
-- **Sub-technique**: Using managed service DAG execution to perform privileged operations
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict UpdateEnvironment Permissions**: Limit `airflow:UpdateEnvironment` to specific environments using resource-based conditions. Never grant blanket update permissions across all environments:
   ```json
@@ -253,10 +291,6 @@ CloudTrail events to monitor:
 
 - **Restrict External S3 Bucket References**: Implement policies that deny environment updates when the source bucket references S3 buckets outside your organization's control.
 
-- **Monitor CloudTrail for Environment Updates**: Alert on `UpdateEnvironment` API calls, especially those that modify source bucket configurations or target environments with privileged execution roles.
-
-- **Monitor CreateCliToken Usage**: Alert on `CreateCliToken` API calls, especially when they occur shortly after environment configuration changes.
-
 - **Implement Change Control for MWAA Environments**: Require approval workflows for MWAA environment updates in production. Use AWS Systems Manager Change Manager or third-party tools to gate configuration changes.
 
 - **Use IAM Access Analyzer**: Enable IAM Access Analyzer to automatically detect privilege escalation paths involving UpdateEnvironment permissions and privileged execution roles.
@@ -266,6 +300,32 @@ CloudTrail events to monitor:
 - **Enable MWAA Audit Logging**: Configure comprehensive logging for MWAA environments to capture all API calls and DAG execution for forensic analysis.
 
 - **Regular Permission Audits**: Periodically review which principals have `airflow:UpdateEnvironment` and `airflow:CreateCliToken` permissions and which environments have privileged execution roles. Ensure this combination is necessary for legitimate business functions.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `MWAA: UpdateEnvironment` — API calls that modify `SourceBucketArn` or `DagS3Path`; high severity when the new source bucket references an external S3 bucket or different AWS account, or targets environments with administrative execution roles
+- `MWAA: CreateCliToken` — CLI token obtained for Airflow API access; critical when occurring shortly after an UpdateEnvironment operation
+- `IAM: AttachUserPolicy` — Managed policy attached to an IAM user; critical when originating from an MWAA execution role context
+- `IAM: PutUserPolicy` — Inline policy added to an IAM user; critical when originating from an MWAA execution role context
+
+**CloudWatch Logs indicators:**
+- MWAA task logs showing unexpected AWS CLI commands or boto3 IAM operations
+- IAM API calls in MWAA worker logs that don't match expected workflow operations
+- Errors related to IAM modifications from MWAA context
+- New DAG files appearing with suspicious code patterns
+
+**Behavioral indicators:**
+- MWAA environment updates outside of change windows
+- Source bucket changes to buckets not owned by the organization
+- Environment updates performed by users who don't normally manage MWAA
+- Rapid sequence of UpdateEnvironment → CreateCliToken → IAM policy modifications
+- Unusual DAG executions after environment configuration changes
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## Comparison with mwaa-001
 

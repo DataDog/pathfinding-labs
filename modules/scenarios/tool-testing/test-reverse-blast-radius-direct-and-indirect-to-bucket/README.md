@@ -5,9 +5,18 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
+* **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket`
+* **Schema Version:** 1.0.0
+* **Attack Path:** Two paths to S3 bucket: user1 has direct S3 permissions; user2 can assume role3 which has S3 permissions granting indirect access to bucket
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-rbr-di-user1`; `arn:aws:iam::{account_id}:user/pl-prod-rbr-di-user2`; `arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3`; `arn:aws:s3:::pl-sensitive-data-rbr-di-{account_id}-{suffix}`
+* **Required Permissions:** `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*`; `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*`; `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3`; `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*`; `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*`
+* **Helpful Permissions:** `sts:GetCallerIdentity` (Verify current identity); `s3:ListAllMyBuckets` (Discover available buckets)
+* **MITRE Tactics:** TA0009 - Collection
+* **MITRE Techniques:** T1530 - Data from Cloud Storage Object
 
-## Overview
+## Attack Overview
 
 This scenario is specifically designed to validate that Cloud Security Posture Management (CSPM) tools and security analysis platforms can accurately answer the critical question: "Who has access to this S3 bucket?" Modern security tools must identify not only direct IAM permissions that grant bucket access, but also indirect access paths through role assumption chains.
 
@@ -15,7 +24,10 @@ The scenario creates two distinct access paths to the same sensitive S3 bucket. 
 
 This test is essential for validating security tool accuracy because many tools fail to traverse the complete graph of IAM relationships. A tool that only reports direct permissions would miss half the risk surface, failing to identify users who can reach the bucket through role assumption. Organizations rely on these queries to understand their true attack surface, make access decisions, and respond to incidents. This scenario provides a definitive test case: if a security tool cannot identify both users as having bucket access, it has incomplete visibility into the environment's IAM topology.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0009 - Collection
+- **Technique**: T1530 - Data from Cloud Storage Object
 
 ### Principals in the attack path
 
@@ -54,16 +66,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-rbr-di-role3` | Role with S3 bucket access, assumable by user2 |
 | `arn:aws:s3:::pl-sensitive-data-rbr-di-{account-id}-{suffix}` | Target sensitive S3 bucket containing test data |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate both access paths to the S3 bucket, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-to-bucket
-./demo_attack.sh
+plabs enable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -71,13 +98,55 @@ The script will:
 3. Verify successful bucket access via both paths (direct and indirect)
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-This scenario creates no attack artifacts during the demonstration. The demo script only performs read operations (listing buckets, getting objects) and does not create or modify any resources. Therefore, no cleanup script is needed.
+- No persistent resources are created. The demo script only performs read operations (listing buckets, getting objects) and does not create or modify any resources.
 
-## Detection and prevention
+#### With plabs non-interactive
 
-### What Security Tools Should Detect
+```bash
+plabs demo --list
+plabs demo test-reverse-blast-radius-direct-and-indirect-to-bucket
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup test-reverse-blast-radius-direct-and-indirect-to-bucket
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured security analysis platform or CSPM tool performing a reverse blast radius query on the S3 bucket should identify:
 
@@ -96,12 +165,7 @@ Expected Response:
 - arn:aws:iam::{account-id}:role/pl-prod-rbr-di-role3 (direct access)
 ```
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0009 - Collection
-- **Technique**: T1530 - Data from Cloud Storage Object
-
-### Tool Testing Focus
+**Tool Testing Focus:**
 
 This scenario specifically tests:
 
@@ -110,21 +174,21 @@ This scenario specifically tests:
 3. **Role Assumption Detection**: Can the tool recognize that users who can assume roles inherit those roles' permissions?
 4. **Reverse Query Accuracy**: When querying "who has access to X", does the tool return complete results?
 
-### Expected Tool Behavior
+**Expected Tool Behavior:**
 
-**Passing Tools:**
+Passing tools:
 - Identify both user1 (direct) and user2 (indirect) as having bucket access
 - Show the complete path: user2 → role3 → bucket
 - Provide clear indication of direct vs. indirect access
 - Include role3 itself as a principal with access
 
-**Failing Tools:**
+Failing tools:
 - Only identify user1 (direct access)
 - Only identify role3 but miss user2
 - Fail to traverse the AssumeRole trust relationship
 - Provide incomplete results for "who has access" queries
 
-## Prevention recommendations
+### Prevention recommendations
 
 While this is a tool-testing scenario designed to validate detection capabilities rather than demonstrate a real vulnerability, the following best practices apply to managing S3 bucket access in production environments:
 
@@ -138,3 +202,15 @@ While this is a tool-testing scenario designed to validate detection capabilitie
 - Regularly validate that your security tooling can identify both direct and indirect access paths
 - Consider implementing resource-based conditions that restrict access even when IAM permissions allow it
 - Use AWS Config rules to detect and alert on changes to S3 bucket permissions or IAM trust policies
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `STS: AssumeRole` — Role assumption by user2 to gain indirect S3 bucket access; monitor for assumption of `pl-prod-rbr-di-role3`
+- `S3: GetObject` — Object retrieval from the sensitive bucket; monitor for access by unexpected principals or assumed-role sessions
+- `S3: ListBucket` — Bucket listing requests; monitor for enumeration of bucket contents from both direct and indirect principals
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

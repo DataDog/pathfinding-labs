@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Pathfinding.cloud ID:** iam-021
 * **Technique:** Modifying a role's inline policy to grant admin permissions and updating its trust policy to allow assumption
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PutRolePolicy) → target_role (add inline admin policy) → (iam:UpdateAssumeRolePolicy) → target_role trust policy (allow starting_user) → (sts:AssumeRole) → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-021-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-iam-021-to-admin-target-role`
+* **Required Permissions:** `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-021-to-admin-target-role`; `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-021-to-admin-target-role`
+* **Helpful Permissions:** `iam:ListRoles` (Discover available roles that can be modified); `iam:GetRole` (View role trust policies and current policies); `iam:ListRolePolicies` (View current inline role policies); `iam:GetRolePolicy` (View inline policy details before and after modification)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098 - Account Manipulation
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated privilege escalation vulnerability where a user possesses both `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` permissions on a target role. This powerful combination allows an attacker to first escalate the role's permissions to administrative level, and then modify the role's trust policy to allow themselves to assume it - all without needing explicit `sts:AssumeRole` permissions.
 
@@ -15,7 +25,10 @@ The attack is particularly insidious because it exploits a commonly misunderstoo
 
 This privilege escalation path is often overlooked by security teams because it requires the combination of two distinct permissions that seem innocuous when evaluated separately. Organizations may grant `iam:PutRolePolicy` for managing role permissions and `iam:UpdateAssumeRolePolicy` for managing trust relationships, not realizing that together they provide a complete path to administrative access. The attack leaves clear audit trails in CloudTrail but can be executed quickly before detection mechanisms trigger alerts.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation
+- **Technique**: T1098 - Account Manipulation
 
 ### Principals in the attack path
 
@@ -56,16 +69,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-021-to-admin-target-role` | Target role with minimal initial permissions that can be escalated |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-021-to-admin-starting-user-policy` | Inline policy granting iam:PutRolePolicy and iam:UpdateAssumeRolePolicy on target role |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+iam-updateassumerolepolicy
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -75,38 +103,79 @@ The script will:
 5. Verify successful privilege escalation by assuming the role and testing admin permissions
 6. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the inline policy and trust policy modifications:
+- Inline admin policy added to `pl-prod-iam-021-to-admin-target-role`
+- Updated trust policy on `pl-prod-iam-021-to-admin-target-role` adding starting user as trusted principal
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putrolepolicy+iam-updateassumerolepolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-021-iam-putrolepolicy+iam-updateassumerolepolicy
 ```
 
-The cleanup script will:
-- Remove the admin inline policy added to the target role
-- Restore the original trust policy (removing the starting user from trusted principals)
-- Preserve the deployed infrastructure for future demonstrations
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation
-- **Technique**: T1098 - Account Manipulation
+```bash
+plabs cleanup --list
+plabs cleanup iam-021-iam-putrolepolicy+iam-updateassumerolepolicy
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM user `pl-prod-iam-021-to-admin-starting-user` has both `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on `pl-prod-iam-021-to-admin-target-role`, forming a complete privilege escalation path to admin
+- Principal with permission to modify inline policies on roles that have or can acquire administrative permissions
+- Principal with permission to update trust policies on roles, enabling unauthorized role assumption
+
+### Prevention recommendations
 
 - Implement least privilege principles - avoid granting `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` together unless absolutely necessary for administrative functions
 - Use resource-based conditions to restrict which roles can have their policies modified: `"Condition": {"StringNotLike": {"iam:PolicyArn": ["arn:aws:iam::*:role/admin-*"]}}`
 - Implement Service Control Policies (SCPs) at the organization level to prevent modification of critical role trust policies and inline policies
-- Monitor CloudTrail for `PutRolePolicy` and `UpdateAssumeRolePolicy` API calls, especially when both occur in sequence on the same role
 - Enable MFA requirements for sensitive IAM operations using condition keys like `aws:MultiFactorAuthPresent`
 - Use IAM Access Analyzer to identify and remediate privilege escalation paths involving policy modification permissions
-- Implement SCPs that deny `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on roles with administrative permissions or sensitive resource access
-- Create CloudWatch Events or EventBridge rules to alert on suspicious policy modification patterns, particularly when trust policies are updated followed by AssumeRole calls
 - Consider using permission boundaries on roles to limit the maximum permissions that can be granted via inline policies
 - Regularly audit roles with both `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` permissions to ensure they are truly necessary and appropriately scoped
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PutRolePolicy` — Inline policy added or modified on a role; critical when targeting roles with elevated permissions or when the policy grants broad access
+- `IAM: UpdateAssumeRolePolicy` — Trust policy updated on a role; high severity when a new principal is added as trusted, especially after a PutRolePolicy call on the same role
+- `STS: AssumeRole` — Role assumption; correlate with preceding PutRolePolicy and UpdateAssumeRolePolicy calls on the same role to identify this attack pattern
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

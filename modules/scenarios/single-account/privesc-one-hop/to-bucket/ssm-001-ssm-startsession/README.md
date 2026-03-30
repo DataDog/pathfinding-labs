@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $5/mo
 * **Pathfinding.cloud ID:** ssm-001
 * **Technique:** Start interactive shell sessions on EC2 instances with S3 access roles to extract credentials via IMDS and access sensitive buckets
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ssm:StartSession) → EC2 instance → (curl IMDS) → EC2 instance role credentials → sensitive bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-bucket-starting-user`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-bucket-ec2-role`; `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}`
+* **Required Permissions:** `ssm:StartSession` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id} and arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell`
+* **Helpful Permissions:** `ec2:DescribeInstances` (Discover target EC2 instances); `ssm:DescribeInstanceInformation` (Identify SSM-enabled instances); `sts:GetCallerIdentity` (Verify credentials after exfiltration); `s3:ListBucket` (List bucket contents after gaining access)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
+* **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where an IAM user has permission to start interactive shell sessions on EC2 instances via AWS Systems Manager (SSM) Session Manager. The attacker can establish an SSH-like interactive session to an EC2 instance that has an IAM role with S3 bucket access permissions, extract the temporary credentials from the EC2 Instance Metadata Service (IMDS), and then use those credentials locally to access sensitive S3 buckets.
 
@@ -16,7 +25,12 @@ This attack vector is particularly stealthy because SSM Session Manager provides
 
 The extracted credentials are time-limited but fully functional AWS credentials (AccessKeyId, SecretAccessKey, and SessionToken) that can be used from any location to access sensitive data stores. The Instance Metadata Service (IMDS) at http://169.254.169.254 exposes these credentials to any process running on the EC2 instance, including an attacker with SSM session access.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation
+- **Tactic**: TA0006 - Credential Access
+- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
 
 ### Principals in the attack path
 
@@ -65,16 +79,31 @@ graph LR
 | `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-PROD_ACCOUNT-SUFFIX` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-PROD_ACCOUNT-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-001-ssm-startsession
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -82,18 +111,54 @@ The script will:
 3. Verify successful privilege escalation to S3 bucket access
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the extracted credentials and any temporary files:
+- Temporary credential files with extracted EC2 instance role credentials
+- Downloaded sensitive data files from the target S3 bucket
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-001-ssm-startsession
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ssm-001-ssm-startsession
 ```
 
-Note: The cleanup script removes temporary credential files and downloaded data but does not terminate the EC2 instance or delete the S3 bucket, as those are managed by Terraform.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ssm-001-ssm-startsession
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -113,38 +178,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 7. **Privilege escalation path via SSM**: Tools should detect that a principal with ssm:StartSession can gain access to credentials of EC2 instance roles, creating a privilege escalation path to S3 bucket access.
 
-### CloudTrail detection patterns
-
-Monitor for the following suspicious event patterns:
-
-**Credential Extraction Pattern**:
-```
-1. ssm:StartSession (targeting instance with S3 access role)
-2. S3 API calls using instance role credentials from non-EC2 IP addresses
-3. S3 API calls using instance role credentials from different geographic locations than the EC2 instance
-```
-
-**Anomalous S3 Access**:
-- Instance role credentials being used for S3 access from IP addresses that don't match the EC2 instance's IP
-- Instance role credentials being used for S3 access from geographic locations inconsistent with the EC2 instance region
-- High-volume S3 GetObject operations from instance role credentials outside normal usage patterns
-- Instance role credentials used for S3 access after the EC2 instance has been terminated or stopped
-- Unusual access patterns to sensitive S3 buckets (e.g., full bucket downloads, access to rarely accessed objects)
-
-**SSM Session Anomalies**:
-- SSM session initiated by principals who rarely or never use SSM
-- SSM sessions to instances with sensitive data access roles
-- Multiple SSM sessions initiated in rapid succession
-- SSM sessions outside normal business hours
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation
-- **Tactic**: TA0006 - Credential Access
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict ssm:StartSession with resource conditions**: Use IAM policy conditions to limit SSM session access to specific instances or instances with specific tags:
   ```json
@@ -259,3 +293,25 @@ Monitor for the following suspicious event patterns:
 - **Use AWS PrivateLink for S3**: Configure VPC endpoints for S3 and enforce that all S3 access must come through the VPC endpoint, preventing access from extracted credentials used outside the VPC.
 
 - **Enable GuardDuty**: AWS GuardDuty can detect anomalous behavior such as unusual S3 API calls or credential usage patterns that may indicate compromised instance credentials.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `SSM: StartSession` — Interactive shell session started on an EC2 instance; high severity when the target instance has an IAM role with S3 access permissions
+- `S3: GetObject` — Object downloaded from S3; critical when the caller is an EC2 instance role used from a non-EC2 IP address
+- `S3: ListBucket` — Bucket contents enumerated; investigate when instance role credentials are used from an unexpected source IP or geographic location
+- `STS: GetCallerIdentity` — Caller identity verified; commonly used by attackers after extracting credentials to confirm they are working
+
+**Credential Extraction Pattern**:
+- `SSM: StartSession` targeting an instance with an S3 access role, followed by S3 API calls from the instance role credentials originating from non-EC2 IP addresses or geographic locations inconsistent with the EC2 instance region
+
+**SSM Session Anomalies**:
+- SSM session initiated by principals who rarely or never use SSM
+- SSM sessions to instances with sensitive data access roles
+- Multiple SSM sessions initiated in rapid succession
+- SSM sessions outside normal business hours
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

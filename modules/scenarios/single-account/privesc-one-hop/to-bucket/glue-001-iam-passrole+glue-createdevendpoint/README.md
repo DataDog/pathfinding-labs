@@ -5,14 +5,23 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** glue-001
 * **Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PassRole + glue:CreateDevEndpoint) → Glue dev endpoint with S3 role → SSH access → (aws s3 cp) → sensitive bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-glue-001-to-bucket-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-bucket-target-role`; `arn:aws:s3:::pl-sensitive-data-glue-001-{account_id}-{suffix}`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-glue-001-to-bucket-target-role`; `glue:CreateDevEndpoint` on `*`
+* **Helpful Permissions:** `glue:GetDevEndpoint` (Check endpoint status and retrieve SSH connection details); `iam:ListRoles` (Discover available privileged roles to pass to Glue); `s3:ListBuckets` (Discover target buckets after escalation); `glue:DeleteDevEndpoint` (Clean up created endpoints after demonstration)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
 ## Cost Warning
 
 **This scenario creates a Glue development endpoint that costs approximately $2.20/hour while running (using minimum 2 node configuration).** The demo script automatically cleans up the endpoint after demonstration, but if the script fails or is interrupted, you may incur ongoing charges until the endpoint is manually deleted. Always verify cleanup completion using `aws glue get-dev-endpoint`.
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass a role to AWS Glue (`iam:PassRole`) and create Glue development endpoints (`glue:CreateDevEndpoint`). By creating a development endpoint with a role that has S3 bucket access, an attacker can SSH into the endpoint and execute AWS CLI commands with the elevated permissions of the passed role.
 
@@ -22,7 +31,12 @@ This attack is particularly dangerous because Glue dev endpoints provide a persi
 
 **Important Note:** Glue development endpoints only support Glue versions **0.9** and **1.0** (legacy versions). Newer Glue versions (2.0, 3.0, 4.0) are not supported for dev endpoints. This scenario uses Glue 1.0.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+- **Sub-technique**: Using PassRole to escalate privileges via AWS services
 
 ### Principals in the attack path
 
@@ -65,16 +79,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-glue-001-to-bucket-target-policy` | Grants `s3:GetObject` and `s3:ListBucket` on sensitive bucket |
 | `arn:aws:s3:::pl-sensitive-data-glue-001-PROD_ACCOUNT-SUFFIX` | Target sensitive S3 bucket containing sample data |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-001-iam-passrole+glue-createdevendpoint
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -92,30 +121,57 @@ The script will:
 aws glue delete-dev-endpoint --endpoint-name pl-prod-gcd-escalation-endpoint
 ```
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, the demo script automatically cleans up the Glue dev endpoint. If manual cleanup is needed:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-001-iam-passrole+glue-createdevendpoint
-./cleanup_attack.sh
-```
-
-This will remove:
-- The Glue development endpoint
-- Generated SSH key pair files
+- Glue development endpoint (`pl-prod-gcd-escalation-endpoint`)
+- Generated SSH key pair files (temporary, for endpoint authentication)
 - Any temporary AWS CLI configuration
 
-## Detection and prevention
+#### With plabs non-interactive
 
-### MITRE ATT&CK Mapping
+```bash
+plabs demo --list
+plabs demo glue-001-iam-passrole+glue-createdevendpoint
+```
 
-- **Tactic**: TA0004 - Privilege Escalation
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
-- **Sub-technique**: Using PassRole to escalate privileges via AWS services
+#### With plabs tui
 
-### What should CSPM tools detect?
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup glue-001-iam-passrole+glue-createdevendpoint
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should detect:
 
@@ -125,7 +181,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 4. **Unrestricted Glue Access**: Principals with `glue:CreateDevEndpoint` without resource or condition constraints
 5. **S3 Access via Compute Services**: Detection of privilege escalation paths where compute services (Glue, Lambda, EC2) can access sensitive S3 buckets
 
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole permissions**: Use resource-level conditions to limit which roles can be passed to Glue services:
   ```json
@@ -152,11 +208,6 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 
 - **Minimize Glue role permissions**: Ensure roles used by Glue dev endpoints follow least privilege principles and avoid S3 or admin access
 
-- **Enable CloudTrail monitoring**: Alert on `CreateDevEndpoint` API calls, especially when combined with high-privilege roles:
-  - `glue:CreateDevEndpoint`
-  - `glue:GetDevEndpoint`
-  - `sts:AssumeRole` by Glue service principal
-
 - **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving PassRole and Glue services
 
 - **Require MFA**: Enforce MFA for creating Glue dev endpoints or passing roles to AWS services
@@ -164,3 +215,17 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Network restrictions**: Configure VPC endpoints and security groups to limit SSH access to Glue dev endpoints from trusted networks only
 
 - **Consider alternatives**: For production environments, prefer AWS Glue jobs or notebooks with appropriate IAM roles instead of persistent dev endpoints
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Role passed to Glue service principal; high severity when the passed role has S3 or admin permissions
+- `Glue: CreateDevEndpoint` — New Glue development endpoint created; critical when combined with a privileged role
+- `Glue: GetDevEndpoint` — Endpoint status queried; may indicate attacker polling for readiness
+- `STS: AssumeRole` — Role assumed by Glue service principal (`glue.amazonaws.com`); indicates endpoint is using the passed role
+- `S3: GetObject` — Objects retrieved from S3; high severity when the calling principal is a Glue endpoint role
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

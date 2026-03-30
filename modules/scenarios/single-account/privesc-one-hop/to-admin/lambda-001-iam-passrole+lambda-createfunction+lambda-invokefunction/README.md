@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** lambda-001
+* **Cost Estimate:** $0/mo
 * **Technique:** Creating Lambda function with admin role and invoking it to extract temporary credentials
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
+* **Schema Version:** 1.0.0
+* **Pathfinding.cloud ID:** lambda-001
+* **Attack Path:** starting_user → (PassRole + lambda:CreateFunction) → Lambda with admin role → (lambda:InvokeFunction) → extract admin credentials → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role`; `lambda:CreateFunction` on `*`; `lambda:InvokeFunction` on `*`
+* **Helpful Permissions:** `iam:ListRoles` (Discover available privileged roles); `lambda:GetFunction` (Verify function creation); `lambda:DeleteFunction` (Clean up attack artifacts)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1648 - Serverless Execution
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass an IAM role to Lambda, create Lambda functions, and invoke them. The attacker can create a Lambda function with an administrative execution role, invoke the function to extract the temporary credentials that Lambda receives, and use those credentials to gain administrator access.
 
@@ -16,7 +25,11 @@ This is a powerful privilege escalation technique because Lambda functions autom
 
 The attack leverages the AWS serverless execution model where services like Lambda are granted temporary credentials based on their execution role. By combining `iam:PassRole` with Lambda creation and invocation permissions, an attacker can effectively "borrow" the privileges of any role they can pass to Lambda.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Technique**: T1648 - Serverless Execution
 
 ### Principals in the attack path
 
@@ -55,16 +68,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-lambda-001-to-admin-target-role` | Admin role that can be passed to Lambda functions |
 | Policy attached to starting user | Grants `iam:PassRole` on target role, `lambda:CreateFunction`, and `lambda:InvokeFunction` |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -72,26 +100,62 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the Lambda function created during the demo:
+- A temporary Lambda function created with the admin execution role to extract credentials
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction
-./cleanup_attack.sh
+plabs demo --list
+plabs demo lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1648 - Serverless Execution
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM user has `iam:PassRole` permission allowing it to pass an administrative role to Lambda
+- IAM user has `lambda:CreateFunction` permission enabling creation of functions with privileged execution roles
+- IAM user has `lambda:InvokeFunction` permission enabling execution of functions that can exfiltrate credentials
+- Privilege escalation path exists: starting user can gain admin privileges via Lambda execution role
+
+### Prevention recommendations
 
 - Restrict `iam:PassRole` permissions using strict resource conditions to limit which roles can be passed
 - Implement condition keys like `iam:PassedToService` to restrict PassRole to specific AWS services only when necessary
@@ -101,3 +165,15 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/lambda-001-iam-pass
 - Use IAM Access Analyzer to identify privilege escalation paths involving PassRole
 - Enable AWS Config rules to detect Lambda functions with overly permissive execution roles
 - Require MFA for sensitive operations like creating Lambda functions with privileged roles
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Starting user passes an administrative role to a Lambda function; critical when the target role has elevated permissions
+- `Lambda: CreateFunction20150331` — New Lambda function created with a privileged execution role; high severity when the execution role has admin access
+- `Lambda: Invoke` — Lambda function invoked; high severity when preceded by CreateFunction with a privileged role
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

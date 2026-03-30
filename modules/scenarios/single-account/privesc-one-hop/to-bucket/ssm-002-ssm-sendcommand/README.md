@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $8/mo
+* **Pathfinding.cloud ID:** ssm-002
 * **Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ssm:SendCommand) → EC2 instance → (extract metadata credentials) → EC2 S3 role credentials → (s3:GetObject) → sensitive bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ssm-002-to-bucket-starting-user`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:iam::{account_id}:role/pl-prod-ssm-002-to-bucket-ec2-bucket-role`; `arn:aws:s3:::pl-sensitive-data-ssm-002-{account_id}-{suffix}`
+* **Required Permissions:** `ssm:SendCommand` on `*`
+* **Helpful Permissions:** `ssm:ListCommands` (View command execution status and results); `ssm:ListCommandInvocations` (List command invocations for the sent commands); `ssm:GetCommandInvocation` (Retrieve detailed command output containing extracted credentials); `ssm:DescribeInstanceInformation` (Verify SSM agent status on target instances); `ec2:DescribeInstances` (Discover EC2 instances with S3 access roles attached)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0006 - Credential Access
+* **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where an IAM user has permission to execute commands on EC2 instances via AWS Systems Manager (SSM) SendCommand. The attacker can execute arbitrary commands on an EC2 instance that has an IAM role with S3 bucket access permissions, extract the temporary credentials from the EC2 instance metadata service, and then use those credentials locally to access sensitive S3 buckets.
 
@@ -15,7 +25,11 @@ This attack vector is particularly dangerous because it combines the operational
 
 The attack leaves minimal forensic evidence if SSM Session Manager logging is not properly configured, and the extracted credentials are time-limited but fully functional AWS credentials that can be used from any location to access sensitive data stores.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+- **Technique**: T1651 - Cloud Administration Command
+- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
 ### Principals in the attack path
 
@@ -61,16 +75,31 @@ graph LR
 | `arn:aws:s3:::pl-sensitive-data-ssm-002-PROD_ACCOUNT-SUFFIX` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-sensitive-data-ssm-002-PROD_ACCOUNT-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-002-ssm-sendcommand
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -78,18 +107,54 @@ The script will:
 3. Verify successful privilege escalation to S3 bucket access
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the extracted access keys and any temporary files:
+- Temporary credential files containing extracted EC2 instance role credentials
+- Downloaded sensitive data files from the target S3 bucket
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/ssm-002-ssm-sendcommand
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ssm-002-ssm-sendcommand
 ```
 
-Note: The cleanup script removes temporary credential files and downloaded data but does not terminate the EC2 instance or delete the S3 bucket, as those are managed by Terraform.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ssm-002-ssm-sendcommand
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -107,30 +172,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 6. **Overly permissive S3 bucket access from EC2 roles**: EC2 instance roles should only have access to specific S3 prefixes or objects, not entire buckets with sensitive data.
 
-### CloudTrail detection patterns
-
-Monitor for the following suspicious event patterns:
-
-**Credential Extraction Pattern**:
-```
-1. ssm:SendCommand (targeting instance with S3 access role)
-2. ssm:ListCommandInvocations + ssm:GetCommandInvocation (retrieving command output)
-3. S3 API calls using instance role credentials from non-EC2 IP addresses
-```
-
-**Anomalous S3 Access**:
-- Instance role credentials being used for S3 access from geographic locations inconsistent with the EC2 instance region
-- High-volume S3 GetObject operations from instance role credentials outside normal usage patterns
-- Instance role credentials used for S3 access after the EC2 instance has been terminated
-- Unusual access patterns to sensitive S3 buckets (e.g., full bucket downloads)
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
-- **Technique**: T1651 - Cloud Administration Command
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict ssm:SendCommand with resource conditions**: Use IAM policy conditions to limit SSM command execution to specific instances or instances with specific tags:
   ```json
@@ -179,12 +221,6 @@ Monitor for the following suspicious event patterns:
   }
   ```
 
-- **Monitor CloudTrail for suspicious SSM and S3 activity**: Create CloudWatch alarms or SIEM rules for:
-  - `ssm:SendCommand` events targeting instances with S3 access roles
-  - `ssm:ListCommandInvocations` and `ssm:GetCommandInvocation` retrieving command outputs
-  - S3 API calls from instance role credentials originating from non-EC2 IP addresses
-  - Unusual S3 access patterns (bulk downloads, accessing many objects rapidly)
-
 - **Implement Service Control Policies (SCPs)**: Use AWS Organizations SCPs to prevent overly broad SSM permissions at the organization level:
   ```json
   {
@@ -212,3 +248,16 @@ Monitor for the following suspicious event patterns:
   ```
 
 - **Tag sensitive resources**: Apply consistent tags to sensitive S3 buckets and EC2 instances with access to those buckets, enabling automated policy enforcement and monitoring.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `SSM: SendCommand` — SSM command sent to an EC2 instance; critical when targeting instances with S3 access roles attached
+- `SSM: ListCommandInvocations` — Listing command invocations to track execution status; suspicious when following a SendCommand targeting a privileged instance
+- `SSM: GetCommandInvocation` — Retrieving detailed command output; high severity when used to extract credentials from instance metadata
+- `S3: GetObject` — Object downloaded from S3 bucket; critical when performed using EC2 instance role credentials from a non-EC2 source IP address
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

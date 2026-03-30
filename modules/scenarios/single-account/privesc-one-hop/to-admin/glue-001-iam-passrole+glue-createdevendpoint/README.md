@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** glue-001
 * **Technique:** Pass privileged role to AWS Glue dev endpoint for SSH-based command execution
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PassRole + glue:CreateDevEndpoint) → Glue dev endpoint with admin role → SSH access → (aws iam list-users) → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-glue-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-admin-target-role`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-glue-001-to-admin-target-role`; `glue:CreateDevEndpoint` on `*`
+* **Helpful Permissions:** `glue:GetDevEndpoint` (Check endpoint status and retrieve SSH connection details); `iam:ListRoles` (Discover available privileged roles to pass to Glue); `glue:DeleteDevEndpoint` (Clean up created endpoints after demonstration)
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `iam:PassRole` and `glue:CreateDevEndpoint` permissions can create an AWS Glue development endpoint with an administrative role attached. Once the endpoint is provisioned, the attacker can SSH into the endpoint and execute AWS CLI commands with the administrative role's permissions.
 
@@ -18,7 +27,12 @@ This is a classic "PassRole + Service" privilege escalation pattern, similar to 
 
 **Important Note:** Glue development endpoints only support Glue versions **0.9** and **1.0** (legacy versions). Newer Glue versions (2.0, 3.0, 4.0) are not supported for dev endpoints. This scenario uses Glue 1.0.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation (TA0004)
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+- **Sub-technique**: Creating cloud compute resources with elevated privileges
 
 ### Principals in the attack path
 
@@ -59,7 +73,29 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-001-to-admin-target-role` | Administrative role passed to Glue dev endpoint |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-glue-001-to-admin-passrole-policy` | Policy allowing PassRole on target role and glue:CreateDevEndpoint |
 
-## Executing the attack
+## Attack Lab
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint
+plabs apply
+```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
 ### ⚠️ COST WARNING ⚠️
 
@@ -72,14 +108,7 @@ graph LR
 
 Always run the cleanup script immediately after testing to minimize costs.
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint
-./demo_attack.sh
-```
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -92,18 +121,55 @@ The script will:
 
 **Note:** The demo script demonstrates the attack conceptually but does not actually SSH into the endpoint, as this would require additional SSH key setup. The script shows how an attacker would proceed with SSH access to execute privileged commands.
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the Glue dev endpoint to stop incurring charges:
+- Glue development endpoint with admin role attached
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint
-./cleanup_attack.sh
+plabs demo --list
+plabs demo glue-001-iam-passrole+glue-createdevendpoint
 ```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
 
 **This cleanup is critical** - the Glue dev endpoint costs ~$2.20/hour while running. The cleanup script will delete the endpoint and any associated resources created during the demo.
 
-## Detection and prevention
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup glue-001-iam-passrole+glue-createdevendpoint
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -115,14 +181,7 @@ A properly configured CSPM solution should identify:
 - Glue trust policy allowing the Glue service to assume privileged roles
 - Privilege escalation path from user to admin via Glue dev endpoint creation
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: Privilege Escalation (TA0004)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
-- **Sub-technique**: Creating cloud compute resources with elevated privileges
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole permissions**: Limit `iam:PassRole` to only the specific roles and services needed. Use resource-level restrictions:
   ```json
@@ -152,8 +211,6 @@ A properly configured CSPM solution should identify:
   }
   ```
 
-- **Monitor CloudTrail for Glue dev endpoint creation**: Alert on `CreateDevEndpoint` API calls, especially when combined with PassRole on privileged roles. Look for unusual patterns of Glue endpoint creation by users who don't typically use Glue.
-
 - **Restrict glue:CreateDevEndpoint permissions**: Only grant this permission to users who legitimately need to create Glue development endpoints (data engineers, ETL developers). This is a powerful permission that should be tightly controlled.
 
 - **Use IAM Access Analyzer**: Enable IAM Access Analyzer to automatically detect privilege escalation paths involving PassRole and Glue services. Review findings regularly and remediate identified risks.
@@ -167,3 +224,15 @@ A properly configured CSPM solution should identify:
 - **Tag and monitor Glue resources**: Apply mandatory tagging to Glue dev endpoints and monitor for endpoints created without proper tags or by unauthorized users. Use AWS Config rules to enforce tagging policies.
 
 - **Set up billing alerts**: Configure AWS Budgets to alert when Glue costs exceed expected thresholds, helping detect unauthorized dev endpoint creation based on unexpected charges.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — IAM role passed to a Glue service; high severity when the passed role has administrative permissions
+- `Glue: CreateDevEndpoint` — Glue development endpoint created; critical when combined with PassRole on a privileged role
+- `Glue: GetDevEndpoint` — Attacker retrieves endpoint details (SSH key, endpoint address) for interactive access
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

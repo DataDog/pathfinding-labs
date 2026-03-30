@@ -5,16 +5,29 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** iam-004
 * **Technique:** User with iam:CreateLoginProfile can set password for user with S3 bucket access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:CreateLoginProfile) → set password for bucket_user → console login → S3 bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user`; `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-hop1`; `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}`
+* **Required Permissions:** `iam:CreateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-004-bucket-hop1`
+* **Helpful Permissions:** `iam:ListUsers` (Discover users without login profiles); `iam:GetUser` (View user details); `iam:GetLoginProfile` (Check if user already has login profile)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permission to create login profiles (console passwords) for another IAM user with S3 bucket access. Unlike the to-admin variant which targets administrative privileges, this scenario focuses on data exfiltration - demonstrating that privilege escalation to sensitive data access can be just as critical as gaining admin rights.
 
 The attacker uses programmatic access credentials with `iam:CreateLoginProfile` permission to create a console password for a target user who has permissions to access a sensitive S3 bucket. By creating console credentials for this user, the attacker can then log into the AWS Management Console and directly access sensitive data stored in S3 buckets. This path demonstrates that not all privilege escalation leads to admin access, yet the impact can be equally severe when sensitive data is the target.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003), Collection (TA0009)
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Sub-technique**: T1530 - Data from Cloud Storage Object
 
 ### Principals in the attack path
 
@@ -55,16 +68,31 @@ graph LR
 | `arn:aws:s3:::pl-sensitive-data-iam-004-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-sensitive-data-iam-004-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-004-iam-createloginprofile
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -74,36 +102,79 @@ The script will:
 5. Verify successful privilege escalation to bucket access
 6. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the login profile created during the demo:
+- Console login profile (password) for `pl-prod-iam-004-bucket-hop1`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-004-iam-createloginprofile
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-004-iam-createloginprofile
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003), Collection (TA0009)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: T1530 - Data from Cloud Storage Object
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-004-iam-createloginprofile
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM user `pl-prod-iam-004-bucket-starting-user` has `iam:CreateLoginProfile` permission scoped to another user with S3 data access
+- Privilege escalation path exists from starting user to bucket access via login profile creation
+- IAM user `pl-prod-iam-004-bucket-hop1` has S3 read access to a sensitive data bucket but no MFA requirement
+- No MFA enforcement on users with access to sensitive S3 buckets
+
+### Prevention recommendations
 
 - Avoid granting `iam:CreateLoginProfile` permissions on users with sensitive data access (S3, databases, etc.)
 - Use resource-based conditions to restrict which users can have login profiles created: `"Condition": {"StringEquals": {"aws:username": "${aws:username}"}}`
 - Implement SCPs to prevent login profile creation on users with data access roles
-- Monitor CloudTrail for `CreateLoginProfile` API calls, especially on users with S3 permissions
 - Enable MFA requirements for users with sensitive data access to mitigate credential compromise
 - Use IAM Access Analyzer to identify privilege escalation paths to sensitive resources, not just admin access
 - Implement S3 bucket policies that require MFA for object access
-- Enable S3 access logging and CloudTrail data events to track data access patterns
-- Consider using AWS Secrets Manager or Parameter Store instead of long-lived IAM user credentials
 - Regularly audit IAM users for unexpected login profiles and console access
-- Alert on unusual console login patterns, particularly for users that typically only use programmatic access
-- Implement detective controls that flag console logins immediately following CreateLoginProfile API calls
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: CreateLoginProfile` — Console password created for an IAM user; critical when the target user has access to sensitive data
+- `S3: GetObject` — Objects accessed in S3 bucket; high severity when accessed from a newly created console session
+- `S3: ListBucket` — Bucket contents listed; monitor for access from users that typically use only programmatic access
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

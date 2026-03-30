@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $10/mo
 * **Pathfinding.cloud ID:** ec2-002
 * **Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ec2:StopInstances) → (ec2:ModifyInstanceAttribute with malicious cloud-init payload) → (ec2:StartInstances) → malicious script executes on boot → extract credentials from IMDS at 169.254.169.254 → admin access via attached role
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-002-to-admin-starting-user`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:iam::{account_id}:role/pl-prod-ec2-002-to-admin-target-role`
+* **Required Permissions:** `ec2:ModifyInstanceAttribute` on `arn:aws:ec2:*:*:instance/*`; `ec2:StopInstances` on `arn:aws:ec2:*:*:instance/*`; `ec2:StartInstances` on `arn:aws:ec2:*:*:instance/*`
+* **Helpful Permissions:** `ec2:DescribeInstances` (Discover target EC2 instances and verify instance state); `ec2:DescribeInstanceAttribute` (View current user data and instance configuration); `sts:GetCallerIdentity` (Verify identity during attack execution)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
+* **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated privilege escalation vulnerability where an attacker with permissions to stop, modify, and start EC2 instances can inject malicious code into an instance's userData to extract IAM role credentials from the Instance Metadata Service (IMDS). Unlike typical user-data scripts that only execute on the first boot, this attack leverages cloud-init's multipart MIME format with the `cloud_final_modules: [scripts-user, always]` directive to ensure the malicious payload executes on subsequent boots.
 
@@ -16,7 +25,16 @@ The attack works by stopping a running EC2 instance, modifying its userData attr
 
 This technique was popularized by Bishop Fox's AWS privilege escalation research and represents a critical attack vector where compute permissions can be leveraged to obtain credential access. Organizations often overlook the security implications of allowing principals to modify instance attributes, focusing primarily on permissions to create new resources.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactics**:
+  - TA0004 - Privilege Escalation
+  - TA0006 - Credential Access
+- **Techniques**:
+  - T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
+  - T1578 - Modify Cloud Compute Infrastructure
+- **Sub-techniques**:
+  - T1578.005 - Modify Cloud Compute Infrastructure: Modify Cloud Compute Configurations
 
 ### Principals in the attack path
 
@@ -106,16 +124,31 @@ AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r .Token)
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:subnet/subnet-xxxxxxxxx` | Subnet for the EC2 instance |
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:security-group/sg-xxxxxxxxx` | Security group for the EC2 instance |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-002-ec2-modifyinstanceattribute+stopinstances+startinstances
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -125,21 +158,60 @@ The script will:
 5. Verify successful privilege escalation using the extracted credentials
 6. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the modified userData and restore the instance to its original state:
+- Malicious cloud-init userData injected into the target EC2 instance
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-002-ec2-modifyinstanceattribute+stopinstances+startinstances
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ec2-002-ec2-modifyinstanceattribute+stopinstances+startinstances
 ```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+After demonstrating the attack, clean up the modified userData and restore the instance to its original state.
 
 The cleanup script will:
 - Remove the malicious userData from the EC2 instance
 - Stop and restart the instance to clear any running malicious processes
 - Verify the instance has been restored to a clean state
 
-## Detection and prevention
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ec2-002-ec2-modifyinstanceattribute+stopinstances+startinstances
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -151,18 +223,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 4. **Instance Role Exposure**: EC2 instances with administrative IAM roles that are modifiable by non-admin principals
 5. **IMDS Access Risks**: Instances with administrative roles that have IMDS v1 enabled (allowing easier credential extraction)
 
-### MITRE ATT&CK Mapping
-
-- **Tactics**:
-  - TA0004 - Privilege Escalation
-  - TA0006 - Credential Access
-- **Techniques**:
-  - T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-  - T1578 - Modify Cloud Compute Infrastructure
-- **Sub-techniques**:
-  - T1578.005 - Modify Cloud Compute Infrastructure: Modify Cloud Compute Configurations
-
-## Prevention recommendations
+### Prevention recommendations
 
 1. **Restrict ModifyInstanceAttribute Permission**: Use resource-based conditions to limit which instances can have their attributes modified:
    ```json
@@ -200,22 +261,30 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
      --http-put-response-hop-limit 1
    ```
 
-4. **Monitor CloudTrail for Suspicious Activity**:
-   - Alert on `ModifyInstanceAttribute` API calls where `attribute=userData`
-   - Alert on sequences of `StopInstances` → `ModifyInstanceAttribute` → `StartInstances` against the same instance
-   - Monitor for unusual IMDS access patterns from EC2 instances
-
-5. **Separate EC2 Management from Application Permissions**: Use separate roles for EC2 infrastructure management versus application workloads
+4. **Separate EC2 Management from Application Permissions**: Use separate roles for EC2 infrastructure management versus application workloads
    - Never grant `ec2:ModifyInstanceAttribute` to application-level roles
    - Use dedicated admin roles for EC2 modifications
 
-6. **Implement Network Controls**: Use VPC endpoints and security groups to restrict outbound traffic from sensitive instances, preventing credential exfiltration
+5. **Implement Network Controls**: Use VPC endpoints and security groups to restrict outbound traffic from sensitive instances, preventing credential exfiltration
 
-7. **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving EC2 permissions and instance roles
+6. **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving EC2 permissions and instance roles
 
-8. **Apply Least Privilege for Instance Roles**: Minimize permissions granted to EC2 instance roles, especially for long-running instances
+7. **Apply Least Privilege for Instance Roles**: Minimize permissions granted to EC2 instance roles, especially for long-running instances
 
-9. **Enable GuardDuty**: AWS GuardDuty can detect anomalous IMDS credential usage and EC2 instance compromise indicators
+8. **Enable GuardDuty**: AWS GuardDuty can detect anomalous IMDS credential usage and EC2 instance compromise indicators
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `EC2: StopInstances` — Instance stopped; suspicious when followed immediately by ModifyInstanceAttribute and StartInstances on the same instance
+- `EC2: ModifyInstanceAttribute` — Instance attribute modified; critical when `attribute=userData` on an instance with a privileged role attached
+- `EC2: StartInstances` — Instance started; high severity when preceded by a ModifyInstanceAttribute (userData) event
+- `STS: AssumeRole` — Role assumed from EC2 instance metadata; look for the target role ARN being assumed by the EC2 instance principal
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 
@@ -224,6 +293,3 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **AWS IMDS Security**: Best practices for securing Instance Metadata Service access
 - **Pathfinding.cloud**: This scenario is cataloged as path ID **ec2-002**
 
-## Cost Estimate
-
-Running this scenario costs approximately **$8/month** for the EC2 instance (t3.micro in us-east-1 running continuously). Costs may vary based on region and instance uptime.

@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Pathfinding.cloud ID:** ec2-005
 * **Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (CreateLaunchTemplateVersion with existing admin role + malicious user data) → (ModifyLaunchTemplate default version) → Next instance launch uses admin role → User data adds AdministratorAccess to starting user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-005-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-lowpriv-role`; `arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-target-role`
+* **Required Permissions:** `ec2:CreateLaunchTemplateVersion` on `*`; `ec2:ModifyLaunchTemplate` on `*`
+* **Helpful Permissions:** `iam:ListRoles` (Discover available privileged roles already configured in existing templates); `ec2:DescribeLaunchTemplates` (Discover existing launch templates to target); `ec2:DescribeLaunchTemplateVersions` (View existing template configuration before modification); `autoscaling:DescribeAutoScalingGroups` (Identify which ASGs use the target launch template); `ec2:DescribeInstances` (Monitor instance launch and verify user data execution); `sts:GetCallerIdentity` (Verify privilege escalation was successful)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated privilege escalation technique where an attacker with permissions to modify EC2 launch templates can change an existing administrative role configuration and inject malicious user data that will be executed when the next EC2 instance is launched. The combination of `ec2:CreateLaunchTemplateVersion` and `ec2:ModifyLaunchTemplate` permissions creates a powerful attack path that allows an attacker to "pre-stage" privilege escalation that activates automatically.
 
@@ -15,7 +25,11 @@ EC2 launch templates are commonly used with Auto Scaling Groups (ASGs) to define
 
 The attack works by creating a new launch template version that references an existing administrative IAM role (already configured in the template) and user data containing a script that grants the attacker's starting user administrative permissions. Notably, this attack does NOT require `iam:PassRole` permissions because the attacker is simply referencing a role that already exists in a previous template version. When the next instance launches (either through manual action, auto-scaling, or scheduled tasks), the instance receives full administrative permissions via its instance profile, and the user data script immediately modifies IAM policies to grant the attacker persistent admin access. This is a one-hop privilege escalation because the attacker goes directly from limited permissions to admin access through the compromised instance's actions.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0003 - Persistence
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+- **Technique**: T1578 - Modify Cloud Compute Infrastructure
 
 ### Principals in the attack path
 
@@ -64,16 +78,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ec2-005-to-admin-target-role` | Administrative role that will be passed to the modified launch template |
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:launch-template/pl-prod-ec2-005-to-admin-template` | EC2 launch template that can be modified to include admin role |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-005-ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -86,25 +115,57 @@ The script will:
 
 **Cost Warning:** This demo launches a t3.micro spot instance which will incur small charges (~$0.01-0.05/hour). The cleanup script terminates all instances to minimize costs.
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the EC2 instances and restore the launch template:
+- New EC2 launch template version with admin role and malicious user data
+- EC2 instance launched using the modified launch template
+- IAM policy attachment granting AdministratorAccess to the starting user
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-005-ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ec2-005-ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate
 ```
 
-The cleanup script will:
-- Terminate all EC2 instances launched during the demo
-- Restore the launch template to its original default version
-- Remove the malicious launch template version
-- Remove any IAM policy attachments made by the user data script
-- Preserve the deployed infrastructure for future demonstrations
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What CSPMs Should Detect
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ec2-005-ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should identify this vulnerability by detecting:
 
@@ -116,13 +177,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **Suspicious User Data**: New template versions containing IAM modification commands in user data
 - **Instance Profile Changes**: Launch template modifications that update user data while keeping the same privileged instance profile
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0003 - Persistence
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
-
-## Prevention recommendations
+### Prevention recommendations
 
 - Restrict who can modify launch templates that contain privileged instance profiles using resource-based IAM policies
 - Use Service Control Policies (SCPs) to prevent launch template modifications in production environments unless from approved automation roles
@@ -137,3 +192,15 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - Consider using EC2 Image Builder with locked-down instance profiles instead of relying on user data for configuration
 - Regularly audit existing launch templates to identify those with privileged instance profiles and restrict modification permissions
 - Separate permissions: Don't grant template modification permissions to principals who don't need to manage infrastructure
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `EC2: CreateLaunchTemplateVersion` — New launch template version created; high severity when the template contains a privileged instance profile or when user data contains IAM-modification commands
+- `EC2: ModifyLaunchTemplate` — Launch template default version changed; critical when the new default version was recently created and references an admin role
+- `EC2: RunInstances` — EC2 instance launched using a launch template; monitor for instances launched with administrative instance profiles shortly after template modification
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

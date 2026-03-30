@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Pathfinding.cloud ID:** apprunner-001
 * **Technique:** Pass privileged role to App Runner service with command override
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (apprunner:CreateService + iam:PassRole) → App Runner service with target_role → StartCommand override executes with admin role → grants admin to starting_user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-apprunner-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-apprunner-001-to-admin-target-role`
+* **Required Permissions:** `apprunner:CreateService` on `*`; `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-apprunner-001-to-admin-target-role`; `iam:CreateServiceLinkedRole` on `arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner`
+* **Helpful Permissions:** `apprunner:ListServices` (List App Runner services to verify service creation); `apprunner:DescribeService` (Check service status and configuration); `iam:ListUsers` (Verify admin access after escalation)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `apprunner:CreateService` and `iam:PassRole` permissions can create an AWS App Runner service that executes arbitrary commands with a privileged role's permissions. The attacker passes an administrative role to the App Runner service and uses the `StartCommand` override feature to execute AWS CLI commands that grant themselves administrator access.
 
@@ -17,7 +27,12 @@ This attack is particularly dangerous because it combines the flexibility of con
 
 **Technical Note**: The public AWS CLI container (`public.ecr.aws/aws-cli/aws-cli:latest`) has its entrypoint set to `/usr/local/bin/aws`, which means any `StartCommand` provided to App Runner is interpreted as arguments to the AWS CLI. This allows us to execute AWS CLI commands directly without needing to specify `/bin/bash` or shell wrappers. The privilege escalation happens immediately when the container starts - the service doesn't need to pass health checks or stay running for the attack to succeed.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Technique**: T1651 - Cloud Administration Command
+- **Sub-technique**: Using cloud service features to execute commands with elevated privileges
 
 ### Principals in the attack path
 
@@ -60,16 +75,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-apprunner-001-to-admin-passrole-policy` | Allows `iam:PassRole` on target role and `apprunner:CreateService` |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-apprunner-001-to-admin-admin-attach-policy` | Grants target role permission to attach policies to the starting user |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-001-iam-passrole+apprunner-createservice
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -79,21 +109,54 @@ The script will:
 5. Verify successful privilege escalation to administrator
 6. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the App Runner service and detach the administrator policy:
+- App Runner service using the public AWS CLI container image (`public.ecr.aws/aws-cli/aws-cli:latest`)
+- `AdministratorAccess` policy attached to the starting user
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-001-iam-passrole+apprunner-createservice
-./cleanup_attack.sh
+plabs demo --list
+plabs demo apprunner-001-iam-passrole+apprunner-createservice
 ```
 
-The cleanup script will:
-- Delete the App Runner service created during the attack
-- Detach the `AdministratorAccess` policy from the starting user
-- Restore the environment to its original state
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup apprunner-001-iam-passrole+apprunner-createservice
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -104,14 +167,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **Privilege Escalation Path**: Detection of the one-hop path from starting user through App Runner to admin access
 - **Command Override Risk**: App Runner services with `StartCommand` overrides that could execute arbitrary code
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1651 - Cloud Administration Command
-- **Sub-technique**: Using cloud service features to execute commands with elevated privileges
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole Permissions**: Limit `iam:PassRole` to specific, well-defined roles with minimal permissions. Use resource-based conditions to prevent passing privileged roles to compute services.
   ```json
@@ -143,7 +199,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
   }
   ```
 
-- **Monitor CloudTrail for App Runner Activity**: Set up alerts for `CreateService`, `UpdateService` API calls, especially those that specify instance roles with sensitive permissions. Pay special attention to services using `StartCommand` overrides.
+- **Monitor CloudTrail for App Runner Activity**: Set up alerts for `AppRunner: CreateService`, `AppRunner: UpdateService` API calls, especially those that specify instance roles with sensitive permissions. Pay special attention to services using `StartCommand` overrides.
 
 - **Use IAM Access Analyzer**: Leverage IAM Access Analyzer to identify privilege escalation paths involving `iam:PassRole` and compute service permissions.
 
@@ -152,3 +208,15 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **Regular Permission Audits**: Periodically review which principals have `apprunner:CreateService` and `iam:PassRole` permissions, and ensure they are necessary for legitimate business functions.
 
 - **Separate Environments**: Use different AWS accounts for development and production, limiting App Runner deployment capabilities to non-production environments where possible.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Role passed to App Runner service; high risk when the passed role has IAM modification permissions
+- `AppRunner: CreateService` — New App Runner service created; critical when combined with a privileged instance role and a `StartCommand` override
+- `IAM: AttachUserPolicy` — Policy attached to a user; critical when the policy is `AdministratorAccess` and follows App Runner service creation
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

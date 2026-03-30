@@ -1,14 +1,23 @@
 # Privilege Escalation via iam:PassRole + sagemaker:CreateNotebookInstance
 
-**Category:** Privilege Escalation
-**Sub-Category:** new-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** sagemaker-001
-**Technique:** Creating SageMaker notebook instance with admin role and accessing Jupyter terminal to execute commands with elevated privileges
+* **Category:** Privilege Escalation
+* **Sub-Category:** new-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Pathfinding.cloud ID:** sagemaker-001
+* **Technique:** User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (PassRole + CreateNotebookInstance) → new notebook with admin role → (CreatePresignedNotebookInstanceUrl) → access Jupyter terminal → execute commands with admin role → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-001-to-admin-passable-role`; `arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-001-to-admin-notebook`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sagemaker-001-to-admin-passable-role`; `sagemaker:CreateNotebookInstance` on `*`
+* **Helpful Permissions:** `iam:ListRoles` (Discover available privileged roles to pass); `iam:GetRole` (Verify role has administrative permissions); `sagemaker:CreatePresignedNotebookInstanceUrl` (Generate presigned URL for notebook access (can also access directly via console)); `sagemaker:DescribeNotebookInstance` (Check notebook status and wait for InService state); `sagemaker:ListNotebookInstances` (Verify notebook was created successfully); `sts:GetCallerIdentity` (Verify current identity and get account ID)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass an IAM role to SageMaker and create notebook instances. The attacker can create a SageMaker notebook instance with an administrative execution role, generate a presigned URL to access the Jupyter environment, and use the built-in terminal to execute AWS CLI commands with the elevated privileges of the notebook's execution role.
 
@@ -16,7 +25,11 @@ This technique is particularly effective because SageMaker notebook instances pr
 
 The attack was documented by Spencer Gietzen of Rhino Security Labs in 2019 as part of comprehensive research into AWS privilege escalation methods. It leverages the machine learning platform's legitimate need for elevated permissions, but exploits overly permissive IAM configurations that allow untrusted users to create their own notebook instances with privileged roles. This creates a persistent environment where an attacker can maintain elevated access for as long as the notebook instance remains running.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
 
 ### Principals in the attack path
 
@@ -58,16 +71,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sagemaker-001-to-admin-passable-role` | Admin role that can be passed to SageMaker notebook instances (trusted by sagemaker.amazonaws.com) |
 | Policy attached to starting user | Grants `iam:PassRole` on passable role, `sagemaker:CreateNotebookInstance`, and `sagemaker:CreatePresignedNotebookInstanceUrl` |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-001-iam-passrole+sagemaker-createnotebookinstance
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -81,14 +109,27 @@ The script will:
 
 **Note**: The notebook instance will incur costs (~$0.05/hour for ml.t3.medium instance type). The cleanup script should be run promptly after testing.
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the SageMaker notebook instance created during the demo:
+- SageMaker notebook instance (`pl-prod-sagemaker-001-to-admin-notebook`) with the admin execution role attached
+- Presigned URL for Jupyter notebook access (temporary, expires after a short period)
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-001-iam-passrole+sagemaker-createnotebookinstance
-./cleanup_attack.sh
+plabs demo --list
+plabs demo sagemaker-001-iam-passrole+sagemaker-createnotebookinstance
 ```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+After demonstrating the attack, clean up the SageMaker notebook instance created during the demo.
 
 The cleanup script will:
 - Stop the SageMaker notebook instance (if running)
@@ -98,23 +139,49 @@ The cleanup script will:
 
 This restores the environment to its original state while preserving the deployed infrastructure for future testing.
 
-## Detection and prevention
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup sagemaker-001-iam-passrole+sagemaker-createnotebookinstance
+```
 
-### MITRE ATT&CK Mapping
+#### With plabs tui
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
+### Teardown with plabs non-interactive
 
-## Prevention recommendations
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM principal has `iam:PassRole` permission scoped broadly enough to pass a role with administrative permissions to SageMaker
+- IAM principal has `sagemaker:CreateNotebookInstance` permission, enabling creation of notebook instances with arbitrary execution roles
+- IAM principal has both `iam:PassRole` and `sagemaker:CreateNotebookInstance`, creating a privilege escalation path
+- SageMaker execution role (`pl-prod-sagemaker-001-to-admin-passable-role`) has `AdministratorAccess` or equivalent admin-level policy attached
+- No SCP or permission boundary prevents passing privileged roles to `sagemaker.amazonaws.com`
+
+### Prevention recommendations
 
 - Restrict `iam:PassRole` permissions using strict resource conditions to limit which roles can be passed to SageMaker: `"Condition": {"StringEquals": {"iam:PassedToService": "sagemaker.amazonaws.com"}}`
 - Implement naming patterns or resource tags to restrict which roles can be used as SageMaker execution roles
 - Avoid granting `sagemaker:CreateNotebookInstance` to users who don't require machine learning capabilities
 - Use resource-based conditions to restrict notebook instance creation to specific VPCs or subnets: `"Condition": {"StringEquals": {"sagemaker:VpcSubnets": ["subnet-specific-id"]}}`
-- Monitor CloudTrail for `CreateNotebookInstance` events where execution roles have administrative or highly privileged permissions
 - Implement Service Control Policies (SCPs) that prevent passing roles with `AdministratorAccess` or sensitive permissions to SageMaker
 - Enable AWS Config rules to detect SageMaker notebook instances with overly permissive execution roles
 - Use IAM Access Analyzer to identify privilege escalation paths involving `iam:PassRole` and SageMaker services
@@ -122,6 +189,19 @@ This restores the environment to its original state while preserving the deploye
 - Require MFA for sensitive operations like creating notebook instances with privileged roles
 - Implement VPC restrictions to limit network access from notebook instances to sensitive resources
 - Use AWS Organizations SCPs to prevent SageMaker usage in accounts where machine learning is not a business requirement
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — IAM role passed to a SageMaker service principal; critical when the passed role has administrative permissions
+- `SageMaker: CreateNotebookInstance` — New notebook instance created; high severity when the execution role has elevated privileges
+- `SageMaker: CreatePresignedNotebookInstanceUrl` — Presigned URL generated for notebook access; indicates imminent interactive access to the notebook environment
+- `SageMaker: DescribeNotebookInstance` — Notebook instance status queried; often seen while attacker polls for InService state
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## Cost considerations
 

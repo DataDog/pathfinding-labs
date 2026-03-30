@@ -5,9 +5,18 @@
 * **Path Type:** cross-account
 * **Target:** to-admin
 * **Environments:** dev, prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
+* **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption`
+* **Schema Version:** 1.0.0
+* **Attack Path:** dev:starting_user → (AssumeRole) → prod:target_role (trusts :root) → admin access in prod
+* **Attack Principals:** `arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user`; `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role`
+* **Required Permissions:** `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role`
+* **Helpful Permissions:** `sts:GetCallerIdentity` (Verify current identity before and after role assumption); `iam:ListRoles` (Discover assumable roles in the target account)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a critical cross-account privilege escalation vulnerability where a production administrative role trusts the entire dev account via the `:root` principal, rather than trusting specific users or roles. This represents one of the most dangerous misconfigurations in multi-account AWS environments.
 
@@ -15,7 +24,11 @@ The attack exploits an overly permissive trust policy in the prod account that t
 
 In this scenario, a user in the dev account with `sts:AssumeRole` permission can assume the production admin role and gain full administrative access. If ANY principal in the dev account is compromised, the attacker can immediately escalate to production admin privileges. This violates the fundamental security principle that production accounts should have stricter access controls than development accounts.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Description**: Adversary uses valid credentials to assume cross-account roles, exploiting overly permissive :root trust policies to escalate from a lower-privileged dev account to gain administrative access in a production account
 
 ### Principals in the attack path
 
@@ -100,16 +113,31 @@ This trusts only the specific user. Even if other dev principals are compromised
 - **:root trust**: Blast radius includes entire dev account (hundreds of potential principals)
 - **Explicit trust**: Blast radius limited to single trusted principal
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption
-./demo_attack.sh
+plabs enable enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -118,13 +146,55 @@ The script will:
 4. Verify successful cross-account privilege escalation to admin
 5. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-This scenario does not create persistent attack artifacts beyond the infrastructure deployed by Terraform. Role assumption is temporary and sessions expire automatically. No cleanup script is needed for this pure role assumption scenario.
+- No persistent resources are created; `sts:AssumeRole` sessions are temporary and expire automatically
 
-## Detection and prevention
+#### With plabs non-interactive
 
-### What CSPM Should Detect
+```bash
+plabs demo --list
+plabs demo root-trust-role-assumption
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup root-trust-role-assumption
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should detect:
 
@@ -137,20 +207,14 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Privilege Escalation Paths**: Automated detection of dev → prod admin paths in IAM Access Analyzer
 - **Trust Policy Comparison**: Flag :root trusts as significantly higher risk than explicit principal trusts
 
-### Key Detection Indicators
+**Key Detection Indicators:**
 
 1. **Trust Policy Pattern**: `"Principal": {"AWS": "arn:aws:iam::*:root"}`
 2. **Cross-Account Boundary**: Dev account ID ≠ Prod account ID
 3. **Permission Level**: Role has administrative or sensitive permissions
 4. **Missing Conditions**: No MFA, external ID, or IP restrictions
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Description**: Adversary uses valid credentials to assume cross-account roles, exploiting overly permissive :root trust policies to escalate from a lower-privileged dev account to gain administrative access in a production account
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **NEVER Use :root in Trust Policies**: Always specify explicit principal ARNs (users or roles) in trust policies, never use :root
 - **Principle of Explicit Trust**: Trust specific principals by full ARN, not entire accounts
@@ -193,10 +257,6 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Use External IDs**: For service-to-service cross-account access, require external IDs to prevent confused deputy attacks
 - **Implement Separate AWS Organizations**: Keep production and non-production accounts in separate AWS Organizations with no trust relationships
 - **Role Chaining Instead of Direct Trust**: Require multi-hop role assumption with approval workflows for prod access from dev accounts
-- **Monitor CloudTrail for Cross-Account AssumeRole**: Alert on `AssumeRole` API calls where the source account differs from the target account, especially for administrative roles:
-  - Filter for `eventName = "AssumeRole"`
-  - Where `userIdentity.accountId ≠ resources[].accountId`
-  - Flag when destination role has admin permissions
 - **Use IAM Access Analyzer**: Enable IAM Access Analyzer to continuously scan for external access to resources and highlight cross-account trust relationships, especially :root trusts
 - **Principle of Least Privilege**: If cross-account access is required, grant only the minimum necessary permissions, not administrative access
 - **Time-Based Restrictions**: Add time-of-day restrictions to trust policies to limit when cross-account access is permitted
@@ -214,3 +274,13 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Automated Remediation**: Implement automated remediation to replace :root trusts with explicit principal trusts when detected
 - **Security Hub Integration**: Enable AWS Security Hub to receive findings about overly permissive trust policies
 - **Break-Glass Process**: For legitimate cross-account access needs, implement break-glass emergency access with approval workflows instead of standing :root trusts
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `STS: AssumeRole` — Cross-account role assumption; alert when source account ID differs from the target account ID, especially when the assumed role has administrative permissions
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

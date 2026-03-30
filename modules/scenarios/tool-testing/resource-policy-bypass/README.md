@@ -5,15 +5,37 @@
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Bypass S3 bucket resource policy restrictions by assuming role with bucket access
+* **Terraform Variable:** `enable_tool_testing_resource_policy_bypass`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (AssumeRole) → role_a → (sts:AssumeRole) → bucket_role → bypass resource policy → bucket access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod`; `arn:aws:iam::{account_id}:role/pl-prod-role-a`; `arn:aws:iam::{account_id}:role/pl-prod-bucket-role`; `arn:aws:s3:::pl-restricted-bucket-{account_id}`
+* **Required Permissions:** `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-bucket-role`
+* **Helpful Permissions:** `iam:ListRoles` (Discover roles with bucket access); `s3:GetBucketPolicy` (View bucket resource policy restrictions); `iam:GetRole` (View role permissions)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0005 - Defense Evasion, TA0009 - Collection
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
+
+## Attack Overview
 
 This module demonstrates how a role with minimal IAM permissions can access an S3 bucket through a resource-based policy, bypassing traditional IAM permission restrictions.
 
-## Attack Path Overview
+The attack path shows how a user can assume a role with only `s3:ListAllMyBuckets` permission and still access sensitive data in an S3 bucket through a resource-based policy. This is a critical security vulnerability: resource policies can grant access even when IAM identity policies would otherwise restrict it, and a role with very limited permissions can reach sensitive data if the bucket's resource policy is misconfigured.
 
-The attack path shows how a user can assume a role with only `s3:ListAllMyBuckets` permission and still access sensitive data in an S3 bucket through a resource-based policy.
+This configuration appears in real environments when teams manage S3 access through bucket policies alone, without cross-referencing which IAM principals can assume roles that are explicitly permitted in those bucket policies.
 
-## Access Path Diagram
+### MITRE ATT&CK Mapping
+
+- **Tactics**: TA0004 - Privilege Escalation, TA0005 - Defense Evasion, TA0009 - Collection
+- **Techniques**: T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
+
+### Principals in the attack path
+
+- `arn:aws:iam::{PROD_ACCOUNT}:user/pl-pathfinding-starting-user-prod` (starting user with assume-role permission)
+- `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-role-a` (intermediate role)
+- `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-bucket-role` (role with minimal IAM permissions, allowed by bucket resource policy)
+
+### Attack Path Diagram
 
 ```mermaid
 graph LR
@@ -22,145 +44,151 @@ graph LR
     Role[prod:role:pl-bucket-access-role]
     Bucket[prod:s3:pl-sensitive-data-bucket]
     Data[prod:s3:confidential-data]
-    
+
     %% Edges
     User -->|sts:AssumeRole| Role
     Role -->|s3:ListAllMyBuckets| Bucket
     Bucket -->|Resource Policy| Data
-    
+
     %% Styling
-    classDef userNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef roleNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef bucketNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef dataNode fill:#ffebee,stroke:#c62828,stroke-width:2px
-    
-    class User userNode
+    classDef startNode fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef roleNode fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef targetNode fill:#99ff99,stroke:#333,stroke-width:2px
+
+    class User startNode
     class Role roleNode
-    class Bucket bucketNode
-    class Data dataNode
+    class Bucket,Data targetNode
 ```
 
-## Attack Steps
+### Attack Steps
 
-1. **Initial State**: User `pl-pathfinding-starting-user-prod` has permission to assume the `pl-bucket-access-role`
+1. **Initial Access**: User `pl-pathfinding-starting-user-prod` has permission to assume the `pl-bucket-access-role`
 2. **Role Assumption**: User assumes the role which only has `s3:ListAllMyBuckets` permission
 3. **Bucket Discovery**: Role uses its limited permission to list all S3 buckets
 4. **Resource Policy Access**: The sensitive bucket has a resource policy that allows the role to access it
 5. **Data Exfiltration**: Role can now read, write, and delete objects in the sensitive bucket
+6. **Verification**: Confirms that IAM identity policy restrictions were bypassed via the resource policy
 
-## Resources Created
+### Scenario specific resources created
 
-### Prod Environment (`prod.tf`)
-- **Bucket Access Role** (`pl-bucket-access-role`): Role that trusts the prod starting user
-- **Minimal Policy**: Policy with only `s3:ListAllMyBuckets` permission
-- **Sensitive S3 Bucket**: Bucket with sensitive data and encryption
-- **Resource Policy**: Bucket policy that allows the role to access the bucket
-- **Sample Data**: Sensitive files placed in the bucket for demonstration
+| ARN | Purpose |
+|-----|---------|
+| `arn:aws:iam::{PROD_ACCOUNT}:role/pl-bucket-access-role` | Role that trusts the prod starting user; has only `s3:ListAllMyBuckets` in its IAM policy |
+| `arn:aws:s3:::pl-sensitive-data-bucket-{PROD_ACCOUNT}` | Sensitive S3 bucket with resource policy granting the bucket access role full object access |
 
-## Prerequisites
+## Attack Lab
 
-- AWS CLI configured with appropriate credentials
-- The prod starting user must have permission to assume the bucket access role
-- The bucket access role must have `s3:ListAllMyBuckets` permission
-- The sensitive bucket must have a resource policy allowing the role access
+### Prerequisites
 
-## Usage
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-### Deploy the Module
-
-```bash
-# From the project root
-terraform init
-terraform plan
-terraform apply
-```
-
-### Run the Attack Demo
+### Deploy with plabs non-interactive
 
 ```bash
-# Navigate to the module directory
-cd modules/paths/prod_role_has_access_to_bucket_through_resource_policy
-
-# Make the demo script executable
-chmod +x demo_attack.sh
-
-# Run the attack demo
-./demo_attack.sh
+plabs enable enable_tool_testing_resource_policy_bypass
+plabs apply
 ```
 
-### Cleanup After Demo
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
+
+The script will:
+
+1. **Verification**: Check current identity and permissions
+2. **Role Assumption**: Assume the bucket access role with minimal permissions
+3. **Permission Testing**: Verify that the role has limited IAM permissions
+4. **Bucket Discovery**: Use `s3:ListAllMyBuckets` to find the sensitive bucket
+5. **Resource Policy Access**: Access the bucket through the resource policy
+6. **Data Exfiltration**: Read and write sensitive data
+7. **Verification**: Confirm that IAM restrictions were bypassed
+
+#### Resources created by attack script
+
+- Temporary AWS session credentials for `pl-bucket-access-role`
+- Sample data read/write operations on `pl-sensitive-data-bucket`
+
+#### With plabs non-interactive
 
 ```bash
-# Make the cleanup script executable
-chmod +x cleanup_attack.sh
-
-# Run the cleanup script
-./cleanup_attack.sh
+plabs demo --list
+plabs demo resource-policy-bypass
 ```
 
-## Demo Script Details
+#### With plabs tui
 
-The `demo_attack.sh` script demonstrates the complete attack flow:
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-1. **Verification**: Checks current identity and permissions
-2. **Role Assumption**: Assumes the bucket access role with minimal permissions
-3. **Permission Testing**: Verifies that the role has limited IAM permissions
-4. **Bucket Discovery**: Uses `s3:ListAllMyBuckets` to find the sensitive bucket
-5. **Resource Policy Access**: Accesses the bucket through the resource policy
-6. **Data Exfiltration**: Reads and writes sensitive data
-7. **Verification**: Confirms that IAM restrictions were bypassed
+### Cleanup
 
-## Security Implications
-
-This attack demonstrates a critical security vulnerability:
-
-- **Resource Policy Bypass**: Resource policies can grant access even when IAM policies restrict it
-- **Minimal Permission Escalation**: A role with very limited permissions can access sensitive data
-- **Discovery Through Listing**: The ability to list buckets can lead to discovering sensitive resources
-- **High Impact**: Full read/write access to sensitive S3 data
-
-## Mitigation Strategies
-
-1. **Principle of Least Privilege**: Avoid granting `s3:ListAllMyBuckets` unless absolutely necessary
-2. **Resource Policy Auditing**: Regularly audit S3 bucket resource policies
-3. **Access Logging**: Enable S3 access logging to monitor bucket access
-4. **Bucket Naming**: Use non-descriptive bucket names to avoid easy discovery
-5. **Conditional Policies**: Use conditions in resource policies to restrict access
-6. **Regular Reviews**: Regularly review both IAM and resource policies
-7. **Monitoring**: Set up CloudTrail and CloudWatch alerts for suspicious S3 access
-8. **Encryption**: Use additional encryption layers for sensitive data
-
-## Testing
-
-This module is included in the automated test suite. To run tests:
+#### With plabs non-interactive
 
 ```bash
-# From the project root
-cd tests
-./run_all_tests.sh
+plabs cleanup --list
+plabs cleanup resource-policy-bypass
 ```
 
-The test will verify that:
-- The role assumption works correctly
-- The role has limited IAM permissions
-- The bucket can be discovered through listing
-- The resource policy allows access to the bucket
-- Sensitive data can be read and written
+#### With plabs tui
 
-## Outputs
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-- `bucket_access_role_name`: The name of the bucket access role
-- `bucket_access_role_arn`: The ARN of the bucket access role
-- `sensitive_bucket_name`: The name of the sensitive S3 bucket
-- `sensitive_bucket_arn`: The ARN of the sensitive S3 bucket
-- `sensitive_bucket_domain_name`: The domain name of the sensitive S3 bucket
+### Teardown with plabs non-interactive
 
-## Variables
+```bash
+plabs disable enable_tool_testing_resource_policy_bypass
+plabs apply
+```
 
-- `dev_account_id`: The AWS account ID for the dev environment
-- `prod_account_id`: The AWS account ID for the prod environment
-- `operations_account_id`: The AWS account ID for the operations environment
-- `resource_suffix`: Random suffix for globally namespaced resources
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- S3 bucket resource policy grants access to an IAM role that has `s3:ListAllMyBuckets` on `*`, creating a path from that role to sensitive bucket data
+- IAM role (`pl-bucket-access-role`) is assumable by a low-privilege starting user and is explicitly named in an S3 bucket resource policy granting broad object permissions (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`)
+- Resource policy on `pl-sensitive-data-bucket` permits full object access without requiring any corresponding IAM identity policy permission on the bucket, meaning any entity that can assume the role gains data access regardless of their IAM policies
+- Discovery through `s3:ListAllMyBuckets` enables the role to enumerate bucket names, compounding the data exposure risk
+
+### Prevention recommendations
+
+1. **Principle of Least Privilege**: Avoid granting `s3:ListAllMyBuckets` unless absolutely necessary; scope bucket list permissions to specific buckets where possible
+2. **Resource Policy Auditing**: Regularly audit S3 bucket resource policies to ensure that every principal explicitly named has a legitimate business need for that level of access
+3. **Access Logging**: Enable S3 server access logging and CloudTrail data events on sensitive buckets to monitor for unexpected access patterns
+4. **Conditional Policies**: Use `aws:PrincipalTag` or `aws:ResourceTag` conditions in resource policies to restrict access to tagged/approved principals rather than static ARNs
+5. **Regular Cross-Reference Reviews**: Periodically cross-reference which IAM roles are named in bucket resource policies against which users or roles can assume those roles transitively
+6. **Monitoring**: Set up CloudTrail and CloudWatch alerts for `s3:GetObject` and `s3:PutObject` events on sensitive buckets from roles with no direct IAM bucket permissions
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `STS: AssumeRole` — Starting user assumes `pl-bucket-access-role`; watch for cross-role chains leading to S3 data events
+- `S3: ListBucket` — Bucket enumeration using `s3:ListAllMyBuckets`; precursor to targeted data access
+- `S3: GetObject` — Object read from the sensitive bucket; critical when the caller assumed a role with no direct IAM bucket permissions
+- `S3: PutObject` — Object write to the sensitive bucket; high severity from a role with minimal IAM policy
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## Technical Details
 

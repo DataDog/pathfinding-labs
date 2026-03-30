@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $8/mo
+* **Pathfinding.cloud ID:** ssm-002
 * **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ssm:SendCommand) → EC2 instance → extract instance role credentials → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ssm-002-to-admin-starting-user`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:iam::{account_id}:role/pl-prod-ssm-002-to-admin-ec2-admin-role`
+* **Required Permissions:** `ssm:SendCommand` on `*`
+* **Helpful Permissions:** `ssm:ListCommands` (Track command execution status during demo); `ssm:ListCommandInvocations` (Retrieve command output containing extracted credentials); `ec2:DescribeInstances` (Discover target EC2 instances with privileged roles)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+* **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where an IAM user has permission to execute commands on EC2 instances via AWS Systems Manager (SSM) SendCommand. The attacker can execute arbitrary commands on an EC2 instance that has an administrative IAM role attached, extract the temporary credentials from the EC2 instance metadata service, and then use those credentials locally to gain full administrator access.
 
@@ -15,7 +25,11 @@ This attack vector is particularly dangerous because it combines the operational
 
 The attack leaves minimal forensic evidence if SSM Session Manager logging is not properly configured, and the extracted credentials are time-limited but fully functional AWS credentials that can be used from any location.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+- **Technique**: T1651 - Cloud Administration Command
+- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
 ### Principals in the attack path
 
@@ -56,16 +70,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:instance-profile/pl-prod-ssm-002-to-admin-ec2-admin-profile` | Instance profile associating the admin role with the EC2 instance |
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and admin role attached |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-002-ssm-sendcommand
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -73,18 +102,58 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the extracted access keys and any temporary files:
+- Temporary credential files containing the extracted EC2 instance role credentials
+- Environment variable exports for the extracted AWS access key, secret key, and session token
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-002-ssm-sendcommand
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ssm-002-ssm-sendcommand
 ```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+After demonstrating the attack, clean up the extracted access keys and any temporary files.
 
 Note: The cleanup script removes temporary credential files and clears environment variables but does not terminate the EC2 instance, as that is managed by Terraform.
 
-## Detection and prevention
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ssm-002-ssm-sendcommand
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -100,29 +169,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 5. **EC2 instances without IMDSv2 enforcement**: The Instance Metadata Service should be configured to require IMDSv2, which provides protection against SSRF attacks and makes metadata extraction more difficult.
 
-### CloudTrail detection patterns
-
-Monitor for the following suspicious event patterns:
-
-**Credential Extraction Pattern**:
-```
-1. ssm:SendCommand (targeting instance with privileged role)
-2. ssm:ListCommandInvocations (retrieving command output)
-3. AWS API calls using instance role credentials from non-EC2 IP addresses
-```
-
-**Anomalous API Usage**:
-- Instance role credentials being used from geographic locations inconsistent with the EC2 instance region
-- High-volume API calls from instance role credentials outside normal usage patterns
-- Instance role credentials used after the EC2 instance has been terminated
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
-- **Technique**: T1651 - Cloud Administration Command
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict ssm:SendCommand with resource conditions**: Use IAM policy conditions to limit SSM command execution to specific instances or instances with specific tags:
   ```json
@@ -149,11 +196,6 @@ Monitor for the following suspicious event patterns:
 
 - **Enable SSM Session Manager logging**: Configure AWS Systems Manager to log all command executions to CloudWatch Logs or S3 for audit and forensic analysis.
 
-- **Monitor CloudTrail for suspicious SSM activity**: Create CloudWatch alarms or SIEM rules for:
-  - `ssm:SendCommand` events targeting instances with privileged roles
-  - `ssm:ListCommandInvocations` retrieving command outputs
-  - Unusual API activity patterns from instance role credentials
-
 - **Implement Service Control Policies (SCPs)**: Use AWS Organizations SCPs to prevent overly broad SSM permissions at the organization level:
   ```json
   {
@@ -172,3 +214,25 @@ Monitor for the following suspicious event patterns:
   ```
 
 - **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving SSM and EC2 instance roles using AWS IAM Access Analyzer or third-party tools.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `SSM: SendCommand` — SSM command executed on an EC2 instance; critical when the target instance has a privileged IAM role attached
+- `SSM: ListCommandInvocations` — Command output retrieved; high severity when following a SendCommand on a privileged instance, as it may contain extracted credentials
+- `STS: GetCallerIdentity` — Identity verification call; suspicious when originating from instance role credentials used at a non-EC2 IP address or in an unexpected region
+
+**Credential Extraction Pattern to alert on**:
+- `SSM: SendCommand` targeting an instance with a privileged role, followed by
+- `SSM: ListCommandInvocations` retrieving the output, followed by
+- AWS API calls using the instance role credentials from a non-EC2 source IP
+
+**Anomalous API Usage indicators**:
+- Instance role credentials being used from geographic locations inconsistent with the EC2 instance region
+- High-volume API calls from instance role credentials outside normal usage patterns
+- Instance role credentials used after the EC2 instance has been terminated
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

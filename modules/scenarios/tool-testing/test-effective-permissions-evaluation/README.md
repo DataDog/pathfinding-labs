@@ -5,9 +5,18 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
+* **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
+* **Schema Version:** 1.0.0
+* **Attack Path:** Starting user → 39 test principals (15 isAdmin: single policy, group membership, multi-policy; 24 notAdmin: single deny, multi-deny, single boundary, multi-policy with boundary) → S3 bucket access test → comprehensive effective permissions evaluation
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-epe-starting-user`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-awsmanaged`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-customermanaged`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-inline`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-awsmanaged`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-customermanaged`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-via-group-inline`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-split-iam-and-notiam`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-split-s3-and-nots3`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-isAdmin-many-services-combined`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-denynotaction-ec2only`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-plus-denyall`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-boundary-allows-nothing`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-ec2only`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-admin-plus-boundary-na-ec2only`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-boundary-allows-nothing`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-allow-boundary-ec2only`; `arn:aws:iam::{account_id}:user/pl-prod-epe-user-notAdmin-split-boundary-mismatch`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-awsmanaged`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-customermanaged`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-inline`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-split-iam-and-notiam`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-split-s3-and-nots3`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-many-services-combined`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction-ec2only`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-split-iam-notiam`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-incremental`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-plus-denyall`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-admin-plus-boundary-allows-nothing`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-ec2only`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-boundary-allows-nothing`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-allow-boundary-ec2only`; `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-boundary-mismatch`; `arn:aws:s3:::pl-sensitive-data-epe-{account_id}-{suffix}`
+* **Required Permissions:** `*` on `*`; `*` on `*`
+* **Helpful Permissions:** `sts:GetCallerIdentity` (Verify assumed identity); `sts:AssumeRole` (Starting user assumes test roles)
+* **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
 
 This scenario provides a comprehensive test suite for validating the accuracy of security tools, CSPM platforms, and IAM analyzers in evaluating effective permissions. Unlike traditional attack scenarios that demonstrate a single exploitation path, this scenario deploys 40 IAM principals (39 test principals + 1 starting user) with carefully crafted permission configurations designed to test the full spectrum of AWS IAM evaluation logic.
 
@@ -30,7 +39,10 @@ This means:
 
 **Important**: Resource-based denies (like S3 bucket policies) do NOT affect admin status in this scenario. We're testing IAM-level effective permissions evaluation only.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0009 - Collection, TA0004 - Privilege Escalation
+- **Technique**: T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
 ### Principal Organization
 
@@ -315,16 +327,33 @@ Security tools should correctly evaluate:
 | Boundary Policies | `pl-prod-epe-boundary-allows-nothing`, `pl-prod-epe-boundary-ec2only`, etc. | Permissions boundaries for testing |
 | S3 Bucket | `pl-sensitive-data-epe-{account_id}-{suffix}` | Target resource for access testing |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-This scenario focuses on CSPM detection validation. The demo script tests all 39 principals (excluding starting user):
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/tool-testing/test-effective-permissions-evaluation
-./demo_attack.sh
+plabs enable enable_tool_testing_test_effective_permissions_evaluation
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
+
+This scenario focuses on CSPM detection validation. The demo script tests all 39 principals (excluding starting user).
 
 The script will:
 1. Retrieve credentials for all principals from Terraform outputs
@@ -339,7 +368,24 @@ The script will:
 - **24 notAdmin principals**: Should have neither S3 nor IAM access (not-admin)
 - **Total tests**: 39 principals tested
 
-### Manual Testing with Security Tools
+#### Resources created by attack script
+
+- No persistent attack artifacts are created; the script only reads credentials and tests access against existing resources
+
+#### With plabs non-interactive
+
+```bash
+plabs demo --list
+plabs demo test-effective-permissions-evaluation
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Executing the attack manually
 
 To validate your CSPM or IAM analyzer:
 
@@ -371,18 +417,40 @@ To validate your CSPM or IAM analyzer:
 - TP = 15, FN = 0, TN = 24, FP = 0
 - Accuracy = 100%, Precision = 100%, Recall = 100%
 
-### Cleaning up the attack artifacts
+### Cleanup
 
-This scenario creates no attack artifacts to clean up. All resources are managed by Terraform:
+This scenario creates no persistent attack artifacts. All resources are managed by Terraform.
+
+#### With plabs non-interactive
 
 ```bash
-# To remove all test principals and resources
-terraform destroy
+plabs cleanup --list
+plabs cleanup test-effective-permissions-evaluation
 ```
 
-## Detection and prevention
+#### With plabs tui
 
-### What CSPM Tools Should Detect
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_tool_testing_test_effective_permissions_evaluation
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A comprehensive CSPM or IAM analysis tool should correctly identify:
 
@@ -468,12 +536,7 @@ This scenario helps answer critical questions about your security tooling:
 | notAdmin: Multi-Policy + Boundary | 6 | 0 | 6 |
 | **Total (excluding starting user)** | **39** | **15** | **24** |
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0009 - Collection, TA0004 - Privilege Escalation
-- **Technique**: T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
-
-## Prevention recommendations
+### Prevention recommendations
 
 While this is a tool-testing scenario rather than a vulnerability demonstration, the configurations illustrate important security principles:
 
@@ -498,3 +561,16 @@ While this is a tool-testing scenario rather than a vulnerability demonstration,
 - **Monitor Policy Changes**: Use CloudTrail to monitor changes to IAM policies, group memberships, permissions boundaries, and role trust policies. Alert on unexpected modifications.
 
 - **Use IAM Access Analyzer**: Leverage AWS IAM Access Analyzer to identify resources shared with external entities and validate IAM policies before deployment (Policy Validation feature).
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `STS: AssumeRole` — Starting user assumes test roles during evaluation; monitor for unexpected role assumption patterns
+- `S3: GetObject` — Access to the test S3 bucket; isAdmin principals should succeed, notAdmin should be blocked
+- `S3: ListBucket` — Listing the test S3 bucket contents during access validation
+- `IAM: ListUsers` — IAM read access used to validate effective permissions for admin principals
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

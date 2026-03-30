@@ -4,10 +4,19 @@
 * **Path Type:** multi-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** lambda-004 + iam-002
 * **Technique:** Update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user
+* **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (lambda:UpdateFunctionCode + lambda:InvokeFunction) → lambda_role credentials → (iam:CreateAccessKey) → admin_user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-starting-user`; `arn:aws:lambda:{region}:{account_id}:function:pl-prod-lambda-004-to-iam-002-target-function`; `arn:aws:iam::{account_id}:role/pl-prod-lambda-004-to-iam-002-lambda-role`; `arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-admin-user`
+* **Required Permissions:** `lambda:UpdateFunctionCode` on `arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function`; `lambda:InvokeFunction` on `arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function`; `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-lambda-004-to-iam-002-admin-user`
+* **Helpful Permissions:** `lambda:ListFunctions` (Discover available Lambda functions to target); `lambda:GetFunction` (View function details including execution role ARN); `lambda:GetFunctionConfiguration` (View function configuration details)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0006 - Credential Access
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1059 - Command and Scripting Interpreter
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated two-hop privilege escalation attack that chains two distinct techniques: Lambda function code manipulation and IAM access key creation. The attack exploits the common misconfiguration where users are granted permissions to update Lambda function code without restrictions, combined with Lambda execution roles that have overly permissive IAM capabilities.
 
@@ -15,7 +24,16 @@ In the first hop, an attacker with `lambda:UpdateFunctionCode` and `lambda:Invok
 
 The second hop leverages the exfiltrated Lambda role credentials, which have `iam:CreateAccessKey` permission on an administrative user. This is a dangerous combination because Lambda execution roles are often granted broad permissions for automation purposes, and the ability to create access keys for admin users provides persistent, full administrative access. This attack chain demonstrates how seemingly limited permissions can be combined to achieve complete environment compromise.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactics**:
+  - TA0004 - Privilege Escalation
+  - TA0002 - Execution
+  - TA0006 - Credential Access
+- **Techniques**:
+  - T1098.001 - Account Manipulation: Additional Cloud Credentials
+  - T1059 - Command and Scripting Interpreter
+  - T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
 ### Principals in the attack path
 
@@ -67,16 +85,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-lambda-004-to-iam-002-starting-policy` | Policy granting starting user Lambda permissions |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-lambda-004-to-iam-002-lambda-policy` | Policy granting Lambda role iam:CreateAccessKey on admin user |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-multi-hop/to-admin/lambda-004-to-iam-002-to-admin
-./demo_attack.sh
+plabs enable enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -87,9 +120,26 @@ The script will:
 6. Verify successful privilege escalation to administrator
 7. Output standardized test results for automation
 
-### Manual attack execution
+#### Resources created by attack script
 
-If you prefer to execute the attack manually:
+- Access keys for `pl-prod-lambda-004-to-iam-002-admin-user` (permanent IAM access key pair)
+- Modified Lambda function code (credential exfiltration payload replaces the original handler)
+- Temporary zip file at `/tmp/lambda_payload.zip`
+
+#### With plabs non-interactive
+
+```bash
+plabs demo --list
+plabs demo lambda-004-to-iam-002-to-admin
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Executing the attack manually
 
 ```bash
 # Step 1: Configure starting user credentials
@@ -144,26 +194,38 @@ unset AWS_SESSION_TOKEN
 aws iam list-users
 ```
 
-### Cleaning up the attack artifacts
+### Cleanup
 
-After demonstrating the attack, clean up the access keys and restore the original Lambda code:
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-multi-hop/to-admin/lambda-004-to-iam-002-to-admin
-./cleanup_attack.sh
+plabs cleanup --list
+plabs cleanup lambda-004-to-iam-002-to-admin
 ```
 
-The cleanup script will:
-1. Delete any access keys created for the admin user during the demo
-2. Restore the Lambda function to its original benign code
-3. Remove temporary files created during the attack
-4. Preserve the deployed infrastructure for future demonstrations
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
-
-A properly configured Cloud Security Posture Management tool should identify the following risks in this scenario:
 
 **High Severity Findings:**
 - IAM user has `lambda:UpdateFunctionCode` permission - allows code injection
@@ -181,38 +243,7 @@ A properly configured Cloud Security Posture Management tool should identify the
 - Path: `starting-user` -> `lambda:UpdateFunctionCode` -> `lambda:InvokeFunction` -> `lambda-role` -> `iam:CreateAccessKey` -> `admin-user`
 - Risk: Complete environment compromise through chained privilege escalation
 
-### CloudTrail events to monitor
-
-| Event Name | Description | Severity |
-| -- | -- | -- |
-| `UpdateFunctionCode20150331v2` | Lambda function code was modified | High |
-| `Invoke` | Lambda function was invoked (correlate with code changes) | Medium |
-| `CreateAccessKey` | New access keys created (especially for privileged users) | Critical |
-
-### Detection queries
-
-**AWS CloudTrail Lake query for suspicious Lambda + IAM activity:**
-```sql
-SELECT
-    eventTime, eventName, userIdentity.arn, requestParameters
-FROM cloudtrail_logs
-WHERE eventName IN ('UpdateFunctionCode20150331v2', 'Invoke', 'CreateAccessKey')
-    AND eventTime > date_sub(current_date, 1)
-ORDER BY eventTime
-```
-
-### MITRE ATT&CK Mapping
-
-- **Tactics**:
-  - TA0004 - Privilege Escalation
-  - TA0002 - Execution
-  - TA0006 - Credential Access
-- **Techniques**:
-  - T1098.001 - Account Manipulation: Additional Cloud Credentials
-  - T1059 - Command and Scripting Interpreter
-  - T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict Lambda code update permissions**: Implement resource-based conditions to limit which functions can be updated: `"Condition": {"StringNotLike": {"lambda:FunctionArn": "arn:aws:lambda:*:*:function:production-*"}}`
 
@@ -231,6 +262,18 @@ ORDER BY eventTime
 - **Use IAM roles instead of IAM users for admin access**: Administrative principals should use roles with temporary credentials, not users with permanent access keys that can be created by attackers
 
 - **Implement anomaly detection**: Use GuardDuty and CloudTrail Insights to detect unusual patterns like Lambda code updates followed by immediate invocations
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `Lambda: UpdateFunctionCode20150331v2` — Lambda function code was modified; high severity when followed by an invocation
+- `Lambda: Invoke` — Lambda function was invoked; correlate with preceding code changes to detect credential exfiltration
+- `IAM: CreateAccessKey` — New access keys created for an IAM user; critical when the target user has elevated permissions
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 

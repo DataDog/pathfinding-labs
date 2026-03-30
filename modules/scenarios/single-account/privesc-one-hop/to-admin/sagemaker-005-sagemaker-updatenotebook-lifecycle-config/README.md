@@ -1,13 +1,23 @@
 # Privilege Escalation via SageMaker UpdateNotebook Lifecycle Config
 
-**Category:** Privilege Escalation
-**Sub-Category:** existing-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Technique:** Injecting malicious lifecycle configuration into existing SageMaker notebook to execute code with notebook's admin role
+* **Category:** Privilege Escalation
+* **Sub-Category:** existing-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Cost Estimate:** $37/mo
+* **Pathfinding.cloud ID:** sagemaker-005
+* **Technique:** User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (StopNotebookInstance) → notebook → (CreateLifecycleConfig + UpdateNotebookInstance + StartNotebookInstance) → lifecycle script executes with notebook's admin role → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-005-to-admin-starting-user`; `arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook`; `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-005-to-admin-notebook-role`
+* **Required Permissions:** `sagemaker:CreateNotebookInstanceLifecycleConfig` on `*`; `sagemaker:StopNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook`; `sagemaker:UpdateNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook`; `sagemaker:StartNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook`
+* **Helpful Permissions:** `sagemaker:DescribeNotebookInstance` (View notebook details, status, and attached execution role); `sagemaker:ListNotebookInstances` (Discover available notebook instances to target); `iam:GetRole` (Verify the notebook's execution role has admin permissions)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1525 - Implant Internal Image
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a sophisticated privilege escalation vulnerability where a user with SageMaker notebook management permissions can inject malicious code into an existing notebook instance that executes with highly privileged credentials. SageMaker notebook instances run with IAM execution roles, and lifecycle configurations allow administrators to specify scripts that run automatically when the notebook starts or is created. Critically, these lifecycle scripts execute with the notebook's execution role credentials, not the credentials of the user who modified the configuration.
 
@@ -17,7 +27,12 @@ This privilege escalation path is particularly dangerous because it's a legitima
 
 This scenario is based on research published by Plerion: [Privilege Escalation with SageMaker and Execution Roles](https://www.plerion.com/blog/privilege-escalation-with-sagemaker-and-execution-roles)
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactics**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Techniques**:
+  - T1078.004 - Valid Accounts: Cloud Accounts
+  - T1525 - Implant Internal Image (lifecycle config acts as an implant mechanism)
 
 ### Principals in the attack path
 
@@ -66,16 +81,31 @@ graph LR
 | `arn:aws:sagemaker:REGION:PROD_ACCOUNT:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook` | SageMaker notebook instance running ml.t3.medium with admin execution role |
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sagemaker-005-to-admin-notebook-role` | Notebook execution role with AdministratorAccess policy attached |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-005-sagemaker-updatenotebook-lifecycle-config
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -89,26 +119,56 @@ The script will:
 
 **Note**: The demo includes wait times for the notebook to stop (~5 minutes) and start (~5-7 minutes), as SageMaker notebook state transitions take several minutes to complete.
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the malicious lifecycle configuration and revoke the admin permissions granted during the demo:
+- Malicious SageMaker notebook lifecycle configuration (`AdministratorAccess` policy attachment script)
+- `AdministratorAccess` managed policy attached to `pl-prod-sagemaker-005-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-005-sagemaker-updatenotebook-lifecycle-config
-./cleanup_attack.sh
+plabs demo --list
+plabs demo sagemaker-005-sagemaker-updatenotebook-lifecycle-config
 ```
 
-The cleanup script will:
-- Remove the AdministratorAccess policy from the starting user
-- Stop the notebook instance
-- Remove the malicious lifecycle configuration from the notebook
-- Delete the malicious lifecycle configuration
-- Restore the notebook to its original state (without lifecycle config)
-- Restart the notebook
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What CSPM Tools Should Detect
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup sagemaker-005-sagemaker-updatenotebook-lifecycle-config
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should identify:
 
@@ -118,32 +178,30 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **Privilege Escalation Path**: Direct privilege escalation path from SageMaker update permissions to administrative access through notebook execution roles
 - **Overprivileged ML Infrastructure**: Machine learning infrastructure components running with permissions exceeding their operational requirements
 
-### MITRE ATT&CK Mapping
-
-- **Tactics**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Techniques**:
-  - T1078.004 - Valid Accounts: Cloud Accounts
-  - T1525 - Implant Internal Image (lifecycle config acts as an implant mechanism)
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Principle of Least Privilege for Execution Roles**: Never grant SageMaker notebook execution roles administrative access. Scope execution roles to only the specific S3 buckets, data sources, and AWS services required for data science workloads
 - **Restrict SageMaker Management Permissions**: Limit `sagemaker:UpdateNotebookInstance` and `sagemaker:CreateNotebookInstanceLifecycleConfig` permissions to infrastructure administrators only, not data science users
 - **Implement Resource-Based Conditions**: Use IAM condition keys to restrict lifecycle configuration changes: `"Condition": {"StringNotLike": {"sagemaker:LifecycleConfigName": ["approved-config-*"]}}`
 - **Require Approval Workflows**: Implement approval workflows for notebook configuration changes using AWS Service Catalog or custom automation
-- **Monitor Lifecycle Configuration Changes**: Create CloudWatch alarms for `CreateNotebookInstanceLifecycleConfig` and `UpdateNotebookInstance` API calls, especially when performed outside of normal change windows
 - **Use SCPs for Guardrails**: Implement Service Control Policies to prevent creation of SageMaker execution roles with administrative permissions
 - **Enable IMDSv2**: Configure notebook instances to require IMDSv2 to add an additional layer of credential security
 - **Audit Existing Notebooks**: Regularly audit all SageMaker notebook instances for overprivileged execution roles and unnecessary lifecycle configurations
 - **Segregate Permissions**: Use separate IAM roles for notebook creation (infrastructure team) and notebook usage (data science team)
-- **CloudTrail Monitoring**: Monitor for the specific API call sequence: StopNotebookInstance → CreateLifecycleConfig → UpdateNotebookInstance → StartNotebookInstance as this pattern indicates potential exploitation
 
-## Cost considerations
+## Detection Abuse (CloudSIEM)
 
-This scenario creates a SageMaker notebook instance running on an `ml.t3.medium` instance type:
+### CloudTrail events to monitor
 
-- **Hourly cost**: Approximately $0.07 per hour
-- **Monthly cost**: Approximately $5 per month if left running 24/7
-- **Cost optimization**: The notebook can be stopped when not in use to reduce costs to $0. Terraform will create the notebook in a `Stopped` state, which incurs no charges until started.
+- `SageMaker: StopNotebookInstance` — Notebook instance stopped; when followed by lifecycle config changes, indicates potential injection setup
+- `SageMaker: CreateNotebookInstanceLifecycleConfig` — New lifecycle configuration created; high severity when performed by non-infrastructure users
+- `SageMaker: UpdateNotebookInstance` — Notebook instance configuration modified; critical when lifecycle config attachment is changed
+- `SageMaker: StartNotebookInstance` — Notebook instance started; the lifecycle script executes here with the notebook's execution role credentials
+- `IAM: AttachUserPolicy` — Policy attached to a user; watch for AdministratorAccess attachments originating from a SageMaker execution role
 
-The demonstration script starts the notebook temporarily for testing and can stop it afterward to minimize costs.
+Monitor for the specific API call sequence: `StopNotebookInstance` → `CreateNotebookInstanceLifecycleConfig` → `UpdateNotebookInstance` → `StartNotebookInstance` as this pattern indicates potential exploitation.
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+

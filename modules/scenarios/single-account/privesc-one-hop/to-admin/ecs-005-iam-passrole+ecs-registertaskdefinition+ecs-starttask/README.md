@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $8/mo
+* **Pathfinding.cloud ID:** ecs-005
 * **Technique:** ECS EC2 task execution with admin role using ecs:StartTask to grant starting user administrative access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ecs:RegisterTaskDefinition with admin role) → (ecs:StartTask) → ECS task attaches admin policy to starting user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ecs-005-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-ecs-005-to-admin-target-role`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-005-to-admin-target-role`; `ecs:RegisterTaskDefinition` on `*`; `ecs:StartTask` on `*`
+* **Helpful Permissions:** `ecs:ListContainerInstances` (Retrieve container instance ARN for StartTask command); `ecs:DescribeTasks` (Monitor task execution status and verify task completion); `ecs:DeregisterTaskDefinition` (Clean up task definition after demonstration); `ecs:StopTask` (Stop running tasks during cleanup); `ec2:DescribeVpcs` (Find default VPC for ECS task network configuration); `ec2:DescribeSubnets` (Find subnet in default VPC for ECS task network configuration); `iam:DetachUserPolicy` (Remove admin policy from starting user during cleanup); `iam:ListAttachedUserPolicies` (Verify privilege escalation success by listing attached policies)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass IAM roles to ECS tasks (`iam:PassRole`), register ECS task definitions (`ecs:RegisterTaskDefinition`), and start ECS tasks (`ecs:StartTask`). The attacker can create a malicious ECS task definition that uses an administrative execution role, then launch it on EC2 container instances to modify IAM permissions and grant themselves administrator access.
 
@@ -19,7 +29,11 @@ ECS tasks running on EC2 container instances receive temporary credentials based
 
 The attack works by registering a task definition that specifies an admin role and contains a containerized AWS CLI command to attach the AdministratorAccess policy to the starting user. When the task starts on an EC2 container instance, it executes with the admin role's credentials and persistently elevates the attacker's privileges. This technique is particularly stealthy because ECS tasks can complete in seconds and automatically clean up their infrastructure.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Technique**: T1610 - Deploy Container
 
 ### Principals in the attack path
 
@@ -65,16 +79,31 @@ graph LR
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:instance/INSTANCE_ID` | EC2 container instance registered with the ECS cluster |
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ecs-005-to-admin-instance-role` | IAM role for the EC2 instance (allows ECS agent to function) |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -82,37 +111,82 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the ECS task definition, running tasks, and detach the AdministratorAccess policy from the starting user:
+- ECS task definition referencing the admin target role
+- AdministratorAccess policy attached to the starting user
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1610 - Deploy Container
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup ecs-005-iam-passrole+ecs-registertaskdefinition+ecs-starttask
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM user has `iam:PassRole` permission to an admin role trusted by `ecs-tasks.amazonaws.com`
+- IAM user has `ecs:RegisterTaskDefinition` and `ecs:StartTask` permissions, enabling container-based privilege escalation
+- ECS task execution role has administrative permissions (`AdministratorAccess` or equivalent)
+- Privilege escalation path exists: starting user can register an ECS task definition with an admin role and launch it on cluster instances
+
+### Prevention recommendations
 
 - Restrict `iam:PassRole` permissions using resource-based conditions to limit which roles can be passed and to which AWS services
 - Implement condition keys like `iam:PassedToService` with value `ecs-tasks.amazonaws.com` to explicitly control PassRole usage
 - Avoid granting broad `ecs:RegisterTaskDefinition` and `ecs:StartTask` permissions; use resource tags or naming patterns to limit task operations
-- Monitor CloudTrail for `RegisterTaskDefinition` and `StartTask` events where task roles have administrative privileges
 - Implement Service Control Policies (SCPs) that prevent passing roles with administrative permissions to ECS tasks
 - Use IAM Access Analyzer to identify privilege escalation paths involving PassRole combined with ECS operations
 - Enable AWS Config rules to detect ECS task definitions with overly permissive execution roles
-- Alert on `AttachUserPolicy` and `PutUserPolicy` API calls, especially when the principal is an ECS task role
 - Implement IAM permission boundaries on users to limit the maximum permissions that can be attached
-- Require approval workflows for ECS task definitions that reference privileged IAM roles
-- Use VPC Flow Logs and CloudWatch Logs to monitor ECS task network activity and command execution
-- Restrict ECS cluster access using resource-based policies and condition keys to enforce least privilege
 - Pay special attention to `ecs:StartTask` permissions as they are less common than `ecs:RunTask` and may be overlooked in security reviews
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: PassRole` — Role passed to ECS task definition; critical when the target role has administrative permissions
+- `ECS: RegisterTaskDefinition` — New task definition registered; high severity when the task execution role has elevated permissions
+- `ECS: StartTask` — Task launched on EC2 container instance; investigate when combined with a recently registered task definition using a privileged role
+- `IAM: AttachUserPolicy` — Policy attached to an IAM user; critical when the source principal is an ECS task role and the policy is AdministratorAccess
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

@@ -5,9 +5,18 @@
 * **Path Type:** cross-account
 * **Target:** to-admin
 * **Environments:** dev, prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Direct cross-account role assumption from dev user to prod admin role
+* **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
+* **Schema Version:** 1.0.0
+* **Attack Path:** dev:starting_user → (AssumeRole) → prod:target_role → admin access in prod
+* **Attack Principals:** `arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user`; `arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role`
+* **Required Permissions:** `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role`
+* **Helpful Permissions:** `sts:GetCallerIdentity` (Verify current identity before and after role assumption); `iam:ListRoles` (Discover assumable roles in the target account)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a cross-account privilege escalation vulnerability where a user in the dev account has permission to assume an administrative role in the production account. This represents a common misconfiguration in multi-account AWS environments where non-production accounts are granted excessive trust relationships with production accounts.
 
@@ -15,7 +24,11 @@ The attack exploits a trust policy in the prod account that explicitly trusts a 
 
 This is particularly dangerous because it violates the principle that production accounts should have stricter access controls than development accounts. A compromise of the dev account, which typically has looser security controls, directly leads to production account compromise.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Description**: Adversary uses valid credentials to assume cross-account roles, escalating from a lower-privileged dev account to gain administrative access in a production account
 
 ### Principals in the attack path
 
@@ -53,16 +66,31 @@ graph LR
 | `arn:aws:iam::{DEV_ACCOUNT}:user/pl-dev-xsare-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
 | `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-xsare-to-admin-target-role` | Prod account role with AdministratorAccess that trusts the dev user |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption
-./demo_attack.sh
+plabs enable enable_cross_account_dev_to_prod_one_hop_simple_role_assumption
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -70,13 +98,57 @@ The script will:
 3. Verify successful cross-account privilege escalation to admin
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
+
+- Temporary STS session credentials for `pl-prod-xsare-to-admin-target-role` (expire automatically; no persistent artifacts created)
+
+#### With plabs non-interactive
+
+```bash
+plabs demo --list
+plabs demo simple-role-assumption
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
 
 This scenario does not create persistent attack artifacts beyond the infrastructure deployed by Terraform. Role assumption is temporary and sessions expire automatically. No cleanup script is needed for this pure role assumption scenario.
 
-## Detection and prevention
+#### With plabs non-interactive
 
-### What CSPM Should Detect
+```bash
+plabs cleanup --list
+plabs cleanup simple-role-assumption
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_cross_account_dev_to_prod_one_hop_simple_role_assumption
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should detect:
 
@@ -87,13 +159,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Lack of External ID**: Cross-account trusts without external ID requirements (where applicable)
 - **Privilege Escalation Paths**: Automated detection of dev → prod admin paths in IAM Access Analyzer
 
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Description**: Adversary uses valid credentials to assume cross-account roles, escalating from a lower-privileged dev account to gain administrative access in a production account
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Eliminate Direct Cross-Account Trust**: Never allow production administrative roles to trust users or roles in non-production accounts directly
 - **Implement Role Chaining with Break-Glass**: Require multi-hop role assumption with approval workflows for prod access from dev accounts
@@ -132,3 +198,13 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Principle of Least Privilege**: If cross-account access is required, grant only the minimum necessary permissions, not administrative access
 - **Time-Based Restrictions**: Add time-of-day restrictions to trust policies to limit when cross-account access is permitted
 - **IP Address Restrictions**: Require cross-account assumptions to originate from known IP ranges or VPNs
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `STS: AssumeRole` — Cross-account role assumption; critical when the source account differs from the target account and the target role has administrative permissions
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

@@ -5,10 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $5/mo
 * **Pathfinding.cloud ID:** ssm-001
 * **Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ssm:StartSession) → EC2 instance → (curl IMDS) → EC2 instance role credentials → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-admin-starting-user`; `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx`; `arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-admin-ec2-role`
+* **Required Permissions:** `ssm:StartSession` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id} and arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell`
+* **Helpful Permissions:** `ec2:DescribeInstances` (Discover target EC2 instances); `ssm:DescribeInstanceInformation` (Identify SSM-enabled instances); `sts:GetCallerIdentity` (Verify credentials after exfiltration)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
+* **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where an IAM user has permission to start interactive sessions on EC2 instances via AWS Systems Manager (SSM) Session Manager. The attacker can establish an interactive shell session on an EC2 instance that has an administrative IAM role attached, extract the temporary credentials from the EC2 instance metadata service (IMDS), and then use those credentials locally to gain full administrator access.
 
@@ -16,7 +25,11 @@ This attack vector is particularly dangerous because SSM Session Manager provide
 
 The attack leaves minimal forensic evidence if SSM Session Manager logging is not properly configured, and the extracted credentials are time-limited but fully functional AWS credentials that can be used from any location to perform any action the instance role permits.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation, TA0006 - Credential Access
+- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
 
 ### Principals in the attack path
 
@@ -59,16 +72,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:instance-profile/pl-prod-ssm-001-to-admin-ec2-profile` | Instance profile associating the admin role with the EC2 instance |
 | `arn:aws:ec2:REGION:PROD_ACCOUNT:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and admin role attached |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-001-ssm-startsession
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -76,18 +104,53 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the extracted credentials and any temporary files:
+- Temporary AWS credential environment variables extracted from the EC2 instance metadata service
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-startsession
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ssm-001-ssm-startsession
 ```
 
-Note: The cleanup script removes temporary credential files and clears environment variables but does not terminate the EC2 instance, as that is managed by Terraform.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup ssm-001-ssm-startsession
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -105,36 +168,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 6. **Session Manager access without MFA requirements**: Sensitive operations like starting sessions on instances with privileged roles should require multi-factor authentication.
 
-### CloudTrail detection patterns
-
-Monitor for the following suspicious event patterns:
-
-**Credential Extraction Pattern**:
-```
-1. ssm:StartSession (targeting instance with privileged role)
-2. Extended session duration (may indicate manual credential extraction)
-3. AWS API calls using instance role credentials from non-EC2 IP addresses
-```
-
-**Anomalous API Usage**:
-- Instance role credentials being used from geographic locations inconsistent with the EC2 instance region
-- High-volume API calls from instance role credentials outside normal usage patterns
-- Instance role credentials used after the EC2 instance has been terminated
-- Instance role credentials used simultaneously from both the EC2 instance and external locations
-
-**Session Manager Abuse Indicators**:
-- Multiple rapid `ssm:StartSession` attempts across different instances (reconnaissance)
-- Sessions started outside normal business hours or by unusual principals
-- Long-duration sessions on instances that typically don't require interactive access
-- Sessions started on instances with administrative roles by non-administrative users
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: TA0004 - Privilege Escalation, TA0006 - Credential Access
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict ssm:StartSession with resource conditions**: Use IAM policy conditions to limit SSM session access to specific instances or instances with specific tags:
   ```json
@@ -218,3 +252,17 @@ Monitor for the following suspicious event patterns:
 - **Implement credential guard mechanisms**: Consider using tools or scripts on EC2 instances to detect and alert on unusual IMDS access patterns, such as repeated queries to the credentials endpoint or access from unexpected processes.
 
 - **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving SSM and EC2 instance roles using AWS IAM Access Analyzer or third-party tools like Pathfinding.cloud to identify these attack vectors before they can be exploited.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `SSM: StartSession` — Interactive session started on an EC2 instance; high severity when the target instance has a privileged IAM role attached
+- `SSM: TerminateSession` — Session terminated; correlate with StartSession events to measure session duration and flag unusually long sessions
+- `SSM: ResumeSession` — Session resumed; may indicate persistent interactive access to a sensitive instance
+- `STS: GetCallerIdentity` — Caller identity verified; commonly used after extracting credentials to confirm the level of access obtained
+- `EC2: DescribeInstances` — EC2 instance enumeration; when followed by StartSession, may indicate reconnaissance to identify high-value targets
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

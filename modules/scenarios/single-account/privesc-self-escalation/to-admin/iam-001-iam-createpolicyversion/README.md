@@ -5,14 +5,27 @@
 * **Path Type:** self-escalation
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Pathfinding.cloud ID:** iam-001
 * **Technique:** Self-modification via iam:CreatePolicyVersion
+* **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (AssumeRole) → starting_role → (iam:CreatePolicyVersion) → new policy version with admin → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-iam-001-to-admin-starting-role`
+* **Required Permissions:** `iam:CreatePolicyVersion` on `arn:aws:iam::*:policy/*`
+* **Helpful Permissions:** `iam:ListPolicyVersions` (List existing policy versions); `iam:GetPolicyVersion` (View content of policy versions)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a role can modify its own permissions by creating new versions of policies attached to itself. The attacker starts with minimal permissions but can grant themselves administrator access by creating a new policy version with elevated permissions.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation
+- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+- **Sub-technique**: Abuse of IAM Permissions
 
 ### Principals in the attack path
 
@@ -42,16 +55,31 @@ graph LR
 | `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-001-to-admin-starting-role` | Starting role with policy versioning capability |
 | `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-001-to-admin-policy` | Allows `iam:CreatePolicyVersion` and `iam:ListPolicyVersions` on itself |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-001-iam-createpolicyversion
-./demo_attack.sh
+plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -59,32 +87,78 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, clean up the policy versions created during the demo:
+- New IAM policy version (v2) with `AdministratorAccess` permissions attached to `pl-prod-iam-001-to-admin-policy`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-001-iam-createpolicyversion
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-001-iam-createpolicyversion
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Abuse of IAM Permissions
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-001-iam-createpolicyversion
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
+
+### What CSPM tools should detect
+
+- IAM role has `iam:CreatePolicyVersion` permission on policies attached to itself, enabling self-escalation
+- Policy allows modification of the same policy that grants the permission (circular privilege escalation path)
+- Role can effectively grant itself `AdministratorAccess` without any external approval
+
+### Prevention recommendations
 
 - Avoid granting `iam:CreatePolicyVersion` permissions on policies attached to the same role
 - If required, use resource-based conditions to restrict which policies can be modified
 - Implement SCPs to prevent policy version manipulation for privilege escalation
-- Monitor CloudTrail for `CreatePolicyVersion` API calls, especially when roles modify their own policies
 - Enable MFA requirements for sensitive operations
 - Use IAM Access Analyzer to identify privilege escalation paths
 - Implement alerting on policy version changes for critical roles
 - Limit the number of policy versions that can exist (AWS allows up to 5)
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `IAM: CreatePolicyVersion` — New policy version created; critical when the creating principal is also attached to the modified policy, indicating self-escalation
+- `IAM: ListPolicyVersions` — Reconnaissance to enumerate existing policy versions before creating a new one
+- `STS: AssumeRole` — Role assumption from starting user; monitor for assumption of roles with policy modification capabilities
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

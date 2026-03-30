@@ -5,10 +5,20 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $37/mo
 * **Pathfinding.cloud ID:** mwaa-001
+* **Interactive Demo:** Yes
 * **Technique:** Pass privileged role to MWAA environment with malicious startup script for privilege escalation
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (iam:PassRole + airflow:CreateEnvironment) → MWAA environment with admin execution role → startup script executes with admin credentials → attaches AdministratorAccess to starting_user → admin access
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-mwaa-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-mwaa-001-to-admin-admin-role`
+* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-mwaa-001-to-admin-admin-role`; `airflow:CreateEnvironment` on `*`; `ec2:CreateNetworkInterface` on `*`; `ec2:CreateNetworkInterfacePermission` on `*`; `ec2:DescribeNetworkInterfaces` on `*`; `ec2:DescribeSubnets` on `*`; `ec2:DescribeSecurityGroups` on `*`; `ec2:DescribeVpcs` on `*`; `ec2:CreateVpcEndpoint` on `*`; `ec2:DeleteVpcEndpoints` on `*`; `ec2:DescribeVpcEndpoints` on `*`; `ec2:DescribeVpcEndpointServices` on `*`; `s3:GetEncryptionConfiguration` on `*`
+* **Helpful Permissions:** `airflow:GetEnvironment` (Check environment status and wait for it to be ready); `airflow:DeleteEnvironment` (Clean up the MWAA environment after the attack); `ec2:DescribeRouteTables` (Verify subnets have routes to NAT Gateway)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1098 - Account Manipulation, T1059 - Command and Scripting Interpreter
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user with `iam:PassRole` and `airflow:CreateEnvironment` permissions can create an Amazon Managed Workflows for Apache Airflow (MWAA) environment with an administrative execution role and a malicious startup script that executes with elevated privileges.
 
@@ -16,7 +26,12 @@ Amazon MWAA is a managed service for Apache Airflow that simplifies running data
 
 The attack exploits the fact that MWAA allows referencing S3 buckets in external AWS accounts for the DAGs folder and startup script. This means an attacker does not need any S3 permissions in the victim account - they can host a malicious startup script in their own AWS account on a public S3 bucket. When the MWAA environment starts up (which takes 20-30 minutes), the startup script executes with the execution role's credentials, allowing the attacker to attach AdministratorAccess to their starting user and achieve full administrative access.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: Privilege Escalation (TA0004), Execution (TA0002)
+- **Technique**: T1098 - Account Manipulation
+- **Technique**: T1059 - Command and Scripting Interpreter
+- **Sub-technique**: Using managed service startup scripts to execute privileged operations
 
 ### Principals in the attack path
 
@@ -66,7 +81,29 @@ graph LR
 | `pl-prod-mwaa-001-vpc` (VPC) | Dedicated VPC with private subnets and NAT Gateway for MWAA |
 | `pl-mwaa-001-attacker-bucket-{account_id}-{suffix}` (S3) | S3 bucket containing DAGs folder and malicious startup script |
 
-## Executing the attack
+## Attack Lab
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment
+plabs apply
+```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
 ### Cost Considerations
 
@@ -83,19 +120,12 @@ graph LR
 - **Left running for 1 month**: ~$380+
 
 **Cost mitigation:**
-1. Run `./cleanup_attack.sh` immediately after verification
+1. Run the cleanup script immediately after verification
 2. Verify environment deletion in the AWS Console
 3. Set up billing alerts for unexpected charges
 4. Consider using this scenario only when specifically testing MWAA-related detection capabilities
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-001-iam-passrole+airflow-createenvironment
-./demo_attack.sh
-```
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -106,14 +136,28 @@ The script will:
 6. Verify successful privilege escalation by demonstrating admin access
 7. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources created by attack script
 
-After demonstrating the attack, **immediately** clean up the MWAA environment to stop incurring costs:
+- MWAA environment with admin execution role and malicious startup script
+- S3 bucket containing DAGs folder and malicious startup script (attacker-controlled)
+- `AdministratorAccess` policy attached to the starting user
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-001-iam-passrole+airflow-createenvironment
-./cleanup_attack.sh
+plabs demo --list
+plabs demo mwaa-001-iam-passrole+airflow-createenvironment
 ```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+After demonstrating the attack, **immediately** clean up the MWAA environment to stop incurring costs.
 
 The cleanup script will:
 - Delete the MWAA environment (takes 15-20 minutes to fully delete)
@@ -123,7 +167,34 @@ The cleanup script will:
 
 > **Important**: MWAA environment deletion takes 15-20 minutes. Verify in the AWS Console that the environment has been fully deleted to stop charges.
 
-## Detection and prevention
+#### With plabs non-interactive
+
+```bash
+plabs cleanup --list
+plabs cleanup mwaa-001-iam-passrole+airflow-createenvironment
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Detecting Misconfiguration (CSPM)
 
 ### What CSPM tools should detect
 
@@ -135,29 +206,7 @@ A properly configured CSPM solution should identify:
 - MWAA trust policy allowing the airflow service to assume privileged roles
 - Privilege escalation path from user to admin via MWAA environment creation
 
-### Runtime Detection Indicators
-
-CloudTrail events to monitor:
-- **CreateEnvironment** where the `ExecutionRoleArn` references an administrative role
-- **CreateEnvironment** where `SourceBucketArn` or `StartupScriptS3Path` references an external AWS account
-- **CreateEnvironment** with unusual network configurations (public access, no VPC)
-- **AttachUserPolicy** or **PutUserPolicy** API calls from MWAA execution role
-- MWAA environments created with startup scripts (elevated risk)
-- Short-lived MWAA environments (created and deleted within hours)
-
-**CloudWatch Logs indicators:**
-- MWAA startup script logs showing AWS CLI commands
-- Unexpected IAM API calls in MWAA worker logs
-- Errors related to IAM modifications from MWAA context
-
-### MITRE ATT&CK Mapping
-
-- **Tactic**: Privilege Escalation (TA0004), Execution (TA0002)
-- **Technique**: T1098 - Account Manipulation
-- **Technique**: T1059 - Command and Scripting Interpreter
-- **Sub-technique**: Using managed service startup scripts to execute privileged operations
-
-## Prevention recommendations
+### Prevention recommendations
 
 - **Restrict PassRole permissions**: Limit `iam:PassRole` to only the specific roles and services needed. Use resource-level restrictions:
   ```json
@@ -216,6 +265,24 @@ CloudTrail events to monitor:
 - **Implement environment approval workflows**: Require code review and approval before MWAA environments can be created, especially reviewing execution roles and startup scripts.
 
 - **Enable MWAA audit logging**: Configure comprehensive logging for MWAA environments to capture all API calls and startup script execution for forensic analysis.
+
+## Detection Abuse (CloudSIEM)
+
+### CloudTrail events to monitor
+
+- `MWAA: CreateEnvironment` — MWAA environment created; critical when the `ExecutionRoleArn` references an administrative role or when `StartupScriptS3Path` references an external AWS account
+- `IAM: PassRole` — Role passed to a service; monitor when the passed role has administrative permissions and the service is `airflow.amazonaws.com`
+- `IAM: AttachUserPolicy` — Policy attached to a user; high severity when originating from an MWAA execution role context
+- `IAM: PutUserPolicy` — Inline policy written to a user; high severity when originating from an MWAA execution role context
+
+**CloudWatch Logs indicators:**
+- MWAA startup script logs showing AWS CLI commands
+- Unexpected IAM API calls in MWAA worker logs
+- Errors related to IAM modifications from MWAA context
+
+### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
 ## References
 

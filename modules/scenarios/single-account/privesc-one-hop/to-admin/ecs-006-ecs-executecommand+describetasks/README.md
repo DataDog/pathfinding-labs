@@ -5,9 +5,19 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $9/mo
+* **Pathfinding.cloud ID:** ecs-006
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
+* **Schema Version:** 1.0.0
+* **Attack Path:** starting_user → (ecs:ExecuteCommand + ecs:DescribeTasks) → ECS task with admin role → curl metadata → admin credentials
+* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ecs-006-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-ecs-006-to-admin-target-role`
+* **Required Permissions:** `ecs:ExecuteCommand` on `arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*`; `ecs:DescribeTasks` on `arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*`
+* **Helpful Permissions:** `ecs:ListTasks` (Discover task ARNs in the cluster); `ecs:DescribeTaskDefinition` (Get task definition to discover task role ARN); `ecs:ListClusters` (Discover ECS clusters in the account)
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
+* **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
 
-## Overview
+## Attack Overview
 
 This scenario demonstrates a privilege escalation vulnerability where a user has permission to execute commands in running ECS containers (`ecs:ExecuteCommand`) and describe tasks (`ecs:DescribeTasks`). Both permissions are required because the AWS CLI internally calls `DescribeTasks` to retrieve the container runtime ID needed to establish the SSM session. When a container is running with a privileged task role attached, an attacker can shell into the container and retrieve the role's temporary credentials from the container metadata service, gaining administrative access.
 
@@ -15,7 +25,12 @@ Unlike new-passrole scenarios where attackers create new resources and pass role
 
 The attack works by using `ecs:ExecuteCommand` (powered by AWS Systems Manager Session Manager) to establish an interactive shell session in the running container. Once inside, the attacker queries the container metadata service at `169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` to retrieve the temporary credentials for the task role. These credentials can then be used outside the container to perform administrative actions. This technique is particularly dangerous because ECS Exec is commonly enabled for legitimate troubleshooting purposes, but the security implications of combining it with privileged task roles are often overlooked.
 
-## Understanding the attack scenario
+### MITRE ATT&CK Mapping
+
+- **Tactic**: TA0004 - Privilege Escalation
+- **Tactic**: TA0006 - Credential Access
+- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
+- **Technique**: T1059 - Command and Scripting Interpreter
 
 ### Principals in the attack path
 
@@ -57,16 +72,31 @@ graph LR
 | `arn:aws:ecs:REGION:PROD_ACCOUNT:cluster/pl-prod-ecs-006-to-admin-cluster` | ECS cluster hosting the vulnerable task |
 | `arn:aws:ecs:REGION:PROD_ACCOUNT:service/pl-prod-ecs-006-to-admin-cluster/pl-prod-ecs-006-to-admin-service` | ECS service that maintains the running task with ECS Exec enabled |
 
-## Executing the attack
+## Attack Lab
 
-### Using the automated demo_attack.sh
+### Prerequisites
 
-To demonstrate the privilege escalation path, run the provided demo script:
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand
-./demo_attack.sh
+plabs enable enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks
+plabs apply
 ```
+
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -74,7 +104,24 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Manual exploitation steps
+#### Resources created by attack script
+
+- No persistent resources are created; the attack only reads credentials from the container metadata service
+
+#### With plabs non-interactive
+
+```bash
+plabs demo --list
+plabs demo ecs-006-ecs-executecommand+describetasks
+```
+
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Executing the attack manually
 
 For manual exploitation, the key commands are:
 
@@ -108,39 +155,47 @@ export AWS_SESSION_TOKEN="<Token from response>"
 aws iam list-users
 ```
 
-### Cleaning up the attack artifacts
+### Cleanup
 
-After demonstrating the attack, there are no persistent artifacts to clean up. The credential retrieval does not create any resources or modify any configurations:
+After demonstrating the attack, there are no persistent artifacts to clean up. The credential retrieval does not create any resources or modify any configurations. The cleanup script will verify the environment state and confirm that no attack artifacts remain.
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-006-ecs-executecommand
-./cleanup_attack.sh
+plabs cleanup --list
+plabs cleanup ecs-006-ecs-executecommand+describetasks
 ```
 
-The cleanup script will verify the environment state and confirm that no attack artifacts remain.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-### What to monitor
+### Teardown with plabs non-interactive
 
-**CloudTrail Events:**
-- `ecs:ExecuteCommand` - Monitor for interactive shell sessions being established
-- Look for ExecuteCommand calls from unexpected principals or at unusual times
-- Correlate with subsequent API calls using task role credentials
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks
+plabs apply
+```
 
-**CloudWatch Logs:**
-- ECS Exec sessions are logged to CloudWatch if configured
-- Monitor for commands that access the metadata service
-- Look for credential extraction patterns
+### Teardown with plabs tui
 
-### MITRE ATT&CK Mapping
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
 
-- **Tactic**: TA0004 - Privilege Escalation
-- **Tactic**: TA0006 - Credential Access
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-- **Technique**: T1059 - Command and Scripting Interpreter
+## Detecting Misconfiguration (CSPM)
 
-## Prevention recommendations
+### What CSPM tools should detect
+
+- ECS services with `enable_execute_command = true` that have task definitions using privileged task roles
+- Task roles with administrative or highly privileged permissions attached to tasks in clusters where ECS Exec is enabled
+- IAM users or roles with both `ecs:ExecuteCommand` and `ecs:DescribeTasks` permissions on clusters/tasks running with sensitive roles (both are required for exploitation)
+- Privilege escalation paths from low-privileged principals through ECS Exec to administrative task roles
+
+### Prevention recommendations
 
 - Disable ECS Exec on production tasks unless absolutely necessary for debugging; use it only on demand and disable immediately after troubleshooting
 - Follow the principle of least privilege for ECS task roles - avoid attaching administrative permissions to task roles, even for "internal" services
@@ -154,15 +209,13 @@ The cleanup script will verify the environment state and confirm that no attack 
 - Consider using separate ECS clusters for debugging (with ECS Exec enabled) and production (with ECS Exec disabled)
 - Use VPC endpoints for ECS and SSM to ensure Exec traffic doesn't traverse the public internet
 
-## CSPM detection guidance
+## Detection Abuse (CloudSIEM)
 
-A properly configured CSPM should detect:
+### CloudTrail events to monitor
 
-- ECS services with `enable_execute_command = true` that have task definitions using privileged task roles
-- Task roles with administrative or highly privileged permissions attached to tasks in clusters where ECS Exec is enabled
-- IAM users or roles with both `ecs:ExecuteCommand` and `ecs:DescribeTasks` permissions on clusters/tasks running with sensitive roles (both are required for exploitation)
-- Privilege escalation paths from low-privileged principals through ECS Exec to administrative task roles
+- `ECS: ExecuteCommand` — Interactive shell session established in a running ECS container; critical when the target task has an elevated task role attached
+- `ECS: DescribeTasks` — Task details retrieved; required internally by the AWS CLI to establish the SSM session for ECS Exec; correlate with subsequent ExecuteCommand calls
 
-## Cost note
+### Detonation logs
 
-This scenario runs a Fargate task continuously to maintain the attack surface. The approximate cost is **~$0.04/hour** for the minimal Fargate task (256 CPU, 512 MB memory). Remember to destroy the infrastructure when not in use to avoid ongoing charges.
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
