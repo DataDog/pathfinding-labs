@@ -790,3 +790,33 @@ variable "budget_limit_usd" {
   type        = number
   default     = 50
 }
+
+##############################################################################
+# SERVICE-LINKED ROLE CREATION FLAGS
+# The plabs CLI auto-detects existing SLRs and sets these to false.
+# Manual users: set to false for any SLR that already exists in the account.
+##############################################################################
+
+variable "create_autoscaling_slr" {
+  description = "Create the Auto Scaling service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_spot_slr" {
+  description = "Create the EC2 Spot service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_apprunner_slr" {
+  description = "Create the App Runner service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_mwaa_slr" {
+  description = "Create the MWAA service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}

@@ -51,7 +51,7 @@ tests/cleanup_results/
 # Go build artifacts
 build/
 dist/
-plabs
+/plabs
 *.exe
 coverage.out
 coverage.html

@@ -35,5 +35,5 @@ output "readonly_user_secret_access_key" {
 
 output "apprunner_service_linked_role_id" {
   description = "ID of the App Runner service-linked role"
-  value       = aws_iam_service_linked_role.apprunner.id
+  value       = length(aws_iam_service_linked_role.apprunner) > 0 ? aws_iam_service_linked_role.apprunner[0].id : "arn:aws:iam::${var.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 }

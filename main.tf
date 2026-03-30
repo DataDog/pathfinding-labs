@@ -101,6 +101,12 @@ module "prod_environment" {
   enable_budget_alerts = var.enable_budget_alerts
   budget_alert_email   = var.budget_alert_email
   budget_limit_usd     = var.budget_limit_usd
+
+  # Service-linked role creation flags (plabs auto-detects existing SLRs)
+  create_autoscaling_slr = var.create_autoscaling_slr
+  create_spot_slr        = var.create_spot_slr
+  create_apprunner_slr   = var.create_apprunner_slr
+  create_mwaa_slr        = var.create_mwaa_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)

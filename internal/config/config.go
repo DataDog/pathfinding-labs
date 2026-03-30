@@ -37,6 +37,10 @@ type Config struct {
 
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
+
+	// SLRFlags controls which service-linked roles Terraform should create.
+	// Not persisted to YAML -- detected at deploy time and written to tfvars.
+	SLRFlags *ServiceLinkedRoleFlags `yaml:"-"`
 }
 
 // AWSConfig contains AWS account settings for all environments
@@ -82,6 +86,17 @@ type BudgetConfig struct {
 
 	// LimitUSD is the monthly budget limit in USD
 	LimitUSD int `yaml:"limit_usd,omitempty"`
+}
+
+// ServiceLinkedRoleFlags tracks which SLRs Terraform should create.
+// Set to false for roles that already exist in the target account.
+// These are NOT persisted to config -- they're detected at deploy time and
+// written directly into terraform.tfvars.
+type ServiceLinkedRoleFlags struct {
+	CreateAutoScaling bool
+	CreateSpot        bool
+	CreateAppRunner   bool
+	CreateMWAA        bool
 }
 
 // GetConfigPath returns the path to the config file
@@ -405,6 +420,16 @@ func (c *Config) GenerateTFVars() string {
 		} else {
 			lines = append(lines, "budget_limit_usd     = 50")
 		}
+		lines = append(lines, "")
+	}
+
+	// Add service-linked role creation flags when detected
+	if c.SLRFlags != nil {
+		lines = append(lines, "# Service-Linked Role Creation (auto-detected by plabs)")
+		lines = append(lines, fmt.Sprintf("create_autoscaling_slr = %t", c.SLRFlags.CreateAutoScaling))
+		lines = append(lines, fmt.Sprintf("create_spot_slr        = %t", c.SLRFlags.CreateSpot))
+		lines = append(lines, fmt.Sprintf("create_apprunner_slr   = %t", c.SLRFlags.CreateAppRunner))
+		lines = append(lines, fmt.Sprintf("create_mwaa_slr        = %t", c.SLRFlags.CreateMWAA))
 		lines = append(lines, "")
 	}
 

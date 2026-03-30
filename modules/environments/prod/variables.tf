@@ -155,3 +155,33 @@ variable "github_repo" {
   type        = string
   default     = null
 }
+
+##############################################################################
+# SERVICE-LINKED ROLE CREATION FLAGS
+# Set to false if the role already exists in the account.
+# The plabs CLI auto-detects these; manual users can override in tfvars.
+##############################################################################
+
+variable "create_autoscaling_slr" {
+  description = "Create the Auto Scaling service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_spot_slr" {
+  description = "Create the EC2 Spot service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_apprunner_slr" {
+  description = "Create the App Runner service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_mwaa_slr" {
+  description = "Create the MWAA service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
@@ -34,6 +35,19 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	// Validate AWS credentials before running terraform
 	if err := validateAWSCredentials(cfg); err != nil {
 		return err
+	}
+
+	// Detect existing service-linked roles to avoid creation conflicts
+	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
+	if err != nil {
+		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
+	} else {
+		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
+			CreateAutoScaling: !slrStatus.AutoScalingExists,
+			CreateSpot:        !slrStatus.SpotExists,
+			CreateAppRunner:   !slrStatus.AppRunnerExists,
+			CreateMWAA:        !slrStatus.MWAAExists,
+		}
 	}
 
 	// Sync tfvars from config before running terraform

@@ -59,23 +59,25 @@ resource "aws_budgets_budget" "monthly_cost" {
   }
 }
 
-# Service-Linked Role for Auto Scaling (required for ASG scenarios)
+# Service-Linked Roles - only create if they don't already exist in the account.
+# The plabs CLI detects existing SLRs and sets these variables before running terraform.
 resource "aws_iam_service_linked_role" "autoscaling" {
+  count            = var.create_autoscaling_slr ? 1 : 0
   aws_service_name = "autoscaling.amazonaws.com"
 }
 
-# Service-Linked Role for EC2 Spot Instances (required for spot instance scenarios)
 resource "aws_iam_service_linked_role" "spot" {
+  count            = var.create_spot_slr ? 1 : 0
   aws_service_name = "spot.amazonaws.com"
 }
 
-# Service-Linked Role for App Runner (required for App Runner scenarios)
 resource "aws_iam_service_linked_role" "apprunner" {
+  count            = var.create_apprunner_slr ? 1 : 0
   aws_service_name = "apprunner.amazonaws.com"
 }
 
-# Service-Linked Role for MWAA (required for MWAA scenarios)
 resource "aws_iam_service_linked_role" "mwaa" {
+  count            = var.create_mwaa_slr ? 1 : 0
   aws_service_name = "airflow.amazonaws.com"
 }
 

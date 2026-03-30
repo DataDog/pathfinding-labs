@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
@@ -46,6 +47,22 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Validate AWS credentials before running terraform
 	if err := validateAWSCredentials(cfg); err != nil {
 		return err
+	}
+
+	// Detect which service-linked roles already exist in the prod account
+	// so Terraform doesn't try to create duplicates
+	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
+	if err != nil {
+		// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
+		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
+		fmt.Println("Terraform will attempt to create all service-linked roles.")
+	} else {
+		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
+			CreateAutoScaling: !slrStatus.AutoScalingExists,
+			CreateSpot:        !slrStatus.SpotExists,
+			CreateAppRunner:   !slrStatus.AppRunnerExists,
+			CreateMWAA:        !slrStatus.MWAAExists,
+		}
 	}
 
 	// Sync tfvars from config before running terraform

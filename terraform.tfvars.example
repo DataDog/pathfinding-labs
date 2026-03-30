@@ -36,6 +36,16 @@ aws_region               = "us-west-2"  # Region where resources will be deploye
 # github_repo = "your-org/your-repo"
 
 ##############################################################################
+# SERVICE-LINKED ROLE CREATION
+# The plabs CLI auto-detects these. If running terraform directly, set to
+# false for any service-linked role that already exists in your account.
+##############################################################################
+# create_autoscaling_slr = true
+# create_spot_slr        = true
+# create_apprunner_slr   = true
+# create_mwaa_slr        = true
+
+##############################################################################
 # SCENARIO ENABLEMENT
 # Set to true to enable a scenario, false to disable
 ##############################################################################
