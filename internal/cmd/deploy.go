@@ -164,6 +164,27 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
 
+	// Apply addon if configured
+	if cfg.HasAddon() {
+		fmt.Println()
+		fmt.Printf("%s Applying addon: %s\n", cyan("→"), cfg.Addon.Path)
+		fmt.Println()
+
+		addon := buildAddon(cfg)
+		if addon != nil {
+			if !addon.IsInitialized() {
+				fmt.Println("Running terraform init (addon)...")
+				if err := addon.Init(); err != nil {
+					return fmt.Errorf("addon init failed: %w", err)
+				}
+				fmt.Println()
+			}
+			if err := addon.Apply(); err != nil {
+				return fmt.Errorf("addon apply failed: %w", err)
+			}
+		}
+	}
+
 	fmt.Println()
 	fmt.Println(green("========================================================"))
 	fmt.Println(green("  Apply complete!"))

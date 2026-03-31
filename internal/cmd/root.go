@@ -59,6 +59,7 @@ func init() {
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(credentialsCmd)
 	rootCmd.AddCommand(outputCmd)
+	rootCmd.AddCommand(addonCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

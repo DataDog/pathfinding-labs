@@ -35,12 +35,23 @@ type Config struct {
 	// Budget contains AWS Budget alert configuration
 	Budget BudgetConfig `yaml:"budget,omitempty"`
 
+	// Addon contains optional user-supplied Terraform addon configuration
+	Addon *AddonConfig `yaml:"addon,omitempty"`
+
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
 
 	// SLRFlags controls which service-linked roles Terraform should create.
 	// Not persisted to YAML -- detected at deploy time and written to tfvars.
 	SLRFlags *ServiceLinkedRoleFlags `yaml:"-"`
+}
+
+// AddonConfig holds configuration for a user-supplied Terraform addon directory.
+// Addons provision account-level resources (e.g., an audit IAM user, CloudTrail)
+// that are managed independently from scenario modules.
+type AddonConfig struct {
+	// Path is the absolute path to the addon Terraform root directory
+	Path string `yaml:"path,omitempty"`
 }
 
 // AWSConfig contains AWS account settings for all environments
@@ -265,6 +276,28 @@ func (c *Config) GetAttackerTFVarEnv() []string {
 	return []string{
 		"TF_VAR_attacker_iam_user_access_key=" + c.AWS.Attacker.IAMAccessKeyID,
 		"TF_VAR_attacker_iam_user_secret_key=" + c.AWS.Attacker.IAMSecretKey,
+	}
+}
+
+// HasAddon returns true if an addon directory is configured
+func (c *Config) HasAddon() bool {
+	return c.Addon != nil && c.Addon.Path != ""
+}
+
+// GetAddonTFVarEnv returns TF_VAR_* environment variable strings for the addon Terraform root.
+// The addon's variables.tf is expected to declare prod_account_aws_profile and aws_region
+// using the same names as the main root.
+func (c *Config) GetAddonTFVarEnv() []string {
+	if !c.HasAddon() {
+		return nil
+	}
+	region := c.AWS.Prod.Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	return []string{
+		"TF_VAR_prod_account_aws_profile=" + c.AWS.Prod.Profile,
+		"TF_VAR_aws_region=" + region,
 	}
 }
 
