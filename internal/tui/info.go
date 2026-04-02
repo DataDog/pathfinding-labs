@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 // Version can be set at build time via ldflags

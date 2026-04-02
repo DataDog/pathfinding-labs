@@ -6,7 +6,7 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 // hyperlink creates a clickable terminal hyperlink using OSC 8 escape sequence
