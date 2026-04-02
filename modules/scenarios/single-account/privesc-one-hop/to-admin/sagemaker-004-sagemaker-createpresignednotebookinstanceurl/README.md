@@ -1,73 +1,79 @@
 # Privilege Escalation via sagemaker:CreatePresignedNotebookInstanceUrl
 
-**Category:** Privilege Escalation
-**Sub-Category:** existing-passrole
-**Path Type:** one-hop
-**Target:** to-admin
-**Environments:** prod
-**Pathfinding.cloud ID:** sagemaker-004
-**Technique:** Generate presigned URL to access existing SageMaker notebook with admin execution role
+* **Category:** Privilege Escalation
+* **Sub-Category:** existing-passrole
+* **Path Type:** one-hop
+* **Target:** to-admin
+* **Environments:** prod
+* **Cost Estimate:** $37/mo
+* **Technique:** User with CreatePresignedNotebookInstanceUrl can generate presigned URL to access existing notebook with admin role and execute commands with elevated privileges
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** sagemaker-004
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552 - Unsecured Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user with only the `sagemaker:CreatePresignedNotebookInstanceUrl` permission can gain administrative access by generating a presigned URL to an existing SageMaker notebook instance that has an admin execution role attached. Once the attacker accesses the Jupyter notebook interface through the presigned URL, they can open a terminal session and execute AWS CLI commands with the permissions of the notebook's execution role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-sagemaker-004-to-admin-starting-user` IAM user to the `pl-prod-sagemaker-004-to-admin-notebook-role` administrative role by generating a presigned URL for an existing SageMaker notebook instance and executing AWS CLI commands from its Jupyter terminal with the notebook's admin execution role credentials.
 
-Unlike the `sagemaker:CreateNotebookInstance` privilege escalation path (which requires creating new infrastructure and `iam:PassRole`), this technique exploits access to existing resources. This makes it particularly dangerous in environments where SageMaker notebooks are already deployed for legitimate machine learning workflows, as security teams may overlook the risk of URL generation permissions. The attack is stealthier because it leaves no new infrastructure in CloudTrail logs—only URL generation and subsequent API calls from the notebook's role.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-004-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-004-to-admin-notebook-role`
 
-This technique was originally documented by Spencer Gietzen from Rhino Security Labs in 2019 and represents a common misconfiguration where data scientists are granted broad SageMaker permissions without understanding the privilege escalation implications.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `sagemaker:CreatePresignedNotebookInstanceUrl` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook` -- generates a presigned URL granting access to the Jupyter interface, which runs as the notebook's admin execution role
 
-### Principals in the attack path
+**Helpful:**
+- `sagemaker:ListNotebookInstances` -- discover available notebook instances to target
+- `sagemaker:DescribeNotebookInstance` -- view notebook details and verify the admin execution role
+- `iam:GetRole` -- verify the notebook's execution role has admin permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-sagemaker-004-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:sagemaker:us-east-1:PROD_ACCOUNT:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook` (Pre-existing SageMaker notebook instance)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sagemaker-004-to-admin-notebook-role` (Admin execution role attached to the notebook)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-sagemaker-004-to-admin-starting-user] -->|sagemaker:CreatePresignedNotebookInstanceUrl| B[Presigned URL]
-    B -->|Access Jupyter Interface| C[pl-prod-sagemaker-004-to-admin-notebook]
-    C -->|Assumes Execution Role| D[pl-prod-sagemaker-004-to-admin-notebook-role]
-    D -->|Administrator Access| E[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-sagemaker-004-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Generate Presigned URL**: Use `sagemaker:CreatePresignedNotebookInstanceUrl` to generate a presigned URL for the existing notebook instance
-3. **Access Jupyter Interface**: Open the presigned URL in a web browser to access the Jupyter notebook interface
-4. **Open Terminal**: Within Jupyter, open a new terminal session which runs with the notebook's execution role permissions
-5. **Execute Commands**: Run AWS CLI commands in the terminal with the admin role's permissions
-6. **Verification**: Verify administrative access by listing IAM users or performing other admin operations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-sagemaker-004-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-sagemaker-004-to-admin-starting-policy` | Policy granting CreatePresignedNotebookInstanceUrl permission |
-| `arn:aws:sagemaker:us-east-1:PROD_ACCOUNT:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook` | Pre-existing SageMaker notebook instance with admin role |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sagemaker-004-to-admin-notebook-role` | Admin execution role attached to the notebook instance |
+| `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-004-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:policy/pl-prod-sagemaker-004-to-admin-starting-policy` | Policy granting CreatePresignedNotebookInstanceUrl permission |
+| `arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook` | Pre-existing SageMaker notebook instance with admin role |
+| `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-004-to-admin-notebook-role` | Admin execution role attached to the notebook instance |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-004-sagemaker-createpresignednotebookinstanceurl
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -80,38 +86,68 @@ The script will:
 
 **Note**: Due to the browser-based nature of this attack, the demo script will generate the presigned URL and provide instructions, but the actual Jupyter terminal access must be performed manually in a web browser.
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-This scenario does not create any persistent attack artifacts that need cleanup. The presigned URL expires after a short period (default 5 minutes), and no resources are modified during the demonstration. The SageMaker notebook instance remains in its original state.
+- Presigned URL for the SageMaker notebook instance (expires after 12 hours)
+- `AdministratorAccess` managed policy attached to `pl-prod-sagemaker-004-to-admin-starting-user` (via Jupyter terminal step)
 
-If you wish to verify cleanup:
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-004-sagemaker-createpresignednotebookinstanceurl
-./cleanup_attack.sh
+plabs demo --list
+plabs demo sagemaker-004-sagemaker-createpresignednotebookinstanceurl
 ```
 
-This will confirm that no cleanup is necessary for this scenario.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What should CSPM tools detect?
+### Cleanup
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify:
+#### With plabs non-interactive
 
-1. **Overly Permissive SageMaker Permissions**: Users or roles with `sagemaker:CreatePresignedNotebookInstanceUrl` on notebook instances with privileged execution roles
-2. **Admin Roles on SageMaker Resources**: SageMaker notebook instances with execution roles that have administrative permissions
-3. **Privilege Escalation Path**: A complete path from a low-privileged user to admin access via SageMaker notebook URL generation
-4. **Missing Resource-Based Conditions**: SageMaker permissions without proper resource restrictions or condition keys
-5. **Separation of Duties Violation**: Same principals that can generate presigned URLs having access to notebooks with privileged roles
+```bash
+plabs cleanup --list
+plabs cleanup sagemaker-004-sagemaker-createpresignednotebookinstanceurl
+```
 
-### MITRE ATT&CK Mapping
+#### With plabs tui
 
-- **Tactic**: Privilege Escalation (TA0004), Execution (TA0002)
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1552 - Unsecured Credentials
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-## Prevention recommendations
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- **Overly Permissive SageMaker Permissions**: Users or roles with `sagemaker:CreatePresignedNotebookInstanceUrl` on notebook instances with privileged execution roles
+- **Admin Roles on SageMaker Resources**: SageMaker notebook instances with execution roles that have administrative permissions
+- **Privilege Escalation Path**: A complete path from a low-privileged user to admin access via SageMaker notebook URL generation
+- **Missing Resource-Based Conditions**: SageMaker permissions without proper resource restrictions or condition keys
+- **Separation of Duties Violation**: Same principals that can generate presigned URLs having access to notebooks with privileged roles
+
+#### Prevention Recommendations
 
 1. **Restrict CreatePresignedNotebookInstanceUrl Permission**: Limit `sagemaker:CreatePresignedNotebookInstanceUrl` to only specific notebook instances that don't have privileged execution roles. Use resource-level permissions:
    ```json
@@ -180,3 +216,15 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 7. **Regular Access Reviews**: Conduct periodic reviews of who has SageMaker permissions and which notebook instances have privileged execution roles. Use IAM Access Analyzer to identify cross-account or external access risks.
 
 8. **Disable Direct Internet Access**: Configure SageMaker notebooks with `DirectInternetAccess: Disabled` to prevent outbound internet connections from the notebook, limiting the attacker's ability to exfiltrate data or credentials.
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `SageMaker: CreatePresignedNotebookInstanceUrl` — Presigned URL generated for a notebook instance; critical when the target notebook has an execution role with elevated permissions
+- `SageMaker: DescribeNotebookInstance` — Notebook details retrieved; may indicate reconnaissance to identify notebooks with privileged execution roles
+- `SageMaker: ListNotebookInstances` — Enumeration of available notebook instances; commonly precedes presigned URL generation
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

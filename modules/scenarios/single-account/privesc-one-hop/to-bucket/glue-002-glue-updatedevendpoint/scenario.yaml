@@ -26,7 +26,7 @@ attack_path:
     - "arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-bucket-target-role"
     - "arn:aws:s3:::pl-sensitive-data-glue-002-{account_id}-{suffix}"
 
-  summary: "starting_user → (glue:UpdateDevEndpoint) → Add SSH key to existing dev endpoint → SSH access → (aws s3 cp) → sensitive bucket access"
+  summary: "starting_user → (glue:UpdateDevEndpoint) → Add SSH key to existing dev endpoint → SSH access → target_role credentials via IMDS → (s3:GetObject) → sensitive bucket access"
 
 # =============================================================================
 # PERMISSIONS

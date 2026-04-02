@@ -1,0 +1,71 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the target admin role and the Bedrock AgentCore
+        permissions needed to create and invoke a code interpreter session.
+
+    - id: code-interpreter
+      label: "Code Interpreter"
+      type: resource
+      subType: bedrock-agent
+      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:code-interpreter/privesc_demo_interpreter"
+      description: >
+        A Bedrock AgentCore code interpreter created with the privileged target role as its
+        execution role. The interpreter runs inside a Firecracker MicroVM that exposes a
+        MicroVM Metadata Service (MMDS) at 169.254.169.254, similar to EC2's IMDS. Any
+        Python code executed within a session can query this endpoint to retrieve temporary
+        credentials for the execution role.
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess. Its temporary credentials are available
+        inside the code interpreter's MicroVM via the Metadata Service. Once extracted,
+        they can be used directly to perform any action in the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: code-interpreter
+      label: "iam:PassRole + bedrock-agentcore-control:CreateCodeInterpreter"
+      description: >
+        Pass the privileged target role to a new Bedrock AgentCore code interpreter.
+        The interpreter is provisioned with that role as its execution role.
+      hints:
+        - "You can pass IAM roles to AWS services — think about which services accept execution roles."
+        - "Bedrock AgentCore code interpreters run in Firecracker MicroVMs that expose a metadata service."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-001 for technique details."
+      commands:
+        - description: "Create the code interpreter with the admin execution role"
+          command: "aws bedrock-agentcore-control create-code-interpreter --region $AWS_REGION --name privesc_demo_interpreter --network-configuration '{\"networkMode\":\"SANDBOX\"}' --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role --query 'codeInterpreterId' --output text"
+
+    - from: code-interpreter
+      to: target-role
+      label: "bedrock-agentcore:StartCodeInterpreterSession + bedrock-agentcore:InvokeCodeInterpreter"
+      description: >
+        Start a session on the code interpreter and invoke Python code that queries the
+        MicroVM Metadata Service at 169.254.169.254 to retrieve temporary credentials
+        for the execution role (the admin target role).
+      hints:
+        - "The code interpreter's execution role credentials are reachable from within the MicroVM."
+        - "Try querying 169.254.169.254/latest/meta-data/iam/security-credentials/ inside the interpreter."
+      commands:
+        - description: "Start a code interpreter session and invoke credential extraction code (via Python/boto3)"
+          command: "python3 /tmp/extract_bedrock_creds.py $INTERPRETER_ID $AWS_REGION"
+        - description: "Verify admin access with extracted credentials"
+          command: "aws iam list-users --max-items 3 --output table"

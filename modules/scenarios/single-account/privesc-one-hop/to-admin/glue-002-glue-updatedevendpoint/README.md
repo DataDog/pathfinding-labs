@@ -5,75 +5,75 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** glue-002
+* **Cost Estimate:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** glue-002
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1021.004 - Remote Services: SSH
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user with `glue:UpdateDevEndpoint` permission can add their SSH public key to a pre-existing AWS Glue development endpoint. Once the SSH key is added, the attacker can SSH into the endpoint and execute AWS CLI commands with the full permissions of the IAM role attached to the endpoint. Unlike `glue:CreateDevEndpoint` (which requires `iam:PassRole`), updating an existing endpoint allows an attacker to gain access to an already-privileged role without needing role attachment permissions.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-glue-002-to-admin-starting-user` IAM user to the `pl-prod-glue-002-to-admin-target-role` administrative role by adding an SSH public key to a pre-existing Glue development endpoint and executing AWS CLI commands through the SSH session using the endpoint's attached IAM role.
 
-**IMPORTANT COST WARNING**: AWS Glue development endpoints cost approximately **$2.20/hour** and run continuously while the scenario is deployed. This can result in significant charges if left running. Always destroy the scenario when finished testing.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-target-role`
 
-This scenario is particularly dangerous in environments where:
-- Development endpoints are created with administrative or highly privileged roles for data engineering work
-- Multiple teams share access to Glue resources without strict RBAC
-- Endpoints are left running for extended periods with powerful IAM roles attached
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `glue:UpdateDevEndpoint` on `*` -- add an SSH public key to any existing Glue development endpoint
 
-### Principals in the attack path
+**Helpful:**
+- `glue:GetDevEndpoint` -- retrieve endpoint details including the public address needed for the SSH connection
+- `glue:GetDevEndpoints` -- list existing endpoints to identify targets with privileged roles attached
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-glue-002-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:glue:REGION:PROD_ACCOUNT:devEndpoint/pl-prod-glue-002-to-admin-endpoint` (Pre-existing Glue dev endpoint)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-002-to-admin-target-role` (Administrative role attached to the endpoint)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-glue-002-to-admin-starting-user] -->|glue:UpdateDevEndpoint| B[Add SSH Public Key]
-    B -->|SSH Connection| C[pl-prod-glue-002-to-admin-endpoint]
-    C -->|Execute with role| D[pl-prod-glue-002-to-admin-target-role]
-    D -->|Administrator Access| E[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-glue-002-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Generate SSH Key Pair**: Create a new SSH key pair for authentication
-3. **Update Dev Endpoint**: Use `glue:UpdateDevEndpoint` to add the SSH public key to the existing endpoint
-4. **Wait for Update**: Wait for the endpoint status to change from UPDATING to READY (typically 5-10 minutes)
-5. **Retrieve Endpoint Address**: Use `glue:GetDevEndpoint` to obtain the SSH connection address
-6. **SSH Connection**: Connect to the endpoint using the private key
-7. **Execute Privileged Commands**: Run AWS CLI commands (e.g., `aws iam list-users`) using the endpoint's administrative role
-8. **Verification**: Verify administrator access through successful execution of admin-level API calls
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-glue-002-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-glue-002-to-admin-policy` | Allows `glue:UpdateDevEndpoint` and `glue:GetDevEndpoint` permissions |
-| `arn:aws:glue:REGION:PROD_ACCOUNT:devEndpoint/pl-prod-glue-002-to-admin-endpoint` | Pre-existing Glue development endpoint with administrative role |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-002-to-admin-target-role` | Administrative role attached to the Glue dev endpoint |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-002-to-admin-endpoint-service-role` | Service role allowing Glue to assume the target role |
+| `arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:policy/pl-prod-glue-002-to-admin-policy` | Allows `glue:UpdateDevEndpoint` and `glue:GetDevEndpoint` permissions |
+| `arn:aws:glue:{region}:{account_id}:devEndpoint/pl-prod-glue-002-to-admin-endpoint` | Pre-existing Glue development endpoint with administrative role |
+| `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-target-role` | Administrative role attached to the Glue dev endpoint |
+| `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-endpoint-service-role` | Service role allowing Glue to assume the target role |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-002-glue-updatedevendpoint
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -85,39 +85,71 @@ The script will:
 7. Verify successful privilege escalation
 8. Output standardized test results for automation
 
-**Note**: The endpoint update process can take several minutes. The script includes automated waiting with status checks.
+#### Resources Created by Attack Script
 
-### Cleaning up the attack artifacts
+- Temporary SSH key pair generated for the attack (`/tmp/pl-glue-002-updatede-key`)
+- SSH public key added to the Glue dev endpoint
 
-After demonstrating the attack, clean up the SSH public key from the endpoint:
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/glue-002-glue-updatedevendpoint
-./cleanup_attack.sh
+plabs demo --list
+plabs demo glue-002-glue-updatedevendpoint
 ```
 
-This will remove the attacker's SSH public key from the endpoint, reverting it to its original state. The cleanup script uses admin credentials to ensure successful removal of attack artifacts.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What should CSPM tools detect?
+### Cleanup
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify:
+After demonstrating the attack, clean up the SSH public key from the endpoint. This will remove the attacker's SSH public key from the endpoint, reverting it to its original state. The cleanup script uses admin credentials to ensure successful removal of attack artifacts.
 
-1. **Privilege Escalation Path**: User with `glue:UpdateDevEndpoint` can access roles attached to existing endpoints
-2. **Overprivileged Endpoint Roles**: Glue dev endpoints configured with administrative or highly privileged IAM roles
-3. **Broad Glue Permissions**: IAM principals with `glue:UpdateDevEndpoint` permissions on all endpoints (`Resource: "*"`)
-4. **Long-Running Dev Endpoints**: Glue dev endpoints that remain active for extended periods with privileged roles
-5. **Missing Resource Conditions**: Glue permissions without resource-level restrictions or condition keys
-6. **SSH Access to Privileged Resources**: Ability to add SSH keys to compute resources with administrative roles
+#### With plabs non-interactive
 
-### MITRE ATT&CK Mapping
+```bash
+plabs cleanup --list
+plabs cleanup glue-002-glue-updatedevendpoint
+```
 
-- **Tactic**: TA0004 - Privilege Escalation
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1021.004 - Remote Services: SSH
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- **Privilege Escalation Path**: User with `glue:UpdateDevEndpoint` can access roles attached to existing endpoints
+- **Overprivileged Endpoint Roles**: Glue dev endpoints configured with administrative or highly privileged IAM roles
+- **Broad Glue Permissions**: IAM principals with `glue:UpdateDevEndpoint` permissions on all endpoints (`Resource: "*"`)
+- **Long-Running Dev Endpoints**: Glue dev endpoints that remain active for extended periods with privileged roles
+- **Missing Resource Conditions**: Glue permissions without resource-level restrictions or condition keys
+- **SSH Access to Privileged Resources**: Ability to add SSH keys to compute resources with administrative roles
+
+#### Prevention Recommendations
 
 - **Restrict UpdateDevEndpoint Permissions**: Limit `glue:UpdateDevEndpoint` to specific endpoints using resource ARNs, not wildcard (`*`)
 - **Use Least Privilege Roles**: Attach only the minimum necessary IAM permissions to Glue dev endpoint roles, avoiding administrative access
@@ -131,7 +163,6 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
     }
   }
   ```
-- **Monitor Glue API Calls**: Set up CloudTrail alerts for `UpdateDevEndpoint` calls, especially public key additions
 - **Use SCPs for Sensitive Roles**: Implement Service Control Policies to prevent Glue endpoints from assuming highly privileged roles:
   ```json
   {
@@ -146,8 +177,18 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
   }
   ```
 - **Limit Endpoint Lifespan**: Use automation to terminate idle Glue dev endpoints or those running for extended periods
-- **Require MFA for Glue Operations**: Enforce MFA requirements for `glue:UpdateDevEndpoint` calls on production endpoints
 - **Separate Development and Production**: Never use Glue dev endpoints with production-level IAM roles; use separate accounts or strict role boundaries
 - **Use IAM Access Analyzer**: Regularly scan for privilege escalation paths involving Glue permissions
-- **Monitor SSH Key Additions**: Alert on CloudTrail events where `publicKeys` or `addPublicKeys` parameters are used in `UpdateDevEndpoint` calls
 - **Disable Unused Endpoints**: Automatically terminate Glue dev endpoints that haven't been accessed in a defined period
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `Glue: UpdateDevEndpoint` -- Glue dev endpoint updated; critical when `addPublicKeys` parameter is present, indicating SSH key injection
+- `Glue: GetDevEndpoint` -- Dev endpoint details retrieved; may indicate reconnaissance to obtain the SSH address after key injection
+- `Glue: GetDevEndpoints` -- All dev endpoints listed; may indicate reconnaissance to identify privileged targets
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

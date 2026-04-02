@@ -5,86 +5,148 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-012
+* **Cost Estimate:** $0/mo
 * **Technique:** User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-012
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
+* **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
 
-## Overview
+## Objective
 
-This scenario demonstrates privilege escalation where an attacker with `iam:UpdateAssumeRolePolicy` permission can modify a role's trust policy to allow themselves to assume it. The attacker modifies a role with S3 bucket access, adds their own role to the trust policy, and then assumes the role to access sensitive data.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-012-to-bucket-starting-role` IAM role to the `pl-prod-iam-012-to-bucket-target-role` and ultimately access the sensitive S3 bucket `pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}` by modifying the target role's trust policy using `iam:UpdateAssumeRolePolicy` and then assuming that role.
 
-## Understanding the attack scenario
+- **Start:** `arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-starting-role`
+- **Destination resource:** `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}`
 
-### Principals in the attack path
+### Starting Permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-012-to-bucket-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-012-to-bucket-starting-role`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-012-to-bucket-target-role`
-- `arn:aws:s3:::pl-prod-iam-012-to-bucket-ACCOUNT_ID-SUFFIX`
+**Required:**
+- `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-012-to-bucket-target-role` -- modify the target role's trust policy to allow assumption by the starting role
+- `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-iam-012-to-bucket-target-role` -- assume the target role once its trust policy has been updated
 
-### Attack Path Diagram
+**Helpful:**
+- `iam:ListRoles` -- discover roles with S3 access
+- `iam:GetRole` -- view the current trust policy before modification
 
-```mermaid
-graph LR
-    A[pl-prod-iam-012-to-bucket-starting-role] -->|iam:UpdateAssumeRolePolicy| B[pl-prod-iam-012-to-bucket-target-role]
-    A -->|sts:AssumeRole| B
-    B -->|s3:GetObject, s3:PutObject| C[pl-prod-iam-012-to-bucket]
-    C -->|Access Sensitive Data| D[Sensitive Bucket Access]
+## Self-hosted Lab Setup
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Scaffolding aka Initial Access**: `pl-prod-iam-012-to-bucket-starting-user` assumes the role `pl-prod-iam-012-to-bucket-starting-role` to begin the scenario
-2. **Modify Trust Policy**: Use `iam:UpdateAssumeRolePolicy` to update the trust policy of `pl-prod-iam-012-to-bucket-target-role` to allow the starting role to assume it
-3. **Assume Bucket Access Role**: Assume the `pl-prod-iam-012-to-bucket-target-role` which has S3 permissions
-4. **Access S3 Bucket**: Read and download sensitive data from the target bucket
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-012-to-bucket-starting-user` | Starting user for the scenario |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-012-to-bucket-starting-role` | Starting principal with UpdateAssumeRolePolicy permission |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-012-to-bucket-target-role` | Target role with S3 bucket permissions |
-| `arn:aws:s3:::pl-prod-iam-012-to-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
-| `arn:aws:s3:::pl-prod-iam-012-to-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-012-to-bucket-starting-user` | Starting user for the scenario |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-starting-role` | Starting principal with UpdateAssumeRolePolicy permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-target-role` | Target role with S3 bucket permissions |
+| `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-012-iam-updateassumerolepolicy
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation to bucket access
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform output
+2. Assume the starting role (`pl-prod-iam-012-to-bucket-starting-role`)
+3. Check the current trust policy of the target role and confirm role assumption is blocked
+4. Use `iam:UpdateAssumeRolePolicy` to modify the target role's trust policy to allow assumption by the starting role
+5. Wait 15 seconds for IAM changes to propagate
+6. Assume the target role (`pl-prod-iam-012-to-bucket-target-role`)
+7. List the contents of the sensitive S3 bucket
+8. Download `sensitive-data.txt` from the bucket
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the modified trust policy:
+- Modified trust policy on `pl-prod-iam-012-to-bucket-target-role` allowing the starting role to assume it
+- Downloaded file at `/tmp/iam-012-sensitive-data.txt`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-012-iam-updateassumerolepolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-012-iam-updateassumerolepolicy
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation, Collection
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: T1530 - Data from Cloud Storage Object
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-012-iam-updateassumerolepolicy
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM principal has `iam:UpdateAssumeRolePolicy` permission, enabling modification of role trust policies for privilege escalation
+- Role trust policy can be modified to allow unintended principals to assume it
+- Role with S3 bucket access (`pl-prod-iam-012-to-bucket-target-role`) has a trust policy modifiable by a lower-privileged principal
+- Privilege escalation path exists: starting role → UpdateAssumeRolePolicy → target role → S3 access
+
+#### Prevention Recommendations
 
 - Avoid granting `iam:UpdateAssumeRolePolicy` permissions
 - Use resource-based conditions to restrict which roles can have trust policies modified
@@ -95,4 +157,17 @@ cd modules/scenarios/single-account/privesc-one-hop/to-bucket/iam-012-iam-update
 - Implement S3 bucket policies that restrict access even for privileged roles
 - Enable S3 access logging to track data access patterns
 - Use AWS Config rules to detect unauthorized trust policy changes
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: UpdateAssumeRolePolicy` -- Trust policy of a role was modified; critical when performed by a non-admin principal on a role with elevated permissions
+- `STS: AssumeRole` -- Role assumption event; suspicious when the assuming principal recently modified the target role's trust policy
+- `S3: GetObject` -- Object retrieved from S3; high severity when the accessing role was recently assumed via a modified trust policy
+- `STS: GetCallerIdentity` -- Identity check often performed by attackers to verify successful role assumption
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 

@@ -1,0 +1,75 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole permission scoped to the admin role
+        (pl-prod-ec2-001-to-admin-target-role) and ec2:RunInstances on all resources,
+        enabling a privilege escalation path through EC2 user-data.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/*"
+      description: >
+        An EC2 instance launched with the pl-prod-ec2-001-to-admin-instance-profile
+        instance profile. The instance profile wraps the admin role, so any code
+        running on this instance has access to its credentials via the instance
+        metadata service (IMDS). The user-data script executes on first boot and
+        uses those credentials to call iam:AttachUserPolicy, attaching
+        AdministratorAccess directly to the starting user.
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-001-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts ec2.amazonaws.com. By
+        launching an EC2 instance with this role's instance profile and embedding
+        a user-data backdoor, the starting user gains persistent administrator
+        privileges via the iam:AttachUserPolicy call made by the instance.
+
+  edges:
+    - from: starting-user
+      to: ec2-instance
+      label: "iam:PassRole + ec2:RunInstances"
+      description: >
+        The starting user passes the admin role to a new EC2 instance via the
+        instance profile, then launches that instance with a user-data script
+        that will call iam:AttachUserPolicy once the instance boots.
+      hints:
+        - "You can pass IAM roles to AWS services. Which services accept role assignments?"
+        - "EC2 instances can execute arbitrary code on launch via user-data scripts."
+        - "An EC2 instance launched with an admin role can call IAM APIs on your behalf."
+        - "Browse to https://pathfinding.cloud/paths/ec2-001 for technique details."
+      commands:
+        - description: "Launch EC2 instance with admin instance profile and user-data backdoor"
+          command: "aws ec2 run-instances --image-id <ami-id> --instance-type t3.micro --iam-instance-profile Name=pl-prod-ec2-001-to-admin-instance-profile --user-data \"$(cat user_data.sh | base64)\" --subnet-id <subnet-id> --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=pl-ec2-001-to-admin-demo-instance}]'"
+
+    - from: ec2-instance
+      to: target-role
+      label: "iam:AttachUserPolicy (via user-data)"
+      description: >
+        The EC2 instance boots, assumes the admin role via IMDS, and executes the
+        user-data script which calls iam:AttachUserPolicy to attach
+        AdministratorAccess to the starting user — granting persistent admin access.
+      hints:
+        - "EC2 user-data runs as root on first boot with access to the instance's IAM role."
+        - "Use the instance's IMDS credentials to call IAM APIs."
+        - "Attach a managed policy to the starting user to make the escalation persistent."
+      commands:
+        - description: "User-data script attaches AdministratorAccess to the starting user"
+          command: "aws iam attach-user-policy --user-name pl-prod-ec2-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"

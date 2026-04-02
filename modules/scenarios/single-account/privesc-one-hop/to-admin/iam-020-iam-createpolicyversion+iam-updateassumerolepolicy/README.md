@@ -5,68 +5,78 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
 * **Technique:** Modify customer-managed policy permissions and role trust policy to gain admin access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-020
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a sophisticated privilege escalation path that combines two powerful IAM permissions: `iam:CreatePolicyVersion` and `iam:UpdateAssumeRolePolicy`. An attacker with these permissions can escalate to administrative access through a two-step process.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-020-to-admin-starting-user` IAM user to the `pl-prod-iam-020-to-admin-target-role` administrative role by creating a new version of a customer-managed policy with full administrative permissions and updating the role's trust policy to allow assumption by the starting user.
 
-First, the attacker uses `iam:CreatePolicyVersion` to modify a customer-managed policy attached to a target role, replacing its limited permissions with full administrative access. Then, they use `iam:UpdateAssumeRolePolicy` to modify the role's trust policy, adding themselves as a trusted principal. Finally, they assume the now-privileged role to gain admin access.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-020-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-iam-020-to-admin-target-role`
 
-A critical aspect of this attack is that the starting user does NOT need `sts:AssumeRole` permissions initially. When a principal is explicitly named in a role's trust policy (as opposed to the generic `:root` pattern), AWS allows that principal to assume the role without requiring explicit `sts:AssumeRole` permissions in their own policy. This makes the attack particularly dangerous, as defenders might overlook the escalation path if they only check for `sts:AssumeRole` grants.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `iam:CreatePolicyVersion` on `arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy` -- create a new default version of the customer-managed policy with elevated permissions
+- `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role` -- modify the role's trust policy to allow the starting user to assume it
 
-### Principals in the attack path
+**Helpful:**
+- `iam:GetPolicy` -- get policy ARN and current version information
+- `iam:GetPolicyVersion` -- view current policy document and version details
+- `iam:ListPolicyVersions` -- list all policy versions to verify new version creation
+- `iam:ListRoles` -- discover roles that have the target policy attached
+- `iam:GetRole` -- view role details, trust policy, and attached policies
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-020-to-admin-starting-user` (Scenario-specific starting user with limited permissions)
-- `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-020-to-admin-target-policy` (Customer-managed policy attached to the target role)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-020-to-admin-target-role` (Target role with customer-managed policy attached)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-iam-020-to-admin-starting-user] -->|iam:CreatePolicyVersion| B[Target Policy]
-    B -->|Modified with Admin Permissions| C[Target Role]
-    A -->|iam:UpdateAssumeRolePolicy| C
-    C -->|Trust Policy Updated| D[Starting User Can Assume]
-    D -->|sts:AssumeRole| E[Admin Access]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-iam-020-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Modify Policy Permissions**: Use `iam:CreatePolicyVersion` to create a new version of the target customer-managed policy with administrative permissions (`*:*` on `*`)
-3. **Modify Trust Policy**: Use `iam:UpdateAssumeRolePolicy` to update the target role's trust policy, adding the starting user as a named trusted principal
-4. **Assume Privileged Role**: Assume the target role (no explicit `sts:AssumeRole` permission needed because the user is named in the trust policy)
-5. **Verification**: Verify administrative access by calling `iam:ListUsers` or other admin-level APIs
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-020-to-admin-starting-user` | Scenario-specific starting user with access keys and limited permissions |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-020-to-admin-target-policy` | Customer-managed policy attached to the target role (initially has minimal permissions) |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-020-to-admin-target-role` | Target role with the customer-managed policy attached (initially has limited trust policy) |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-020-to-admin-starting-user-policy` | Policy granting CreatePolicyVersion and UpdateAssumeRolePolicy permissions to the starting user |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-020-to-admin-starting-user` | Scenario-specific starting user with access keys and limited permissions |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-020-to-admin-target-policy` | Customer-managed policy attached to the target role (initially has minimal permissions) |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-020-to-admin-target-role` | Target role with the customer-managed policy attached (initially has limited trust policy) |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-020-to-admin-starting-user-policy` | Policy granting CreatePolicyVersion and UpdateAssumeRolePolicy permissions to the starting user |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-020-iam-createpolicyversion+iam-updateassumerolepolicy
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -77,56 +87,69 @@ The script will:
 6. Verify successful privilege escalation with admin-level API calls
 7. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the modified policies and created policy version:
+- New policy version on `pl-prod-iam-020-to-admin-target-policy` with administrative permissions (`*:*`)
+- Modified trust policy on `pl-prod-iam-020-to-admin-target-role` adding the starting user as a trusted principal
+- Temporary AWS CLI profile for the assumed role session
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-020-iam-createpolicyversion+iam-updateassumerolepolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-020-iam-createpolicyversion+iam-updateassumerolepolicy
 ```
 
-The cleanup script will:
-- Delete the new policy version created during the attack
-- Restore the original trust policy on the target role
-- Remove any temporary AWS CLI profiles created during the demo
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### What should CSPM tools detect?
+### Cleanup
 
-A properly configured Cloud Security Posture Management (CSPM) tool should detect:
+#### With plabs non-interactive
 
-1. **Dangerous Permission Combination**: User/role has both `iam:CreatePolicyVersion` and `iam:UpdateAssumeRolePolicy` permissions
-2. **Privilege Escalation Path**: Attack graph analysis should identify the escalation path from starting user to admin role via policy modification
-3. **Overly Permissive IAM Grants**: Starting user can modify policies attached to roles they cannot initially assume
-4. **Customer-Managed Policy Vulnerability**: Roles using customer-managed policies that can be modified by non-admin principals
-5. **Trust Policy Modification Risk**: Principals with `iam:UpdateAssumeRolePolicy` can grant themselves access to privileged roles
+```bash
+plabs cleanup --list
+plabs cleanup iam-020-iam-createpolicyversion+iam-updateassumerolepolicy
+```
 
-### MITRE ATT&CK Mapping
+#### With plabs tui
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0003 - Persistence
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-### Detection opportunities
+## Teardown
 
-Monitor CloudTrail for the following event patterns indicating this attack:
+### Teardown with plabs non-interactive
 
-1. **CreatePolicyVersion** event where:
-   - The new policy version contains significantly elevated permissions compared to previous versions
-   - The requestor is not a trusted admin principal
-   - The policy document contains `"*:*"` or `"AdministratorAccess"`
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy
+plabs apply
+```
 
-2. **UpdateAssumeRolePolicy** event where:
-   - The trust policy is modified to add new principals
-   - The requestor is the same principal being added to the trust policy
-   - The modified role has administrative or sensitive permissions
+### Teardown with plabs tui
 
-3. **AssumeRole** event shortly after CreatePolicyVersion and UpdateAssumeRolePolicy by the same principal
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
 
-4. **Sequential suspicious activity**: CreatePolicyVersion → UpdateAssumeRolePolicy → AssumeRole within a short time window
+## Defend
 
-## Prevention recommendations
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- **Dangerous Permission Combination**: User/role has both `iam:CreatePolicyVersion` and `iam:UpdateAssumeRolePolicy` permissions
+- **Privilege Escalation Path**: Attack graph analysis should identify the escalation path from starting user to admin role via policy modification
+- **Overly Permissive IAM Grants**: Starting user can modify policies attached to roles they cannot initially assume
+- **Customer-Managed Policy Vulnerability**: Roles using customer-managed policies that can be modified by non-admin principals
+- **Trust Policy Modification Risk**: Principals with `iam:UpdateAssumeRolePolicy` can grant themselves access to privileged roles
+
+#### Prevention Recommendations
 
 - **Restrict CreatePolicyVersion permissions**: Grant `iam:CreatePolicyVersion` only to administrative roles and limit it with resource-based conditions to specific policies
   ```json
@@ -199,3 +222,15 @@ Monitor CloudTrail for the following event patterns indicating this attack:
     ]
   }
   ```
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: CreatePolicyVersion` -- New policy version created; critical when the new version contains significantly elevated permissions (`*:*`) and the requestor is not a trusted admin principal
+- `IAM: UpdateAssumeRolePolicy` -- Role trust policy modified; high severity when the requestor is the same principal being added to the trust policy and the modified role has administrative permissions
+- `STS: AssumeRole` -- Role assumption; suspicious when it occurs shortly after `CreatePolicyVersion` and `UpdateAssumeRolePolicy` by the same principal; monitor for sequential activity within a short time window
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

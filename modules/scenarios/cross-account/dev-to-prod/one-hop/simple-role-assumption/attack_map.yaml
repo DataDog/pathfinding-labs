@@ -1,0 +1,46 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Dev Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user in the dev account has sts:AssumeRole permission on an administrative
+        role in the production account, allowing direct cross-account privilege escalation.
+
+    - id: target-role
+      label: "Prod Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
+      description: >
+        This IAM role in the production account has AdministratorAccess. Its trust policy
+        explicitly trusts the dev account starting user, allowing direct cross-account role
+        assumption. By assuming this role you gain full administrative access to the
+        production AWS account.
+
+  edges:
+    - from: starting-principal
+      to: target-role
+      label: "sts:AssumeRole"
+      description: >
+        Assume the production admin role from the dev account, crossing the account boundary
+        and gaining full administrative access in the production environment.
+      hints:
+        - "You have access to a user in the dev account. Think about what accounts you can reach from here."
+        - "Check whether you can assume roles in other accounts, particularly production."
+        - "Look for trust policies on prod roles that reference this dev account or this specific user."
+      commands:
+        - description: "Assume the prod admin role from the dev account"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role --role-session-name xsare-attack-session"
+        - description: "Verify administrative access in the prod account"
+          command: "aws iam list-users --max-items 1"

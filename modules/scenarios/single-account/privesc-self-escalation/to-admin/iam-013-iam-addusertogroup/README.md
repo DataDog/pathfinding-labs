@@ -5,86 +5,141 @@
 * **Path Type:** self-escalation
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-013
+* **Cost Estimate:** $0/mo
 * **Technique:** Self-escalation via iam:AddUserToGroup to admin group
+* **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-013
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to add themselves to an administrative group. The attacker can use the `iam:AddUserToGroup` permission to add themselves to a group with `AdministratorAccess`, thereby gaining full administrator permissions.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-013-to-admin-user` IAM user to full administrator access by using the `iam:AddUserToGroup` permission to add yourself to `pl-prod-iam-013-to-admin-group`, which has the `AdministratorAccess` managed policy attached.
 
-This is a particularly dangerous misconfiguration because it allows for self-escalation with a single API call. The vulnerability often occurs when administrators grant users the ability to manage group memberships without proper resource constraints, inadvertently allowing users to add themselves to privileged groups.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-013-to-admin-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:group/pl-prod-iam-013-to-admin-group`
 
-## Understanding the attack scenario
+### Starting Permissions
 
-### Principals in the attack path
+**Required:**
+- `iam:AddUserToGroup` on `*` -- add the starting user to the admin group
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-013-to-admin-user`
-- `arn:aws:iam::PROD_ACCOUNT:group/pl-prod-iam-013-to-admin-group`
+**Helpful:**
+- `iam:ListGroups` -- discover groups to target
+- `iam:GetGroup` -- view group members and attached policies
+- `iam:ListAttachedGroupPolicies` -- identify groups with admin permissions
 
-### Attack Path Diagram
+## Self-hosted Lab Setup
 
-```mermaid
-graph LR
-    A[pl-prod-iam-013-to-admin-user] -->|iam:AddUserToGroup| B[pl-prod-iam-013-to-admin-group]
-    B -->|AdministratorAccess Policy| C[Administrator Access]
+### Prerequisites
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Scaffolding aka Initial Access**: Attacker has compromised credentials for `pl-prod-iam-013-to-admin-user` (provided via Terraform outputs)
-2. **Self-Escalation**: User executes `iam:AddUserToGroup` to add themselves to `pl-prod-iam-013-to-admin-group`
-3. **Administrator Access**: User immediately gains full administrator access via the group's `AdministratorAccess` managed policy
-4. **Verification**: Verify administrator access by listing IAM users
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-013-to-admin-user` | Starting principal with AddUserToGroup permission |
-| `arn:aws:iam::PROD_ACCOUNT:group/pl-prod-iam-013-to-admin-group` | Admin group with AdministratorAccess policy |
-| Inline policy on pl-prod-iam-013-to-admin-user | Allows iam:AddUserToGroup on the admin group |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-013-to-admin-user` | Starting principal with AddUserToGroup permission |
+| `arn:aws:iam::{account_id}:group/pl-prod-iam-013-to-admin-group` | Admin group with AdministratorAccess policy |
+| Inline policy on `pl-prod-iam-013-to-admin-user` | Allows iam:AddUserToGroup on the admin group |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam-addusertogroup
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform outputs
+2. Verify identity as `pl-prod-iam-013-to-admin-user`
+3. Confirm the user currently lacks admin permissions (cannot list IAM users)
+4. Execute `iam:AddUserToGroup` to add the user to `pl-prod-iam-013-to-admin-group`
+5. Wait for IAM policy propagation and verify administrator access is granted
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the group membership added during the demo:
+- Group membership: adds `pl-prod-iam-013-to-admin-user` to `pl-prod-iam-013-to-admin-group`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam-addusertogroup
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-013-iam-addusertogroup
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003)
-- **Technique**: T1098.003 - Account Manipulation: Additional Cloud Roles
-- **Sub-technique**: Adding users to privileged groups
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-013-iam-addusertogroup
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user has `iam:AddUserToGroup` permission without resource constraints, allowing addition to any group including admin groups
+- Privilege escalation path detected: `pl-prod-iam-013-to-admin-user` can add itself to `pl-prod-iam-013-to-admin-group` which has `AdministratorAccess`
+- IAM group with `AdministratorAccess` policy has open membership (no SCP or permission boundary preventing self-addition)
+
+#### Prevention Recommendations
 
 - Avoid granting `iam:AddUserToGroup` permissions on privileged groups
 - Use resource-based conditions to restrict which groups users can add members to
@@ -93,3 +148,13 @@ cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-013-iam
 - Enable MFA requirements for sensitive IAM operations
 - Use IAM Access Analyzer to identify privilege escalation paths
 - Require approval workflows for group membership changes to administrative groups
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: AddUserToGroup` -- User added to an IAM group; critical when the target group has elevated or administrative permissions attached
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

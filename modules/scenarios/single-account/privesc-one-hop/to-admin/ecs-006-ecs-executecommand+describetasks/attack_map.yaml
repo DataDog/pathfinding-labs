@@ -1,0 +1,77 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-006-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ecs:ExecuteCommand and ecs:DescribeTasks permissions on the
+        ECS cluster, allowing it to shell into running containers.
+
+    - id: ecs-task
+      label: "ECS Task Container"
+      type: resource
+      subType: ecs-task
+      arn: "arn:aws:ecs:{region}:{account_id}:task/pl-prod-ecs-006-to-admin-cluster/*"
+      description: >
+        A running ECS task in the pl-prod-ecs-006-to-admin-cluster cluster. ECS Exec is
+        enabled on this task, and it runs with an admin task role attached via the instance
+        profile. Once inside the container, the task role credentials are accessible from
+        the container metadata service endpoint.
+
+    - id: target-role
+      label: "Admin Task Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ecs-006-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess and is attached as the task role to the
+        running ECS container. By retrieving its temporary credentials from the metadata
+        service inside the container, you now have full administrative access to the
+        AWS account.
+
+  edges:
+    - from: starting-principal
+      to: ecs-task
+      label: "ecs:ExecuteCommand + ecs:DescribeTasks"
+      description: >
+        Use ecs:ExecuteCommand (backed by SSM Session Manager) to establish an interactive
+        shell session inside the running container. The AWS CLI internally calls ecs:DescribeTasks
+        to retrieve the container runtime ID needed to establish the session.
+      hints:
+        - "You can run commands inside running ECS containers."
+        - "Look for ECS tasks that have privileged roles attached."
+        - "Browse to https://pathfinding.cloud/paths/ecs-006 for technique details."
+      commands:
+        - description: "List tasks in the cluster"
+          command: "aws ecs list-tasks --cluster pl-prod-ecs-006-to-admin-cluster"
+        - description: "Describe the task to find the container name"
+          command: "aws ecs describe-tasks --cluster pl-prod-ecs-006-to-admin-cluster --tasks <task-arn>"
+        - description: "Shell into the container"
+          command: "aws ecs execute-command --cluster pl-prod-ecs-006-to-admin-cluster --task <task-arn> --container sleep-container --interactive --command \"/bin/sh\""
+
+    - from: ecs-task
+      to: target-role
+      label: "curl metadata service"
+      description: >
+        From inside the container, query the ECS container metadata service to retrieve
+        the temporary credentials for the task role. These credentials are then used
+        outside the container to operate as the admin role.
+      hints:
+        - "Query the container metadata service from inside the container."
+        - "The endpoint is at 169.254.170.2 using the AWS_CONTAINER_CREDENTIALS_RELATIVE_URI environment variable."
+        - "curl 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI returns temporary credentials for the task role."
+      commands:
+        - description: "Retrieve task role credentials from inside the container"
+          command: "curl 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
+        - description: "Verify admin access using the extracted credentials (run outside container)"
+          command: "AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token> aws iam list-users"

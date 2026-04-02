@@ -5,80 +5,141 @@
 * **Path Type:** self-escalation
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-009
+* **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:AttachRolePolicy
+* **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-009
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a role can attach managed policies to itself using `iam:AttachRolePolicy`. The attacker starts with minimal permissions but can grant themselves administrator access by attaching the AWS-managed AdministratorAccess policy to their own role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-009-to-admin-starting-user` IAM user to effective administrator access by assuming the `pl-prod-iam-009-to-admin-starting-role` role and using `iam:AttachRolePolicy` to attach the AWS-managed `AdministratorAccess` policy to that role itself.
 
-## Understanding the attack scenario
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-009-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::aws:policy/AdministratorAccess` (attached to `arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role`)
 
-### Principals in the attack path
+### Starting Permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-009-to-admin-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-009-to-admin-starting-role`
+**Required:**
+- `iam:AttachRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-009-to-admin-starting-role` -- allows the role to attach managed policies to itself
 
-### Attack Path Diagram
+**Helpful:**
+- `iam:ListAttachedRolePolicies` -- list managed policies currently attached to the role
+- `iam:ListPolicies` -- discover available managed policies to attach
 
-```mermaid
-graph LR
-    A[pl-prod-iam-009-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-iam-009-to-admin-starting-role]
-    B -->|iam:AttachRolePolicy| C[AdministratorAccess Policy]
-    C -->|Administrator Access| D[Effective Administrator]
+## Self-hosted Lab Setup
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: `pl-prod-iam-009-to-admin-starting-user` assumes the role `pl-prod-iam-009-to-admin-starting-role` to begin the scenario
-2. **Attach Admin Policy**: `pl-prod-iam-009-to-admin-starting-role` uses `iam:AttachRolePolicy` to attach the AWS-managed AdministratorAccess policy to itself
-3. **Verification**: Verify administrator access with the modified role
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-009-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-009-to-admin-starting-role` | Starting role with policy attachment capability |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-009-to-admin-policy` | Allows `iam:AttachRolePolicy` on the role itself |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-009-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role` | Starting role with policy attachment capability |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-009-to-admin-policy` | Allows `iam:AttachRolePolicy` on the role itself |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-009-iam-attachrolepolicy
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform outputs
+2. Verify identity as `pl-prod-iam-009-to-admin-starting-user`
+3. Assume the `pl-prod-iam-009-to-admin-starting-role` role
+4. Confirm limited permissions on the role before escalation
+5. Attach the `AdministratorAccess` managed policy to the role using `iam:AttachRolePolicy`
+6. Wait for policy propagation and verify administrator access is achieved
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the attached policies created during the demo:
+- `AdministratorAccess` managed policy attached to `pl-prod-iam-009-to-admin-starting-role`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-009-iam-attachrolepolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-009-iam-attachrolepolicy
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Abuse of IAM Permissions
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-009-iam-attachrolepolicy
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM role `pl-prod-iam-009-to-admin-starting-role` has `iam:AttachRolePolicy` permission scoped to itself, enabling self-escalation
+- Role can attach the AWS-managed `AdministratorAccess` policy to itself without any additional approval
+- No SCP or permission boundary prevents the role from attaching high-privilege managed policies
+
+#### Prevention Recommendations
 
 - Avoid granting `iam:AttachRolePolicy` permissions on roles
 - If required, use resource-based conditions to restrict which roles can be modified
@@ -86,5 +147,16 @@ cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-009-iam
 - Monitor CloudTrail for `AttachRolePolicy` API calls, especially when roles modify themselves
 - Enable MFA requirements for sensitive operations
 - Use IAM Access Analyzer to identify privilege escalation paths
-- Restrict attachment of high-privilege AWS-managed policies like AdministratorAccess
+- Restrict attachment of high-privilege AWS-managed policies like `AdministratorAccess`
 - Use conditions to limit which policies can be attached (e.g., by policy name pattern)
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when the role is the same principal making the call (self-escalation)
+- `STS: AssumeRole` -- Role assumption by the starting user to obtain the escalation-capable role credentials
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

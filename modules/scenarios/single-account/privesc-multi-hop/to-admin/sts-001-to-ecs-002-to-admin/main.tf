@@ -5,7 +5,7 @@
 # 2. Using the role's credentials, attacker creates an ECS cluster and runs a Fargate task
 #    with an admin role to escalate privileges (iam:PassRole + ecs:* permissions)
 #
-# Attack Path: starting_user -> (sts:AssumeRole) -> starting_role ->
+# Attack Path: starting_user -> (sts:AssumeRole) -> intermediate_role ->
 #              (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask) ->
 #              admin_role (via ECS task) -> admin access
 
@@ -44,7 +44,7 @@ resource "aws_iam_access_key" "starting_user_key" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Policy for the starting user - can only assume the starting role
+# Policy for the starting user - can only assume the intermediate role
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-sts001-ecs002-starting-user-policy"
@@ -59,21 +59,21 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = aws_iam_role.starting_role.arn
+        Resource = aws_iam_role.intermediate_role.arn
       }
     ]
   })
 }
 
 # =============================================================================
-# STARTING ROLE (Second principal - has ECS permissions)
+# INTERMEDIATE ROLE (Second principal - has ECS permissions)
 # =============================================================================
 
 # This role has the ECS permissions needed for the privilege escalation
 # The starting user can assume this role to gain ECS capabilities
-resource "aws_iam_role" "starting_role" {
+resource "aws_iam_role" "intermediate_role" {
   provider = aws.prod
-  name     = "pl-prod-sts001-ecs002-starting-role"
+  name     = "pl-prod-sts001-ecs002-intermediate-role"
 
   # Trust policy allows the starting user to assume this role
   assume_role_policy = jsonencode({
@@ -90,18 +90,18 @@ resource "aws_iam_role" "starting_role" {
   })
 
   tags = {
-    Name        = "pl-prod-sts001-ecs002-starting-role"
+    Name        = "pl-prod-sts001-ecs002-intermediate-role"
     Environment = var.environment
     Scenario    = "sts-001-to-ecs-002-to-admin"
-    Purpose     = "starting-role"
+    Purpose     = "intermediate-role"
   }
 }
 
-# Policy granting the starting role ECS permissions and PassRole on admin role
-resource "aws_iam_role_policy" "starting_role_policy" {
+# Policy granting the intermediate role ECS permissions and PassRole on admin role
+resource "aws_iam_role_policy" "intermediate_role_policy" {
   provider = aws.prod
-  name     = "pl-prod-sts001-ecs002-starting-role-policy"
-  role     = aws_iam_role.starting_role.id
+  name     = "pl-prod-sts001-ecs002-intermediate-role-policy"
+  role     = aws_iam_role.intermediate_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -139,7 +139,7 @@ resource "aws_iam_role" "admin_role" {
   name     = "pl-prod-sts001-ecs002-admin-role"
 
   # Trust policy allows ECS tasks to assume this role
-  # Note: The starting role CANNOT assume this directly - must go through ECS
+  # Note: The intermediate role CANNOT assume this directly - must go through ECS
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

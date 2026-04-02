@@ -1,0 +1,173 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has sts:AssumeRole permission to assume the escalation role
+        pl-prod-role-with-multiple-privesc-paths.
+
+    - id: escalation-role
+      label: "Escalation Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-role-with-multiple-privesc-paths"
+      description: >
+        This IAM role holds iam:PassRole combined with ec2:RunInstances, lambda:CreateFunction,
+        and cloudformation:CreateStack. Each pairing independently constitutes a privilege
+        escalation path to full administrative access.
+
+    - id: ec2-admin-role
+      label: "EC2 Admin Role"
+      type: resource
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-admin-role"
+      description: >
+        This IAM role trusts ec2.amazonaws.com and carries AdministratorAccess. It can be
+        passed to an EC2 instance via iam:PassRole + ec2:RunInstances, enabling the instance
+        to perform any IAM action including creating a new role that trusts the attacker.
+
+    - id: lambda-admin-role
+      label: "Lambda Admin Role"
+      type: resource
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-admin-role"
+      description: >
+        This IAM role trusts lambda.amazonaws.com and carries AdministratorAccess. It can be
+        passed to a Lambda function, allowing the function's code to perform any IAM action.
+
+    - id: cfn-admin-role
+      label: "CloudFormation Admin Role"
+      type: resource
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-admin-role"
+      description: >
+        This IAM role trusts cloudformation.amazonaws.com and carries AdministratorAccess.
+        Passing it to a CloudFormation stack allows the stack to create any IAM resource,
+        including a new admin role that trusts the attacker.
+
+    - id: new-admin-role
+      label: "New Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/new-admin-role"
+      description: >
+        A new IAM role with AdministratorAccess created by one of the three compute service
+        payloads (EC2, Lambda, or CloudFormation). Its trust policy allows the original starting
+        user to assume it, completing the privilege escalation chain.
+
+  edges:
+    - from: starting-user
+      to: escalation-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the escalation role, gaining PassRole and compute service
+        creation permissions.
+      hints:
+        - "You can assume roles that trust your identity."
+        - "Look for roles that have PassRole combined with compute service creation permissions."
+        - "Browse to https://pathfinding.cloud for technique details."
+      commands:
+        - description: "Assume the escalation role"
+          command: >
+            aws sts assume-role
+            --role-arn "arn:aws:iam::{account_id}:role/pl-prod-role-with-multiple-privesc-paths"
+            --role-session-name "privesc-demo"
+
+    - from: escalation-role
+      to: ec2-admin-role
+      label: "iam:PassRole + ec2:RunInstances"
+      description: >
+        Launch an EC2 instance with the admin role attached as the instance profile. The
+        instance user-data script runs a payload under AdministratorAccess.
+      hints:
+        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
+        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
+        - "Launch an EC2 instance with this role as the instance profile."
+        - "Include a user-data payload that creates a new admin role trusting your starting identity."
+      commands:
+        - description: "Launch EC2 instance with admin role and payload"
+          command: >
+            aws ec2 run-instances
+            --image-id ami-0abcdef1234567890
+            --instance-type t3.micro
+            --iam-instance-profile Name=pl-prod-ec2-admin-role
+            --user-data file://payload.sh
+            --count 1
+
+    - from: escalation-role
+      to: lambda-admin-role
+      label: "iam:PassRole + lambda:CreateFunction"
+      description: >
+        Create a Lambda function with the admin role as its execution role, then invoke it
+        to run a payload under AdministratorAccess.
+      hints:
+        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
+        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
+        - "Create a Lambda function using this execution role."
+        - "Invoke the function with a payload that creates a new admin role."
+      commands:
+        - description: "Create Lambda function with admin role"
+          command: >
+            aws lambda create-function
+            --function-name privesc-demo-fn
+            --runtime python3.12
+            --role "arn:aws:iam::{account_id}:role/pl-prod-lambda-admin-role"
+            --handler index.handler
+            --zip-file fileb://payload.zip
+        - description: "Invoke the function to execute the payload"
+          command: "aws lambda invoke --function-name privesc-demo-fn /tmp/out.json"
+
+    - from: escalation-role
+      to: cfn-admin-role
+      label: "iam:PassRole + cloudformation:CreateStack"
+      description: >
+        Deploy a CloudFormation stack using the admin role. The stack template includes an
+        IAM role resource, executed under AdministratorAccess via CAPABILITY_NAMED_IAM.
+      hints:
+        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
+        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
+        - "Create a CloudFormation stack with this role ARN and CAPABILITY_NAMED_IAM."
+        - "The stack template can include an IAM role resource with a trust policy pointing back to your identity."
+      commands:
+        - description: "Create CloudFormation stack with admin role"
+          command: >
+            aws cloudformation create-stack
+            --stack-name privesc-demo-stack
+            --template-body file://template.yaml
+            --role-arn "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-admin-role"
+            --capabilities CAPABILITY_NAMED_IAM
+
+    - from: ec2-admin-role
+      to: new-admin-role
+      label: "iam:CreateRole + iam:AttachRolePolicy"
+      description: >
+        The EC2 instance payload (running under AdministratorAccess) creates a new IAM role
+        with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      commands: []
+
+    - from: lambda-admin-role
+      to: new-admin-role
+      label: "iam:CreateRole + iam:AttachRolePolicy"
+      description: >
+        The Lambda function payload (running under AdministratorAccess) creates a new IAM role
+        with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      commands: []
+
+    - from: cfn-admin-role
+      to: new-admin-role
+      label: "iam:CreateRole + iam:AttachRolePolicy"
+      description: >
+        The CloudFormation stack (executed under AdministratorAccess) provisions a new IAM role
+        resource with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      commands: []

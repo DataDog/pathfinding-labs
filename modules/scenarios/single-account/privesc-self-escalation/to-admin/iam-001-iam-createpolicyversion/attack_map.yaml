@@ -1,0 +1,62 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has permission to assume the starting role, which itself holds
+        iam:CreatePolicyVersion on its own attached policy.
+
+    - id: starting-role
+      label: "Starting Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-001-to-admin-starting-role"
+      description: >
+        This IAM role holds iam:CreatePolicyVersion permission scoped to its own
+        attached policy. By creating a new policy version that grants AdministratorAccess,
+        the role can escalate its own privileges to full administrative control. After
+        self-escalation, this role has full administrative permissions in the AWS account.
+
+  edges:
+    - from: starting-user
+      to: starting-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the starting role to gain the iam:CreatePolicyVersion
+        capability needed for self-escalation.
+      hints:
+        - "You have credentials for an IAM user. What roles can this user assume?"
+        - "The role you can assume has permissions to modify its own policy."
+        - "Browse to https://pathfinding.cloud/paths/iam-001 for technique details."
+      commands:
+        - description: "Assume the starting role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-001-to-admin-starting-role --role-session-name escalation-session"
+
+    - from: starting-role
+      to: starting-role
+      label: "iam:CreatePolicyVersion"
+      description: >
+        Create a new version of the policy attached to this role that grants
+        AdministratorAccess and set it as the default, achieving full privilege escalation.
+      hints:
+        - "This role can create new versions of its own attached policy."
+        - "A new policy version can contain any permissions — including AdministratorAccess."
+        - "AWS sets new policy versions as default automatically when you use --set-as-default."
+      commands:
+        - description: "Get the policy ARN attached to the role"
+          command: "aws iam list-attached-role-policies --role-name pl-prod-iam-001-to-admin-starting-role"
+        - description: "Create a new policy version with AdministratorAccess"
+          command: "aws iam create-policy-version --policy-arn arn:aws:iam::{account_id}:policy/pl-prod-iam-001-to-admin-policy --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}' --set-as-default"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

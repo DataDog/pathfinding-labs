@@ -5,60 +5,73 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-002
+* **Cost Estimate:** $0/mo
 * **Technique:** Creating access keys for privileged users to gain administrative access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-002
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a critical privilege escalation vulnerability where a user has permission to create access keys for other IAM users, including those with administrative privileges. The `iam:CreateAccessKey` permission allows an attacker to generate new programmatic credentials for any user they have permission to target, effectively assuming that user's identity and permissions.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-002-to-admin-starting-user` IAM user to the `pl-prod-iam-002-to-admin-target-user` administrative user by creating new programmatic credentials for the admin user using `iam:CreateAccessKey`.
 
-In many environments, IAM users with administrative access are created for emergency access or legacy purposes. If a less privileged user has `iam:CreateAccessKey` permission on these admin accounts, they can bypass all intended access controls by simply creating new credentials and authenticating as the privileged user. This is particularly dangerous because it allows complete identity takeover without requiring the victim's existing credentials.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-admin-target-user`
 
-This attack is straightforward to execute, difficult to prevent through traditional IAM boundaries, and can provide instant administrative access to an entire AWS environment. Organizations often overlook this privilege escalation path because it doesn't modify permissions directly - instead, it exploits the ability to generate new authentication credentials for existing privileged accounts.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-002-to-admin-target-user` -- create new programmatic credentials for the target admin user
 
-### Principals in the attack path
+**Helpful:**
+- `iam:ListUsers` -- discover privileged users to target
+- `iam:GetUser` -- view user details and attached policies
+- `iam:ListAttachedUserPolicies` -- identify users with admin permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-002-to-admin-starting-user` (Scenario-specific starting user with limited permissions)
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-002-to-admin-target-user` (Target admin user with AdministratorAccess policy)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-iam-002-to-admin-starting-user] -->|iam:CreateAccessKey| B[pl-prod-iam-002-to-admin-target-user]
-    B -->|Administrator Access| C[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-iam-002-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create Access Keys**: Use `iam:CreateAccessKey` to create new programmatic credentials for the admin user `pl-prod-iam-002-to-admin-target-user`
-3. **Switch Context**: Configure AWS CLI with the newly created access key and secret key
-4. **Verification**: Verify administrator access by listing IAM users or performing other admin-level actions
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-002-to-admin-starting-user` | Scenario-specific starting user with access keys and iam:CreateAccessKey permission |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-002-to-admin-target-user` | Target admin user with AdministratorAccess managed policy attached |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-admin-starting-user` | Scenario-specific starting user with access keys and iam:CreateAccessKey permission |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-002-to-admin-target-user` | Target admin user with AdministratorAccess managed policy attached |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -66,27 +79,65 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the access keys created during the demo:
+- Access keys for `pl-prod-iam-002-to-admin-target-user` (permanent IAM access key pair)
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-002-iam-createaccesskey
 ```
 
-The cleanup script will remove all access keys created for the target admin user during the demonstration, restoring the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0003 - Persistence
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+```bash
+plabs cleanup --list
+plabs cleanup iam-002-iam-createaccesskey
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user (`pl-prod-iam-002-to-admin-starting-user`) has `iam:CreateAccessKey` permission scoped to a privileged IAM user
+- IAM user (`pl-prod-iam-002-to-admin-target-user`) with `AdministratorAccess` is targetable for credential creation by a less-privileged principal
+- Privilege escalation path exists: non-admin user can generate persistent credentials for an admin user without modifying any policies
+
+#### Prevention Recommendations
 
 - Implement least privilege principles - avoid granting `iam:CreateAccessKey` permissions unless absolutely necessary
 - Use resource-based conditions to restrict which users can have access keys created: `"Condition": {"StringNotEquals": {"aws:username": ["admin-user"]}}`
@@ -96,3 +147,13 @@ The cleanup script will remove all access keys created for the target admin user
 - Use IAM Access Analyzer to identify and remediate privilege escalation paths involving `iam:CreateAccessKey`
 - Consider using IAM roles instead of IAM users for administrative access, as roles cannot have access keys created by other principals
 - Implement automated alerting on access key creation events for admin accounts using CloudWatch Events or EventBridge
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: CreateAccessKey` -- New access keys were created for an IAM user; critical when the target user has elevated permissions
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

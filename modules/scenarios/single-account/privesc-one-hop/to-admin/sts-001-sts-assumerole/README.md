@@ -5,79 +5,140 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** sts-001
+* **Cost Estimate:** $0/mo
 * **Technique:** Direct role assumption via sts:AssumeRole
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** sts-001
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Objective
 
-This scenario demonstrates a simple but critical privilege escalation vulnerability where a user can directly assume a role with administrator permissions. The attacker starts with minimal permissions but can assume a role that has the AWS-managed AdministratorAccess policy attached, instantly gaining full administrative privileges.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-sts-001-to-admin-starting-user` IAM user to the `pl-prod-sts-001-to-admin-target-role` administrative role by directly calling `sts:AssumeRole` to obtain temporary credentials with full `AdministratorAccess`.
 
-## Understanding the attack scenario
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-admin-target-role`
 
-### Principals in the attack path
+### Starting Permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-sts-001-to-admin-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts-001-to-admin-target-role`
+**Required:**
+- `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-sts-001-to-admin-target-role` -- allows the starting user to assume the admin role directly
 
-### Attack Path Diagram
+**Helpful:**
+- `iam:ListRoles` -- discover available roles to assume
+- `iam:GetRole` -- view role permissions and trust policy
 
-```mermaid
-graph LR
-    A[pl-prod-sts-001-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-sts-001-to-admin-target-role]
-    B -->|AdministratorAccess Policy| C[Effective Administrator]
+## Self-hosted Lab Setup
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Starting Point**: Begin as `pl-prod-sts-001-to-admin-starting-user` with minimal permissions
-2. **Assume Admin Role**: The user directly assumes `pl-prod-sts-001-to-admin-target-role` which has AdministratorAccess attached
-3. **Verification**: Verify administrator access with the assumed role
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-sts-001-to-admin-starting-user` | Starting user with sts:AssumeRole permission |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-sts-001-to-admin-target-role` | Admin role with AdministratorAccess policy attached |
+| `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-admin-starting-user` | Starting user with sts:AssumeRole permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-admin-target-role` | Admin role with AdministratorAccess policy attached |
 | `arn:aws:iam::aws:policy/AdministratorAccess` | AWS-managed policy granting full admin permissions |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sts-001-sts-assumerole
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform output
+2. Verify identity as the starting user and confirm no admin access
+3. Call `sts:AssumeRole` to directly assume `pl-prod-sts-001-to-admin-target-role`
+4. Verify the new identity and confirm administrator access by listing IAM users
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, there are no artifacts to clean up as this scenario only involves role assumption:
+- No persistent artifacts are created; this scenario only involves role assumption (temporary session credentials are used in-memory)
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/sts-001-sts-assumerole
-./cleanup_attack.sh
+plabs demo --list
+plabs demo sts-001-sts-assumerole
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Abuse of cloud credentials to gain elevated access
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup sts-001-sts-assumerole
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user `pl-prod-sts-001-to-admin-starting-user` has `sts:AssumeRole` permission targeting an administrative role
+- Role `pl-prod-sts-001-to-admin-target-role` has a trust policy allowing assumption by a non-privileged user
+- Privilege escalation path exists: non-admin user can directly assume a role with `AdministratorAccess`
+- Role trust policy does not enforce MFA or session conditions for assumption of an admin-level role
+
+#### Prevention Recommendations
 
 - Avoid allowing direct assumption of roles with administrative permissions
 - Use the principle of least privilege when configuring trust relationships
@@ -87,3 +148,13 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/sts-001-sts-assumer
 - Use IAM Access Analyzer to identify overly permissive trust policies
 - Implement session policies to limit permissions even when assuming privileged roles
 - Use AWS Config rules to detect roles with administrative permissions that can be assumed by users
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `STS: AssumeRole` -- Role assumption call; high severity when the target role has administrative permissions attached
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

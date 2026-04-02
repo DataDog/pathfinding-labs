@@ -5,61 +5,74 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-006
+* **Cost Estimate:** $0/mo
 * **Technique:** Password reset for admin user to gain console access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-006
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to update the login profile (console password) of an administrator user. By using the `iam:UpdateLoginProfile` permission, an attacker can reset the console password of an existing admin user and then log into the AWS Console with full administrative privileges.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-006-to-admin-starting-user` IAM user to the `pl-prod-iam-006-to-admin-target-user` administrative user by resetting the target's AWS Console password using the `iam:UpdateLoginProfile` permission.
 
-This attack is particularly dangerous because it provides console access rather than just API access, enabling the attacker to use the AWS web interface with all its capabilities. Unlike creating access keys, which generates audit trails through API calls, console access can be harder to detect and monitor comprehensively. The attack only works against users who already have a console password (login profile) configured, making existing administrator accounts prime targets.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-target-user`
 
-In real-world environments, this vulnerability often occurs when security teams grant broad IAM permissions for user management without properly scoping them to specific resources or implementing condition-based restrictions. Organizations may inadvertently allow help desk staff or junior administrators to reset passwords for any user, including privileged accounts.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `iam:UpdateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-006-to-admin-target-user` -- reset the console password for the admin target user
 
-### Principals in the attack path
+**Helpful:**
+- `iam:ListUsers` -- discover users with login profiles
+- `iam:GetUser` -- view user details
+- `iam:GetLoginProfile` -- verify user has a login profile configured
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-006-to-admin-starting-user` (Scenario-specific starting user with UpdateLoginProfile permission)
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-006-to-admin-target-user` (Target admin user with console access)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-iam-006-to-admin-starting-user] -->|iam:UpdateLoginProfile| B[pl-prod-iam-006-to-admin-target-user]
-    B -->|Console Login| C[Administrator Access]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-iam-006-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Update Login Profile**: Use `iam:UpdateLoginProfile` to reset the console password for `pl-prod-iam-006-to-admin-target-user`
-3. **Console Login**: Log into the AWS Console using the target username and newly set password
-4. **Verification**: Verify administrator access through the console or CLI
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-006-to-admin-starting-user` | Scenario-specific starting user with access keys and UpdateLoginProfile permission |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-006-to-admin-target-user` | Target admin user with AdministratorAccess and existing login profile |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-006-to-admin-starting-user-policy` | Inline policy allowing `iam:UpdateLoginProfile` on the target user |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-starting-user` | Scenario-specific starting user with access keys and UpdateLoginProfile permission |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-target-user` | Target admin user with AdministratorAccess and existing login profile |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-006-to-admin-starting-user-policy` | Inline policy allowing `iam:UpdateLoginProfile` on the target user |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-006-iam-updateloginprofile
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -67,26 +80,65 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the modified login profile by restoring the original password:
+- Updated console password (login profile) on `pl-prod-iam-006-to-admin-target-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-006-iam-updateloginprofile
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-006-iam-updateloginprofile
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: Modifying authentication credentials for privileged accounts
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-006-iam-updateloginprofile
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user `pl-prod-iam-006-to-admin-starting-user` has `iam:UpdateLoginProfile` permission scoped to an administrator user, creating a privilege escalation path
+- Privilege escalation path detected: non-privileged user can reset console password of admin user
+- IAM policy allows password reset on privileged users without resource-level restrictions
+
+#### Prevention Recommendations
 
 - Avoid granting `iam:UpdateLoginProfile` permissions on privileged users - use resource-based conditions to restrict which users can have their passwords updated
 - Implement Service Control Policies (SCPs) to prevent password updates on administrator accounts
@@ -96,3 +148,13 @@ cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-006-iam-updatel
 - Implement separate break-glass accounts for emergency access rather than allowing password resets on production admin accounts
 - Enable AWS CloudTrail Insights to detect unusual patterns of IAM user credential modifications
 - Consider using AWS IAM Identity Center (formerly SSO) for console access instead of long-lived IAM user passwords
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: UpdateLoginProfile` -- Console password reset on an IAM user; critical when the target account has elevated permissions, as it enables console login as that user
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

@@ -1,0 +1,67 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has sts:AssumeRole permission on a role that grants access to a
+        sensitive S3 bucket.
+
+    - id: bucket-access-role
+      label: "Bucket Access Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role"
+      description: >
+        This IAM role has s3:ListBucket, s3:GetObject, and s3:PutObject permissions on the
+        target sensitive S3 bucket. Its trust policy allows the starting user to assume it
+        directly via sts:AssumeRole.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}"
+      description: >
+        This S3 bucket contains sensitive data. By assuming the bucket access role, you now
+        have full read and write access to this bucket and its contents.
+
+  edges:
+    - from: starting-principal
+      to: bucket-access-role
+      label: "sts:AssumeRole"
+      description: >
+        Assume the bucket access role using sts:AssumeRole, obtaining temporary credentials
+        that grant S3 permissions on the target bucket.
+      hints:
+        - "You can assume other IAM roles."
+        - "Look for roles that grant access to sensitive S3 buckets."
+        - "Browse to https://pathfinding.cloud/paths/sts-001 for technique details."
+      commands:
+        - description: "Assume the bucket access role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role --role-session-name attacker-session"
+
+    - from: bucket-access-role
+      to: target-bucket
+      label: "s3:GetObject, s3:PutObject"
+      description: >
+        Use the assumed role credentials to access the sensitive S3 bucket, listing contents
+        and downloading sensitive data.
+      hints:
+        - "Check what S3 permissions this role has."
+        - "This role can read and write to the sensitive data bucket."
+      commands:
+        - description: "List bucket contents"
+          command: "aws s3 ls s3://pl-prod-sts-001-to-bucket-{account_id}"
+        - description: "Download sensitive data"
+          command: "aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/sensitive-data.txt ."

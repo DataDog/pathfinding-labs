@@ -5,63 +5,76 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** ec2-004
+* **Cost Estimate:** $0/mo
 * **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** ec2-004
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to pass IAM roles to EC2 Spot Instances (`iam:PassRole`) and request EC2 Spot Instances (`ec2:RequestSpotInstances`). The attacker, starting with these permissions, launches an EC2 Spot Instance with an administrative instance profile, and uses the instance's user-data script to attach the AdministratorAccess managed policy directly to the starting user. Once the policy is attached, the attacker gains full administrator access.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2-004-to-admin-starting-user` IAM user to the `pl-prod-ec2-004-to-admin-target-role` administrative role by requesting an EC2 Spot Instance with the admin instance profile attached and embedding a user-data script that attaches `AdministratorAccess` directly to the starting user.
 
-EC2 Spot Instances are spare compute capacity available at significantly discounted rates (up to 90% off On-Demand prices). While this makes them cost-effective for attackers executing privilege escalation, the underlying security vulnerability is identical to the standard `ec2:RunInstances` technique. Security teams must understand that restricting `ec2:RunInstances` alone is insufficient - they must also restrict `ec2:RequestSpotInstances` to prevent the same attack vector.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role`
 
-This technique is particularly dangerous because it combines IAM permissions with compute service actions, allowing an attacker to leverage temporary, low-cost compute resources to modify persistent IAM configurations. Even though this involves multiple AWS API calls (PassRole, RequestSpotInstances, AttachUserPolicy), it's classified as one-hop because there is only one principal traversal: from the starting user to admin privileges via the Spot Instance as an intermediary mechanism.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role` -- allows passing the admin role to an EC2 Spot Instance via instance profile
+- `ec2:RequestSpotInstances` on `*` -- allows requesting a Spot Instance with the admin instance profile and a user-data backdoor
 
-### Principals in the attack path
+**Helpful:**
+- `iam:ListRoles` -- discover available privileged roles
+- `ec2:DescribeInstances` -- verify instance launch and get connection details
+- `iam:ListInstanceProfiles` -- find instance profiles with privileged roles
+- `ec2:DescribeSpotInstanceRequests` -- verify spot instance request and get instance details
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ec2-004-to-admin-starting-user` (Starting user with PassRole + RequestSpotInstances permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ec2-004-to-admin-target-role` (Admin role used by EC2 Spot Instance to attach policy)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-ec2-004-to-admin-starting-user] -->|iam:PassRole + ec2:RequestSpotInstances| B[EC2 Spot Instance with Admin Role]
-    B -->|iam:AttachUserPolicy| C[pl-prod-ec2-004-to-admin-starting-user + AdministratorAccess]
-    C --> D[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-ec2-004-to-admin-starting-user` with PassRole and RequestSpotInstances permissions (credentials provided via Terraform outputs)
-2. **Request Spot Instance**: Use `ec2:RequestSpotInstances` to launch an EC2 Spot Instance, passing the admin instance profile via `iam:PassRole`
-3. **Policy Attachment**: The Spot Instance's user-data script executes with the admin role's credentials and attaches the AdministratorAccess managed policy to the starting user
-4. **Verification**: Verify administrator access by listing IAM users (as the starting user with newly attached AdministratorAccess)
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ec2-004-to-admin-starting-user` | Starting user with PassRole and RequestSpotInstances permissions (with access keys) |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ec2-004-to-admin-target-role` | Admin role that EC2 Spot Instance uses to attach policy (trusts ec2.amazonaws.com) |
-| `arn:aws:iam::PROD_ACCOUNT:instance-profile/pl-prod-ec2-004-to-admin-instance-profile` | Instance profile wrapping the admin role |
+| `arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user` | Starting user with PassRole and RequestSpotInstances permissions (with access keys) |
+| `arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role` | Admin role that EC2 Spot Instance uses to attach policy (trusts ec2.amazonaws.com) |
+| `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-004-to-admin-instance-profile` | Instance profile wrapping the admin role |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-004-iam-passrole+ec2-requestspotinstances
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -69,32 +82,83 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the EC2 Spot Instance request, any launched instances, and detach the AdministratorAccess policy from the starting user:
+- AdministratorAccess managed policy attached to the starting user
+- EC2 Spot Instance launched with the admin instance profile (terminated by cleanup)
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-004-iam-passrole+ec2-requestspotinstances
-./cleanup_attack.sh
+plabs demo --list
+plabs demo ec2-004-iam-passrole+ec2-requestspotinstances
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation (TA0004)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup ec2-004-iam-passrole+ec2-requestspotinstances
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user has `iam:PassRole` permission targeting a role with administrative privileges
+- IAM user has `ec2:RequestSpotInstances` permission combined with `iam:PassRole` — this combination enables privilege escalation via Spot Instance user-data
+- Admin role (`pl-prod-ec2-004-to-admin-target-role`) is passable to EC2 Spot Instances and carries `iam:AttachUserPolicy` on all resources
+- Instance profile wrapping an administrative role is accessible to the starting user via `iam:PassRole`
+
+#### Prevention Recommendations
 
 - Restrict `iam:PassRole` permissions with resource-based conditions to limit which roles can be passed and to which services
 - Implement SCPs preventing EC2 Spot Instances from being launched with administrative IAM roles
-- Monitor CloudTrail for `PassRole` API calls combined with `RequestSpotInstances` events targeting privileged roles
-- Alert on `AttachUserPolicy` and `PutUserPolicy` API calls, especially when invoked from EC2 instances
+- Apply the same restrictions to `ec2:RequestSpotInstances` as you would to `ec2:RunInstances` — they provide equivalent privilege escalation paths
+- Alert on `IAM: AttachUserPolicy` and `IAM: PutUserPolicy` API calls, especially when invoked from EC2 instances
 - Regularly audit EC2 instances (including Spot Instances) for excessive IAM permissions using IAM Access Analyzer
-- Use resource tagging and condition keys to enforce separation of duties between role creation and role assignment
 - Implement IAM permission boundaries on users to limit the maximum permissions that can be attached
-- Apply the same restrictions to `ec2:RequestSpotInstances` as you would to `ec2:RunInstances` - they provide equivalent privilege escalation paths
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: PassRole` — Starting user passes the admin role to the EC2 Spot Instance; critical when the target role has elevated permissions
+- `EC2: RequestSpotInstances` — Spot Instance request launched with an administrative instance profile; high severity when combined with a preceding `PassRole` event
+- `IAM: AttachUserPolicy` — AdministratorAccess managed policy attached to the starting user; critical when invoked from an EC2 instance metadata context
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

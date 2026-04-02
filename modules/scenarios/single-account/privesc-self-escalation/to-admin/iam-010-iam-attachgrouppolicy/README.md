@@ -5,55 +5,74 @@
 * **Path Type:** self-escalation
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** iam-010
+* **Cost Estimate:** $0/mo
 * **Technique:** Self-escalation via attaching admin policy to own group
+* **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-010
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
+* **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where an IAM user has permission to attach managed policies to a group they are a member of. The attacker can use `iam:AttachGroupPolicy` to attach the `AdministratorAccess` managed policy to their own group, thereby gaining administrator access through group membership.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-010-to-admin-starting-user` IAM user to administrator access by attaching the `AdministratorAccess` managed policy to the `pl-prod-iam-010-to-admin-group` IAM group that you are already a member of.
 
-## Understanding the attack scenario
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-010-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::aws:policy/AdministratorAccess` (attached to `arn:aws:iam::{account_id}:group/pl-prod-iam-010-to-admin-group`)
 
-### Principals in the attack path
+### Starting Permissions
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-010-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:iam::PROD_ACCOUNT:group/pl-prod-iam-010-to-admin-group` (IAM group that the user is a member of)
+**Required:**
+- `iam:AttachGroupPolicy` on `*` -- attach managed policies to IAM groups
 
-### Attack Path Diagram
+**Helpful:**
+- `iam:ListGroups` -- list groups the user belongs to
+- `iam:ListAttachedGroupPolicies` -- view currently attached group policies
+- `iam:ListPolicies` -- discover available managed policies
 
-```mermaid
-graph LR
-    A[pl-prod-iam-010-to-admin-starting-user] -->|Member of| B[pl-prod-iam-010-to-admin-group]
-    A -->|iam:AttachGroupPolicy| B
-    B -->|Attach AdministratorAccess| C[Group gains Admin Policy]
-    C -->|Via Group Membership| D[User gains Administrator Access]
+## Self-hosted Lab Setup
+
+### Prerequisites
+
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-iam-010-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Identify Group**: User is a member of `pl-prod-iam-010-to-admin-group`
-3. **Attach Admin Policy**: Use `iam:AttachGroupPolicy` to attach `arn:aws:iam::aws:policy/AdministratorAccess` to the group
-4. **Verification**: Verify administrator access via group membership
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-010-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:group/pl-prod-iam-010-to-admin-group` | IAM group that the user belongs to |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-010-to-admin-attachgrouppolicy-policy` | Allows `iam:AttachGroupPolicy` on the group |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-010-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:group/pl-prod-iam-010-to-admin-group` | IAM group that the user belongs to |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-010-to-admin-attachgrouppolicy-policy` | Allows `iam:AttachGroupPolicy` on the group |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-010-iam-attachgrouppolicy
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -61,26 +80,65 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the attached policy:
+- `AdministratorAccess` managed policy attached to `pl-prod-iam-010-to-admin-group`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-010-iam-attachgrouppolicy
-./cleanup_attack.sh
+plabs demo --list
+plabs demo iam-010-iam-attachgrouppolicy
 ```
 
-## Detection and prevention
+#### With plabs tui
 
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-### MITRE ATT&CK Mapping
+### Cleanup
 
-- **Tactic**: Privilege Escalation
-- **Technique**: T1098.003 - Account Manipulation: Additional Cloud Roles
-- **Sub-technique**: Modifying group policies to gain elevated privileges
+#### With plabs non-interactive
 
+```bash
+plabs cleanup --list
+plabs cleanup iam-010-iam-attachgrouppolicy
+```
 
-## Prevention recommendations
+#### With plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
+
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user has `iam:AttachGroupPolicy` permission on a group they are a member of
+- Privilege escalation path detected: user can elevate their own permissions via group policy attachment
+- Group membership combined with group policy modification permission creates a self-escalation risk
+
+#### Prevention Recommendations
 
 - Avoid granting `iam:AttachGroupPolicy` permissions to users who are members of the target group
 - Use resource-based conditions to restrict which groups can have policies attached
@@ -89,3 +147,13 @@ cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-010-iam
 - Enable MFA requirements for sensitive IAM operations
 - Use IAM Access Analyzer to identify privilege escalation paths
 - Implement a least-privilege model where users cannot modify their own effective permissions
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `IAM: AttachGroupPolicy` — Managed policy attached to an IAM group; critical when the policy is `AdministratorAccess` or otherwise grants elevated permissions
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

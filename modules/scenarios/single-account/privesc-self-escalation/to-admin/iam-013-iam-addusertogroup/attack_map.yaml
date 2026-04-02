@@ -1,0 +1,49 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-013-to-admin-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:AddUserToGroup permission, allowing them to add themselves
+        to any IAM group — including the admin group with AdministratorAccess.
+
+    - id: admin-group
+      label: "Admin Group"
+      type: resource
+      subType: iam-group
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:group/pl-prod-iam-013-to-admin-group"
+      description: >
+        This IAM group has the AdministratorAccess managed policy attached. Any user
+        who is a member of this group inherits full administrative access to the AWS account.
+        By adding yourself to this group, you inherit the AdministratorAccess managed
+        policy, giving you full administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: admin-group
+      label: "iam:AddUserToGroup"
+      description: >
+        Add the starting user to the admin group. Group membership is effective
+        immediately, granting the user all permissions attached to the group.
+      hints:
+        - "You can manage group memberships in this account."
+        - "Look for IAM groups that have elevated or administrative policies attached."
+        - "Check what policies are attached to each group — group membership grants the group's policies to the member user."
+        - "Browse to https://pathfinding.cloud/paths/iam-013 for technique details."
+      commands:
+        - description: "Add the starting user to the admin group"
+          command: "aws iam add-user-to-group --user-name pl-prod-iam-013-to-admin-user --group-name pl-prod-iam-013-to-admin-group"
+        - description: "Verify group membership"
+          command: "aws iam get-group --group-name pl-prod-iam-013-to-admin-group"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

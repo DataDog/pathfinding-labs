@@ -5,8 +5,13 @@
 * **Path Type:** one-hop
 * **Target:** to-bucket
 * **Environments:** prod
-* **Pathfinding.cloud ID:** glue-002
+* **Cost Estimate:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and access S3 buckets with the endpoint's attached role
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint`
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** glue-002
+* **MITRE Tactics:** TA0004 - Privilege Escalation
+* **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1021.004 - Remote Services: SSH
 
 ---
 
@@ -24,69 +29,68 @@ AWS Glue Development Endpoints run continuously once created and bill per DPU (D
 
 ---
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to update an existing AWS Glue Development Endpoint. Unlike the `glue:CreateDevEndpoint` scenario, the attacker doesn't need `iam:PassRole` permissions since the role is already attached to the pre-existing endpoint.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-glue-002-to-bucket-starting-user` IAM user to the `pl-sensitive-data-glue-002-{account_id}-{suffix}` S3 bucket by adding an attacker-controlled SSH public key to a pre-existing Glue development endpoint that already has a privileged IAM role attached, then SSHing into the endpoint to obtain role credentials and access the bucket.
 
-The attack leverages `glue:UpdateDevEndpoint` to add the attacker's SSH public key to an existing development endpoint that has a privileged IAM role attached. Once the SSH key is added, the attacker can SSH into the endpoint and use the attached role's credentials to access sensitive S3 buckets. This is particularly dangerous because Glue dev endpoints often have broad S3 permissions to support ETL development workflows.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-glue-002-{account_id}-{suffix}`
 
-AWS Glue Development Endpoints are Apache Spark environments used for developing, testing, and debugging ETL (Extract, Transform, Load) scripts. They persist until explicitly deleted, providing attackers with a stable environment for credential access and lateral movement.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required:**
+- `glue:UpdateDevEndpoint` on `*` -- add an attacker SSH public key to an existing dev endpoint that already has a privileged role attached
 
-### Principals in the attack path
+**Helpful:**
+- `glue:GetDevEndpoint` -- retrieve endpoint details including the public address needed for SSH connection
+- `glue:GetDevEndpoints` -- list existing endpoints to identify targets with privileged roles
+- `s3:ListBuckets` -- discover target buckets after obtaining role credentials
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-glue-002-to-bucket-starting-user` (Scenario-specific starting user)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-002-to-bucket-target-role` (Pre-existing Glue dev endpoint role with S3 access)
-- `arn:aws:s3:::pl-sensitive-data-glue-002-PROD_ACCOUNT-SUFFIX` (Sensitive S3 bucket containing valuable data)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-glue-002-to-bucket-starting-user] -->|glue:UpdateDevEndpoint| B[Pre-existing Dev Endpoint]
-    B -->|Add SSH public key| C[Endpoint with Attacker Access]
-    C -->|SSH connection| D[pl-prod-glue-002-to-bucket-target-role]
-    D -->|s3:GetObject| E[pl-sensitive-data-glue-002 bucket]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-glue-002-to-bucket-starting-user` (credentials provided via Terraform outputs)
-2. **Generate SSH Key Pair**: Create a new SSH key pair locally (attacker-controlled)
-3. **Update Dev Endpoint**: Use `glue:UpdateDevEndpoint` to add the attacker's SSH public key to the existing endpoint
-4. **Wait for Update**: Wait for the endpoint update to propagate (typically 2-5 minutes)
-5. **SSH Connection**: SSH into the dev endpoint using the private key and the endpoint's address
-6. **Extract Credentials**: Once connected, extract IAM role credentials from the instance metadata service
-7. **Access S3**: Use the extracted credentials to access the sensitive S3 bucket
-8. **Verification**: Download objects from the sensitive bucket to confirm access
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to enable it
+4. Press `d` to deploy
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-glue-002-to-bucket-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-glue-002-to-bucket-starting-policy` | Grants `glue:UpdateDevEndpoint`, `glue:GetDevEndpoint`, and `glue:GetDevEndpoints` permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-glue-002-to-bucket-target-role` | Privileged role attached to the dev endpoint with S3 bucket access |
-| `arn:aws:glue:REGION:PROD_ACCOUNT:devEndpoint/pl-prod-glue-002-to-bucket-endpoint` | Pre-existing Glue dev endpoint with the target role attached |
-| `arn:aws:s3:::pl-sensitive-data-glue-002-PROD_ACCOUNT-SUFFIX` | Sensitive S3 bucket containing test data |
+| `arn:aws:iam::{account_id}:user/pl-prod-glue-002-to-bucket-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:policy/pl-prod-glue-002-to-bucket-starting-policy` | Grants `glue:UpdateDevEndpoint`, `glue:GetDevEndpoint`, and `glue:GetDevEndpoints` permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-bucket-target-role` | Privileged role attached to the dev endpoint with S3 bucket access |
+| `arn:aws:glue:{region}:{account_id}:devEndpoint/pl-prod-glue-002-to-bucket-endpoint` | Pre-existing Glue dev endpoint with the target role attached |
+| `arn:aws:s3:::pl-sensitive-data-glue-002-{account_id}-{suffix}` | Sensitive S3 bucket containing test data |
 
-## Executing the attack
+### Guided Walkthrough
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Guided Walkthrough](guided_walkthrough.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-updatedevendpoint
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -101,55 +105,68 @@ The script will:
 
 **Note**: The demo script requires SSH client and AWS CLI to be installed. The endpoint takes approximately 2-5 minutes to update after adding the SSH key.
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the SSH key added to the dev endpoint:
+- SSH key pair generated locally for the demonstration (`/tmp/pl-glue-002-demo-key` and `/tmp/pl-glue-002-demo-key.pub`)
+- Attacker's SSH public key added to the existing Glue dev endpoint
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-updatedevendpoint
-./cleanup_attack.sh
+plabs demo --list
+plabs demo glue-002-glue-updatedevendpoint
 ```
 
-The cleanup script will:
-- Remove the attacker's SSH public key from the dev endpoint
-- Delete the local SSH key pair generated during the demo
-- Restore the endpoint to its original state
+#### With plabs tui
 
-**Important**: The cleanup script only removes the SSH key. To stop AWS charges, you must run `terraform destroy` to delete the entire dev endpoint.
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
-## Detection and prevention
+### Cleanup
 
-### What CSPM tools should detect
+#### With plabs non-interactive
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify:
+```bash
+plabs cleanup --list
+plabs cleanup glue-002-glue-updatedevendpoint
+```
 
-1. **Overly Permissive Glue Permissions**
-   - IAM principals with `glue:UpdateDevEndpoint` on `*` resources
-   - Lack of resource-based conditions restricting which endpoints can be updated
+#### With plabs tui
 
-2. **Privilege Escalation Path**
-   - User can update dev endpoint → Dev endpoint has privileged role → Role has S3 access
-   - Detection should show the full attack path from user to sensitive bucket
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-3. **High-Risk Glue Configuration**
-   - Development endpoints with broad S3 permissions
-   - Endpoints without network access restrictions (public subnet placement)
-   - Lack of encryption for dev endpoints
+## Teardown
 
-4. **Missing Preventive Controls**
-   - No SCP restrictions on Glue dev endpoint operations
-   - Absence of resource tags for endpoint ownership and approval
-   - No CloudTrail monitoring for `UpdateDevEndpoint` API calls
+### Teardown with plabs non-interactive
 
-### MITRE ATT&CK Mapping
+```bash
+plabs disable enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint
+plabs apply
+```
 
-- **Tactic**: TA0004 - Privilege Escalation
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: Adding SSH credentials to cloud compute resources
-- **Technique**: T1021.004 - Remote Services: SSH
-- **Sub-technique**: SSH access to cloud development environments
+### Teardown with plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM principals with `glue:UpdateDevEndpoint` on `*` resources without resource-based conditions restricting which endpoints can be updated
+- Privilege escalation path: user can update dev endpoint → dev endpoint has privileged role → role has S3 access; detection should show the full path from user to sensitive bucket
+- Development endpoints with broad S3 permissions that exceed what ETL workflows require
+- Glue dev endpoints deployed in public subnets without network access restrictions
+- Absence of SCP restrictions on Glue dev endpoint operations
+
+#### Prevention Recommendations
 
 1. **Restrict glue:UpdateDevEndpoint permissions**
    ```json
@@ -187,38 +204,46 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
    }
    ```
 
-4. **Monitor CloudTrail for suspicious Glue API activity**
-   - Alert on `UpdateDevEndpoint` calls, especially adding new public keys
-   - Monitor `GetDevEndpoint` calls that might indicate reconnaissance
-   - Track patterns of Glue API calls followed by S3 access from endpoint IPs
-
-5. **Apply least privilege to Glue endpoint roles**
+4. **Apply least privilege to Glue endpoint roles**
    - Limit S3 permissions to specific buckets required for ETL workflows
    - Avoid attaching `AdministratorAccess` or overly broad policies
    - Use S3 bucket policies with `aws:SourceVpce` conditions to restrict access
 
-6. **Use VPC endpoints and private subnets for dev endpoints**
+5. **Use VPC endpoints and private subnets for dev endpoints**
    - Deploy endpoints in private subnets without internet access
    - Use VPC endpoints for AWS service communication
    - Implement security groups that restrict SSH access to specific IP ranges
 
-7. **Enable encryption for Glue dev endpoints**
+6. **Enable encryption for Glue dev endpoints**
    - Use AWS KMS for encrypting data at rest
    - Enable SSL/TLS for data in transit
    - Implement key policies that restrict who can use encryption keys
 
-8. **Implement approval workflows for endpoint modifications**
+7. **Implement approval workflows for endpoint modifications**
    - Require change management tickets before endpoint updates
    - Use AWS Service Catalog to standardize endpoint creation
    - Implement AWS Systems Manager Change Manager for controlled updates
 
-9. **Use IAM Access Analyzer to identify privilege escalation paths**
+8. **Use IAM Access Analyzer to identify privilege escalation paths**
    - Regularly scan for paths from low-privilege principals to sensitive resources
    - Review findings related to Glue permissions and S3 access
    - Implement automated remediation for high-risk findings
 
-10. **Consider using AWS Glue Studio notebooks instead**
-    - Glue Studio notebooks provide similar functionality with better security controls
-    - They automatically shut down after periods of inactivity (cost savings)
-    - Integration with AWS IAM Identity Center for authentication
-    - Better isolation between users and workloads
+9. **Consider using AWS Glue Studio notebooks instead**
+   - Glue Studio notebooks provide similar functionality with better security controls
+   - They automatically shut down after periods of inactivity (cost savings)
+   - Integration with AWS IAM Identity Center for authentication
+   - Better isolation between users and workloads
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `Glue: UpdateDevEndpoint` -- dev endpoint updated; critical when a new SSH public key is added, indicating an attacker gaining access to the endpoint's role credentials
+- `Glue: GetDevEndpoint` -- endpoint details retrieved; may indicate reconnaissance to discover endpoint addresses and configurations
+- `Glue: GetDevEndpoints` -- all endpoints listed; low-privilege enumeration that often precedes an update attack
+- `S3: GetObject` -- objects accessed from the sensitive bucket; high severity when sourced from a Glue endpoint IP after an `UpdateDevEndpoint` event
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
