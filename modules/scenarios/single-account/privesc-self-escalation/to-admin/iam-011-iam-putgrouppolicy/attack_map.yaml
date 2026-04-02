@@ -1,0 +1,61 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-011-to-admin-paul"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PutGroupPolicy permission scoped to the group they are
+        a member of, enabling them to add an inline admin policy to their own group
+        and escalate themselves to administrator access.
+
+    - id: escalation-group
+      label: "Escalation Group"
+      type: resource
+      subType: iam-group
+      arn: "arn:aws:iam::{account_id}:group/pl-prod-iam-011-to-admin-escalation-group"
+      description: >
+        This IAM group contains pl-prod-iam-011-to-admin-paul as a member. By adding
+        an inline admin policy to this group, any attached permissions are immediately
+        inherited by all group members, including the attacker.
+
+  edges:
+    - from: starting-principal
+      to: escalation-group
+      label: "iam:PutGroupPolicy"
+      description: >
+        Add an inline policy granting AdministratorAccess to the group. Because the
+        attacker is a member of this group, they immediately inherit the new permissions.
+      hints:
+        - "You can modify policies on IAM groups."
+        - "Check which groups you belong to and what permissions you have on them."
+        - "You may be able to add an inline policy to a group you are a member of."
+        - "Browse to https://pathfinding.cloud/paths/iam-011 for technique details."
+      commands:
+        - description: "Add an inline admin policy to the escalation group"
+          command: >
+            aws iam put-group-policy
+            --group-name pl-prod-iam-011-to-admin-escalation-group
+            --policy-name AdminEscalation
+            --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}'
+        - description: "Verify admin access by listing IAM users"
+          command: "aws iam list-users"
+    - from: escalation-group
+      to: starting-principal
+      label: "Group membership"
+      description: >
+        Group membership causes the new inline policy to be applied to the user,
+        granting them administrator access to the account.
+      hints:
+        - "Members inherit all policies attached to their groups."
+        - "Adding an AdministratorAccess inline policy to this group grants admin to all members."
+      commands: []

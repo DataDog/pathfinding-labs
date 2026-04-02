@@ -6,66 +6,34 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** iam-015
 * **Technique:** User with AttachUserPolicy and CreateAccessKey on another user can attach AWS-managed AdministratorAccess policy, create access keys, and gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (AttachUserPolicy on target_user) → (CreateAccessKey for target_user) → authenticate as target_user → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-starting-user`; `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-target-user`
-* **Required Permissions:** `iam:AttachUserPolicy` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user`; `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user`
-* **Helpful Permissions:** `iam:ListUsers` (Discover target users to escalate through); `iam:GetUser` (Get target user details and current permissions); `iam:ListAttachedUserPolicies` (List managed policies attached to target user); `iam:ListPolicies` (Discover available AWS-managed policies to attach); `iam:ListAccessKeys` (List existing access keys for target user)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-015
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability that combines two powerful IAM permissions: `iam:AttachUserPolicy` and `iam:CreateAccessKey`. When a user has both of these permissions on another IAM user, they can perform lateral movement to gain administrative privileges through that target user.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-015-to-admin-starting-user` IAM user to the `pl-prod-iam-015-to-admin-target-user` IAM user (with full administrative access) by attaching the AWS-managed `AdministratorAccess` policy to the target user and then creating access keys to authenticate as them.
 
-The attack works by first attaching the AWS-managed `AdministratorAccess` policy to the target user using `iam:AttachUserPolicy`, then creating new access keys for that user with `iam:CreateAccessKey`. The attacker can then authenticate using these new credentials to gain full administrative access to the AWS account.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-target-user`
 
-This is a classic example of a lateral movement privilege escalation path where the attacker doesn't directly escalate their own permissions, but instead leverages their ability to modify and impersonate another user. This scenario differs from the `iam-putuserpolicy+iam-createaccesskey` variant by using AWS-managed policies instead of inline policies, which are often overlooked in security reviews because managed policies are generally considered "safer."
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `iam:AttachUserPolicy` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user` -- allows attaching managed policies to the target user
+- `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user` -- allows generating new credentials for the target user
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
+**Helpful:**
+- `iam:ListUsers` -- discover target users to escalate through
+- `iam:GetUser` -- get target user details and current permissions
+- `iam:ListAttachedUserPolicies` -- list managed policies attached to target user
+- `iam:ListPolicies` -- discover available AWS-managed policies to attach
+- `iam:ListAccessKeys` -- list existing access keys for target user
 
-### Principals in the attack path
-
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-015-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-015-to-admin-target-user` (Target user that will be granted admin access)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-iam-015-to-admin-starting-user] -->|iam:AttachUserPolicy| B[pl-prod-iam-015-to-admin-target-user]
-    B -->|iam:CreateAccessKey| C[Target User Access Keys]
-    C -->|Authenticate| D[Administrative Access]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-iam-015-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Attach Admin Policy**: Use `iam:AttachUserPolicy` to attach the AWS-managed `AdministratorAccess` policy to `pl-prod-iam-015-to-admin-target-user`
-3. **Create Access Keys**: Use `iam:CreateAccessKey` to generate new access keys for the target user
-4. **Authenticate as Target**: Configure AWS CLI with the newly created access keys
-5. **Verification**: Verify administrative access by calling privileged IAM APIs (e.g., `iam:ListUsers`)
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-015-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions to attach policies and create keys for target user |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-015-to-admin-target-user` | Target user that will be granted admin access via policy attachment |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-015-to-admin-starting-user-policy` | IAM policy granting AttachUserPolicy and CreateAccessKey on target user |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -89,15 +57,35 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions to attach policies and create keys for target user |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-target-user` | Target user that will be granted admin access via policy attachment |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-015-to-admin-starting-user-policy` | IAM policy granting AttachUserPolicy and CreateAccessKey on target user |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+1. Retrieve scenario credentials from Terraform outputs
+2. Verify the starting user lacks administrative access
+3. Attach the AWS-managed `AdministratorAccess` policy to `pl-prod-iam-015-to-admin-target-user`
+4. Create new access keys for the target user
+5. Authenticate as the target user using the new credentials
+6. Verify successful privilege escalation by listing IAM users
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - New access keys created for `pl-prod-iam-015-to-admin-target-user`
 - `AdministratorAccess` managed policy attached to `pl-prod-iam-015-to-admin-target-user`
@@ -130,6 +118,8 @@ plabs cleanup iam-015-iam-attachuserpolicy+iam-createaccesskey
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -144,19 +134,19 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify:
+#### What CSPM tools should detect
 
-1. **IAM user with AttachUserPolicy permission on other users** - This permission allows modification of other users' access
-2. **IAM user with CreateAccessKey permission on other users** - This permission allows credential creation for other users
-3. **Combination of policy attachment and credential creation** - The toxic combination of these permissions enables complete lateral movement
-4. **Privilege escalation path from user to user** - Graph-based analysis should identify this as a privilege escalation vector
-5. **Overly permissive cross-user IAM permissions** - Users should not have administrative control over other users' permissions and credentials
+- IAM user with `iam:AttachUserPolicy` permission scoped to other IAM users — this permission allows modification of other users' access
+- IAM user with `iam:CreateAccessKey` permission scoped to other IAM users — this permission allows credential creation for other users
+- Combination of policy attachment and credential creation on the same target user — the toxic combination of these permissions enables complete lateral movement
+- Privilege escalation path from user to user — graph-based analysis should identify this as a privilege escalation vector
+- Overly permissive cross-user IAM permissions — users should not have administrative control over other users' permissions and credentials
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 1. **Restrict AttachUserPolicy Permission**: Limit `iam:AttachUserPolicy` to dedicated security/IAM administration teams. Regular users should never have this permission on other users.
 
@@ -206,10 +196,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 5. **Use IAM Access Analyzer**: Enable IAM Access Analyzer to identify users with permissions that allow them to modify other IAM principals. Review findings regularly and remediate overly permissive configurations.
 
-6. **Implement Real-Time Alerting**: Configure CloudWatch Alarms or AWS Security Hub to alert when:
-   - `AttachUserPolicy` is called with AdministratorAccess or other high-privilege policies
-   - `CreateAccessKey` is called where the username differs from the caller
-   - Multiple sensitive IAM actions occur in rapid succession
+6. **Implement Real-Time Alerting**: Configure CloudWatch Alarms or AWS Security Hub to alert when `AttachUserPolicy` is called with AdministratorAccess or other high-privilege policies, when `CreateAccessKey` is called where the username differs from the caller, and when multiple sensitive IAM actions occur in rapid succession.
 
 7. **Principle of Least Privilege**: Grant users only the permissions they need for their job function. Users should manage only their own credentials, not other users' credentials.
 
@@ -219,18 +206,18 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 10. **Monitor Managed Policy Attachments**: While inline policies often receive more scrutiny, managed policy attachments can be equally dangerous. Ensure monitoring covers both policy types, with special attention to AWS-managed policies containing "Administrator" or "FullAccess" in their names.
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: AttachUserPolicy` — Especially when attaching high-privilege policies like AdministratorAccess; critical when the target user differs from the caller
-- `IAM: CreateAccessKey` — Particularly when the caller is not the user for whom keys are being created; indicates potential lateral movement
+- `IAM: AttachUserPolicy` -- especially when attaching high-privilege policies like AdministratorAccess; critical when the target user differs from the caller
+- `IAM: CreateAccessKey` -- particularly when the caller is not the user for whom keys are being created; indicates potential lateral movement
 
 Alert on these patterns:
 - User A calling `IAM: AttachUserPolicy` for User B followed by `IAM: CreateAccessKey` for User B within a short time window
 - `IAM: AttachUserPolicy` events targeting AWS-managed policies with "Admin" or "FullAccess" in their name
 - `IAM: CreateAccessKey` where `userName` parameter differs from the authenticated principal
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

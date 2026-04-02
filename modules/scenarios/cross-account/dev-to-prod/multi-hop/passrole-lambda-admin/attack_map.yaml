@@ -1,0 +1,135 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Dev Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-pathfinding-starting-user-dev"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user in the dev account has permission to assume the dev role
+        `pl-lambda-prod-updater`, which bridges access toward the prod account.
+
+    - id: dev-role
+      label: "Dev Lambda Updater"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{dev_account_id}:role/pl-lambda-prod-updater"
+      description: >
+        This dev account role is trusted by the starting user and holds permission
+        to assume the prod account role `pl-lambda-updater` cross-account. It acts
+        as a bridge between the dev and prod accounts.
+
+    - id: prod-role
+      label: "Prod Lambda Updater"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-lambda-updater"
+      description: >
+        This prod account role is trusted by the dev role cross-account. It holds
+        `iam:PassRole` permission scoped to the `pl-Lambda-admin` role and Lambda
+        creation/invocation permissions. This combination enables PassRole abuse
+        to gain administrative privileges via a Lambda function.
+
+    - id: lambda-function
+      label: "Admin Lambda Function"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{prod_account_id}:function/pl-passrole-demo"
+      description: >
+        A Lambda function created by the attacker using the prod role's `iam:PassRole`
+        and `lambda:CreateFunction` permissions. The function is assigned the
+        `pl-Lambda-admin` execution role, causing it to run with full administrative
+        privileges when invoked.
+
+    - id: target-role
+      label: "Lambda Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin"
+      description: >
+        This IAM role has AdministratorAccess and a trust policy permitting the Lambda
+        service to assume it. By passing this role to a Lambda function you control,
+        you gain the ability to execute any AWS API call with full administrative
+        privileges in the prod account.
+
+  edges:
+    - from: starting-user
+      to: dev-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting dev user assumes the dev role pl-lambda-prod-updater using
+        sts:AssumeRole, gaining its permissions and cross-account access.
+      hints:
+        - "You are operating in the dev account. Think about what roles this user can assume."
+        - "Look for roles in the dev account that have cross-account trust relationships."
+        - "This user can assume pl-lambda-prod-updater, which can then reach the prod account."
+      commands:
+        - description: "Assume the dev lambda-prod-updater role"
+          command: >
+            aws sts assume-role
+              --role-arn arn:aws:iam::{DEV_ACCOUNT}:role/pl-lambda-prod-updater
+              --role-session-name hop1
+
+    - from: dev-role
+      to: prod-role
+      label: "sts:AssumeRole (cross-account)"
+      description: >
+        The dev role assumes the prod account role pl-lambda-updater cross-account.
+        The prod role's trust policy explicitly allows assumption by the dev role.
+      hints:
+        - "This role can cross the account boundary. Look at its trust relationships and permissions."
+        - "Check what roles this dev role can assume in the prod account."
+        - "Use sts:AssumeRole to assume pl-lambda-updater in the prod account."
+      commands:
+        - description: "Cross-account assume the prod lambda-updater role"
+          command: >
+            aws sts assume-role
+              --role-arn arn:aws:iam::{PROD_ACCOUNT}:role/pl-lambda-updater
+              --role-session-name hop2
+
+    - from: prod-role
+      to: lambda-function
+      label: "iam:PassRole + lambda:CreateFunction"
+      description: >
+        The prod role creates a new Lambda function and passes the pl-Lambda-admin
+        role as its execution role, exploiting iam:PassRole to attach an admin
+        identity to attacker-controlled code.
+      hints:
+        - "This role has iam:PassRole. Look at which role it can pass and to which service."
+        - "You can pass the pl-Lambda-admin role to the Lambda service when creating a function."
+        - "Create a Lambda function with the admin role, then invoke it to prove admin access."
+      commands:
+        - description: "Create a Lambda function with the admin execution role"
+          command: >
+            aws lambda create-function
+              --function-name pl-passrole-demo
+              --runtime python3.12
+              --role arn:aws:iam::{PROD_ACCOUNT}:role/pl-Lambda-admin
+              --handler lambda_payload.handler
+              --zip-file fileb:///tmp/lambda_payload.zip
+              --region us-east-1
+
+    - from: lambda-function
+      to: target-role
+      label: "lambda:InvokeFunction"
+      description: >
+        Invoking the Lambda function causes it to execute as the pl-Lambda-admin
+        role, confirming full administrative access to the prod account.
+      hints:
+        - "This Lambda runs as the admin role. Invoke it to execute commands as an administrator."
+        - "Use lambda:InvokeFunction to call the function and confirm admin identity."
+      commands:
+        - description: "Invoke the Lambda function to confirm admin access"
+          command: >
+            aws lambda invoke
+              --function-name pl-passrole-demo
+              --region us-east-1
+              /tmp/lambda_response.json

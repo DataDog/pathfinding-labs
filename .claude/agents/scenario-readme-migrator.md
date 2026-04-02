@@ -1,14 +1,17 @@
 ---
 name: scenario-readme-migrator
-description: Migrates a single Pathfinding Labs scenario README to comply with the current canonical schema. Reads the schema, analyzes the README for structural drift, and makes targeted edits that preserve all existing content.
-tools: Read, Edit, Glob, Grep
+description: Migrates a single Pathfinding Labs scenario README from v2.x to v3.0.0. Extracts attack_map.yaml, creates guided_walkthrough.md, and restructures the README.
+tools: Read, Edit, Write, Glob, Grep
 model: sonnet
 color: cyan
 ---
 
-# Pathfinding Labs README Migrator Agent
+# Pathfinding Labs README Migrator Agent (v3.0.0)
 
-You migrate a single scenario README.md to comply with the current canonical schema. You make targeted edits that preserve all existing prose, technical content, and links — you never regenerate from scratch.
+You migrate a single scenario from the v2.x README structure to v3.0.0. This involves three outputs:
+1. **README.md** -- restructured as a lab guide (no attack spoilers)
+2. **attack_map.yaml** -- extracted from the embedded `### Attack Map` YAML
+3. **guided_walkthrough.md** -- narrative CTF writeup synthesized from attack content
 
 ## Required Input
 
@@ -16,186 +19,218 @@ You MUST be provided:
 1. **Scenario directory path**: Absolute path (e.g., `/Users/seth.art/Documents/projects/pathfinding-labs/modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey`)
 2. **Project root**: Absolute path (e.g., `/Users/seth.art/Documents/projects/pathfinding-labs`)
 
-## Step 1: Read the Schema
+## Step 1: Read Both Schemas
 
-Read the canonical schema first — this is your source of truth:
+Read both schema files -- these are your source of truth:
 ```
 {project_root}/.claude/scenario-readme-schema.md
+{project_root}/.claude/scenario-attackmap-schema.md
 ```
 
-Extract and remember the **current schema version** from the first line of the file (e.g., `1.0.0`).
-
-Pay particular attention to:
-- The canonical section structure
-- The Old → New Structure Migration Map table
-- The Compliance Checklist
+Extract the **current README schema version** (should be `3.0.0`) and the attack map schema version.
 
 ## Step 2: Read the Target README
 
 Read `{scenario_directory}/README.md`.
 
-If the file does not exist, report that and stop — do not create a new README (use `scenario-readme-creator` for that).
+If the file does not exist, report that and stop.
 
-## Step 2a: Version Fast-Check
+### Version Fast-Check
 
-Before any further analysis, check whether the README already declares the current schema version:
+Look for: `* **Schema Version:** 3.0.0`
 
-Look for a line matching: `* **Schema Version:** {current_version}`
+If found and matches exactly, report "Already at schema version 3.0.0 -- no migration needed" and stop.
 
-If found and the version matches the current schema version exactly:
+## Step 3: Read Supporting Files
+
+Read these files in parallel:
+- `{scenario_directory}/demo_attack.sh` (for hints improvement and walkthrough content)
+- `{scenario_directory}/scenario.yaml` (for metadata and attack path info)
+
+## Step 4: Derive Scenario Metadata
+
+From the README and scenario.yaml, extract:
+- **Scenario directory name** (last path component, e.g., `ssm-001-ssm-startsession`)
+- **Terraform variable name** from `* **Terraform Variable:**` metadata line
+- **Pathfinding.cloud ID** from scenario.yaml `pathfinding-cloud-id` field (if present)
+- **Required Permissions** from `* **Required Permissions:**` metadata line
+- **Helpful Permissions** from `* **Helpful Permissions:**` metadata line
+- **Attack Overview prose** (paragraphs between `## Attack Overview` and `### MITRE ATT&CK Mapping`)
+- **Attack Steps content** (numbered list under `### Attack Steps`)
+- **Attack Map YAML** (the YAML code block under `### Attack Map`)
+- **Scenario specific resources table** (under `### Scenario specific resources created`)
+- **Manual execution content** (under `### Executing the attack manually`, if present)
+
+## Step 5: Extract attack_map.yaml
+
+1. Extract the YAML content from the `### Attack Map` fenced code block (everything between the ```yaml and ``` markers).
+2. Improve hints on every edge:
+   - Read `demo_attack.sh` to understand the actual attack flow
+   - Ensure each edge has 3-7 hints
+   - Order hints by order of operations first, then vague-to-specific within each step
+   - Ensure hints do NOT reveal exact commands
+   - If a pathfinding.cloud ID exists for this scenario, include a `https://pathfinding.cloud/paths/{id}` link as one of the hints
+   - Focus hints on using helpful permissions for reconnaissance
+3. Write the improved YAML to `{scenario_directory}/attack_map.yaml`
+
+## Step 6: Create guided_walkthrough.md
+
+Synthesize a narrative CTF writeup from:
+- Attack Overview prose (opening paragraphs)
+- Attack Steps (numbered list)
+- "Executing the attack manually" content (if present)
+- demo_attack.sh commands and flow
+
+**Structure the file as:**
+
+```markdown
+# Guided Walkthrough: {Scenario Title}
+
+{Attack Overview prose -- 2-3 paragraphs framing the vulnerability}
+
+## The Challenge
+
+{What you start with, what permissions you have, what you need to achieve}
+
+## Reconnaissance
+
+{Discovery steps using helpful permissions. Narrative tone with inline commands.}
+
+## Exploitation
+
+{Step-by-step attack walkthrough matching demo_attack.sh flow. Explains why behind each step.}
+
+## Verification
+
+{Confirming the escalation worked.}
+
+## What Happened
+
+{Brief summary connecting back to real-world implications. 1-2 paragraphs.}
 ```
-README already at schema version {current_version} — no migration needed.
+
+**Tone:** Second person ("you"), narrative, educational. Like explaining the attack to a colleague.
+
+**Multi-hop scenarios:** Each hop gets its own subsection within Exploitation (e.g., `### Hop 1: ...`).
+
+**Canonical example:** Read `modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-001-ssm-startsession/guided_walkthrough.md` as a reference for the expected quality, tone, and structure.
+
+Write to `{scenario_directory}/guided_walkthrough.md`.
+
+## Step 7: Restructure the README
+
+Apply the v2.x -> v3.0.0 migration. Work through these changes in order:
+
+### 7a: Build new Objective section
+
+Create the `## Objective` section using the exact template pattern from the schema:
+
 ```
-Stop here. Do not make any changes.
+Your objective is to learn how to exploit a [privilege escalation vulnerability | misconfiguration | combination of multiple misconfigurations] that allows you to move from the [starting principal name] to [target resource name] by [brief technique description].
+```
 
-If the line is absent or the version is different, continue to Step 3.
+This is a SINGLE sentence -- not the old Attack Overview prose (that goes in guided_walkthrough.md). Name the specific resources (e.g., `pl-prod-ssm-001-to-admin-starting-user`).
 
-## Step 3: Derive the Scenario Name
+Then add:
+- Start/Destination ARN lines from attack_map.yaml starting node and target node ARNs
+- `### Starting Permissions` from the removed metadata fields
 
-The scenario name used in `plabs demo` and `plabs cleanup` commands is the scenario's **directory name** (the last path component), e.g.:
-- `/path/to/iam-002-iam-createaccesskey` → `iam-002-iam-createaccesskey`
-- `/path/to/lambda-004-to-iam-002-to-admin` → `lambda-004-to-iam-002-to-admin`
+### 7b: Remove old Attack Overview content
 
-Also identify the `terraform_variable_name` from the `* **Terraform Variable:**` line in the README metadata.
+Remove these sections entirely (content has been moved to guided_walkthrough.md and attack_map.yaml):
+- `## Attack Overview` header and prose paragraphs
+- `### MITRE ATT&CK Mapping` section
+- `### Principals in the attack path` section
+- `### Attack Path Diagram` section (including mermaid block)
+- `### Attack Steps` section
+- `### Attack Map` section (including YAML block)
+- `### Executing the attack manually` section (if present)
 
-## Step 4: Compliance Analysis
+### 7c: Restructure Attack Lab into Self-hosted Lab Setup + Attack
 
-Work through the Compliance Checklist from the schema. For each item, record:
-- PASS: already compliant
-- FAIL: needs change — describe exactly what edit is needed
+Split `## Attack Lab` into two H2 sections:
 
-Output your analysis:
+**`## Self-hosted Lab Setup`** containing:
+- `### Prerequisites` (existing boilerplate)
+- `### Deploy with plabs non-interactive` (existing)
+- `### Deploy with plabs tui` (existing)
+
+**`## Attack`** containing:
+- `### Scenario Specific Resources Created` (moved from under Attack Overview; capitalize heading)
+- `### Guided Walkthrough` (new -- link to guided_walkthrough.md)
+- `### Automated Demo` (new wrapper)
+  - `#### Executing the automated demo_attack script` (existing content, demoted if needed)
+  - `#### Resources Created by Attack Script` (existing, capitalized)
+  - `#### With plabs non-interactive` (existing)
+  - `#### With plabs tui` (existing)
+- `### Cleanup` (existing)
+  - `#### With plabs non-interactive` (existing)
+  - `#### With plabs tui` (existing)
+
+### 7d: Create Teardown section
+
+Create `## Teardown` as a new H2 containing:
+- `### Teardown with plabs non-interactive` (moved from under Attack Lab)
+- `### Teardown with plabs tui` (moved from under Attack Lab)
+
+### 7e: Create Defend section
+
+Create `## Defend` as a new H2 containing the existing CSPM and CloudSIEM content, demoted one heading level:
+
+- `### Detecting Misconfiguration (CSPM)` (was H2)
+  - `#### What CSPM tools should detect` (was H3)
+  - `#### Prevention Recommendations` (was H3, capitalize R)
+- `### Detecting Abuse (CloudSIEM)` (was H2 `## Detection Abuse (CloudSIEM)`)
+  - `#### CloudTrail Events to Monitor` (was H3, capitalize E/T/M)
+  - `#### Detonation logs` (was H3)
+
+### 7f: Remove old metadata fields
+
+Remove these lines from the metadata block:
+- `* **Attack Path:** ...`
+- `* **Attack Principals:** ...`
+- `* **Required Permissions:** ...`
+- `* **Helpful Permissions:** ...`
+
+### 7g: Stamp schema version
+
+Update `* **Schema Version:**` to `3.0.0`.
+
+### 7h: Keep References
+
+If `## References` exists, keep it as-is at the end.
+
+## Step 8: Final Verification
+
+Re-read the README and verify against the v3.0.0 compliance checklist. Check that:
+- attack_map.yaml was written
+- guided_walkthrough.md was written
+- README has the correct H2 structure
+- No removed sections remain
+- No removed metadata fields remain
+
+## Step 9: Report
 
 ```
 ========================================
-README COMPLIANCE ANALYSIS
+README MIGRATION COMPLETE (v3.0.0)
 {scenario_directory}
+Schema version: {previous_version} -> 3.0.0
 ========================================
-H2 section names correct:           PASS/FAIL
-MITRE under Attack Overview:        PASS/FAIL
-No legacy ## Understanding header:  PASS/FAIL
-No legacy ## Executing the attack:  PASS/FAIL
-No legacy ## Detection and prev:    PASS/FAIL
-No legacy ## Prevention recs (H2):  PASS/FAIL
-Attack Lab boilerplate present:     PASS/FAIL
-Demo script subsections present:    PASS/FAIL
-No raw ./demo_attack.sh block:      PASS/FAIL
-Cleanup section present:            PASS/FAIL
-Teardown sections present:          PASS/FAIL
-CloudSIEM section present:          PASS/FAIL
-CloudTrail Service: prefix format:  PASS/FAIL
-Detonation logs placeholder:        PASS/FAIL
+Files created:
+  - attack_map.yaml (extracted + hints improved)
+  - guided_walkthrough.md (narrative CTF writeup)
 
-Items to fix: N
-========================================
-```
-
-If all items PASS, report "Already compliant — no changes needed" and stop.
-
-## Step 5: Apply Migrations
-
-Work through each FAIL item using targeted Edit operations. Apply changes in this order (order matters because later edits depend on earlier restructuring):
-
-### Order of operations
-
-1. **Rename `## Overview` → `## Attack Overview`** (if present)
-
-2. **Remove `## Understanding the attack scenario` header** while keeping its content.
-   - The subsections (`### Principals in the attack path`, `### Attack Path Diagram`, `### Attack Steps`, `### Scenario specific resources created`) stay as-is — they just lose their parent H2.
-   - After removal, these subsections naturally belong to `## Attack Overview`.
-
-3. **Move `### MITRE ATT&CK Mapping`** from wherever it is (usually under the old detection section) to immediately after the prose paragraphs in `## Attack Overview`, before `### Principals in the attack path`.
-
-4. **Rename `## Executing the attack` → `## Attack Lab`** (if present)
-
-5. **Add `## Attack Lab` boilerplate sections** if missing. Insert after `### Scenario specific resources created` and before the demo script section. Add only what's missing:
-   - `### Prerequisites` (with standard brew install text)
-   - `### Deploy with plabs non-interactive` (use terraform variable from metadata)
-   - `### Deploy with plabs tui` (standard TUI deploy text)
-
-6. **Restructure the demo script section**:
-   - Rename `### Using the automated demo_attack.sh` → `### Executing the automated demo_attack script` if needed
-   - Remove any raw `cd ... && ./demo_attack.sh` bash block (the content is replaced by the subsections below)
-   - Ensure `#### Resources created by attack script` exists under this section
-   - Add `#### With plabs non-interactive` with `plabs demo --list` + `plabs demo {scenario-name}` if missing
-   - Add `#### With plabs tui` with the standard press-r instructions if missing
-
-7. **Rename `### Manual attack execution` → `### Executing the attack manually`** if present
-
-8. **Add `### Cleanup` section** if missing. Insert it after `### Executing the attack manually` (or after the demo section if no manual section). Use the standard `plabs cleanup` boilerplate with `{scenario-name}`.
-
-9. **Handle teardown sections**:
-   - If `### Cleaning up the attack artifacts` exists, replace it with the `### Cleanup` section (see step 8) — its content may inform the Resources created list
-   - Ensure `### Teardown with plabs non-interactive` exists with `plabs disable {terraform_variable} + plabs apply`
-   - Ensure `### Teardown with plabs tui` exists with the standard disable+destroy instructions
-
-10. **Split `## Detection and prevention`**:
-    - Extract content belonging to CSPM → place under `## Detecting Misconfiguration (CSPM)`
-    - Extract CloudTrail/SIEM content → place under `## Detection Abuse (CloudSIEM)`
-    - Extract `### MITRE ATT&CK Mapping` block → already moved in step 3
-    - If `## Prevention recommendations` exists as H2, move its content to `### Prevention recommendations` (H3) under `## Detecting Misconfiguration (CSPM)`
-
-11. **Ensure `## Detecting Misconfiguration (CSPM)`** contains:
-    - `### What CSPM tools should detect` (keep existing content or create with best-effort content)
-    - `### Prevention recommendations` (H3, not H2)
-
-12. **Ensure `## Detection Abuse (CloudSIEM)`** exists with:
-    - `### CloudTrail events to monitor` — if there was a CloudTrail table, convert it to a bullet list
-    - `### Detonation logs` — standard placeholder
-
-13. **Fix CloudTrail event format**: for any event bullet that lacks a service prefix (e.g., `` `CreateAccessKey` ``), add the appropriate AWS service prefix (e.g., `` `IAM: CreateAccessKey` ``). Common mappings:
-    - IAM: `CreateAccessKey`, `DeleteAccessKey`, `CreateLoginProfile`, `UpdateLoginProfile`, `PutRolePolicy`, `AttachRolePolicy`, `AttachUserPolicy`, `PutUserPolicy`, `CreatePolicyVersion`, `UpdateAssumeRolePolicy`, `AddUserToGroup`, `PutGroupPolicy`, `AttachGroupPolicy`, `PassRole`
-    - STS: `AssumeRole`, `GetCallerIdentity`
-    - Lambda: `CreateFunction20150331`, `UpdateFunctionCode20150331v2`, `Invoke`, `AddPermission20150331v2`
-    - EC2: `RunInstances`, `ModifyInstanceAttribute`, `StopInstances`, `StartInstances`, `RequestSpotInstances`, `CreateLaunchTemplateVersion`, `ModifyLaunchTemplate`
-    - ECS: `CreateCluster`, `RegisterTaskDefinition`, `CreateService`, `RunTask`, `StartTask`, `ExecuteCommand`, `RegisterContainerInstance`
-    - Glue: `CreateDevEndpoint`, `UpdateDevEndpoint`, `CreateJob`, `UpdateJob`, `StartJobRun`, `CreateTrigger`, `CreateSession`, `RunStatement`
-    - CodeBuild: `CreateProject`, `StartBuild`, `StartBuildBatch`
-    - CloudFormation: `CreateStack`, `UpdateStack`, `CreateStackSet`, `CreateStackInstances`, `UpdateStackSet`, `CreateChangeSet`, `ExecuteChangeSet`
-    - SageMaker: `CreateNotebookInstance`, `CreateTrainingJob`, `CreateProcessingJob`, `CreatePresignedNotebookInstanceUrl`, `UpdateNotebookInstanceLifecycleConfig`
-    - SSM: `StartSession`, `SendCommand`
-    - S3: `GetObject`, `PutObject`, `ListBucket`
-    - AppRunner: `CreateService`, `UpdateService`
-    - Bedrock: `CreateAgentActionGroup`, `InvokeAgent`
-
-## Step 6: Stamp the Schema Version
-
-After all structural edits are complete, ensure the metadata block contains the current schema version.
-
-If `* **Schema Version:**` already exists in the metadata, update its value to the current version.
-
-If it is absent, add it as the last required metadata field — after `* **Terraform Variable:**` and before any conditional fields (Sub-Category, Pathfinding.cloud ID, etc.).
-
-## Step 7: Final Verification
-
-After all edits, re-read the README and run through the Compliance Checklist one more time. Report any remaining FAIL items.
-
-## Step 8: Report
-
-```
-========================================
-README MIGRATION COMPLETE
-{scenario_directory}
-Schema version: {previous_version or "none"} → {current_version}
-========================================
-Changes made:
-  - Renamed ## Overview → ## Attack Overview
-  - Removed ## Understanding the attack scenario header
-  - Moved ### MITRE ATT&CK Mapping under Attack Overview
-  - Added ## Attack Lab boilerplate (Prerequisites, Deploy sections)
-  - Restructured demo script section with plabs subsections
-  - Added ### Cleanup section
-  - Split ## Detection and prevention into CSPM + CloudSIEM sections
-  - Fixed CloudTrail event formats (added service prefix)
-  - Added ### Detonation logs placeholder
-
-Content preserved:
-  - All prose paragraphs
-  - Attack path diagram
-  - Resources table
-  - CSPM detection findings
-  - Prevention recommendations
-  - References
+README changes:
+  - Created ## Objective with ### Starting Permissions
+  - Removed ## Attack Overview and all sub-sections
+  - Split ## Attack Lab into ## Self-hosted Lab Setup + ## Attack
+  - Added ### Guided Walkthrough link
+  - Added ### Automated Demo wrapper
+  - Created ## Teardown (promoted from Attack Lab)
+  - Created ## Defend (demoted CSPM + CloudSIEM)
+  - Removed metadata: Attack Path, Attack Principals, Required/Helpful Permissions
+  - Stamped version 3.0.0
 
 Final compliance: PASS
 ========================================
@@ -203,7 +238,8 @@ Final compliance: PASS
 
 ## Important Constraints
 
-- **Never regenerate content** — only restructure and add boilerplate. All existing technical prose, diagrams, ARNs, and recommendations must be preserved.
-- **Never remove References** — always keep the `## References` section if it exists.
-- **Boilerplate sections must be exact** — use the exact text from the schema for Prerequisites, Deploy, Teardown, Cleanup, and Detonation logs sections. Do not paraphrase.
-- **If uncertain about CSPM content** — when splitting the old detection section, use your best judgment about which bullets belong under "What CSPM tools should detect" vs "CloudTrail events to monitor". CSPM findings are things detectable from static policy analysis; CloudTrail events are runtime API calls.
+- **Preserve all technical content** -- CSPM findings, prevention recommendations, CloudTrail events, references, resource tables all stay.
+- **Never remove References** -- always keep the `## References` section if it exists.
+- **Boilerplate sections must be exact** -- use the exact text from the schema for Prerequisites, Deploy, Teardown, Cleanup, and Detonation logs sections.
+- **Guided walkthrough quality** -- write a genuine narrative, not just a copy-paste of the attack steps. Explain the "why" behind each step. Use demo_attack.sh as the source of truth for commands.
+- **Hints quality** -- ensure hints follow the order-of-operations ordering and don't reveal exact commands. Include pathfinding.cloud links where relevant.

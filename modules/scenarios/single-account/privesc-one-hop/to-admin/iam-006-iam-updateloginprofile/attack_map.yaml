@@ -1,0 +1,45 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:UpdateLoginProfile permission scoped to the target admin
+        user, allowing you to reset that user's AWS Console password.
+
+    - id: target-user
+      label: "Admin User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-admin-target-user"
+      description: >
+        This IAM user has AdministratorAccess and an existing console login profile.
+        By resetting this user's console password, you can log into the AWS Console
+        with full administrative privileges.
+
+  edges:
+    - from: starting-principal
+      to: target-user
+      label: "iam:UpdateLoginProfile"
+      description: >
+        Reset the console password for the admin user, enabling console login
+        as that user with full administrative access to the AWS account.
+      hints:
+        - "You can modify authentication credentials for other IAM users."
+        - "Look for users who already have a console login profile (password) configured."
+        - "Browse to https://pathfinding.cloud/paths/iam-006 for technique details."
+      commands:
+        - description: "Reset the console password for the admin user"
+          command: "aws iam update-login-profile --user-name pl-prod-iam-006-to-admin-target-user --password 'NewP@ssw0rd123!' --no-password-reset-required"
+        - description: "Verify the login profile was updated"
+          command: "aws iam get-login-profile --user-name pl-prod-iam-006-to-admin-target-user"

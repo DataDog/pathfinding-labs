@@ -1,0 +1,108 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-epe-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user can assume all 39 test principals (15 isAdmin and 24 notAdmin)
+        via sts:AssumeRole. The goal of this scenario is not exploitation — it is to
+        validate that your security tooling correctly classifies each principal's
+        effective permissions.
+
+    - id: isadmin-principals
+      label: "isAdmin Principals (15)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-awsmanaged"
+      description: >
+        15 principals (9 users + 6 roles) that have effective administrative access
+        via one of three patterns: single policy (AWS managed, customer managed, or
+        inline), group membership (users in groups with admin policies), or multi-policy
+        aggregation (split policies that together equal * on *). A correct security
+        tool should flag all 15 as having admin access.
+
+    - id: notadmin-principals
+      label: "notAdmin Principals (24)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall"
+      description: >
+        24 principals (12 users + 12 roles) that appear to have admin access based
+        on their allow policies, but are restricted by explicit denies or permissions
+        boundaries. Categories: single deny (6), multi-deny (6), single boundary (6),
+        and multi-policy with boundary (6). A correct security tool should flag all
+        24 as NOT having admin access.
+
+    - id: target-bucket
+      label: "Test S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-epe-{account_id}-{suffix}"
+      description: >
+        The target S3 bucket used to validate effective permissions at runtime.
+        isAdmin principals should be able to list and access this bucket; notAdmin
+        principals should be blocked. The demo script tests all 39 principals and
+        produces a pass/fail report against expected outcomes.
+
+  edges:
+    - from: starting-principal
+      to: isadmin-principals
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes each of the 15 isAdmin test principals to validate
+        that they have effective administrative access.
+      hints:
+        - "This scenario is a test suite. Point your CSPM or IAM analyzer at this account."
+        - "There are 15 principals that should be detected as admin and 24 that should not."
+        - "Check whether your tool handles split policies, denies, boundaries, and group membership correctly."
+      commands:
+        - description: "Assume an isAdmin test role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-epe-role-isAdmin-awsmanaged --role-session-name test-session"
+
+    - from: starting-principal
+      to: notadmin-principals
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes each of the 24 notAdmin test principals to validate
+        that they do NOT have effective administrative access despite broad allow policies.
+      hints:
+        - "Explicit denies always override allows — does your tool respect this?"
+        - "Permissions boundaries limit effective permissions to the intersection with identity policies."
+        - "A boundary with only deny statements allows nothing, regardless of identity policies."
+      commands:
+        - description: "Assume a notAdmin test role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall --role-session-name test-session"
+
+    - from: isadmin-principals
+      to: target-bucket
+      label: "s3:ListBucket"
+      description: >
+        isAdmin principals have effective * on * and should successfully list and
+        access the test S3 bucket. Success confirms the principal is correctly
+        evaluated as having admin-level access.
+      hints:
+        - "Look for single-policy admins first — these are the baseline."
+        - "Group membership is a common blind spot — does your tool follow group chains?"
+        - "Multi-policy aggregation (iam:* + NotAction iam:*) is the hardest to detect correctly."
+      commands:
+        - description: "Validate S3 access as an isAdmin principal"
+          command: "aws s3 ls s3://pl-sensitive-data-epe-{account_id}-{suffix}"
+
+    - from: notadmin-principals
+      to: target-bucket
+      label: "s3:ListBucket (BLOCKED)"
+      description: >
+        notAdmin principals should be blocked from accessing the test S3 bucket
+        due to their effective permissions being restricted by denies or boundaries.
+        Access denied confirms the principal is correctly restricted.
+      commands: []

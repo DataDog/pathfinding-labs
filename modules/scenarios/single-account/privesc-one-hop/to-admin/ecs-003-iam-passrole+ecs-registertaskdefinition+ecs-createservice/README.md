@@ -6,77 +6,40 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** ecs-003
 * **Technique:** ECS service creation with admin role to grant starting user administrative access through persistent task execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (ecs:RegisterTaskDefinition with admin role) → (ecs:CreateService) → ECS service launches task that attaches admin policy to starting user → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-ecs-003-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-ecs-003-to-admin-target-role`
-* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-003-to-admin-target-role`; `ecs:RegisterTaskDefinition` on `*`; `ecs:CreateService` on `*`
-* **Helpful Permissions:** `ecs:DescribeServices` (Monitor service status and verify service creation); `ecs:DescribeTasks` (Monitor task execution status and verify task completion); `ecs:DeleteService` (Clean up ECS service after demonstration); `ecs:UpdateService` (Scale down service or force new deployment during cleanup); `ecs:DeregisterTaskDefinition` (Clean up task definition after demonstration); `ecs:StopTask` (Stop running tasks during cleanup); `ec2:DescribeVpcs` (Find default VPC for ECS service network configuration); `ec2:DescribeSubnets` (Find subnet in default VPC for ECS service network configuration); `iam:DetachUserPolicy` (Remove admin policy from starting user during cleanup); `iam:ListAttachedUserPolicies` (Verify privilege escalation success by listing attached policies)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** ecs-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass IAM roles to ECS tasks (`iam:PassRole`), register ECS task definitions (`ecs:RegisterTaskDefinition`), and create ECS services (`ecs:CreateService`). The attacker can create a malicious ECS task definition that uses an administrative execution role, then deploy it as a long-running service on AWS Fargate to modify IAM permissions and grant themselves administrator access.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ecs-003-to-admin-starting-user` IAM user to the `pl-prod-ecs-003-to-admin-target-role` administrative role by registering a malicious ECS task definition with the admin role and deploying it as a Fargate service that attaches AdministratorAccess to your starting user.
 
-ECS services provide persistent, continuously running container workloads where tasks receive temporary credentials based on their task execution role. Unlike one-time task execution with `ecs:RunTask`, services are designed for long-running operations and automatically restart tasks if they fail. By combining `iam:PassRole` with ECS service creation permissions, an attacker can establish persistent privileged access that appears legitimate in production environments where ECS services are expected to run continuously.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ecs-003-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ecs-003-to-admin-target-role`
 
-The attack works by registering a task definition that specifies an admin role and contains a containerized AWS CLI command to attach the AdministratorAccess policy to the starting user. When deployed as an ECS service on Fargate, the task executes with the admin role's credentials and persistently elevates the attacker's privileges. This technique provides both privilege escalation and persistence, making it particularly dangerous as the service will continue running until explicitly stopped, and can even recover from failures automatically.
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-003-to-admin-target-role` -- allows passing the admin role to ECS tasks
+- `ecs:RegisterTaskDefinition` on `*` -- allows creating a task definition specifying the admin role
+- `ecs:CreateService` on `*` -- allows deploying the task definition as a persistent Fargate service
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution, TA0003 - Persistence
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1610 - Deploy Container
+**Helpful:**
+- `ecs:DescribeServices` -- monitor service status and verify service creation
+- `ecs:DescribeTasks` -- monitor task execution status and verify task completion
+- `ecs:DeleteService` -- clean up ECS service after demonstration
+- `ecs:UpdateService` -- scale down service or force new deployment during cleanup
+- `ecs:DeregisterTaskDefinition` -- clean up task definition after demonstration
+- `ecs:StopTask` -- stop running tasks during cleanup
+- `ec2:DescribeVpcs` -- find default VPC for ECS service network configuration
+- `ec2:DescribeSubnets` -- find subnet in default VPC for ECS service network configuration
+- `iam:DetachUserPolicy` -- remove admin policy from starting user during cleanup
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
 
-### Principals in the attack path
-
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ecs-003-to-admin-starting-user` (Scenario-specific starting user with PassRole and ECS permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ecs-003-to-admin-target-role` (Admin role passed to ECS service for task execution)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-ecs-003-to-admin-starting-user] -->|ecs:RegisterTaskDefinition with admin role| B[ECS Task Definition]
-    B -->|ecs:CreateService| C[ECS Service]
-    C -->|Launches persistent task| D[ECS Fargate Task]
-    D -->|Executes with| E[pl-prod-ecs-003-to-admin-target-role]
-    E -->|iam:AttachUserPolicy| F[pl-prod-ecs-003-to-admin-starting-user + AdministratorAccess]
-    F --> G[Effective Administrator]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#ffcc99,stroke:#333,stroke-width:2px
-    style F fill:#ffcc99,stroke:#333,stroke-width:2px
-    style G fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-ecs-003-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Register Task Definition**: Use `ecs:RegisterTaskDefinition` with `iam:PassRole` to create an ECS task definition that:
-   - Uses the admin target role as the task execution role
-   - Specifies a container with AWS CLI installed
-   - Defines a command to attach AdministratorAccess policy to the starting user
-3. **Create Service**: Use `ecs:CreateService` to deploy the task definition as a persistent service on AWS Fargate
-4. **Policy Attachment**: The ECS service launches a task that runs with the admin role's credentials and attaches AdministratorAccess to the starting user
-5. **Persistence Established**: The service continues running, maintaining the elevated privileges and automatically recovering if the task fails
-6. **Verification**: Verify administrator access by listing IAM users with the starting user's credentials
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-ecs-003-to-admin-starting-user` | Scenario-specific starting user with access keys and ECS permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-ecs-003-to-admin-target-role` | Admin role that can be passed to ECS services (trusts ecs-tasks.amazonaws.com) |
-| `arn:aws:ecs:REGION:PROD_ACCOUNT:cluster/pl-prod-ecs-003-cluster` | ECS cluster for running Fargate services |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -100,19 +63,40 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-ecs-003-to-admin-starting-user` | Scenario-specific starting user with access keys and ECS permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-ecs-003-to-admin-target-role` | Admin role that can be passed to ECS services (trusts ecs-tasks.amazonaws.com) |
+| `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-003-cluster` | ECS cluster for running Fargate services |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+1. Retrieve scenario credentials and configuration from Terraform outputs
+2. Verify the starting user identity and confirm no admin access yet
+3. Register a malicious ECS task definition specifying the admin target role
+4. Identify a VPC subnet for the Fargate service network configuration
+5. Create an ECS Fargate service that launches a task running as the admin role
+6. Monitor service and task status until the privilege escalation command completes
+7. Verify that AdministratorAccess is now attached to the starting user
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
-- ECS task definition (`pl-prod-ecs-003-task-def`) registered with the admin target role
-- ECS service (`pl-prod-ecs-003-service`) deployed on AWS Fargate
-- `AdministratorAccess` policy attached to `pl-prod-ecs-003-to-admin-starting-user`
+- ECS task definition (`pl-ecs-003-admin-escalation`) registered with the admin target role as both task role and execution role
+- ECS service (`pl-prod-ecs-003-attack-service`) deployed on AWS Fargate in the `pl-prod-ecs-003-cluster` cluster
+- `AdministratorAccess` managed policy attached to `pl-prod-ecs-003-to-admin-starting-user`
 
 #### With plabs non-interactive
 
@@ -146,6 +130,8 @@ plabs cleanup ecs-003-iam-passrole+ecs-registertaskdefinition+ecs-createservice
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -160,9 +146,11 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM user (`pl-prod-ecs-003-to-admin-starting-user`) has `iam:PassRole` permission targeting a role with administrative privileges
 - IAM user has `ecs:RegisterTaskDefinition` and `ecs:CreateService` permissions, enabling privilege escalation through ECS service deployment
@@ -170,7 +158,7 @@ plabs apply
 - Combination of `iam:PassRole` + `ecs:RegisterTaskDefinition` + `ecs:CreateService` represents a privilege escalation path to admin
 - ECS cluster exists with no guardrails preventing deployment of task definitions with highly privileged roles
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Restrict `iam:PassRole` permissions using resource-based conditions to limit which roles can be passed and to which AWS services
 - Implement condition keys like `iam:PassedToService` with value `ecs-tasks.amazonaws.com` to explicitly control PassRole usage
@@ -181,16 +169,16 @@ plabs apply
 - Implement IAM permission boundaries on users to limit the maximum permissions that can be attached
 - Require approval workflows for ECS services that reference privileged IAM roles or run in production environments
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Role passed to ECS task definition; critical when the target role has administrative permissions
-- `ECS: RegisterTaskDefinition` — New ECS task definition registered; high severity when the task execution role has elevated privileges
-- `ECS: CreateService` — ECS service created; review task definition to confirm it uses expected roles
-- `ECS: RunTask` — ECS task launched; correlate with prior RegisterTaskDefinition and CreateService events
-- `IAM: AttachUserPolicy` — Policy attached to a user; critical when the source principal is an ECS task role and the policy is AdministratorAccess
+- `IAM: PassRole` -- role passed to ECS task definition; critical when the target role has administrative permissions
+- `ECS: RegisterTaskDefinition` -- new ECS task definition registered; high severity when the task execution role has elevated privileges
+- `ECS: CreateService` -- ECS service created; review task definition to confirm it uses expected roles
+- `ECS: RunTask` -- ECS task launched; correlate with prior RegisterTaskDefinition and CreateService events
+- `IAM: AttachUserPolicy` -- policy attached to a user; critical when the source principal is an ECS task role and the policy is AdministratorAccess
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

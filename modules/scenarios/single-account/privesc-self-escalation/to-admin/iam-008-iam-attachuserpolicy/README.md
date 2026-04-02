@@ -6,64 +6,30 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** iam-008
 * **Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (iam:AttachUserPolicy on self) → attach AdministratorAccess → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-008-to-admin-starting-user`
-* **Required Permissions:** `iam:AttachUserPolicy` on `*`
-* **Helpful Permissions:** `iam:ListAttachedUserPolicies` (List managed policies attached to user); `iam:ListPolicies` (Discover available managed policies to attach)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-008
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to attach managed policies to themselves. The attacker can use `iam:AttachUserPolicy` to attach the AWS-managed `AdministratorAccess` policy to their own user, immediately escalating their privileges to administrator level.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-008-to-admin-starting-user` IAM user to effective administrator access by using `iam:AttachUserPolicy` to attach the AWS-managed `AdministratorAccess` policy to yourself.
 
-Unlike inline policies, this technique leverages existing managed policies, making it simpler to execute and potentially easier to overlook during security reviews. The attack requires only a single API call to gain full administrative access.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-008-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::aws:policy/AdministratorAccess` (attached to starting user, granting full admin)
 
-### MITRE ATT&CK Mapping
+### Starting Permissions
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003)
-- **Technique**: T1098 - Account Manipulation
-- **Sub-technique**: T1098.001 - Additional Cloud Credentials
-- **Additional**: T1078.004 - Valid Accounts: Cloud Accounts
+**Required:**
+- `iam:AttachUserPolicy` on `*` -- allows the user to attach any managed policy to themselves
 
-### Principals in the attack path
+**Helpful:**
+- `iam:ListAttachedUserPolicies` -- list managed policies currently attached to the user
+- `iam:ListPolicies` -- discover available managed policies to attach
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-008-to-admin-starting-user`
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-iam-008-to-admin-starting-user] -->|iam:AttachUserPolicy on self| B[AdministratorAccess Policy]
-    B -->|Administrator Access| C[Effective Administrator]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Scaffolding aka Initial Access**: Either:
-   - `pl-pathfinding-starting-user-prod` assumes the role `pl-iam-008-adam` to begin the scenario, OR
-   - Use the access keys for `pl-iam-008-user` directly
-2. **Attach Managed Policy**: Use `iam:AttachUserPolicy` to attach the `arn:aws:iam::aws:policy/AdministratorAccess` managed policy to the current user
-3. **Immediate Escalation**: The managed policy takes effect immediately, granting full administrative access
-4. **Verification**: Verify administrator access with the escalated permissions
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-iam-008-adam` | Role with AttachUserPolicy permission |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-iam-008-user` | User with AttachUserPolicy permission |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-one-hop-attachuserpolicy-policy` | Policy allowing `iam:AttachUserPolicy` on any resource |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -87,7 +53,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:role/pl-iam-008-adam` | Role with AttachUserPolicy permission |
+| `arn:aws:iam::{account_id}:user/pl-iam-008-user` | User with AttachUserPolicy permission |
+| `arn:aws:iam::{account_id}:policy/pl-prod-one-hop-attachuserpolicy-policy` | Policy allowing `iam:AttachUserPolicy` on any resource |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -95,7 +79,7 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - Managed policy attachment: `arn:aws:iam::aws:policy/AdministratorAccess` attached to the starting user
 
@@ -127,6 +111,8 @@ plabs cleanup iam-008-iam-attachuserpolicy
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -141,15 +127,17 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM user has `iam:AttachUserPolicy` permission on `*`, enabling self-attachment of any managed policy
 - Privilege escalation path detected: user can attach `AdministratorAccess` to themselves
 - No resource constraint on `iam:AttachUserPolicy` — no `iam:PolicyARN` condition key limiting attachable policies
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Never grant `iam:AttachUserPolicy` permissions without strict resource constraints
 - Use SCPs to prevent managed policy attachments on privileged users
@@ -159,12 +147,12 @@ plabs apply
 - Enable MFA requirements for sensitive IAM operations
 - Set up alerts for attachment of high-privilege managed policies like AdministratorAccess
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: AttachUserPolicy` — Managed policy attached to an IAM user; critical when the target user is the caller (self-attachment) or when the attached policy is `AdministratorAccess`
+- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; critical when the target user is the caller (self-attachment) or when the attached policy is `AdministratorAccess`
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

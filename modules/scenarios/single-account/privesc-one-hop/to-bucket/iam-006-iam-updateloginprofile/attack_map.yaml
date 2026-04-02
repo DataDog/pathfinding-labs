@@ -1,0 +1,66 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:UpdateLoginProfile permission on the target user, allowing
+        you to reset the console password for a user that has S3 bucket access.
+
+    - id: target-user
+      label: "Bucket User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-bucket-user"
+      description: >
+        This IAM user has S3 read permissions on the sensitive data bucket. By resetting
+        this user's console password, you can log into the AWS Management Console as
+        this user and access the sensitive data stored in S3.
+
+    - id: target-bucket
+      label: "Sensitive Data Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}"
+      description: >
+        This S3 bucket contains sensitive data. The bucket user has s3:GetObject and
+        s3:ListBucket permissions, allowing full read access to all objects in this bucket.
+
+  edges:
+    - from: starting-principal
+      to: target-user
+      label: "iam:UpdateLoginProfile"
+      description: >
+        Reset the console password for the target user, gaining the ability to log
+        into the AWS Management Console as that user.
+      hints:
+        - "You can modify console authentication credentials for other IAM users."
+        - "Look for users with S3 bucket access that have a console login profile."
+        - "Browse to https://pathfinding.cloud/paths/iam-006 for technique details."
+      commands:
+        - description: "Reset the console password for the target user"
+          command: "aws iam update-login-profile --user-name pl-prod-iam-006-to-bucket-user --password 'NewPassword123!'"
+    - from: target-user
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Log into the AWS console as the target user and access the sensitive data bucket,
+        listing and downloading objects to exfiltrate sensitive data.
+      hints:
+        - "This user has permissions to read from the sensitive data S3 bucket."
+        - "Log into the AWS console with the reset password and navigate to S3."
+      commands:
+        - description: "List objects in the sensitive data bucket"
+          command: "aws s3 ls s3://pl-prod-iam-006-to-bucket-sensitive-data-{account_id}/"
+        - description: "Download sensitive data from the bucket"
+          command: "aws s3 cp s3://pl-prod-iam-006-to-bucket-sensitive-data-{account_id}/sensitive-data.txt ."

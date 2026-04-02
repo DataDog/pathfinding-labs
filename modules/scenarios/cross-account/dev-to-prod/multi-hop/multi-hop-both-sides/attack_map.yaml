@@ -1,0 +1,123 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Dev Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-pathfinding-starting-user-dev"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user in the dev account has sts:AssumeRole permission on the
+        pl-helpdesk role, which is the first step in a multi-hop escalation chain
+        spanning both dev and prod accounts.
+
+    - id: helpdesk-role
+      label: "Helpdesk Role (Dev)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{dev_account_id}:role/pl-helpdesk"
+      description: >
+        This is the helpdesk role in the dev account. It has iam:CreateLoginProfile
+        permission scoped to the pl-Josh user, who is an admin in the dev account.
+        By creating a login profile for pl-Josh, an attacker can set a known password
+        and then authenticate to the AWS console or use those credentials for further
+        escalation.
+
+    - id: josh-user
+      label: "Josh (Dev Admin)"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-Josh"
+      description: >
+        pl-Josh is an admin user in the dev account. The helpdesk role was able to
+        create a login profile for this user, setting a known password. Josh's admin
+        permissions in dev include the ability to assume cross-account roles in prod
+        that trust the dev account — specifically the pl-trustsdev role.
+
+    - id: trustsdev-role
+      label: "TrustsDev Role (Prod)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-trustsdev"
+      description: >
+        This is the pl-trustsdev role in the prod account. Its trust policy allows
+        assumption by pl-Josh from the dev account, enabling cross-account lateral
+        movement. Once assumed, this role has iam:UpdateLoginProfile permission on
+        pl-Jeremy, who is an admin user in prod. Updating Jeremy's login profile
+        sets a known password and completes the escalation to prod admin.
+
+    - id: jeremy-user
+      label: "Jeremy (Prod Admin)"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
+      description: >
+        pl-Jeremy is an admin user in the prod account. The pl-trustsdev role
+        updated this user's login profile with a known password, granting the
+        attacker full administrative access to the production AWS account.
+
+  edges:
+    - from: starting-principal
+      to: helpdesk-role
+      label: "sts:AssumeRole"
+      description: >
+        The dev starting user assumes the pl-helpdesk role in the dev account,
+        gaining its permissions including iam:CreateLoginProfile on pl-Josh.
+      hints:
+        - "You can assume roles in the dev account. Look for roles that grant elevated permissions."
+        - "The helpdesk role may have permissions to modify IAM user login profiles."
+        - "Browse to https://pathfinding.cloud for technique details on login profile manipulation."
+      commands:
+        - description: "Assume the helpdesk role in dev"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{dev_account_id}:role/pl-helpdesk --role-session-name helpdesk-session"
+
+    - from: helpdesk-role
+      to: josh-user
+      label: "iam:CreateLoginProfile"
+      description: >
+        The helpdesk role creates a login profile for pl-Josh with a known password,
+        enabling authentication as Josh via the AWS console or CLI.
+      hints:
+        - "This role has IAM permissions on specific users. Which users does it have access to?"
+        - "Look for iam:CreateLoginProfile permissions — they allow setting console passwords for users."
+        - "Creating a login profile for an admin user gives you their console access."
+      commands:
+        - description: "Create a login profile for pl-Josh"
+          command: "aws iam create-login-profile --user-name pl-Josh --password 'Pathfinding@Labs1!' --no-password-reset-required"
+
+    - from: josh-user
+      to: trustsdev-role
+      label: "sts:AssumeRole"
+      description: >
+        pl-Josh assumes the pl-trustsdev role in the prod account via a cross-account
+        trust relationship, achieving lateral movement from dev to prod.
+      hints:
+        - "As Josh, you have admin permissions in dev. What cross-account roles can you assume?"
+        - "Look for prod roles with trust policies that allow assumption by dev principals."
+        - "The pl-trustsdev role in prod trusts principals from the dev account."
+      commands:
+        - description: "Assume the pl-trustsdev role in prod as Josh"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-trustsdev --role-session-name trustsdev-session"
+
+    - from: trustsdev-role
+      to: jeremy-user
+      label: "iam:UpdateLoginProfile"
+      description: >
+        The pl-trustsdev role updates pl-Jeremy's login profile with a known password,
+        granting the attacker full admin access to the prod account.
+      hints:
+        - "This role can modify IAM user login profiles in the prod account."
+        - "Look for iam:UpdateLoginProfile permissions — they allow resetting console passwords."
+        - "Updating pl-Jeremy's login profile gives you access to a prod admin account."
+      commands:
+        - description: "Update the login profile for pl-Jeremy in prod"
+          command: "aws iam update-login-profile --user-name pl-Jeremy --password 'Pathfinding@Labs1!' --no-password-reset-required"
+        - description: "Verify admin access as Jeremy"
+          command: "aws sts get-caller-identity"

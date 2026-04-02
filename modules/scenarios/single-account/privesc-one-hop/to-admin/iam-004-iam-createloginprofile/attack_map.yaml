@@ -1,0 +1,70 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-004-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user can assume the starting role, which has iam:CreateLoginProfile
+        permission on the target admin user.
+
+    - id: starting-role
+      label: "Starting Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-004-to-admin-starting-role"
+      description: >
+        This IAM role has iam:CreateLoginProfile permission on the target admin user.
+        An admin user without a login profile is a silent target — by setting a console
+        password, you gain interactive AWS Management Console access with their permissions.
+
+    - id: target-user
+      label: "Admin User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-004-to-admin-target-user"
+      description: >
+        This IAM user has AdministratorAccess and no initial login profile. By creating
+        a console password for this user, you gain full administrative access to the AWS
+        account via the AWS Management Console.
+
+  edges:
+    - from: starting-user
+      to: starting-role
+      label: "sts:AssumeRole"
+      description: >
+        Assume the starting role to obtain credentials that include iam:CreateLoginProfile
+        permission on the target admin user.
+      hints:
+        - "You can assume a role from this user."
+        - "Look for roles this user can assume and what permissions those roles have."
+        - "Browse to https://pathfinding.cloud/paths/iam-004 for technique details."
+      commands:
+        - description: "Assume the starting role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-004-to-admin-starting-role --role-session-name attack-session"
+
+    - from: starting-role
+      to: target-user
+      label: "iam:CreateLoginProfile"
+      description: >
+        Create a login profile (console password) for the admin user. The user has no
+        existing login profile, so this action succeeds and grants console access with
+        AdministratorAccess privileges.
+      hints:
+        - "This role can manipulate credentials for other IAM users."
+        - "Look for admin users that do not yet have a console login profile."
+        - "Use iam:CreateLoginProfile to set a password on the target user."
+      commands:
+        - description: "Create a console login profile for the admin user"
+          command: "aws iam create-login-profile --user-name pl-prod-iam-004-to-admin-target-user --password 'AttackP@ssw0rd!' --no-password-reset-required"
+        - description: "Verify the login profile was created"
+          command: "aws iam get-login-profile --user-name pl-prod-iam-004-to-admin-target-user"

@@ -6,79 +6,31 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $10/mo
-* **Pathfinding.cloud ID:** apprunner-002
 * **Technique:** Update existing App Runner service to execute privilege escalation commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (apprunner:UpdateService) → existing App Runner service → updates image to aws-cli and StartCommand → executes with admin role → grants admin to starting_user → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-apprunner-002-to-admin-starting-user`; `arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service`; `arn:aws:iam::{account_id}:role/pl-prod-apprunner-002-to-admin-target-role`
-* **Required Permissions:** `apprunner:UpdateService` on `arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*`
-* **Helpful Permissions:** `apprunner:DescribeService` (View service configuration and role attached); `apprunner:ListServices` (Discover existing App Runner services to exploit); `iam:ListUsers` (Verify admin access after escalation)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** apprunner-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user with `apprunner:UpdateService` permission can exploit an existing AWS App Runner service that has a privileged role attached. Unlike creating a new service from scratch, this attack leverages pre-existing infrastructure by updating the service configuration to execute arbitrary commands with the service's administrative permissions.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-apprunner-002-to-admin-starting-user` IAM user to the `pl-prod-apprunner-002-to-admin-target-role` administrative role by updating an existing App Runner service to swap its container image for the AWS CLI image and injecting a `StartCommand` that attaches `AdministratorAccess` to the starting user.
 
-The attacker modifies two key aspects of the service configuration: the container image (changing to the AWS CLI container) and the `StartCommand` (setting it to execute IAM commands). When the service updates and restarts, it executes the attacker's commands with the privileged role's permissions, granting the attacker administrator access.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-apprunner-002-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-apprunner-002-to-admin-target-role`
 
-This attack is particularly stealthy because it exploits legitimate infrastructure already present in the environment. Security teams may overlook the risk of `apprunner:UpdateService` permission, focusing instead on service creation capabilities. Additionally, the attack leaves minimal traces beyond normal service update operations, making it harder to distinguish from routine maintenance activities.
+### Starting Permissions
 
-**Technical Note**: The public AWS CLI container (`public.ecr.aws/aws-cli/aws-cli:latest`) has its entrypoint set to `/usr/local/bin/aws`, which means any `StartCommand` provided to App Runner is interpreted as arguments to the AWS CLI. This allows us to execute AWS CLI commands directly without needing to specify `/bin/bash` or shell wrappers. The privilege escalation happens immediately when the container starts during the service update - the service doesn't need to pass health checks or stay running for the attack to succeed.
+**Required:**
+- `apprunner:UpdateService` on `arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*` -- modify the existing service configuration to inject a malicious StartCommand
 
-### MITRE ATT&CK Mapping
+**Helpful:**
+- `apprunner:DescribeService` -- view service configuration and verify the privileged role attached
+- `apprunner:ListServices` -- discover existing App Runner services to exploit
+- `iam:ListUsers` -- verify admin access after escalation
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1651 - Cloud Administration Command
-- **Sub-technique**: Using cloud service features to execute commands with elevated privileges
-
-### Principals in the attack path
-
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-apprunner-002-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:apprunner:REGION:PROD_ACCOUNT:service/pl-prod-apprunner-002-to-admin-target-service` (Existing App Runner service)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-apprunner-002-to-admin-target-role` (Privileged role attached to the service)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-apprunner-002-to-admin-starting-user] -->|apprunner:UpdateService| B[Existing App Runner Service]
-    B -->|Update Image & StartCommand| C[AWS CLI Container Execution]
-    C -->|runs with| D[pl-prod-apprunner-002-to-admin-target-role]
-    D -->|iam:AttachUserPolicy| E[Starting User + AdministratorAccess]
-    E -->|Full Access| F[Effective Administrator]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
-    style F fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-apprunner-002-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Discover Target Service**: Identify the existing App Runner service `pl-prod-apprunner-002-to-admin-target-service` and verify it has a privileged role attached
-3. **Update Service Configuration**: Use `apprunner:UpdateService` to modify the service:
-   - Change container image to `public.ecr.aws/aws-cli/aws-cli:latest`
-   - Set `StartCommand` to: `iam attach-user-policy --user-name pl-prod-apprunner-002-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess`
-4. **Service Restart**: App Runner automatically restarts the service with the new configuration
-5. **Command Execution**: The AWS CLI container executes the override command with the target role's permissions
-6. **Policy Attachment**: The command attaches the AWS managed `AdministratorAccess` policy to the starting user
-7. **Verification**: Verify administrator access with the starting user's original credentials
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-apprunner-002-to-admin-starting-user` | Scenario-specific starting user with access keys and inline policy for App Runner |
-| `arn:aws:apprunner:REGION:PROD_ACCOUNT:service/pl-prod-apprunner-002-to-admin-target-service` | Existing App Runner service running a benign nginx container |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-apprunner-002-to-admin-target-role` | Privileged role attached to the App Runner service with administrator access (`Action: "*"`) |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -102,7 +54,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-apprunner-002-to-admin-starting-user` | Scenario-specific starting user with access keys and inline policy for App Runner |
+| `arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service` | Existing App Runner service running a benign nginx container |
+| `arn:aws:iam::{account_id}:role/pl-prod-apprunner-002-to-admin-target-role` | Privileged role attached to the App Runner service with administrator access (`Action: "*"`) |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -113,7 +83,7 @@ The script will:
 6. Verify successful privilege escalation to administrator
 7. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - `AdministratorAccess` managed policy attached to `pl-prod-apprunner-002-to-admin-starting-user`
 - Modified App Runner service configuration (image and StartCommand overridden)
@@ -146,6 +116,8 @@ plabs cleanup apprunner-002-apprunner-updateservice
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -160,11 +132,12 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify:
+#### What CSPM tools should detect
+
 - **Overly Permissive Update Permissions**: User/role with `apprunner:UpdateService` permission on services with privileged roles
 - **Service with Privileged Role**: App Runner service running with a role that has IAM modification permissions (`iam:AttachUserPolicy`, `iam:PutUserPolicy`, `iam:AttachRolePolicy`)
 - **Privilege Escalation Path**: Detection of the one-hop path from starting user through existing App Runner infrastructure to admin access
@@ -172,7 +145,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 - **Service Role Risk**: IAM roles with both App Runner trust relationships and sensitive permissions like IAM policy manipulation
 - **Command Override Capability**: App Runner services that can be updated with `StartCommand` overrides by non-administrative users
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - **Restrict UpdateService Permissions**: Limit `apprunner:UpdateService` to specific services using resource-based conditions. Never grant blanket update permissions across all services:
   ```json
@@ -246,14 +219,14 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
   - Rule: Alert on image changes from approved registries
   - Rule: Monitor StartCommand modifications
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `AppRunner: UpdateService` — App Runner service configuration modified; critical when `ImageConfiguration.StartCommand` is changed on a service with a privileged instance role
-- `IAM: AttachUserPolicy` — Managed policy attached to an IAM user; high severity when the policy is `AdministratorAccess` and the caller is an App Runner service role
-- `AppRunner: DescribeService` — Service details retrieved; may indicate reconnaissance to identify services with privileged roles
+- `AppRunner: UpdateService` -- App Runner service configuration modified; critical when `ImageConfiguration.StartCommand` is changed on a service with a privileged instance role
+- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; high severity when the policy is `AdministratorAccess` and the caller is an App Runner service role
+- `AppRunner: DescribeService` -- Service details retrieved; may indicate reconnaissance to identify services with privileged roles
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

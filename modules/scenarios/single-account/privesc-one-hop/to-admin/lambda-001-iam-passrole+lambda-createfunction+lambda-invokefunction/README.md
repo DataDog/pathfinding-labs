@@ -8,67 +8,31 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating Lambda function with admin role and invoking it to extract temporary credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
-* **Schema Version:** 1.0.0
+* **Schema Version:** 3.0.0
 * **Pathfinding.cloud ID:** lambda-001
-* **Attack Path:** starting_user → (PassRole + lambda:CreateFunction) → Lambda with admin role → (lambda:InvokeFunction) → extract admin credentials → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role`
-* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role`; `lambda:CreateFunction` on `*`; `lambda:InvokeFunction` on `*`
-* **Helpful Permissions:** `iam:ListRoles` (Discover available privileged roles); `lambda:GetFunction` (Verify function creation); `lambda:DeleteFunction` (Clean up attack artifacts)
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1648 - Serverless Execution
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass an IAM role to Lambda, create Lambda functions, and invoke them. The attacker can create a Lambda function with an administrative execution role, invoke the function to extract the temporary credentials that Lambda receives, and use those credentials to gain administrator access.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-lambda-001-to-admin-starting-user` IAM user to the `pl-prod-lambda-001-to-admin-target-role` administrative role by creating a Lambda function with the admin execution role and invoking it to extract temporary credentials.
 
-This is a powerful privilege escalation technique because Lambda functions automatically receive temporary security credentials for their execution role through the AWS SDK. An attacker can create a simple function that returns these credentials (via `boto3.Session().get_credentials()` or environment variables), invoke it, and immediately gain the privileges of the passed role.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role`
 
-The attack leverages the AWS serverless execution model where services like Lambda are granted temporary credentials based on their execution role. By combining `iam:PassRole` with Lambda creation and invocation permissions, an attacker can effectively "borrow" the privileges of any role they can pass to Lambda.
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role` -- allows associating the admin role as the Lambda execution role
+- `lambda:CreateFunction` on `*` -- allows creating a new Lambda function
+- `lambda:InvokeFunction` on `*` -- allows invoking the Lambda function to extract credentials
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1648 - Serverless Execution
+**Helpful:**
+- `iam:ListRoles` -- discover available privileged roles that can be passed to Lambda
+- `lambda:GetFunction` -- verify function creation succeeded before invoking
+- `lambda:DeleteFunction` -- clean up attack artifacts after credential extraction
 
-### Principals in the attack path
-
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-lambda-001-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-lambda-001-to-admin-target-role` (Admin role passed to Lambda)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-lambda-001-to-admin-starting-user] -->|iam:PassRole + lambda:CreateFunction| B[Lambda Function]
-    B -->|Executes with| C[pl-prod-lambda-001-to-admin-target-role]
-    C -->|lambda:InvokeFunction| D[Extract Credentials]
-    D -->|Use Credentials| E[Administrator Access]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-lambda-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create Lambda Function**: Use `lambda:CreateFunction` with `iam:PassRole` to create a Lambda function that uses the admin target role as its execution role
-3. **Invoke Function**: Use `lambda:InvokeFunction` to execute the Lambda function and extract the temporary credentials
-4. **Switch Context**: Configure AWS CLI to use the extracted temporary credentials (access key, secret key, and session token)
-5. **Verification**: Verify administrator access with the extracted credentials
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-lambda-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-lambda-001-to-admin-target-role` | Admin role that can be passed to Lambda functions |
-| Policy attached to starting user | Grants `iam:PassRole` on target role, `lambda:CreateFunction`, and `lambda:InvokeFunction` |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -92,7 +56,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-lambda-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:role/pl-prod-lambda-001-to-admin-target-role` | Admin role that can be passed to Lambda functions |
+| Policy attached to starting user | Grants `iam:PassRole` on target role, `lambda:CreateFunction`, and `lambda:InvokeFunction` |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -100,9 +82,9 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
-- A temporary Lambda function created with the admin execution role to extract credentials
+- A temporary Lambda function (`pl-lambda-001-credential-extractor`) created with the admin execution role to extract credentials
 
 #### With plabs non-interactive
 
@@ -132,6 +114,8 @@ plabs cleanup lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunctio
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -146,34 +130,34 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM user has `iam:PassRole` permission allowing it to pass an administrative role to Lambda
 - IAM user has `lambda:CreateFunction` permission enabling creation of functions with privileged execution roles
 - IAM user has `lambda:InvokeFunction` permission enabling execution of functions that can exfiltrate credentials
 - Privilege escalation path exists: starting user can gain admin privileges via Lambda execution role
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Restrict `iam:PassRole` permissions using strict resource conditions to limit which roles can be passed
 - Implement condition keys like `iam:PassedToService` to restrict PassRole to specific AWS services only when necessary
 - Avoid granting broad `lambda:CreateFunction` permissions; use resource tags or naming patterns to limit function creation
-- Monitor CloudTrail for `CreateFunction` events where execution roles have administrative privileges
 - Implement Service Control Policies (SCPs) that prevent passing roles with administrative permissions to Lambda
 - Use IAM Access Analyzer to identify privilege escalation paths involving PassRole
 - Enable AWS Config rules to detect Lambda functions with overly permissive execution roles
-- Require MFA for sensitive operations like creating Lambda functions with privileged roles
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Starting user passes an administrative role to a Lambda function; critical when the target role has elevated permissions
-- `Lambda: CreateFunction20150331` — New Lambda function created with a privileged execution role; high severity when the execution role has admin access
-- `Lambda: Invoke` — Lambda function invoked; high severity when preceded by CreateFunction with a privileged role
+- `IAM: PassRole` -- Starting user passes an administrative role to a Lambda function; critical when the target role has elevated permissions
+- `Lambda: CreateFunction20150331` -- New Lambda function created with a privileged execution role; high severity when the execution role has admin access
+- `Lambda: Invoke` -- Lambda function invoked; high severity when preceded by CreateFunction with a privileged role
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

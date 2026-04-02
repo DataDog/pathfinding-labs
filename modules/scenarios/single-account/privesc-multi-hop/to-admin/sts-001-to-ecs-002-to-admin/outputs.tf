@@ -25,17 +25,17 @@ output "starting_user_secret_access_key" {
 }
 
 # =============================================================================
-# STARTING ROLE OUTPUTS
+# INTERMEDIATE ROLE OUTPUTS
 # =============================================================================
 
-output "starting_role_arn" {
-  description = "ARN of the starting role (has ECS permissions)"
-  value       = aws_iam_role.starting_role.arn
+output "intermediate_role_arn" {
+  description = "ARN of the intermediate role (has ECS permissions)"
+  value       = aws_iam_role.intermediate_role.arn
 }
 
-output "starting_role_name" {
-  description = "Name of the starting role"
-  value       = aws_iam_role.starting_role.name
+output "intermediate_role_name" {
+  description = "Name of the intermediate role"
+  value       = aws_iam_role.intermediate_role.name
 }
 
 # =============================================================================
@@ -58,5 +58,5 @@ output "admin_role_name" {
 
 output "attack_path" {
   description = "Description of the multi-hop attack path"
-  value       = "User (pl-prod-sts001-ecs002-starting-user) -> AssumeRole -> Starting Role (pl-prod-sts001-ecs002-starting-role) -> PassRole + ECS CreateCluster + RegisterTaskDefinition + RunTask -> Admin Role (pl-prod-sts001-ecs002-admin-role) via ECS task -> Admin Access"
+  value       = "User (pl-prod-sts001-ecs002-starting-user) -> AssumeRole -> Intermediate Role (pl-prod-sts001-ecs002-intermediate-role) -> PassRole + ECS CreateCluster + RegisterTaskDefinition + RunTask -> Admin Role (pl-prod-sts001-ecs002-admin-role) via ECS task -> Admin Access"
 }

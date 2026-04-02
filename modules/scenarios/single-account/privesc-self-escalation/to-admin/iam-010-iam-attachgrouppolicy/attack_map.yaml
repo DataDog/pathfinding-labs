@@ -1,0 +1,61 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-010-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:AttachGroupPolicy permission and is a member of
+        pl-prod-iam-010-to-admin-group. By attaching the AdministratorAccess managed
+        policy to that group, the user elevates their own effective permissions to
+        administrator through existing group membership.
+
+    - id: target-group
+      label: "Escalation Group"
+      type: resource
+      subType: iam-group
+      arn: "arn:aws:iam::{account_id}:group/pl-prod-iam-010-to-admin-group"
+      description: >
+        This IAM group is the vehicle for privilege escalation. The starting user is
+        already a member of this group. By attaching the AdministratorAccess managed
+        policy to it, the user gains administrator access through their existing
+        group membership — no direct user policy changes are required.
+
+  edges:
+    - from: starting-user
+      to: target-group
+      label: "iam:AttachGroupPolicy"
+      description: >
+        Attach the AdministratorAccess managed policy to the group that the starting
+        user is already a member of. This immediately grants admin permissions to all
+        members of the group, including the attacker.
+      hints:
+        - "You can modify the policies attached to groups you belong to."
+        - "Look for groups your user is a member of and consider what policies could be attached."
+        - "Attaching AdministratorAccess to your own group grants you admin access via group membership."
+        - "Browse to https://pathfinding.cloud/paths/iam-010 for technique details."
+      commands:
+        - description: "Attach AdministratorAccess to the group"
+          command: "aws iam attach-group-policy --group-name pl-prod-iam-010-to-admin-group --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
+    - from: target-group
+      to: starting-user
+      label: "group membership"
+      description: >
+        The starting user is already a member of the group. Once AdministratorAccess
+        is attached, all group members — including the attacker — inherit those
+        permissions automatically.
+      hints:
+        - "Attach the AWS-managed AdministratorAccess policy to this group."
+        - "Use iam:AttachGroupPolicy with the group ARN and the AdministratorAccess policy ARN."
+      commands:
+        - description: "Verify administrator access via group membership"
+          command: "aws iam list-users"

@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PutRolePolicy
+# Self-Escalation to Bucket: iam:PutRolePolicy
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -6,64 +6,31 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** iam-005
 * **Technique:** Role with iam:PutRolePolicy on itself can add inline policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (AssumeRole) → starting_role → (iam:PutRolePolicy on self) → inline S3 policy → (AssumeRole) → target_role → bucket access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-bucket-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-starting-role`; `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-target-role`; `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}`
-* **Required Permissions:** `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-bucket-starting-role`
-* **Helpful Permissions:** `iam:GetRolePolicy` (View existing inline policies on the role); `iam:ListRolePolicies` (List all inline policies attached to the role); `s3:ListBucket` (Verify bucket access after escalation)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates privilege escalation where a role with `iam:PutRolePolicy` on itself can modify its own inline policy to gain S3 bucket access, then assume a target role with bucket permissions. This is a self-escalation scenario where the starting role first adds permissions to itself before accessing the target bucket.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-005-to-bucket-starting-user` IAM user to the sensitive S3 bucket `pl-prod-iam-005-to-bucket-{account_id}` by assuming the `pl-prod-iam-005-to-bucket-starting-role`, using `iam:PutRolePolicy` to add an inline policy granting S3 access to itself, and then reading sensitive data directly from the bucket.
 
-### MITRE ATT&CK Mapping
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}`
 
-- **Tactic**: Privilege Escalation, Collection
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: T1530 - Data from Cloud Storage Object
+### Starting Permissions
 
-### Principals in the attack path
+**Required:**
+- `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-bucket-starting-role` -- allows the role to write an inline policy to itself, granting S3 bucket access
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-005-to-bucket-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-bucket-starting-role`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-bucket-target-role`
-- `arn:aws:s3:::pl-prod-iam-005-to-bucket-ACCOUNT_ID-SUFFIX`
+**Helpful:**
+- `iam:GetRolePolicy` -- view existing inline policies on the role
+- `iam:ListRolePolicies` -- list all inline policies attached to the role
+- `s3:ListBucket` -- verify bucket access after escalation
 
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-iam-005-to-bucket-starting-user] -->|sts:AssumeRole| B[pl-prod-iam-005-to-bucket-starting-role]
-    B -->|iam:PutRolePolicy on self| B
-    B -->|sts:AssumeRole| C[pl-prod-iam-005-to-bucket-target-role]
-    C -->|s3:GetObject, s3:PutObject| D[pl-prod-iam-005-to-bucket]
-    D -->|Access Sensitive Data| E[Sensitive Bucket Access]
-```
-
-### Attack Steps
-
-1. **Initial Access**: `pl-prod-iam-005-to-bucket-starting-user` assumes the role `pl-prod-iam-005-to-bucket-starting-role` to begin the scenario
-2. **Self-Escalation**: Use `iam:PutRolePolicy` to add an inline policy to the starting role (self) granting S3 bucket access
-3. **Assume Target Role**: Assume the `pl-prod-iam-005-to-bucket-target-role` which has S3 permissions
-4. **Access S3 Bucket**: Read and download sensitive data from the target bucket
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-005-to-bucket-starting-user` | Starting user with AssumeRole permission |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-bucket-starting-role` | Starting role with PutRolePolicy permission on itself |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-bucket-target-role` | Target role with S3 bucket permissions |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-005-to-bucket-access-policy` | Grants S3 read/write access to target bucket |
-| `arn:aws:s3:::pl-prod-iam-005-to-bucket-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
-| `arn:aws:s3:::pl-prod-iam-005-to-bucket-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -87,17 +54,41 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-bucket-starting-user` | Starting user with AssumeRole permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-starting-role` | Starting role with PutRolePolicy permission on itself |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-target-role` | Target role with S3 bucket permissions |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-005-to-bucket-access-policy` | Grants S3 read/write access to target bucket |
+| `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
-1. Display a step-by-step walkthrough with color-coded output
-2. Show the commands being executed and their results
-3. Verify successful privilege escalation to bucket access
-4. Output standardized test results for automation
+1. Retrieve starting user credentials from Terraform output
+2. Assume the `pl-prod-iam-005-to-bucket-starting-role`
+3. Verify that S3 bucket access is denied before escalation
+4. Use `iam:PutRolePolicy` to add an inline S3 access policy to the starting role (self-escalation)
+5. Wait 15 seconds for IAM policy propagation
+6. List the target S3 bucket contents to confirm access
+7. Download `sensitive-data.txt` from the target bucket
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
-- Inline IAM policy added to `pl-prod-iam-005-to-bucket-starting-role` granting S3 bucket access
+- Inline IAM policy `EscalatedS3Access` added to `pl-prod-iam-005-to-bucket-starting-role` granting `s3:ListBucket`, `s3:GetObject`, and `s3:PutObject` on the target bucket
 
 #### With plabs non-interactive
 
@@ -127,6 +118,8 @@ plabs cleanup iam-005-iam-putrolepolicy
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -141,15 +134,17 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM role (`pl-prod-iam-005-to-bucket-starting-role`) has `iam:PutRolePolicy` permission scoped to itself, enabling self-escalation
 - Privilege escalation path exists: starting role can modify its own inline policy to gain S3 bucket access
 - Role chain allows indirect access to sensitive S3 bucket via intermediate role assumption
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Avoid granting `iam:PutRolePolicy` permissions on roles (especially on self)
 - Use resource-based conditions to restrict which roles can be modified
@@ -160,15 +155,15 @@ plabs apply
 - Implement S3 bucket policies that restrict access even for privileged roles
 - Enable S3 access logging to track data access patterns
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` — Inline policy added to a role; critical when the target role is the same as the calling principal (self-escalation)
-- `STS: AssumeRole` — Role assumption event; watch for the starting role assuming the target role after a PutRolePolicy call
-- `S3: GetObject` — Object retrieved from S3 bucket; monitor for access by roles that recently had inline policies added
+- `IAM: PutRolePolicy` -- inline policy added to a role; critical when the target role is the same as the calling principal (self-escalation)
+- `STS: AssumeRole` -- role assumption event; watch for the starting role assuming the target role after a PutRolePolicy call
+- `S3: GetObject` -- object retrieved from S3 bucket; monitor for access by roles that recently had inline policies added
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 

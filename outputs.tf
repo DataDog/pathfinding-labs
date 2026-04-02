@@ -1564,8 +1564,8 @@ output "single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
     starting_user_arn               = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_arn
     starting_user_access_key_id     = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_user_secret_access_key
-    starting_role_name              = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_role_name
-    starting_role_arn               = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].starting_role_arn
+    intermediate_role_name          = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].intermediate_role_name
+    intermediate_role_arn           = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].intermediate_role_arn
     admin_role_name                 = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].admin_role_name
     admin_role_arn                  = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].admin_role_arn
     attack_path                     = module.single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin[0].attack_path

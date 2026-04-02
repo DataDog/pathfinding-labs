@@ -8,70 +8,27 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Publicly accessible Lambda function with administrative IAM role
 * **Terraform Variable:** `enable_single_account_cspm_toxic_combo_public_lambda_with_admin`
-* **Schema Version:** 1.0.0
-* **Attack Path:** public internet → (lambda:InvokeFunctionUrl) → Lambda with admin role → extract credentials → admin access
-* **Attack Principals:** `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda`; `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role`
-* **Required Permissions:** `lambda:InvokeFunctionUrl` on `*`
-* **Helpful Permissions:** `lambda:ListFunctions` (Discover publicly accessible Lambda functions); `lambda:GetFunctionUrlConfig` (Identify Lambda functions with public URLs)
+* **Schema Version:** 3.0.0
 * **MITRE Tactics:** TA0001 - Initial Access, TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Cloud Instance Metadata API, T1648 - Serverless Execution
 
-## Attack Overview
+## Objective
 
-A Lambda function URL with `AuthorizationType: NONE` is publicly accessible from anywhere on the internet — no AWS credentials or signature required. When that same function's execution role carries `AdministratorAccess`, the combination creates a direct, unauthenticated path to full account compromise. An attacker only needs to discover the function URL and send an HTTP request to gain access to short-lived credentials scoped to the admin role.
+Your objective is to learn how to exploit a combination of multiple misconfigurations that allows you to move from the public internet (unauthenticated) to the `pl-public-lambda-admin-role` administrative IAM role by invoking the `pl-public-admin-lambda` Lambda function URL without credentials and extracting the execution role's temporary credentials from the response.
 
-The toxic combination here is not any single misconfiguration but the co-existence of two: public exposure and over-privileged permissions. Either finding alone would be serious; together they eliminate any barrier between an unauthenticated external attacker and complete control of the AWS account. Lambda function URLs are easy to overlook because they appear in a separate section of the Lambda console from the function's IAM settings.
+- **Start:** `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker` (no AWS credentials required)
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role`
 
-In real environments this pattern shows up when developers prototype features using permissive roles and then deploy to production without tightening permissions, or when an existing Lambda function's URL is enabled without reviewing the attached role.
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `lambda:InvokeFunctionUrl` on `*` -- the Lambda function URL has `AuthorizationType: NONE`, so no AWS credentials are required at all; any HTTP client can invoke it
 
-- **Tactics**: TA0001 - Initial Access, TA0004 - Privilege Escalation, TA0006 - Credential Access
-- **Techniques**:
-  - T1190 - Exploit Public-Facing Application
-  - T1552.005 - Cloud Instance Metadata API
-  - T1648 - Serverless Execution
+**Helpful:**
+- `lambda:ListFunctions` -- Discover publicly accessible Lambda functions
+- `lambda:GetFunctionUrlConfig` -- Identify Lambda functions with public URLs
 
-### Principals in the attack path
-
-- `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` (publicly accessible Lambda function with admin execution role)
-- `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role` (Lambda execution role with AdministratorAccess)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    Internet["Public Internet (unauthenticated)"]
-    Lambda["Lambda: pl-public-admin-lambda\n(Function URL, AuthType: NONE)"]
-    AdminRole["IAM Role: pl-public-lambda-admin-role\n(AdministratorAccess)"]
-    AdminAccess["Admin Access\n(full account)"]
-
-    Internet -->|"lambda:InvokeFunctionUrl (no auth)"| Lambda
-    Lambda -->|"executes as"| AdminRole
-    AdminRole -->|"AWS_ACCESS_KEY_ID\nAWS_SECRET_ACCESS_KEY\nAWS_SESSION_TOKEN\n(from env vars)"| AdminAccess
-
-    style Internet fill:#ff9999,stroke:#333,stroke-width:2px
-    style Lambda fill:#ffcc99,stroke:#333,stroke-width:2px
-    style AdminRole fill:#ffcc99,stroke:#333,stroke-width:2px
-    style AdminAccess fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access** — Discover the Lambda function URL (e.g., via `lambda:ListFunctionUrlConfigs`, public source code, or passive recon). No authentication is required to invoke it.
-2. **Invoke the function** — Send an HTTP GET or POST request to the function URL. The Lambda runtime injects the execution role's temporary credentials into the function's environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`).
-3. **Extract credentials** — A malicious payload (or the function's existing code if already exfiltrating data) returns the environment variables containing the role's credentials.
-4. **Verification** — Use the extracted credentials with `aws sts get-caller-identity` to confirm you are operating as `pl-public-lambda-admin-role` with `AdministratorAccess`.
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-|-----|---------|
-| `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` | Lambda function with a public function URL (AuthType: NONE) |
-| `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role` | Lambda execution role with AdministratorAccess attached |
-| `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` (URL) | Public HTTPS endpoint — no auth required to invoke |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -95,7 +52,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+|-----|---------|
+| `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` | Lambda function with a public function URL (AuthType: NONE) |
+| `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role` | Lambda execution role with AdministratorAccess attached |
+| `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` (URL) | Public HTTPS endpoint — no auth required to invoke |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Read the Lambda function URL from Terraform outputs
@@ -103,7 +78,7 @@ The script will:
 3. Parse the response to extract the temporary IAM credentials
 4. Use the extracted credentials to call `aws sts get-caller-identity` and confirm admin role access
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - No persistent resources are created — the attack uses the existing function URL and reads credentials from the HTTP response
 
@@ -135,6 +110,8 @@ plabs cleanup public-lambda-with-admin
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -149,16 +126,18 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - Lambda function `pl-public-admin-lambda` has a function URL with `AuthorizationType: NONE` — the function is publicly invocable without any AWS credentials
 - Lambda function `pl-public-admin-lambda` executes with the role `pl-public-lambda-admin-role`, which has `AdministratorAccess` (an AWS-managed policy granting `*:*` on `*`)
 - Toxic combination: a publicly invocable Lambda function whose execution role provides full administrative access to the account
 - The execution role's trust policy allows only `lambda.amazonaws.com` as the principal, but the public URL bypasses the need for any IAM principal to invoke it
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Remove public Lambda function URLs or change `AuthorizationType` to `AWS_IAM` so only authenticated callers can invoke the function
 - Apply least-privilege execution roles to Lambda functions — never attach `AdministratorAccess` or `*:*` policies
@@ -167,9 +146,9 @@ plabs apply
 - Enforce IAM permission boundaries on Lambda execution roles to cap the maximum effective permissions regardless of what policies are attached
 - Implement CSPM rules that flag the combination of public Lambda exposure and high-privilege execution role as a critical finding, not merely two separate low-severity findings
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
 - `Lambda: CreateFunctionUrlConfig` — A function URL was created; check the `authorizationType` field for `NONE` which indicates public access
 - `Lambda: UpdateFunctionUrlConfig` — A function URL authorization was changed; `NONE` after `AWS_IAM` means the function was made public
@@ -178,6 +157,6 @@ plabs apply
 - `Lambda: UpdateFunctionConfiguration20150331v2` — A Lambda function's configuration was updated; watch for changes to the execution role
 - `STS: AssumeRole` — Role assumption events for `pl-public-lambda-admin-role` from the Lambda service; unexpected assumption outside normal function invocations warrants investigation
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

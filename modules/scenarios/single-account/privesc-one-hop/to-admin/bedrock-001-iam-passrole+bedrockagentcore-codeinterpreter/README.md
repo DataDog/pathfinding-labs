@@ -6,77 +6,34 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** bedrock-001
 * **Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (PassRole + CreateCodeInterpreter) → code interpreter with admin role → (StartSession + InvokeCodeInterpreter) → extract credentials from MMDS at 169.254.169.254 → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-bedrock-001-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role`
-* **Required Permissions:** `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-bedrock-001-to-admin-target-role`; `bedrock-agentcore:CreateCodeInterpreter` on `*`; `bedrock-agentcore:StartCodeInterpreterSession` on `*`; `bedrock-agentcore:InvokeCodeInterpreter` on `*`
-* **Helpful Permissions:** `iam:ListRoles` (Discover available privileged roles to pass); `iam:GetRole` (View role trust policies and attached permissions); `bedrock-agentcore:GetCodeInterpreter` (Verify code interpreter creation and configuration)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** bedrock-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a novel privilege escalation vulnerability discovered by Nigel Sood at Sonrai Security in 2025. An attacker with `iam:PassRole` and Bedrock AgentCore permissions can create a code interpreter with a privileged IAM role. Code interpreters run on Firecracker MicroVMs that expose a MicroVM Metadata Service (MMDS) at 169.254.169.254, similar to EC2's Instance Metadata Service (IMDS). By invoking Python code within the interpreter session, the attacker can access the metadata service to extract temporary credentials for the execution role, gaining its full permissions.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-bedrock-001-to-admin-starting-user` IAM user to the `pl-prod-bedrock-001-to-admin-target-role` administrative role by passing the privileged role to a Bedrock AgentCore code interpreter and extracting temporary credentials from the MicroVM Metadata Service at 169.254.169.254.
 
-This represents a significant expansion of the traditional PassRole attack surface into AWS's AI/ML tooling ecosystem. Unlike EC2 or Lambda functions which require infrastructure deployment, code interpreters provide immediate interactive access to credentials through their metadata service.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-bedrock-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role`
 
-The vulnerability is particularly dangerous because:
-- Code interpreters provide immediate, interactive credential access (no waiting for service initialization)
-- The attack can be executed entirely through API calls without deploying persistent infrastructure
-- Many organizations are adopting Bedrock for AI/ML workloads without awareness of this escalation path
-- Traditional CSPM tools may not detect this as a privilege escalation risk
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-bedrock-001-to-admin-target-role` -- pass the privileged role to Bedrock AgentCore as an execution role
+- `bedrock-agentcore:CreateCodeInterpreter` on `*` -- create the code interpreter provisioned with the privileged execution role
+- `bedrock-agentcore:StartCodeInterpreterSession` on `*` -- start an interactive session inside the code interpreter
+- `bedrock-agentcore:InvokeCodeInterpreter` on `*` -- execute code within the session to query the metadata service
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0006 - Credential Access
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Technique**: T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
-- **Sub-technique**: Extracting credentials from AWS service metadata endpoints
+**Helpful:**
+- `iam:ListRoles` -- discover available privileged roles to pass
+- `iam:GetRole` -- view role trust policies and attached permissions
+- `bedrock-agentcore:GetCodeInterpreter` -- verify code interpreter creation and configuration
 
-### Principals in the attack path
-
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-bedrock-001-to-admin-starting-user` (Scenario-specific starting user)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-bedrock-001-to-admin-target-role` (Target privileged role with admin permissions)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-bedrock-001-to-admin-starting-user] -->|iam:PassRole| B[Create Code Interpreter]
-    B -->|bedrock-agentcore:CreateCodeInterpreter| C[Code Interpreter with Admin Role]
-    C -->|bedrock-agentcore:StartCodeInterpreterSession| D[Active Session]
-    D -->|bedrock-agentcore:InvokeCodeInterpreter| E[Execute Python Code]
-    E -->|HTTP GET 169.254.169.254| F[MicroVM Metadata Service]
-    F -->|Return Credentials| G[Extract Admin Role Credentials]
-    G -->|Use Credentials| H[Administrator Access]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style F fill:#ffcc99,stroke:#333,stroke-width:2px
-    style H fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-bedrock-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create Code Interpreter**: Use `bedrock-agentcore:CreateCodeInterpreter` and pass the privileged target role via `iam:PassRole`
-3. **Start Session**: Initiate a code interpreter session with `bedrock-agentcore:StartCodeInterpreterSession`
-4. **Execute Credential Extraction**: Use `bedrock-agentcore:InvokeCodeInterpreter` to run Python code that accesses the MicroVM Metadata Service at 169.254.169.254
-5. **Extract Credentials**: Read temporary credentials from `/latest/meta-data/iam/security-credentials/execution_role`
-6. **Verification**: Use the extracted credentials to verify administrator access
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-bedrock-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-bedrock-001-to-admin-target-role` | Target privileged role with AdministratorAccess policy |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-bedrock-001-to-admin-starting-user-policy` | Policy granting PassRole and Bedrock AgentCore permissions |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -100,7 +57,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-bedrock-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role` | Target privileged role with AdministratorAccess policy |
+| `arn:aws:iam::{account_id}:policy/pl-prod-bedrock-001-to-admin-starting-user-policy` | Policy granting PassRole and Bedrock AgentCore permissions |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -110,7 +85,7 @@ The script will:
 5. Verify successful privilege escalation with admin operations
 6. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - Bedrock AgentCore code interpreter with the privileged target role attached
 - Active code interpreter session
@@ -143,6 +118,8 @@ plabs cleanup bedrock-001-iam-passrole+bedrockagentcore-codeinterpreter
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -157,19 +134,19 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
 
-A properly configured Cloud Security Posture Management (CSPM) tool should identify this vulnerability by detecting:
+#### What CSPM tools should detect
 
-1. **Privilege Escalation Path**: Principal with `iam:PassRole` permission on privileged roles combined with `bedrock-agentcore:CreateCodeInterpreter`
-2. **Overly Permissive PassRole**: IAM policy allowing PassRole on roles with administrative or sensitive permissions
-3. **Broad Bedrock Permissions**: Principal with unrestricted `bedrock-agentcore:*` permissions
-4. **Trust Policy Issues**: Roles that trust bedrock-agentcore.amazonaws.com without restrictive conditions
-5. **Toxic Combination**: User/role with both PassRole and Bedrock AgentCore permissions that can access privileged roles
+- Principal with `iam:PassRole` permission on privileged roles combined with `bedrock-agentcore:CreateCodeInterpreter` -- detectable privilege escalation path from static policy analysis
+- IAM policy allowing PassRole on roles with administrative or sensitive permissions without restricting the `iam:PassedToService` condition
+- Principal with unrestricted `bedrock-agentcore:*` permissions
+- Roles that trust `bedrock-agentcore.amazonaws.com` without restrictive `aws:SourceAccount` or `aws:SourceArn` conditions
+- User/role with both PassRole and Bedrock AgentCore create permissions that can reach privileged roles -- toxic combination detectable from policy graph analysis
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 1. **Restrict PassRole Permissions**: Limit `iam:PassRole` to specific non-privileged roles using resource-based conditions:
    ```json
@@ -207,7 +184,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
    - Grant `InvokeCodeInterpreter` only to users who need interactive access
    - Never combine with `iam:PassRole` on privileged roles
 
-4. **Role Trust Policy Restrictions**: Add conditions to roles trusted by bedrock-agentcore.amazonaws.com:
+4. **Role Trust Policy Restrictions**: Add conditions to roles trusted by `bedrock-agentcore.amazonaws.com`:
    ```json
    {
      "Effect": "Allow",
@@ -230,18 +207,16 @@ A properly configured Cloud Security Posture Management (CSPM) tool should ident
 
 6. **Principle of Least Privilege**: Design Bedrock execution roles with minimal permissions required for the specific use case, never administrative access
 
-7. **Network Monitoring**: Monitor for unusual network patterns from Bedrock resources, including requests to metadata service endpoints
+### Detecting Abuse (CloudSIEM)
 
-## Detection Abuse (CloudSIEM)
+#### CloudTrail Events to Monitor
 
-### CloudTrail events to monitor
+- `Bedrock: CreateCodeInterpreter` -- Bedrock AgentCore code interpreter created with an execution role; critical when the passed role ARN has elevated or administrative permissions
+- `Bedrock: StartCodeInterpreterSession` -- A new interactive session started on a code interpreter; monitor for sessions initiated outside of expected automation workflows
+- `Bedrock: InvokeCodeInterpreter` -- Code executed within a code interpreter session; high severity when combined with credential usage from a different IP address immediately after
+- `STS: AssumeRole` -- Temporary credentials assumed by the Bedrock AgentCore service on behalf of a code interpreter execution role; look for `bedrock-agentcore.amazonaws.com` as the assumed-role principal
 
-- `IAM: PassRole` — Role passed to Bedrock AgentCore service; critical when the passed role has elevated or administrative permissions
-- `Bedrock: CreateAgentActionGroup` — Bedrock AgentCore code interpreter created with an execution role; monitor for privileged role ARNs in the request
-- `Bedrock: InvokeAgent` — Code interpreter session invoked; high severity when followed by credential usage from a different IP address
-- `STS: AssumeRole` — Temporary credentials assumed by the Bedrock AgentCore service on behalf of a code interpreter session
-
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 
@@ -249,7 +224,7 @@ _Detonation log integration (Stratus Red Team / Grimoire) is planned for a futur
 
 This privilege escalation technique was discovered by **Nigel Sood** at **Sonrai Security** in 2025:
 
-- [AWS AgentCore: The Overlooked Privilege Escalation Path in Bedrock AI Tooling](https://sonraisecurity.com/blog/aws-agentcore-privilege-escalation-bedrock-scp-fix/) - Sonrai Security Blog
-- [Sandboxed to Compromised: New Research Exposes Credential Exfiltration Paths in AWS Code Interpreters](https://sonraisecurity.com/blog/sandboxed-to-compromised-new-research-exposes-credential-exfiltration-paths-in-aws-code-interpreters/) - Sonrai Security Blog
+- [AWS AgentCore: The Overlooked Privilege Escalation Path in Bedrock AI Tooling](https://sonraisecurity.com/blog/aws-agentcore-privilege-escalation-bedrock-scp-fix/) -- Sonrai Security Blog
+- [Sandboxed to Compromised: New Research Exposes Credential Exfiltration Paths in AWS Code Interpreters](https://sonraisecurity.com/blog/sandboxed-to-compromised-new-research-exposes-credential-exfiltration-paths-in-aws-code-interpreters/) -- Sonrai Security Blog
 
 **Credit**: Special thanks to Nigel Sood and the Sonrai Security research team for discovering and responsibly disclosing this privilege escalation path.

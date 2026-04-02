@@ -1,0 +1,92 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-glue-003-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the admin target role, glue:CreateJob, and
+        glue:StartJobRun permissions. These permissions together allow you to create
+        a Glue Python shell job that runs arbitrary code under the admin role and
+        modifies IAM permissions on your behalf.
+
+    - id: glue-job
+      label: "Glue Job"
+      type: resource
+      subType: glue-job
+      arn: "arn:aws:glue:{region}:{account_id}:job/pl-glue-003-privesc-job"
+      description: >
+        An AWS Glue Python shell job created by the attacker with inline Python code.
+        The job is configured to run under the administrative target role, meaning any
+        boto3 calls within the script execute with full admin permissions. The malicious
+        script attaches AdministratorAccess to the starting user.
+
+    - id: target-role
+      label: "Admin Target Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-glue-003-to-admin-target-role"
+      description: >
+        An IAM role with AdministratorAccess attached. This role is passed to the Glue
+        job during creation. When the job executes, it assumes this role and runs the
+        inline Python script with full administrative permissions in the account. The
+        attacker gains effective admin access by having the job attach AdministratorAccess
+        to the starting user.
+
+  edges:
+    - from: starting-user
+      to: glue-job
+      label: "iam:PassRole + glue:CreateJob"
+      description: >
+        The starting user creates a Glue Python shell job, passing the admin role to it
+        and embedding a malicious inline Python script that will attach AdministratorAccess
+        to the starting user when executed.
+      hints:
+        - "You can create compute workloads and pass IAM roles to them."
+        - "Look for AWS services that accept a role at creation time and execute code under it."
+        - "Glue jobs run Python code with the permissions of the role passed to them — what could you do with an admin role?"
+        - "Browse to https://pathfinding.cloud/paths/glue-003 for technique details."
+      commands:
+        - description: "Create a Glue Python shell job with inline malicious script and pass the admin role"
+          command: >
+            aws glue create-job
+              --name pl-glue-003-privesc-job
+              --role arn:aws:iam::{account_id}:role/pl-prod-glue-003-to-admin-target-role
+              --command '{"Name":"pythonshell","ScriptLocation":"","PythonVersion":"3"}'
+              --default-arguments '{"--extra-py-files":"","library-set":"analytics","--job-bookmark-option":"job-bookmark-disable","--TempDir":"s3://","--enable-job-insights":"false"}'
+              --non-overridable-arguments '{}'
+              --max-capacity 0.0625
+              --glue-version "3.0"
+
+    - from: starting-user
+      to: glue-job
+      label: "glue:StartJobRun"
+      description: >
+        The starting user triggers execution of the Glue job. Once started, the job
+        runs under the admin role and executes the inline Python code.
+      commands:
+        - description: "Start the Glue job execution"
+          command: "aws glue start-job-run --job-name pl-glue-003-privesc-job"
+        - description: "Monitor job status until completion"
+          command: "aws glue get-job-run --job-name pl-glue-003-privesc-job --run-id <run-id>"
+
+    - from: glue-job
+      to: target-role
+      label: "assumes role + iam:AttachUserPolicy"
+      description: >
+        The Glue job assumes the admin target role at execution time. All code within
+        the job script runs with the permissions of this role. The inline Python script
+        uses boto3 to attach the AdministratorAccess managed policy to the starting user,
+        granting the attacker permanent admin access.
+      commands:
+        - description: "Verify administrator access after job completion"
+          command: "aws iam list-users --max-items 1"

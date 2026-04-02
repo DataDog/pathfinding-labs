@@ -1,0 +1,76 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-glue-005-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the admin target role, plus glue:UpdateJob
+        and glue:StartJobRun permissions. This combination allows you to modify an
+        existing Glue job to use an administrative role and a malicious script, then
+        trigger execution to escalate your own privileges.
+
+    - id: glue-job
+      label: "Existing Glue Job"
+      type: resource
+      subType: glue-job
+      arn: "arn:aws:glue:{region}:{account_id}:job/pl-glue-005-to-admin-job"
+      description: >
+        A pre-existing AWS Glue Python shell ETL job running with a non-privileged
+        initial role (pl-prod-glue-005-to-admin-initial-role) and a benign script.
+        By updating the job's role and script location, you can cause it to execute
+        arbitrary code with administrative privileges when triggered.
+
+    - id: target-role
+      label: "Admin Target Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-glue-005-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess. By passing it to the Glue job and
+        running a malicious script, the script executes iam:AttachUserPolicy to attach
+        AdministratorAccess directly to the starting user, resulting in full
+        administrative access to the AWS account.
+
+  edges:
+    - from: starting-principal
+      to: glue-job
+      label: "glue:UpdateJob + iam:PassRole"
+      description: >
+        Update the existing Glue job configuration to replace the execution role with
+        the administrative target role and change the script location to the malicious
+        escalation script stored in S3.
+      hints:
+        - "You can modify existing AWS Glue jobs, including changing their execution role."
+        - "Look for a Glue job already deployed in this account and consider what you could change about it."
+        - "You have iam:PassRole — find a privileged role you can pass to the Glue service and update the job to use it with a malicious script."
+        - "Browse to https://pathfinding.cloud/paths/glue-005 for technique details."
+      commands:
+        - description: "Retrieve current job configuration"
+          command: "aws glue get-job --job-name pl-glue-005-to-admin-job"
+        - description: "Update the job to use the admin role and malicious script"
+          command: "aws glue update-job --job-name pl-glue-005-to-admin-job --job-update '{\"Role\": \"arn:aws:iam::{account_id}:role/pl-prod-glue-005-to-admin-target-role\", \"Command\": {\"ScriptLocation\": \"s3://pl-glue-scripts-glue-005-{account_id}-{suffix}/escalation_script.py\"}}'"
+
+    - from: glue-job
+      to: target-role
+      label: "glue:StartJobRun"
+      description: >
+        Trigger execution of the updated Glue job. The job runs under the administrative
+        target role and executes the malicious Python script, which attaches
+        AdministratorAccess to the starting user via iam:AttachUserPolicy.
+      commands:
+        - description: "Start the job run"
+          command: "aws glue start-job-run --job-name pl-glue-005-to-admin-job"
+        - description: "Monitor job run status"
+          command: "aws glue get-job-run --job-name pl-glue-005-to-admin-job --run-id <run-id>"
+        - description: "Verify admin access after job completes"
+          command: "aws iam list-users"

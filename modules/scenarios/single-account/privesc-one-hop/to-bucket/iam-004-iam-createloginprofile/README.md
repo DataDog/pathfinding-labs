@@ -6,69 +6,31 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Pathfinding.cloud ID:** iam-004
 * **Technique:** User with iam:CreateLoginProfile can set password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile`
-* **Schema Version:** 1.0.0
-* **Attack Path:** starting_user → (iam:CreateLoginProfile) → set password for bucket_user → console login → S3 bucket access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user`; `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-hop1`; `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}`
-* **Required Permissions:** `iam:CreateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-004-bucket-hop1`
-* **Helpful Permissions:** `iam:ListUsers` (Discover users without login profiles); `iam:GetUser` (View user details); `iam:GetLoginProfile` (Check if user already has login profile)
+* **Schema Version:** 3.0.0
+* **Pathfinding.cloud ID:** iam-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to create login profiles (console passwords) for another IAM user with S3 bucket access. Unlike the to-admin variant which targets administrative privileges, this scenario focuses on data exfiltration - demonstrating that privilege escalation to sensitive data access can be just as critical as gaining admin rights.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-004-bucket-starting-user` IAM user to the `pl-sensitive-data-iam-004-{account_id}` S3 bucket by using `iam:CreateLoginProfile` to create a console password for the target user `pl-prod-iam-004-bucket-hop1`, who already has read access to the sensitive bucket.
 
-The attacker uses programmatic access credentials with `iam:CreateLoginProfile` permission to create a console password for a target user who has permissions to access a sensitive S3 bucket. By creating console credentials for this user, the attacker can then log into the AWS Management Console and directly access sensitive data stored in S3 buckets. This path demonstrates that not all privilege escalation leads to admin access, yet the impact can be equally severe when sensitive data is the target.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}`
 
-### MITRE ATT&CK Mapping
+### Starting Permissions
 
-- **Tactic**: Privilege Escalation (TA0004), Persistence (TA0003), Collection (TA0009)
-- **Technique**: T1098.001 - Account Manipulation: Additional Cloud Credentials
-- **Sub-technique**: T1530 - Data from Cloud Storage Object
+**Required:**
+- `iam:CreateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-004-bucket-hop1` -- creates a console password for the target user, enabling console login
 
-### Principals in the attack path
+**Helpful:**
+- `iam:ListUsers` -- discover IAM users and identify candidates without login profiles
+- `iam:GetUser` -- view details of individual IAM users
+- `iam:GetLoginProfile` -- check whether a user already has a console login profile set
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-004-bucket-starting-user` (Scenario-specific starting user with programmatic access)
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-004-bucket-hop1` (Target user with S3 bucket access, initially without console access)
-- `arn:aws:s3:::pl-sensitive-data-iam-004-ACCOUNT_ID-SUFFIX` (Sensitive data bucket)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-iam-004-bucket-starting-user] -->|iam:CreateLoginProfile| B[pl-prod-iam-004-bucket-hop1]
-    B -->|Console Login| C[AWS Console Access]
-    C -->|s3:GetObject, s3:ListBucket| D[pl-sensitive-data-iam-004 bucket]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-prod-iam-004-bucket-starting-user` (credentials provided via Terraform outputs)
-2. **Create Login Profile**: Use `iam:CreateLoginProfile` to create a console password for the target user `pl-prod-iam-004-bucket-hop1`
-3. **Console Login**: Log into the AWS Management Console using the target user's username and the newly created password
-4. **Access S3 Bucket**: Navigate to the S3 console and access the sensitive data bucket `pl-sensitive-data-iam-004-*`
-5. **Verification**: Read and download sensitive data using S3 read permissions
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-004-bucket-starting-user` | Scenario-specific starting user with programmatic access and CreateLoginProfile permission |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-004-bucket-hop1` | Target user with S3 bucket access (initially no console password) |
-| `pl-prod-iam-004-bucket-starting-user-policy` (inline policy) | Allows `iam:CreateLoginProfile` on `pl-prod-iam-004-bucket-hop1` only |
-| `pl-prod-iam-004-bucket-hop1-s3-policy` (inline policy) | Grants S3 read access to sensitive bucket |
-| `arn:aws:s3:::pl-sensitive-data-iam-004-ACCOUNT_ID-SUFFIX` | Target S3 bucket containing sensitive data |
-| `arn:aws:s3:::pl-sensitive-data-iam-004-ACCOUNT_ID-SUFFIX/sensitive-data.txt` | Sensitive file in the target bucket |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -92,7 +54,28 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user` | Scenario-specific starting user with programmatic access and CreateLoginProfile permission |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-hop1` | Target user with S3 bucket access (initially no console password) |
+| `pl-prod-iam-004-bucket-starting-user-policy` (inline policy) | Allows `iam:CreateLoginProfile` on `pl-prod-iam-004-bucket-hop1` only |
+| `pl-prod-iam-004-bucket-hop1-s3-policy` (inline policy) | Grants S3 read access to sensitive bucket |
+| `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -102,7 +85,7 @@ The script will:
 5. Verify successful privilege escalation to bucket access
 6. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - Console login profile (password) for `pl-prod-iam-004-bucket-hop1`
 
@@ -134,6 +117,8 @@ plabs cleanup iam-004-iam-createloginprofile
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -148,16 +133,18 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM user `pl-prod-iam-004-bucket-starting-user` has `iam:CreateLoginProfile` permission scoped to another user with S3 data access
 - Privilege escalation path exists from starting user to bucket access via login profile creation
 - IAM user `pl-prod-iam-004-bucket-hop1` has S3 read access to a sensitive data bucket but no MFA requirement
 - No MFA enforcement on users with access to sensitive S3 buckets
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Avoid granting `iam:CreateLoginProfile` permissions on users with sensitive data access (S3, databases, etc.)
 - Use resource-based conditions to restrict which users can have login profiles created: `"Condition": {"StringEquals": {"aws:username": "${aws:username}"}}`
@@ -167,14 +154,14 @@ plabs apply
 - Implement S3 bucket policies that require MFA for object access
 - Regularly audit IAM users for unexpected login profiles and console access
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: CreateLoginProfile` — Console password created for an IAM user; critical when the target user has access to sensitive data
-- `S3: GetObject` — Objects accessed in S3 bucket; high severity when accessed from a newly created console session
-- `S3: ListBucket` — Bucket contents listed; monitor for access from users that typically use only programmatic access
+- `IAM: CreateLoginProfile` -- Console password created for an IAM user; critical when the target user has access to sensitive data
+- `S3: GetObject` -- Objects accessed in S3 bucket; high severity when accessed from a newly created console session
+- `S3: ListBucket` -- Bucket contents listed; monitor for access from users that typically use only programmatic access
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

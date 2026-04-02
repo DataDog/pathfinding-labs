@@ -8,54 +8,28 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:PutRolePolicy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy`
-* **Schema Version:** 1.0.0
+* **Schema Version:** 3.0.0
 * **Pathfinding.cloud ID:** iam-005
-* **Attack Path:** starting_user → (AssumeRole) → starting_role → (iam:PutRolePolicy on self) → admin access
-* **Attack Principals:** `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-admin-starting-user`; `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role`
-* **Required Permissions:** `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-admin-starting-role`
-* **Helpful Permissions:** `iam:GetRolePolicy` (View existing inline policies on the role); `iam:ListRolePolicies` (List all inline policies attached to the role)
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a role can modify its own inline policies using `iam:PutRolePolicy`. The attacker starts with minimal permissions but can grant themselves administrator access by adding an inline policy to their own role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-iam-005-to-admin-starting-user` IAM user to effective administrator access by assuming the `pl-prod-iam-005-to-admin-starting-role` role and using `iam:PutRolePolicy` to add an inline administrator policy to that role itself.
 
-### MITRE ATT&CK Mapping
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role` (with administrator access)
 
-- **Tactic**: Privilege Escalation
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Sub-technique**: Abuse of IAM Permissions
+### Starting Permissions
 
-### Principals in the attack path
+**Required:**
+- `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-admin-starting-role` -- allows the role to add inline policies to itself, enabling self-escalation
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-005-to-admin-starting-user`
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-admin-starting-role`
+**Helpful:**
+- `iam:GetRolePolicy` -- view existing inline policies on the role
+- `iam:ListRolePolicies` -- list all inline policies attached to the role
 
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[pl-prod-iam-005-to-admin-starting-user] -->|sts:AssumeRole| B[pl-prod-iam-005-to-admin-starting-role]
-    B -->|iam:PutRolePolicy on self| C[pl-prod-iam-005-to-admin-starting-role with admin policy]
-    C -->|Administrator Access| D[Effective Administrator]
-```
-
-### Attack Steps
-
-1. **Initial Access**: `pl-prod-iam-005-to-admin-starting-user` assumes the role `pl-prod-iam-005-to-admin-starting-role` to begin the scenario
-2. **Self-Modification**: `pl-prod-iam-005-to-admin-starting-role` uses `iam:PutRolePolicy` to add an inline policy granting administrator access to itself
-3. **Verification**: Verify administrator access with the modified role
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-iam-005-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-iam-005-to-admin-starting-role` | Starting role with self-modification capability |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-iam-005-to-admin-policy` | Allows `iam:PutRolePolicy` on the role itself |
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -79,7 +53,25 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
+| `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role` | Starting role with self-modification capability |
+| `arn:aws:iam::{account_id}:policy/pl-prod-iam-005-to-admin-policy` | Allows `iam:PutRolePolicy` on the role itself |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -87,7 +79,7 @@ The script will:
 3. Verify successful privilege escalation
 4. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - Inline policy added to `pl-prod-iam-005-to-admin-starting-role` granting administrator access
 
@@ -119,6 +111,8 @@ plabs cleanup iam-005-iam-putrolepolicy
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -133,15 +127,17 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 - IAM role `pl-prod-iam-005-to-admin-starting-role` has `iam:PutRolePolicy` on itself, enabling self-escalation to administrator
 - Privilege escalation path detected: role can modify its own inline policies to gain admin access
 - IAM principal with permissions to modify its own trust or permission boundary
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - Avoid granting `iam:PutRolePolicy` permissions on roles
 - If required, use resource-based conditions to restrict which roles can be modified
@@ -150,14 +146,14 @@ plabs apply
 - Enable MFA requirements for sensitive operations
 - Use IAM Access Analyzer to identify privilege escalation paths
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` — Inline policy added to a role; critical when the caller and the target role are the same principal (self-modification)
-- `STS: AssumeRole` — Role assumption event; monitor for the starting user assuming the escalation role
+- `IAM: PutRolePolicy` -- Inline policy added to a role; critical when the caller and the target role are the same principal (self-modification)
+- `STS: AssumeRole` -- Role assumption event; monitor for the starting user assuming the escalation role
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
 

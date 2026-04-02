@@ -21,10 +21,10 @@ environments:
 attack_path:
   principals:
     - "arn:aws:iam::{account_id}:user/pl-prod-sts001-ecs002-starting-user"
-    - "arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-starting-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-intermediate-role"
     - "arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-admin-role"
 
-  summary: "starting_user → (sts:AssumeRole) → starting_role → (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask) → admin_role (via ECS task) → admin access"
+  summary: "starting_user → (sts:AssumeRole) → intermediate_role → (iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:RunTask) → admin_role (via ECS task) → admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -32,7 +32,7 @@ attack_path:
 permissions:
   required:
     - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-starting-role"
+      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-intermediate-role"
 
     - permission: "iam:PassRole"
       resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role"

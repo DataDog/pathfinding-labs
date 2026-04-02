@@ -1,0 +1,111 @@
+attackMap:
+  nodes:
+    - id: user1
+      label: "Direct S3 User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-admin-user1"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has explicit S3 permissions (s3:ListAllMyBuckets, s3:ListBucket,
+        s3:GetObject) scoped to the sensitive data bucket, granting direct access to
+        its contents.
+
+    - id: user2
+      label: "Admin Role User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-admin-user2"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has permission to assume an administrative role, granting indirect
+        access to all resources in the account, including the sensitive S3 bucket.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3"
+      description: >
+        This IAM role has the AWS-managed AdministratorAccess policy attached, granting
+        wildcard (*:*) permissions on all AWS resources and services. By assuming this
+        role, an attacker gains implicit access to every resource in the account,
+        including the sensitive S3 bucket — even though no explicit S3 policy is
+        attached to this role.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-admin-{account_id}-{suffix}"
+      description: >
+        This S3 bucket contains sensitive data. It is the target resource for both
+        attack paths in this scenario. Path 1 reaches it via direct IAM permissions
+        on user1; Path 2 reaches it via administrative role assumption through user2
+        and the admin role. A correct reverse blast radius analysis must identify
+        both principals as having access to this bucket.
+
+  edges:
+    - from: user1
+      to: target-bucket
+      label: "s3:GetObject / s3:ListBucket"
+      description: >
+        User1 has an explicit IAM policy granting s3:ListAllMyBuckets, s3:ListBucket,
+        and s3:GetObject on the sensitive bucket. This is the direct access path that
+        most security tools successfully detect.
+      hints:
+        - "This user has direct permissions to access an S3 bucket."
+        - "Check what S3 permissions are attached to this user's policies."
+        - "Use s3:ListAllMyBuckets to discover the target bucket, then s3:GetObject to read its contents."
+      commands:
+        - description: "List all S3 buckets to discover the target"
+          command: "aws s3 ls"
+        - description: "List the contents of the sensitive bucket"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-admin-{account_id}-{suffix}"
+        - description: "Read an object from the bucket"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-admin-{account_id}-{suffix}/sensitive.txt -"
+
+    - from: user2
+      to: admin-role
+      label: "sts:AssumeRole"
+      description: >
+        User2 has an IAM policy granting sts:AssumeRole on the administrative role.
+        The role's trust policy allows user2 to assume it, granting full
+        AdministratorAccess permissions.
+      hints:
+        - "This user does not have direct S3 permissions but can still reach the bucket."
+        - "Look for role assumption permissions — what roles can this user assume?"
+        - "Assume the administrative role to gain implicit access to all S3 buckets."
+      commands:
+        - description: "Assume the administrative role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3 --role-session-name rbr-admin-test"
+
+    - from: admin-role
+      to: target-bucket
+      label: "AdministratorAccess (*:*)"
+      description: >
+        The admin role has AdministratorAccess, which grants wildcard permissions on
+        all AWS resources. This implicitly includes full access to the sensitive S3
+        bucket, even though no explicit S3 policy is attached to the role.
+      hints:
+        - "Check what managed policies are attached to this role."
+        - "AdministratorAccess grants access to all services and resources."
+        - "Use aws s3 ls and aws s3 cp after assuming this role to access the sensitive bucket."
+      commands:
+        - description: "List the sensitive bucket contents as admin"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-admin-{account_id}-{suffix}"
+        - description: "Read an object from the bucket using admin credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-admin-{account_id}-{suffix}/sensitive.txt -"

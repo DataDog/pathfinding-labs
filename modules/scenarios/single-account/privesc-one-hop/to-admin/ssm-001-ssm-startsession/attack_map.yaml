@@ -1,0 +1,79 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ssm:StartSession permission, allowing it to open interactive
+        shell sessions on EC2 instances in the account.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
+      description: >
+        This EC2 instance has the SSM agent running and an administrative IAM role
+        attached via its instance profile. Once you have an interactive session on
+        this instance, you can query the Instance Metadata Service (IMDS) to retrieve
+        temporary AWS credentials for the attached admin role.
+
+    - id: target-role
+      label: "Admin EC2 Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-admin-ec2-role"
+      description: >
+        This IAM role has AdministratorAccess and is attached to the EC2 instance via
+        an instance profile. By retrieving its temporary credentials from the IMDS
+        endpoint inside the SSM session, you gain full administrative access to the
+        AWS account and can operate from your local machine.
+
+  edges:
+    - from: starting-principal
+      to: ec2-instance
+      label: "ssm:StartSession"
+      description: >
+        Start an interactive shell session on the EC2 instance using SSM Session Manager.
+        This provides SSH-like access through the AWS API without requiring network
+        connectivity, open ports, or SSH keys.
+      hints:
+        - "You can interact with EC2 instances via the AWS API without SSH."
+        - "Look for EC2 instances that have privileged IAM roles attached."
+        - "Browse to https://pathfinding.cloud/paths/ssm-001 for technique details."
+      commands:
+        - description: "Discover EC2 instances with SSM connectivity"
+          command: "aws ssm describe-instance-information --query 'InstanceInformationList[*].[InstanceId,ComputerName,PlatformType]' --output table"
+        - description: "Start an interactive session on the target instance"
+          command: "aws ssm start-session --target <instance-id>"
+
+    - from: ec2-instance
+      to: target-role
+      label: "curl IMDS"
+      description: >
+        From within the interactive SSM session, query the EC2 Instance Metadata Service
+        to retrieve the temporary AWS credentials (access key, secret key, session token)
+        for the administrative role attached to the instance.
+      hints:
+        - "Once you have a shell on the instance, there is a well-known internal endpoint that provides identity and credentials."
+        - "The instance metadata service is accessible from within the instance at 169.254.169.254."
+        - "If IMDSv2 is enabled, you need to request a session token first before querying metadata endpoints."
+        - "Query the IAM security credentials endpoint to retrieve temporary role credentials."
+        - "The credentials you retrieve are temporary STS credentials -- export them as environment variables to use from your local machine."
+      commands:
+        - description: "Get the role name from IMDS"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        - description: "Retrieve the temporary credentials for the admin role"
+          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/pl-prod-ssm-001-to-admin-ec2-role"
+        - description: "Export the credentials to your local shell and verify admin access"
+          command: "export AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token> && aws iam list-users"

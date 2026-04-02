@@ -1,0 +1,70 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:CreateLoginProfile permission scoped to the target user
+        pl-prod-iam-004-bucket-hop1, who has read access to a sensitive S3 bucket.
+
+    - id: hop1-user
+      label: "Bucket User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-hop1"
+      description: >
+        This IAM user has S3 read access to the sensitive data bucket but initially
+        has no console login profile (no password). By creating a login profile for
+        this user, you can log into the AWS Management Console as this user and
+        access the sensitive data directly via the S3 console.
+
+    - id: target-bucket
+      label: "Sensitive Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}"
+      description: >
+        This S3 bucket contains sensitive data. The hop1 user has s3:GetObject and
+        s3:ListBucket permissions on this bucket. After creating a login profile for
+        the hop1 user and logging into the console, you can read and download all
+        objects in this bucket.
+
+  edges:
+    - from: starting-principal
+      to: hop1-user
+      label: "iam:CreateLoginProfile"
+      description: >
+        Create a console login profile (password) for the target user, enabling
+        console access for a user that previously only had programmatic access.
+      hints:
+        - "You can create console passwords for other IAM users."
+        - "Look for users who have data access but no console login profile yet."
+        - "Browse to https://pathfinding.cloud/paths/iam-004 for technique details."
+      commands:
+        - description: "Create a console login profile for the target user"
+          command: "aws iam create-login-profile --user-name pl-prod-iam-004-bucket-hop1 --password 'Attacker1234!' --no-password-reset-required"
+
+    - from: hop1-user
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Log into the AWS Management Console as the hop1 user and access the sensitive
+        S3 bucket using the user's existing S3 read permissions.
+      hints:
+        - "This user has S3 access but no console password — yet."
+        - "Use the console to navigate to S3 and read the sensitive data."
+      commands:
+        - description: "List objects in the sensitive bucket (using hop1 credentials)"
+          command: "aws s3 ls s3://pl-sensitive-data-iam-004-{account_id}/"
+        - description: "Download sensitive data from the bucket"
+          command: "aws s3 cp s3://pl-sensitive-data-iam-004-{account_id}/sensitive-data.txt ."

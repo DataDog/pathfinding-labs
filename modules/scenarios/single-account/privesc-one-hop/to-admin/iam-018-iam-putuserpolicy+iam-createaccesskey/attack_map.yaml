@@ -1,0 +1,49 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-018-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PutUserPolicy and iam:CreateAccessKey permissions targeting
+        the target user, enabling a two-step lateral movement and privilege escalation attack.
+
+    - id: target-user
+      label: "Target User"
+      type: principal
+      subType: iam-user
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-018-to-admin-target-user"
+      description: >
+        This IAM user initially has minimal permissions. By attaching an inline policy
+        granting AdministratorAccess and then creating new access keys for this user,
+        you can authenticate as this user and gain full administrative control of the
+        AWS account.
+
+  edges:
+    - from: starting-user
+      to: target-user
+      label: "iam:PutUserPolicy + iam:CreateAccessKey"
+      description: >
+        First, add an inline policy granting AdministratorAccess to the target user via
+        iam:PutUserPolicy. Then create new access keys for that user via iam:CreateAccessKey.
+        Authenticate with the new credentials to operate as the target user with admin access.
+      hints:
+        - "You can modify inline policies on other IAM users."
+        - "Look for users you can both modify policies for and create credentials for."
+        - "Browse to https://pathfinding.cloud/paths/iam-018 for technique details."
+      commands:
+        - description: "Add an inline policy granting AdministratorAccess to the target user"
+          command: "aws iam put-user-policy --user-name pl-prod-iam-018-to-admin-target-user --policy-name AdminEscalation --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
+        - description: "Create new access keys for the target user"
+          command: "aws iam create-access-key --user-name pl-prod-iam-018-to-admin-target-user"
+        - description: "Verify admin access using the new credentials"
+          command: "aws iam list-users"

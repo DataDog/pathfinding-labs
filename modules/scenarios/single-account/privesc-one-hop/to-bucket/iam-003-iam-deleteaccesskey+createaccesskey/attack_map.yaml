@@ -1,0 +1,78 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-bucket-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:ListAccessKeys, iam:DeleteAccessKey, and iam:CreateAccessKey
+        permissions on the target user. The target user is already at the AWS 2-key limit,
+        so you must delete an existing key before creating a new one.
+
+    - id: target-user
+      label: "Target User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-bucket-target-user"
+      description: >
+        This IAM user has read access to the sensitive S3 bucket and already has two
+        active access keys (the AWS maximum). By deleting one of the existing keys and
+        then creating a new one, you obtain credentials that grant access to the target
+        S3 bucket containing sensitive data.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-iam-003-{account_id}-{suffix}"
+      description: >
+        This S3 bucket contains sensitive data. The target user has s3:GetObject and
+        s3:ListBucket permissions on this bucket. Once you have obtained the target
+        user's credentials, you can list and download all objects.
+
+  edges:
+    - from: starting-principal
+      to: target-user
+      label: "iam:DeleteAccessKey + iam:CreateAccessKey"
+      description: >
+        First list the target user's existing access keys to identify which one to delete.
+        Delete one key to free up a slot (AWS enforces a maximum of two access keys per user),
+        then create a new access key to obtain the target user's credentials.
+      hints:
+        - "You can manipulate access keys for other IAM users."
+        - "The target user is at the AWS 2-key limit — think about what you need to do first."
+        - "Delete an existing key to free up a slot, then create a new one."
+        - "Browse to https://pathfinding.cloud/paths/iam-003 for technique details."
+      commands:
+        - description: "List existing access keys for the target user"
+          command: "aws iam list-access-keys --user-name pl-prod-iam-003-to-bucket-target-user --output json"
+        - description: "Delete one of the existing access keys to free up a slot"
+          command: "aws iam delete-access-key --user-name pl-prod-iam-003-to-bucket-target-user --access-key-id <KEY_ID_TO_DELETE>"
+        - description: "Create a new access key for the target user"
+          command: "aws iam create-access-key --user-name pl-prod-iam-003-to-bucket-target-user --output json"
+
+    - from: target-user
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Use the newly created access key credentials to authenticate as the target user
+        and access the sensitive S3 bucket.
+      hints:
+        - "Configure the new credentials in your environment."
+        - "The target user has S3 read permissions on the sensitive bucket."
+      commands:
+        - description: "Export the new credentials"
+          command: "export AWS_ACCESS_KEY_ID=<new-key-id> AWS_SECRET_ACCESS_KEY=<new-secret-key>"
+        - description: "List contents of the sensitive S3 bucket"
+          command: "aws s3 ls s3://pl-sensitive-data-iam-003-{account_id}-{suffix}/"
+        - description: "Download the sensitive data file"
+          command: "aws s3 cp s3://pl-sensitive-data-iam-003-{account_id}-{suffix}/sensitive-data.txt /tmp/sensitive-data.txt"

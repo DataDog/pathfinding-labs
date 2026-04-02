@@ -27,7 +27,7 @@ attack_path:
     - "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-bucket-ec2-bucket-role"
     - "arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}"
 
-  summary: "starting_user → (ec2-instance-connect:SendSSHPublicKey) → EC2 instance → (IMDS credential extraction) → S3 bucket access"
+  summary: "starting_user → (ec2-instance-connect:SendSSHPublicKey) → EC2 instance → (IMDS credential extraction) → ec2_bucket_role credentials → (s3:GetObject) → sensitive bucket access"
 
 # =============================================================================
 # PERMISSIONS

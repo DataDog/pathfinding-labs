@@ -8,112 +8,27 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption`
-* **Schema Version:** 1.0.0
-* **Attack Path:** dev:starting_user → (AssumeRole) → prod:target_role (trusts :root) → admin access in prod
-* **Attack Principals:** `arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user`; `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role`
-* **Required Permissions:** `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role`
-* **Helpful Permissions:** `sts:GetCallerIdentity` (Verify current identity before and after role assumption); `iam:ListRoles` (Discover assumable roles in the target account)
+* **Schema Version:** 3.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Attack Overview
+## Objective
 
-This scenario demonstrates a critical cross-account privilege escalation vulnerability where a production administrative role trusts the entire dev account via the `:root` principal, rather than trusting specific users or roles. This represents one of the most dangerous misconfigurations in multi-account AWS environments.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-dev-xsarrt-to-admin-starting-user` IAM user in the dev account to the `pl-prod-xsarrt-to-admin-target-role` administrative role in the prod account by assuming the role via a trust policy that grants access to the entire dev account via the `:root` principal.
 
-The attack exploits an overly permissive trust policy in the prod account that trusts `arn:aws:iam::{DEV_ACCOUNT}:root` instead of specific principal ARNs. When a trust policy uses the `:root` principal, it means **ANY** principal in that account can assume the role, as long as they have `sts:AssumeRole` permission. This is far more dangerous than trusting specific users or roles.
+- **Start:** `arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role`
 
-In this scenario, a user in the dev account with `sts:AssumeRole` permission can assume the production admin role and gain full administrative access. If ANY principal in the dev account is compromised, the attacker can immediately escalate to production admin privileges. This violates the fundamental security principle that production accounts should have stricter access controls than development accounts.
+### Starting Permissions
 
-### MITRE ATT&CK Mapping
+**Required:**
+- `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role` -- allows the dev user to assume the prod admin role
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0008 - Lateral Movement
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Description**: Adversary uses valid credentials to assume cross-account roles, exploiting overly permissive :root trust policies to escalate from a lower-privileged dev account to gain administrative access in a production account
+**Helpful:**
+- `sts:GetCallerIdentity` -- verify current identity before and after role assumption
+- `iam:ListRoles` -- discover assumable roles in the target account
 
-### Principals in the attack path
-
-- `arn:aws:iam::{DEV_ACCOUNT}:user/pl-dev-xsarrt-to-admin-starting-user` (Dev account starting user with AssumeRole permission)
-- `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-xsarrt-to-admin-target-role` (Prod account admin role with :root trust policy)
-
-### Attack Path Diagram
-
-```mermaid
-graph LR
-    A[dev:pl-dev-xsarrt-to-admin-starting-user] -->|sts:AssumeRole| B[prod:pl-prod-xsarrt-to-admin-target-role]
-    B -->|:root trust allows ANY dev principal| C[Administrator Access in Prod]
-
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
-
-    classDef devAccount fill:#ffe6e6,stroke:#ff4444,stroke-width:2px,stroke-dasharray: 5 5
-    classDef prodAccount fill:#e6ffe6,stroke:#44ff44,stroke-width:2px
-
-    class A devAccount
-    class B,C prodAccount
-```
-
-### Attack Steps
-
-1. **Initial Access**: Start as `pl-dev-xsarrt-to-admin-starting-user` in the dev account (credentials provided via Terraform outputs)
-2. **Cross-Account Role Assumption**: Use `sts:AssumeRole` to assume `pl-prod-xsarrt-to-admin-target-role` in the prod account
-3. **Exploitation of :root Trust**: The role's trust policy trusts `arn:aws:iam::{DEV_ACCOUNT}:root`, allowing ANY dev principal with AssumeRole permission to assume it
-4. **Verification**: Verify administrative access in the prod account by listing IAM users or performing other admin-only operations
-
-### Scenario specific resources created
-
-| ARN | Purpose |
-| -- | -- |
-| `arn:aws:iam::{DEV_ACCOUNT}:user/pl-dev-xsarrt-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
-| `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-xsarrt-to-admin-target-role` | Prod account admin role with DANGEROUS :root trust policy |
-
-### Why :root Trust is Dangerous
-
-The key vulnerability is the trust policy format:
-
-**VULNERABLE (This Scenario):**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::{DEV_ACCOUNT}:root"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-```
-
-This trusts **ALL** principals in the dev account. Any user, role, or service in dev with `sts:AssumeRole` permission can assume this role.
-
-**SAFER (Explicit Principal Trust):**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::{DEV_ACCOUNT}:user/specific-approved-user"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-```
-
-This trusts only the specific user. Even if other dev principals are compromised, they cannot assume the role.
-
-**Impact Comparison:**
-- **:root trust**: Compromise of ANY dev principal = production admin access
-- **Explicit trust**: Compromise requires access to the SPECIFIC trusted principal
-- **:root trust**: Blast radius includes entire dev account (hundreds of potential principals)
-- **Explicit trust**: Blast radius limited to single trusted principal
-
-## Attack Lab
+## Self-hosted Lab Setup
 
 ### Prerequisites
 
@@ -137,7 +52,24 @@ plabs apply
 3. Press `space` to enable it
 4. Press `d` to deploy
 
-### Executing the automated demo_attack script
+## Attack
+
+### Scenario Specific Resources Created
+
+| ARN | Purpose |
+| -- | -- |
+| `arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
+| `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role` | Prod account admin role with DANGEROUS :root trust policy |
+
+### Guided Walkthrough
+
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
+
+[Guided Walkthrough](guided_walkthrough.md)
+
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
@@ -146,7 +78,7 @@ The script will:
 4. Verify successful cross-account privilege escalation to admin
 5. Output standardized test results for automation
 
-#### Resources created by attack script
+#### Resources Created by Attack Script
 
 - No persistent resources are created; `sts:AssumeRole` sessions are temporary and expire automatically
 
@@ -178,6 +110,8 @@ plabs cleanup root-trust-role-assumption
 2. Navigate to this scenario in the scenarios list
 3. Press `c` to run the cleanup script
 
+## Teardown
+
 ### Teardown with plabs non-interactive
 
 ```bash
@@ -192,9 +126,11 @@ plabs apply
 3. Press `space` to disable it
 4. Press `D` to destroy
 
-## Detecting Misconfiguration (CSPM)
+## Defend
 
-### What CSPM tools should detect
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
 
 A properly configured Cloud Security Posture Management (CSPM) tool should detect:
 
@@ -214,7 +150,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 3. **Permission Level**: Role has administrative or sensitive permissions
 4. **Missing Conditions**: No MFA, external ID, or IP restrictions
 
-### Prevention recommendations
+#### Prevention Recommendations
 
 - **NEVER Use :root in Trust Policies**: Always specify explicit principal ARNs (users or roles) in trust policies, never use :root
 - **Principle of Explicit Trust**: Trust specific principals by full ARN, not entire accounts
@@ -275,12 +211,12 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 - **Security Hub Integration**: Enable AWS Security Hub to receive findings about overly permissive trust policies
 - **Break-Glass Process**: For legitimate cross-account access needs, implement break-glass emergency access with approval workflows instead of standing :root trusts
 
-## Detection Abuse (CloudSIEM)
+### Detecting Abuse (CloudSIEM)
 
-### CloudTrail events to monitor
+#### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Cross-account role assumption; alert when source account ID differs from the target account ID, especially when the assumed role has administrative permissions
+- `STS: AssumeRole` -- Cross-account role assumption; alert when source account ID differs from the target account ID, especially when the assumed role has administrative permissions
 
-### Detonation logs
+#### Detonation logs
 
 _Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._

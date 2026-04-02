@@ -1,0 +1,100 @@
+attackMap:
+  nodes:
+    - id: user1
+      label: "Direct Access User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-di-user1"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has direct s3:GetObject and s3:ListBucket permissions on the
+        sensitive S3 bucket — no role assumption required.
+
+    - id: user2
+      label: "Indirect Access User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-di-user2"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has sts:AssumeRole permission on pl-prod-rbr-di-role3. By assuming
+        that role, you inherit its S3 bucket permissions and can access the same sensitive
+        bucket as user1 — demonstrating an indirect access path.
+
+    - id: intermediate-role
+      label: "S3 Access Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3"
+      description: >
+        This IAM role has s3:GetObject and s3:ListBucket permissions on the sensitive
+        S3 bucket. Its trust policy allows pl-prod-rbr-di-user2 to assume it. Once
+        assumed, the caller inherits these S3 permissions and gains bucket access.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-di-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket. Both pl-prod-rbr-di-user1 (directly)
+        and pl-prod-rbr-di-user2 (via role assumption through pl-prod-rbr-di-role3)
+        can list and read objects from this bucket. A complete reverse blast radius
+        query should return all three principals as having access.
+
+  edges:
+    - from: user1
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        User1 has direct IAM permissions to list and read objects from the sensitive
+        S3 bucket. No intermediate role assumption is required.
+      hints:
+        - "You have direct access to an S3 bucket. Try listing or reading its contents."
+        - "Check what S3 permissions this user has directly attached."
+        - "Browse to https://pathfinding.cloud for technique details."
+      commands:
+        - description: "List bucket contents as user1"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket as user1"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/test-data.txt -"
+
+    - from: user2
+      to: intermediate-role
+      label: "sts:AssumeRole"
+      description: >
+        User2 assumes pl-prod-rbr-di-role3, which has S3 bucket permissions. This
+        grants user2 temporary credentials scoped to that role's permissions.
+      hints:
+        - "You cannot access the S3 bucket directly. Look for other principals you can act as."
+        - "Check what roles this user is permitted to assume."
+        - "Browse to https://pathfinding.cloud for technique details."
+      commands:
+        - description: "Assume the intermediate role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3 --role-session-name rbr-test"
+
+    - from: intermediate-role
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        pl-prod-rbr-di-role3 has the same S3 bucket permissions as user1. Using the
+        temporary credentials from the assumed role, user2 can now list and read
+        objects from the sensitive bucket.
+      commands:
+        - description: "List bucket contents using assumed role credentials"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using assumed role credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/test-data.txt -"

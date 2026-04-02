@@ -1,0 +1,80 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user can assume the starting role, which has iam:AttachRolePolicy
+        permission scoped to itself, enabling self-escalation to S3 bucket access.
+
+    - id: starting-role
+      label: "Starting Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-bucket-starting-role"
+      description: >
+        This IAM role has iam:AttachRolePolicy permission scoped to its own ARN. This
+        means the role can attach any managed policy to itself, including policies that
+        grant access to sensitive S3 buckets. By attaching a bucket access policy, the
+        role escalates its own privileges and gains access to the target bucket.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-iam-009-to-bucket-{account_id}"
+      description: >
+        This S3 bucket contains sensitive data. After the starting role attaches a
+        bucket access policy to itself, it can read and download all objects from
+        this bucket, achieving the goal of unauthorized data access.
+
+  edges:
+    - from: starting-user
+      to: starting-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes the starting role to obtain temporary credentials
+        with the iam:AttachRolePolicy permission.
+      hints:
+        - "You can assume roles from this user. Look for roles this user has permission to assume."
+        - "The role you can assume has permissions that allow it to modify its own policies."
+        - "Browse to https://pathfinding.cloud/paths/iam-009 for technique details."
+      commands:
+        - description: "Assume the starting role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-bucket-starting-role --role-session-name escalation-session"
+
+    - from: starting-role
+      to: starting-role
+      label: "iam:AttachRolePolicy (self)"
+      description: >
+        The starting role uses its iam:AttachRolePolicy permission to attach a
+        managed S3 access policy to itself, escalating its own privileges.
+      hints:
+        - "This role can modify its own IAM policies. What could you attach to gain access to the target?"
+        - "Look for managed policies that grant S3 access and attach one to this role."
+        - "Use iam:AttachRolePolicy with the role's own ARN as the resource."
+      commands:
+        - description: "Attach the bucket access policy to the current role"
+          command: "aws iam attach-role-policy --role-name pl-prod-iam-009-to-bucket-starting-role --policy-arn arn:aws:iam::{account_id}:policy/pl-prod-iam-009-to-bucket-access-policy"
+
+    - from: starting-role
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        With the bucket access policy now attached, the role can list and read
+        all objects in the target S3 bucket, accessing sensitive data.
+      commands:
+        - description: "List objects in the target bucket"
+          command: "aws s3 ls s3://pl-prod-iam-009-to-bucket-{account_id}"
+        - description: "Download sensitive data from the bucket"
+          command: "aws s3 cp s3://pl-prod-iam-009-to-bucket-{account_id}/sensitive-data.txt ."

