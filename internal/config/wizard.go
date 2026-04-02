@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/v2"
 	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/ini.v1"
 )
