@@ -10,19 +10,42 @@ import (
 	"strings"
 )
 
+// RunnerOption configures a Runner.
+type RunnerOption func(*Runner)
+
+// WithEnv adds extra environment variables (in KEY=VALUE form) that are appended
+// to the cleaned base environment for every terraform subprocess.
+func WithEnv(env []string) RunnerOption {
+	return func(r *Runner) {
+		r.extraEnv = append(r.extraEnv, env...)
+	}
+}
+
 // Runner executes terraform commands
 type Runner struct {
 	tfPath    string
 	workDir   string
 	installer *Installer
+	extraEnv  []string // additional KEY=VALUE pairs appended after cleanEnv()
 }
 
 // NewRunner creates a new terraform runner
-func NewRunner(binDir, workDir string) *Runner {
-	return &Runner{
+func NewRunner(binDir, workDir string, opts ...RunnerOption) *Runner {
+	r := &Runner{
 		workDir:   workDir,
 		installer: NewInstaller(binDir),
 	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
+}
+
+// commandEnv returns the environment for terraform subprocesses: the clean base
+// environment with any caller-supplied extra variables appended.
+func (r *Runner) commandEnv() []string {
+	env := cleanEnv()
+	return append(env, r.extraEnv...)
 }
 
 // ensureTerraform makes sure terraform is available and sets tfPath
@@ -48,6 +71,7 @@ func (r *Runner) Init() error {
 
 	cmd := exec.Command(r.tfPath, "init")
 	cmd.Dir = r.workDir
+	cmd.Env = r.commandEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -63,6 +87,7 @@ func (r *Runner) Plan() error {
 
 	cmd := exec.Command(r.tfPath, "plan")
 	cmd.Dir = r.workDir
+	cmd.Env = r.commandEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -83,6 +108,7 @@ func (r *Runner) Apply(autoApprove bool) error {
 
 	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
+	cmd.Env = r.commandEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -103,6 +129,7 @@ func (r *Runner) ApplyTarget(target string, autoApprove bool) error {
 
 	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
+	cmd.Env = r.commandEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -123,6 +150,7 @@ func (r *Runner) Destroy(autoApprove bool) error {
 
 	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
+	cmd.Env = r.commandEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -180,7 +208,7 @@ func (r *Runner) OutputJSON() (string, error) {
 
 	cmd := exec.Command(r.tfPath, "output", "-json")
 	cmd.Dir = r.workDir
-	cmd.Env = cleanEnv()
+	cmd.Env = r.commandEnv()
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -234,7 +262,7 @@ func (r *Runner) StateList() ([]string, error) {
 
 	cmd := exec.Command(r.tfPath, "state", "list")
 	cmd.Dir = r.workDir
-	cmd.Env = cleanEnv()
+	cmd.Env = r.commandEnv()
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -317,7 +345,7 @@ func (r *Runner) GetModuleResources(moduleName string) ([]string, error) {
 	// Run terraform show -json to get full state with attributes
 	cmd := exec.Command(r.tfPath, "show", "-json")
 	cmd.Dir = r.workDir
-	cmd.Env = cleanEnv()
+	cmd.Env = r.commandEnv()
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -338,7 +366,7 @@ func (r *Runner) GetAllModuleResources() (map[string][]string, error) {
 	// Run terraform show -json to get full state with attributes
 	cmd := exec.Command(r.tfPath, "show", "-json")
 	cmd.Dir = r.workDir
-	cmd.Env = cleanEnv()
+	cmd.Env = r.commandEnv()
 
 	var out bytes.Buffer
 	cmd.Stdout = &out

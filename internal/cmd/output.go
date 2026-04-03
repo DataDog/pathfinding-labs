@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
@@ -93,6 +94,20 @@ func runOutput(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
+	// Merge addon outputs under "addon" key if an addon is configured and initialised
+	cfg, _ := config.Load()
+	if cfg != nil {
+		addon := buildAddon(cfg)
+		if addon != nil && addon.IsInitialized() {
+			addonVals, err := addon.OutputValues()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not read addon outputs: %v\n", err)
+			} else {
+				block = mergeAddonOutputs(block, addonVals)
+			}
+		}
+	}
+
 	var data []byte
 	if outputRaw {
 		data, err = json.Marshal(block)
@@ -105,4 +120,18 @@ func runOutput(cmd *cobra.Command, args []string) error {
 
 	fmt.Println(string(data))
 	return nil
+}
+
+// mergeAddonOutputs returns a copy of block with addonVals nested under the "addon" key.
+// If addonVals is empty, block is returned unchanged.
+func mergeAddonOutputs(block map[string]any, addonVals map[string]any) map[string]any {
+	if len(addonVals) == 0 {
+		return block
+	}
+	merged := make(map[string]any, len(block)+1)
+	for k, v := range block {
+		merged[k] = v
+	}
+	merged["addon"] = addonVals
+	return merged
 }
