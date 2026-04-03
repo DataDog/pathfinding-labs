@@ -1121,7 +1121,7 @@ func (m *Model) executePlan() tea.Cmd {
 func (m *Model) runDemo() tea.Cmd {
 	selected := m.scenariosPane.Selected()
 	if selected == nil || !selected.Deployed {
-		m.overlay.Show(OverlayError, "Run Demo", "Scenario must be deployed first.\n\nUse [d] to deploy enabled scenarios.")
+		m.overlay.Show(OverlayError, "Run Demo", "Scenario must be deployed first.\n\nUse [a] to apply enabled scenarios.")
 		return nil
 	}
 
@@ -1370,7 +1370,7 @@ func (m *Model) executeEnableAll() tea.Cmd {
 	if skippedCrossAccount > 0 {
 		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
 	}
-	msg += "\n\nPress [d] to deploy."
+	msg += "\n\nPress [a] to apply."
 	m.overlay.Show(OverlayInfo, "Enable All", msg)
 	return nil
 }
@@ -1442,7 +1442,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
 	}
 	if enabledCount > 0 {
-		msg += "\n\nPress [d] to deploy."
+		msg += "\n\nPress [a] to apply."
 	}
 	m.overlay.Show(OverlayInfo, "Enable Pattern", msg)
 	return nil
