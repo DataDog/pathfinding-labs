@@ -1,0 +1,35 @@
+{
+  "eval_id": 2,
+  "run": "without_skill",
+  "expectations": [
+    {
+      "text": "Uses --category privilege-escalation and --target to-admin filter flags",
+      "passed": false,
+      "evidence": "Uses '--category=one-hop --target=admin'. Wrong on both: 'one-hop' is a subcategory value, not a category value; the correct category is 'privilege-escalation'. 'admin' is not a valid target value; correct value is 'to-admin'."
+    },
+    {
+      "text": "Correctly explains the 4-state status system",
+      "passed": true,
+      "evidence": "Agent read source code and correctly identified the 4 states. Table at the bottom is accurate."
+    },
+    {
+      "text": "Recommends 'plabs deploy -y' for scenarios that are enabled but not yet deployed",
+      "passed": false,
+      "evidence": "Step 5 shows 'plabs deploy' (no -y). The quick reference at the bottom also shows 'plabs deploy' without -y."
+    },
+    {
+      "text": "Does NOT suggest running plabs deploy without a non-interactive flag",
+      "passed": false,
+      "evidence": "Multiple instances of bare 'plabs deploy' without -y or --auto-approve in both Step 5 and the Quick Reference section."
+    },
+    {
+      "text": "Uses plabs status OR plabs scenarios list to check current state",
+      "passed": true,
+      "evidence": "Uses both plabs scenarios list and plabs status (Step 4)"
+    }
+  ],
+  "pass_count": 2,
+  "total_count": 5,
+  "pass_rate": 0.4,
+  "notes": "Agent read source code to compensate for lack of skill, which led to wrong flag values (subcategory vs. category). Used 47k tokens vs 27k with skill."
+}

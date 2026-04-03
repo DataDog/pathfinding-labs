@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "eval_name": "eval-list-status-guidance",
+  "prompt": "List all the privilege-escalation to-admin scenarios that are currently deployed and ready to demo. For any that are enabled but not yet deployed, tell me what I need to do.",
+  "assertions": [
+    {
+      "name": "uses_category_and_target_flags",
+      "description": "Uses --category privilege-escalation and --target to-admin filter flags (or equivalent)"
+    },
+    {
+      "name": "explains_4_state_status",
+      "description": "Correctly explains the 4-state status system (deployed+enabled=green/ready, enabled+not-deployed=yellow/pending, etc.)"
+    },
+    {
+      "name": "correct_action_for_pending",
+      "description": "Recommends 'plabs deploy -y' for scenarios that are enabled but not yet deployed"
+    },
+    {
+      "name": "no_deploy_without_y",
+      "description": "Does NOT suggest running plabs deploy without a non-interactive flag (-y or --auto-approve)"
+    },
+    {
+      "name": "uses_plabs_status_or_list",
+      "description": "Uses plabs status OR plabs scenarios list to check current state"
+    }
+  ]
+}

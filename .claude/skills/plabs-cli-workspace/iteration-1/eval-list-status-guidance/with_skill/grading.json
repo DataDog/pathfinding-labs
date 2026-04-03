@@ -1,0 +1,34 @@
+{
+  "eval_id": 2,
+  "run": "with_skill",
+  "expectations": [
+    {
+      "text": "Uses --category privilege-escalation and --target to-admin filter flags",
+      "passed": true,
+      "evidence": "Step 3 shows 'plabs scenarios list --category privilege-escalation --target to-admin' with correct flag values"
+    },
+    {
+      "text": "Correctly explains the 4-state status system",
+      "passed": true,
+      "evidence": "Step 2 shows a full table: green=enabled+deployed, yellow=enabled+not deployed, red=deployed+disabled, dim=disabled+not deployed"
+    },
+    {
+      "text": "Recommends 'plabs deploy -y' for scenarios that are enabled but not yet deployed",
+      "passed": true,
+      "evidence": "Step 6 for yellow scenarios: 'plabs deploy -y' with explanation that -y suppresses the prompt"
+    },
+    {
+      "text": "Does NOT suggest running plabs deploy without a non-interactive flag",
+      "passed": true,
+      "evidence": "Every instance of plabs deploy includes -y. plabs plan is suggested for dry run, not bare plabs deploy."
+    },
+    {
+      "text": "Uses plabs status OR plabs scenarios list to check current state",
+      "passed": true,
+      "evidence": "Both plabs status (Step 2) and plabs scenarios list (Step 3, 4) are used appropriately"
+    }
+  ],
+  "pass_count": 5,
+  "total_count": 5,
+  "pass_rate": 1.0
+}

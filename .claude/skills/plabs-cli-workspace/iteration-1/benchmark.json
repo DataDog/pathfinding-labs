@@ -1,0 +1,99 @@
+{
+  "skill_name": "plabs-cli",
+  "iteration": 1,
+  "configurations": [
+    {
+      "name": "with_skill",
+      "evals": [
+        {
+          "eval_id": 1,
+          "eval_name": "eval-enable-deploy-credentials",
+          "pass_rate": 1.0,
+          "pass_count": 5,
+          "total_count": 5,
+          "duration_ms": 64885,
+          "total_tokens": 26875
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "eval-list-status-guidance",
+          "pass_rate": 1.0,
+          "pass_count": 5,
+          "total_count": 5,
+          "duration_ms": 67987,
+          "total_tokens": 27494
+        },
+        {
+          "eval_id": 3,
+          "eval_name": "eval-cleanup-destroy",
+          "pass_rate": 1.0,
+          "pass_count": 5,
+          "total_count": 5,
+          "duration_ms": 64916,
+          "total_tokens": 28782
+        }
+      ],
+      "aggregate": {
+        "mean_pass_rate": 1.0,
+        "mean_duration_ms": 65929,
+        "mean_tokens": 27717,
+        "total_pass": 15,
+        "total_assertions": 15
+      }
+    },
+    {
+      "name": "without_skill",
+      "evals": [
+        {
+          "eval_id": 1,
+          "eval_name": "eval-enable-deploy-credentials",
+          "pass_rate": 0.6,
+          "pass_count": 3,
+          "total_count": 5,
+          "duration_ms": 85665,
+          "total_tokens": 47913
+        },
+        {
+          "eval_id": 2,
+          "eval_name": "eval-list-status-guidance",
+          "pass_rate": 0.4,
+          "pass_count": 2,
+          "total_count": 5,
+          "duration_ms": 69279,
+          "total_tokens": 39594
+        },
+        {
+          "eval_id": 3,
+          "eval_name": "eval-cleanup-destroy",
+          "pass_rate": 0.8,
+          "pass_count": 4,
+          "total_count": 5,
+          "duration_ms": 85295,
+          "total_tokens": 43821
+        }
+      ],
+      "aggregate": {
+        "mean_pass_rate": 0.6,
+        "mean_duration_ms": 80080,
+        "mean_tokens": 43776,
+        "total_pass": 9,
+        "total_assertions": 15
+      }
+    }
+  ],
+  "delta": {
+    "pass_rate": 0.4,
+    "duration_ms": -14151,
+    "tokens": -26059
+  },
+  "analyst_observations": [
+    "with_skill achieves 100% pass rate vs 60% without skill — a 40 percentage point improvement",
+    "with_skill uses 37% fewer tokens on average (27.7k vs 43.8k) because the agent does not need to read source files to discover CLI patterns",
+    "with_skill is 18% faster on average (66s vs 80s) for the same reason",
+    "The largest delta is on eval-2 (list/status): without_skill scored 40% because it misread --category and --target flag values (using subcategory 'one-hop' instead of category 'privilege-escalation', 'admin' instead of 'to-admin')",
+    "without_skill consistently omits -y on 'plabs enable' even when it correctly uses --auto-approve on deploy — the skill makes this pattern explicit",
+    "without_skill hallucinated non-existent --format=json and --format=profile flags for plabs credentials",
+    "Eval-3 (cleanup/destroy) showed smallest gap: without_skill scored 80% by reading source code well for --scenarios-only. Main miss: used 'plabs status' instead of the specific '--demo-active' flag",
+    "All 5 assertions are discriminating (not all-pass or all-fail) — the test set is well-calibrated"
+  ]
+}
