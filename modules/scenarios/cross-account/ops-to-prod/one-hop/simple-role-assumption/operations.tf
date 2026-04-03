@@ -25,11 +25,20 @@ resource "aws_iam_policy" "assume_role_star_policy" {
     Version = "2012-10-17",
     Statement = [
       {
+        Sid      = "RequiredForExploitationAssumeRole"
         Effect   = "Allow",
         Action   = "sts:AssumeRole",
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
-
     ]
   })
 }

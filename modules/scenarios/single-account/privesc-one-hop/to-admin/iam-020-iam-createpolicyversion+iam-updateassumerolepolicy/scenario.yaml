@@ -33,28 +33,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreatePolicyVersion"
-      resource: "arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy"
-
-    - permission: "iam:UpdateAssumeRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role"
+    - principal: "pl-prod-iam-020-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreatePolicyVersion"
+          resource: "arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy"
+        - permission: "iam:UpdateAssumeRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role"
 
   helpful:
-    - permission: "iam:GetPolicy"
-      purpose: "Get policy ARN and current version information"
-
-    - permission: "iam:GetPolicyVersion"
-      purpose: "View current policy document and version details"
-
-    - permission: "iam:ListPolicyVersions"
-      purpose: "List all policy versions to verify new version creation"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles that have the target policy attached"
-
-    - permission: "iam:GetRole"
-      purpose: "View role details, trust policy, and attached policies"
-
+    - principal: "pl-prod-iam-020-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetPolicy"
+          purpose: "Get policy ARN and current version information"
+        - permission: "iam:GetPolicyVersion"
+          purpose: "View current policy document and version details"
+        - permission: "iam:ListPolicyVersions"
+          purpose: "List all policy versions to verify new version creation"
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles that have the target policy attached"
+        - permission: "iam:GetRole"
+          purpose: "View role details, trust policy, and attached policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

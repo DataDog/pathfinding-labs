@@ -33,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "codebuild:StartBuild"
-      resource: "*"
+    - principal: "pl-prod-codebuild-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "codebuild:StartBuild"
+          resource: "*"
 
   helpful:
-    - permission: "codebuild:ListProjects"
-      purpose: "Discover existing CodeBuild projects with privileged roles"
-
-    - permission: "codebuild:BatchGetProjects"
-      purpose: "View project details including service role ARN"
-
-    - permission: "codebuild:BatchGetBuilds"
-      purpose: "Monitor build execution status and verify success"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after escalation"
-
+    - principal: "pl-prod-codebuild-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "codebuild:ListProjects"
+          purpose: "Discover existing CodeBuild projects with privileged roles"
+        - permission: "codebuild:BatchGetProjects"
+          purpose: "View project details including service role ARN"
+        - permission: "codebuild:BatchGetBuilds"
+          purpose: "Monitor build execution status and verify success"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

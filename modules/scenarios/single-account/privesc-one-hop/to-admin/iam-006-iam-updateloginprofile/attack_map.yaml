@@ -35,9 +35,12 @@ attackMap:
         Reset the console password for the admin user, enabling console login
         as that user with full administrative access to the AWS account.
       hints:
-        - "You can modify authentication credentials for other IAM users."
-        - "Look for users who already have a console login profile (password) configured."
-        - "Browse to https://pathfinding.cloud/paths/iam-006 for technique details."
+        - "Your starting principal has a permission that lets it modify authentication credentials for other IAM users -- specifically their console login passwords."
+        - "Use iam:ListUsers to discover which users exist in the account. Look for names that suggest elevated privileges."
+        - "Use iam:GetLoginProfile on a candidate user to confirm they already have a console password configured -- UpdateLoginProfile only works if a login profile already exists."
+        - "Use iam:GetUser or iam:ListAttachedUserPolicies to confirm the target user has administrative permissions before you reset their password."
+        - "Once you know which admin user has an existing login profile, update their password using the UpdateLoginProfile API -- use --no-password-reset-required so the change doesn't force a prompt that reveals the intrusion."
+        - "Browse to https://pathfinding.cloud/paths/iam-006 for technique details and full walkthrough."
       commands:
         - description: "Reset the console password for the admin user"
           command: "aws iam update-login-profile --user-name pl-prod-iam-006-to-admin-target-user --password 'NewP@ssw0rd123!' --no-password-reset-required"

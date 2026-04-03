@@ -32,24 +32,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role"
+    - principal: "pl-prod-lambda-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role"
 
-    - permission: "lambda:CreateFunction"
-      resource: "*"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
 
-    - permission: "lambda:InvokeFunction"
-      resource: "*"
+        - permission: "lambda:InvokeFunction"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
+    - principal: "pl-prod-lambda-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
 
-    - permission: "lambda:GetFunction"
-      purpose: "Verify function creation"
+        - permission: "lambda:GetFunction"
+          purpose: "Verify function creation"
 
-    - permission: "lambda:DeleteFunction"
-      purpose: "Clean up attack artifacts"
+        - permission: "lambda:DeleteFunction"
+          purpose: "Clean up attack artifacts"
 
 # =============================================================================
 # MITRE ATT&CK

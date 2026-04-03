@@ -147,6 +147,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # [OBSERVATION] Step 2: Get account ID using readonly credentials
 echo -e "${YELLOW}Step 2: Getting account ID${NC}"
 use_readonly_creds
@@ -308,6 +316,9 @@ else
 fi
 
 echo -e "${GREEN}✅ Path 2 Complete: user2 can access bucket via role3${NC}\n"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "${GREEN}========================================${NC}"

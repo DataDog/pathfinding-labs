@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreateLoginProfile"
-      resource: "arn:aws:iam::*:user/pl-prod-iam-004-to-admin-target-user"
+    - principal: "pl-prod-iam-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreateLoginProfile"
+          resource: "arn:aws:iam::*:user/pl-prod-iam-004-to-admin-target-user"
 
   helpful:
-    - permission: "iam:ListUsers"
-      purpose: "Discover users without login profiles"
-
-    - permission: "iam:GetUser"
-      purpose: "View user details"
-
-    - permission: "iam:GetLoginProfile"
-      purpose: "Check if user already has login profile"
-
+    - principal: "pl-prod-iam-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover users without login profiles"
+        - permission: "iam:GetUser"
+          purpose: "View user details"
+        - permission: "iam:GetLoginProfile"
+          purpose: "Check if user already has login profile"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

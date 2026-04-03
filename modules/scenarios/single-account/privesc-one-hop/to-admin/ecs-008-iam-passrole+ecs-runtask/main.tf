@@ -56,7 +56,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -67,10 +67,25 @@ resource "aws_iam_user_policy" "starting_user_required" {
         ]
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationECSRunTask"
         Effect = "Allow"
         Action = [
           "ecs:RunTask"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListTaskDefinitions",
+          "ecs:DescribeTasks",
+          "ecs:ListClusters",
+          "ecs:StopTask",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "iam:DetachUserPolicy",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }

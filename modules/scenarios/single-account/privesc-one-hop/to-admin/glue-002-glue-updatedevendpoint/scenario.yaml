@@ -32,16 +32,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "glue:UpdateDevEndpoint"
-      resource: "*"
+    - principal: "pl-prod-glue-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:UpdateDevEndpoint"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetDevEndpoint"
-      purpose: "Retrieve endpoint details including address for SSH connection"
-
-    - permission: "glue:GetDevEndpoints"
-      purpose: "List existing endpoints to identify targets with privileged roles"
-
+    - principal: "pl-prod-glue-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetDevEndpoint"
+          purpose: "Retrieve endpoint details including address for SSH connection"
+        - permission: "glue:GetDevEndpoints"
+          purpose: "List existing endpoints to identify targets with privileged roles"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

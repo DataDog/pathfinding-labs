@@ -33,40 +33,36 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-cloudformation-003-to-admin-execution-role"
-
-    - permission: "cloudformation:CreateStackSet"
-      resource: "*"
-
-    - permission: "cloudformation:CreateStackInstances"
-      resource: "*"
+    - principal: "pl-prod-cloudformation-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-cloudformation-003-to-admin-execution-role"
+        - permission: "cloudformation:CreateStackSet"
+          resource: "*"
+        - permission: "cloudformation:CreateStackInstances"
+          resource: "*"
 
   helpful:
-    - permission: "cloudformation:DescribeStackSet"
-      purpose: "Monitor StackSet creation progress"
-
-    - permission: "cloudformation:DescribeStackSetOperation"
-      purpose: "Check StackSet operation status"
-
-    - permission: "cloudformation:ListStackInstances"
-      purpose: "List stack instances for cleanup"
-
-    - permission: "cloudformation:DeleteStackInstances"
-      purpose: "Delete stack instances during cleanup"
-
-    - permission: "cloudformation:DeleteStackSet"
-      purpose: "Clean up attack artifacts"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the escalated role was created"
-
-    - permission: "sts:AssumeRole"
-      purpose: "Assume the escalated role for admin access"
-
+    - principal: "pl-prod-cloudformation-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeStackSet"
+          purpose: "Monitor StackSet creation progress"
+        - permission: "cloudformation:DescribeStackSetOperation"
+          purpose: "Check StackSet operation status"
+        - permission: "cloudformation:ListStackInstances"
+          purpose: "List stack instances for cleanup"
+        - permission: "cloudformation:DeleteStackInstances"
+          purpose: "Delete stack instances during cleanup"
+        - permission: "cloudformation:DeleteStackSet"
+          purpose: "Clean up attack artifacts"
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "iam:GetRole"
+          purpose: "Verify the escalated role was created"
+        - permission: "sts:AssumeRole"
+          purpose: "Assume the escalated role for admin access"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

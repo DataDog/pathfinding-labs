@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:UpdateLoginProfile"
-      resource: "arn:aws:iam::*:user/pl-prod-iam-006-to-admin-target-user"
+    - principal: "pl-prod-iam-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:UpdateLoginProfile"
+          resource: "arn:aws:iam::*:user/pl-prod-iam-006-to-admin-target-user"
 
   helpful:
-    - permission: "iam:ListUsers"
-      purpose: "Discover users with login profiles"
-
-    - permission: "iam:GetUser"
-      purpose: "View user details"
-
-    - permission: "iam:GetLoginProfile"
-      purpose: "Verify user has login profile"
-
+    - principal: "pl-prod-iam-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover users with login profiles"
+        - permission: "iam:GetUser"
+          purpose: "View user details"
+        - permission: "iam:GetLoginProfile"
+          purpose: "Verify user has login profile"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

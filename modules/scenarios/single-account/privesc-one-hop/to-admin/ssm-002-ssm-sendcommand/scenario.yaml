@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ssm:SendCommand"
-      resource: "*"
+    - principal: "pl-prod-ssm-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:SendCommand"
+          resource: "*"
 
   helpful:
-    - permission: "ssm:ListCommands"
-      purpose: "Track command execution status during demo"
-
-    - permission: "ssm:ListCommandInvocations"
-      purpose: "Retrieve command output containing extracted credentials"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover target EC2 instances with privileged roles"
-
+    - principal: "pl-prod-ssm-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:ListCommands"
+          purpose: "Track command execution status during demo"
+        - permission: "ssm:ListCommandInvocations"
+          purpose: "Retrieve command output containing extracted credentials"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover target EC2 instances with privileged roles"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -80,7 +80,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "coreAttackPermissions"
+        Sid    = "RequiredForExploitationAirflow"
         Effect = "Allow"
         Action = [
           "airflow:UpdateEnvironment",
@@ -90,7 +90,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
       },
       {
         # MWAA validates these EC2 permissions even when not changing network config
-        Sid    = "mwaaRequiredEc2Permissions"
+        Sid    = "RequiredForExploitationEc2Validation"
         Effect = "Allow"
         Action = [
           "ec2:DescribeSubnets",
@@ -101,10 +101,20 @@ resource "aws_iam_user_policy" "starting_user_required" {
       },
       {
         # MWAA validates S3 encryption config
-        Sid    = "mwaaRequiredS3Permissions"
+        Sid    = "RequiredForExploitationS3Validation"
         Effect = "Allow"
         Action = [
           "s3:GetEncryptionConfiguration"
+        ]
+        Resource = "*"
+      },
+      {
+        # Helpful for observing environment status during the attack and verifying the result
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "airflow:GetEnvironment",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }

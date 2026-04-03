@@ -23,7 +23,7 @@ attackMap:
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-004-to-admin-starting-role"
       description: >
         This IAM role has iam:CreateLoginProfile permission on the target admin user.
-        An admin user without a login profile is a silent target — by setting a console
+        An admin user without a login profile is a silent target -- by setting a console
         password, you gain interactive AWS Management Console access with their permissions.
 
     - id: target-user
@@ -45,8 +45,10 @@ attackMap:
         Assume the starting role to obtain credentials that include iam:CreateLoginProfile
         permission on the target admin user.
       hints:
-        - "You can assume a role from this user."
-        - "Look for roles this user can assume and what permissions those roles have."
+        - "Start by confirming your identity and examining what permissions your starting user has."
+        - "This user cannot do much directly -- look for roles it is trusted to assume."
+        - "Use iam:ListRoles or inspect the trust policies of roles in the account to find assumable roles."
+        - "Once you identify a role this user can assume, look at what permissions that role grants."
         - "Browse to https://pathfinding.cloud/paths/iam-004 for technique details."
       commands:
         - description: "Assume the starting role"
@@ -60,9 +62,12 @@ attackMap:
         existing login profile, so this action succeeds and grants console access with
         AdministratorAccess privileges.
       hints:
-        - "This role can manipulate credentials for other IAM users."
-        - "Look for admin users that do not yet have a console login profile."
-        - "Use iam:CreateLoginProfile to set a password on the target user."
+        - "Now that you hold the role, review its attached policies to understand what IAM actions it can perform."
+        - "Use iam:ListUsers to enumerate all users in the account and identify those with elevated permissions."
+        - "Use iam:GetLoginProfile on each admin-looking user to check whether they already have a console password set."
+        - "A user with AdministratorAccess but no login profile is a silent target -- any role that can call iam:CreateLoginProfile on that user can grant console access."
+        - "Create a login profile with a password you control and the --no-password-reset-required flag to avoid being prompted to change it on first login."
+        - "Browse to https://pathfinding.cloud/paths/iam-004 for technique details."
       commands:
         - description: "Create a console login profile for the admin user"
           command: "aws iam create-login-profile --user-name pl-prod-iam-004-to-admin-target-user --password 'AttackP@ssw0rd!' --no-password-reset-required"

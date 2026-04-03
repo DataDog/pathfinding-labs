@@ -32,31 +32,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "*"
-
-    - permission: "glue:CreateJob"
-      resource: "*"
-
-    - permission: "glue:CreateTrigger"
-      resource: "*"
+    - principal: "pl-prod-glue-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "*"
+        - permission: "glue:CreateJob"
+          resource: "*"
+        - permission: "glue:CreateTrigger"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetJob"
-      purpose: "Retrieve job details and verify configuration"
-
-    - permission: "glue:GetTrigger"
-      purpose: "Monitor trigger state and verify activation"
-
-    - permission: "glue:GetJobRun"
-      purpose: "Get details about a specific job run"
-
-    - permission: "glue:GetJobRuns"
-      purpose: "List job runs to monitor execution status"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after privilege escalation"
-
+    - principal: "pl-prod-glue-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetJob"
+          purpose: "Retrieve job details and verify configuration"
+        - permission: "glue:GetTrigger"
+          purpose: "Monitor trigger state and verify activation"
+        - permission: "glue:GetJobRun"
+          purpose: "Get details about a specific job run"
+        - permission: "glue:GetJobRuns"
+          purpose: "List job runs to monitor execution status"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after privilege escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

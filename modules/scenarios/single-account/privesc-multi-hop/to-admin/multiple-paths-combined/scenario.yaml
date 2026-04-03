@@ -32,28 +32,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/*"
-
-    - permission: "ec2:RunInstances"
-      resource: "*"
-
-    - permission: "lambda:CreateFunction"
-      resource: "*"
-
-    - permission: "cloudformation:CreateStack"
-      resource: "*"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/*"
+        - permission: "ec2:RunInstances"
+          resource: "*"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
+        - permission: "cloudformation:CreateStack"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Verify EC2 escalation path"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "Verify Lambda escalation path"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Verify EC2 escalation path"
+        - permission: "lambda:ListFunctions"
+          purpose: "Verify Lambda escalation path"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

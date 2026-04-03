@@ -33,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "lambda:UpdateFunctionCode"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
+    - principal: "pl-prod-lambda-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
 
   helpful:
-    - permission: "lambda:GetFunction"
-      purpose: "Discover Lambda function details including handler name and execution role"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "Discover available Lambda functions to target"
-
-    - permission: "iam:GetRole"
-      purpose: "View Lambda execution role permissions to identify high-value targets"
-
+    - principal: "pl-prod-lambda-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:GetFunction"
+          purpose: "Discover Lambda function details including handler name and execution role"
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover available Lambda functions to target"
+        - permission: "iam:GetRole"
+          purpose: "View Lambda execution role permissions to identify high-value targets"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

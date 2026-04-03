@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-bucket-starting-role"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-bucket-starting-role"
 
   helpful:
-    - permission: "iam:ListAttachedRolePolicies"
-      purpose: "List managed policies attached to the role"
-
-    - permission: "iam:ListPolicies"
-      purpose: "Discover available managed policies"
-
-    - permission: "s3:ListBucket"
-      purpose: "Verify bucket access after escalation"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListAttachedRolePolicies"
+          purpose: "List managed policies attached to the role"
+        - permission: "iam:ListPolicies"
+          purpose: "Discover available managed policies"
+        - permission: "s3:ListBucket"
+          purpose: "Verify bucket access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

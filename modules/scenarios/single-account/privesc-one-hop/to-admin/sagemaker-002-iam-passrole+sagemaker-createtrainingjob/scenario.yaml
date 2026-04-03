@@ -34,31 +34,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sagemaker-002-to-admin-passable-role"
-
-    - permission: "sagemaker:CreateTrainingJob"
-      resource: "*"
-
-    - permission: "s3:PutObject"
-      resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
-
-    - permission: "s3:GetObject"
-      resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
+    - principal: "pl-prod-sagemaker-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-sagemaker-002-to-admin-passable-role"
+        - permission: "sagemaker:CreateTrainingJob"
+          resource: "*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify role has administrative permissions"
-
-    - permission: "sagemaker:DescribeTrainingJob"
-      purpose: "Monitor training job status and execution"
-
-    - permission: "s3:ListBucket"
-      purpose: "Verify S3 bucket access and list contents"
-
+    - principal: "pl-prod-sagemaker-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "iam:GetRole"
+          purpose: "Verify role has administrative permissions"
+        - permission: "sagemaker:DescribeTrainingJob"
+          purpose: "Monitor training job status and execution"
+        - permission: "s3:ListBucket"
+          purpose: "Verify S3 bucket access and list contents"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

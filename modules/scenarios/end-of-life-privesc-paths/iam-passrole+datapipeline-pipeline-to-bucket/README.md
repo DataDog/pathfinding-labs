@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Create Data Pipeline with passed role to exfiltrate S3 data, bypassing IAM restrictions via overly permissive bucket resource policy
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** datapipeline-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection, TA0010 - Exfiltration
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1530 - Data from Cloud Storage Object
@@ -22,14 +22,14 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-datapipeline-001-to-bucket-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-datapipeline-001-to-bucket-pipeline-role` -- allows passing the pipeline role to the Data Pipeline service
 - `datapipeline:CreatePipeline` on `*` -- create a new Data Pipeline
 - `datapipeline:PutPipelineDefinition` on `*` -- define a ShellCommandActivity with arbitrary commands
 - `datapipeline:ActivatePipeline` on `*` -- activate the pipeline, triggering EC2 instance launch
 - `s3:GetObject` on `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}/*` -- retrieve exfiltrated data from the exfil bucket after the pipeline runs
 
-**Helpful:**
+**Helpful** (`pl-prod-datapipeline-001-to-bucket-starting-user`):
 - `datapipeline:DescribePipelines` -- view pipeline status and configuration
 - `datapipeline:GetPipelineDefinition` -- retrieve pipeline definition for verification
 - `s3:ListBucket` -- list objects in buckets for verification

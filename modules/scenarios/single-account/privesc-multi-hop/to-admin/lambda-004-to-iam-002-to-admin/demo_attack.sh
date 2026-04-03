@@ -112,6 +112,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
@@ -500,6 +508,9 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
 fi
 
 # Summary
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}MULTI-HOP PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"

@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachGroupPolicy"
-      resource: "*"
+    - principal: "pl-prod-iam-010-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachGroupPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListGroups"
-      purpose: "List groups the user belongs to"
-
-    - permission: "iam:ListAttachedGroupPolicies"
-      purpose: "View currently attached group policies"
-
-    - permission: "iam:ListPolicies"
-      purpose: "Discover available managed policies"
-
+    - principal: "pl-prod-iam-010-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListGroups"
+          purpose: "List groups the user belongs to"
+        - permission: "iam:ListAttachedGroupPolicies"
+          purpose: "View currently attached group policies"
+        - permission: "iam:ListPolicies"
+          purpose: "Discover available managed policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -33,25 +33,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ec2:ModifyInstanceAttribute"
-      resource: "arn:aws:ec2:*:*:instance/*"
-
-    - permission: "ec2:StopInstances"
-      resource: "arn:aws:ec2:*:*:instance/*"
-
-    - permission: "ec2:StartInstances"
-      resource: "arn:aws:ec2:*:*:instance/*"
+    - principal: "pl-prod-ec2-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:ModifyInstanceAttribute"
+          resource: "arn:aws:ec2:*:*:instance/*"
+        - permission: "ec2:StopInstances"
+          resource: "arn:aws:ec2:*:*:instance/*"
+        - permission: "ec2:StartInstances"
+          resource: "arn:aws:ec2:*:*:instance/*"
 
   helpful:
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover target EC2 instances and verify instance state"
-
-    - permission: "ec2:DescribeInstanceAttribute"
-      purpose: "View current user data and instance configuration"
-
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify identity during attack execution"
-
+    - principal: "pl-prod-ec2-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover target EC2 instances and verify instance state"
+        - permission: "ec2:DescribeInstanceAttribute"
+          purpose: "View current user data and instance configuration"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify identity during attack execution"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

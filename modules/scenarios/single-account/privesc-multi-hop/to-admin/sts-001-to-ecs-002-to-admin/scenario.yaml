@@ -31,37 +31,34 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-intermediate-role"
-
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role"
-
-    - permission: "ecs:CreateCluster"
-      resource: "*"
-
-    - permission: "ecs:RegisterTaskDefinition"
-      resource: "*"
-
-    - permission: "ecs:RunTask"
-      resource: "*"
+    - principal: "pl-prod-sts001-ecs002-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-intermediate-role"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role"
+        - permission: "ecs:CreateCluster"
+          resource: "*"
+        - permission: "ecs:RegisterTaskDefinition"
+          resource: "*"
+        - permission: "ecs:RunTask"
+          resource: "*"
 
   helpful:
-    - permission: "ec2:DescribeVpcs"
-      purpose: "Find default VPC for Fargate network configuration"
-
-    - permission: "ec2:DescribeSubnets"
-      purpose: "Find subnets for Fargate network configuration"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Monitor task status and completion"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover available roles that trust ecs-tasks.amazonaws.com"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions and trust policies"
-
+    - principal: "pl-prod-sts001-ecs002-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeVpcs"
+          purpose: "Find default VPC for Fargate network configuration"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Find subnets for Fargate network configuration"
+        - permission: "ecs:DescribeTasks"
+          purpose: "Monitor task status and completion"
+        - permission: "iam:ListRoles"
+          purpose: "Discover available roles that trust ecs-tasks.amazonaws.com"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions and trust policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

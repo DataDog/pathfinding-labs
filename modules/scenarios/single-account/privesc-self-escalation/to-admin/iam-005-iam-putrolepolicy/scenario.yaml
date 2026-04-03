@@ -32,16 +32,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-005-to-admin-starting-role"
+    - principal: "pl-prod-iam-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-005-to-admin-starting-role"
 
   helpful:
-    - permission: "iam:GetRolePolicy"
-      purpose: "View existing inline policies on the role"
-
-    - permission: "iam:ListRolePolicies"
-      purpose: "List all inline policies attached to the role"
-
+    - principal: "pl-prod-iam-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetRolePolicy"
+          purpose: "View existing inline policies on the role"
+        - permission: "iam:ListRolePolicies"
+          purpose: "List all inline policies attached to the role"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

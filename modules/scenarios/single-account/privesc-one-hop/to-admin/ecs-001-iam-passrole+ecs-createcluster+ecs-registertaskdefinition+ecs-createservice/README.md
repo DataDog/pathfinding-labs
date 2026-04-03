@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating ECS cluster and deploying service with privileged role to gain administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ecs-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ecs-001-to-admin-starting-user`):
 - `ecs:CreateCluster` on `*` -- create a new ECS cluster to host the malicious Fargate service
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-001-to-admin-target-role` -- pass the privileged target role to the ECS task definition
 - `ecs:RegisterTaskDefinition` on `*` -- register a task definition that references the privileged role
 - `ecs:CreateService` on `*` -- deploy a persistent Fargate service that executes the malicious task
 
-**Helpful:**
+**Helpful** (`pl-prod-ecs-001-to-admin-starting-user`):
 - `ec2:DescribeVpcs` -- find the default VPC for ECS service network configuration
 - `ec2:DescribeSubnets` -- find subnets in the default VPC for Fargate awsvpc networking
 - `ecs:DescribeServices` -- monitor service status and verify service creation

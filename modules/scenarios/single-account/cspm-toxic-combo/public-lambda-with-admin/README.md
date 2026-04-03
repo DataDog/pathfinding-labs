@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Publicly accessible Lambda function with administrative IAM role
 * **Terraform Variable:** `enable_single_account_cspm_toxic_combo_public_lambda_with_admin`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0001 - Initial Access, TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Cloud Instance Metadata API, T1648 - Serverless Execution
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a combination of multiple misconfigura
 
 ### Starting Permissions
 
-**Required:**
+**Required** (unauthenticated attacker):
 - `lambda:InvokeFunctionUrl` on `*` -- the Lambda function URL has `AuthorizationType: NONE`, so no AWS credentials are required at all; any HTTP client can invoke it
 
-**Helpful:**
+**Helpful** (low-privilege AWS principal):
 - `lambda:ListFunctions` -- Discover publicly accessible Lambda functions
 - `lambda:GetFunctionUrlConfig` -- Identify Lambda functions with public URLs
 

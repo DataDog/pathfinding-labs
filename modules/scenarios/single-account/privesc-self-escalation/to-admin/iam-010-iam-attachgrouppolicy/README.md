@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-escalation via attaching admin policy to own group
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-010
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-010-to-admin-starting-user`):
 - `iam:AttachGroupPolicy` on `*` -- attach managed policies to IAM groups
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-010-to-admin-starting-user`):
 - `iam:ListGroups` -- list groups the user belongs to
 - `iam:ListAttachedGroupPolicies` -- view currently attached group policies
 - `iam:ListPolicies` -- discover available managed policies

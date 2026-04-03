@@ -132,8 +132,8 @@ When the input matches the pattern `SERVICE-###` (e.g., `iam-005`, `lambda-001`,
    - **pathfinding-cloud-id**: Use the ID from paths.json
    - **name**: Derive from the technique name (convert to kebab-case)
    - **description**: Use or adapt the description from paths.json
-   - **Required permissions**: Extract from the `name` field (the IAM actions)
-   - **Helpful permissions**: Add any additional permissions that might make the attack easier to demonstrate. 
+   - **Required permissions**: Extract from the `name` field (the IAM actions), grouped per-principal
+   - **Helpful permissions**: Add any additional permissions that might make the attack easier to demonstrate, grouped per-principal (same principal structure as required)
    - **Attack steps**: Use the `exploitationSteps.awscli` as reference
    - **Prevention recommendations**: Use the `recommendation` field
 

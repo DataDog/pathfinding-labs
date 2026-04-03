@@ -33,7 +33,7 @@ attackMap:
       label: "ECS Service"
       type: resource
       subType: ecs-task
-      arn: "arn:aws:ecs:{region}:{account_id}:service/pl-prod-ecs-003-cluster/pl-prod-ecs-003-attack-service"
+      arn: "arn:aws:ecs:{region}:{account_id}:service/pl-prod-ecs-cluster/pl-prod-ecs-003-attack-service"
       description: >
         An ECS Fargate service created by the attacker to execute the malicious task
         definition as a persistent, long-running workload. The service launches a task
@@ -62,9 +62,11 @@ attackMap:
         task, and ecs:RegisterTaskDefinition to register a new task definition that
         specifies the admin role and a malicious container command.
       hints:
-        - "You can pass IAM roles to AWS services. Think about what services accept roles."
-        - "ECS task definitions can specify an IAM role for the task to run as. What could you do with that?"
-        - "Register a task definition that uses the admin role and runs a command to escalate your own privileges, then deploy it as a service."
+        - "Review the policy attached to this starting user -- what IAM roles can you pass, and to which AWS services?"
+        - "You can pass an IAM role to an ECS task definition. Think about what happens when a container runs with an admin role."
+        - "Use ecs:DescribeServices or check the AWS console to find existing ECS clusters you could target for service creation."
+        - "A task definition specifies which container image to run and what command to execute. Consider using the aws-cli image to run an IAM command as the admin role."
+        - "The container command in the task definition runs with the task role's permissions -- craft a command that modifies IAM policy on your starting user."
         - "Browse to https://pathfinding.cloud/paths/ecs-003 for technique details."
       commands:
         - description: "Register the malicious ECS task definition with the admin role"
@@ -77,9 +79,13 @@ attackMap:
         The attacker deploys the malicious task definition as an ECS Fargate service,
         causing AWS to launch a task that runs with the admin role's credentials.
       hints:
-        - "The task definition uses the admin role. What does the container command do when it runs with that role?"
-        - "The container runs an AWS CLI command: iam attach-user-policy targeting the starting user with AdministratorAccess."
+        - "A task definition alone doesn't run anything -- you need to deploy it. What ECS construct launches and manages running tasks?"
+        - "Fargate services require a VPC subnet. Use ec2:DescribeVpcs and ec2:DescribeSubnets to find one in the default VPC."
+        - "Create the service with desired-count 1 and launch-type FARGATE, referencing the task definition family and revision you just registered."
+        - "Once the service is running, monitor it with ecs:DescribeServices and ecs:DescribeTasks to watch for the task to reach STOPPED status, which means the container command completed."
       commands:
+        - description: "Find a subnet in the default VPC for the Fargate service"
+          command: "aws ec2 describe-subnets --filters 'Name=vpc-id,Values=$(aws ec2 describe-vpcs --filters Name=is-default,Values=true --query Vpcs[0].VpcId --output text)' --query 'Subnets[0].SubnetId' --output text"
         - description: "Create the ECS service to execute the privilege escalation task"
           command: "aws ecs create-service --region $AWS_REGION --cluster pl-prod-ecs-003-cluster --service-name pl-prod-ecs-003-attack-service --task-definition pl-ecs-003-admin-escalation:1 --desired-count 1 --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}'"
 
@@ -91,4 +97,8 @@ attackMap:
         the specified task role (the admin target role) and receives temporary credentials
         with administrative permissions. The container then runs the IAM attach-user-policy
         command as the admin role, granting AdministratorAccess to the starting user.
+      hints:
+        - "After the task stops, wait about 15 seconds for IAM policy changes to propagate before testing your new permissions."
+        - "Use iam:ListAttachedUserPolicies on your starting user to confirm AdministratorAccess was successfully attached."
+        - "Verify the escalation worked by attempting an admin-only action such as iam:ListUsers -- it should now succeed."
       commands: []

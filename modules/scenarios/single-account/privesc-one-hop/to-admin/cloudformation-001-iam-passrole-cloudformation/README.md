@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** CloudFormation stack creation with privileged service role to create escalated IAM roles
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** cloudformation-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-cloudformation-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-cloudformation-001-to-admin-cfn-role` -- allows passing the admin service role to CloudFormation
 - `cloudformation:CreateStack` on `*` -- allows creating a CloudFormation stack with the passed service role
 
-**Helpful:**
+**Helpful** (`pl-prod-cloudformation-001-to-admin-starting-user`):
 - `cloudformation:DescribeStacks` -- monitor stack creation progress
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `cloudformation:DeleteStack` -- clean up attack artifacts

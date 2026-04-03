@@ -30,6 +30,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "HelpfulForExploitationIdentity"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",
@@ -38,6 +39,7 @@ resource "aws_iam_user_policy" "starting_user_basic" {
         Resource = "*"
       },
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -77,14 +79,31 @@ resource "aws_iam_policy" "privesc_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationCreatePolicyVersion"
         Effect = "Allow"
         Action = [
-          "iam:CreatePolicyVersion",
+          "iam:CreatePolicyVersion"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:policy/pl-prod-iam-001-to-admin-policy"
+      },
+      {
+        Sid    = "HelpfulForExploitationListVersions"
+        Effect = "Allow"
+        Action = [
           "iam:ListPolicyVersions"
         ]
         Resource = "arn:aws:iam::${var.prod_account_id}:policy/pl-prod-iam-001-to-admin-policy"
       },
       {
+        Sid    = "HelpfulForExploitationGetPolicyVersion"
+        Effect = "Allow"
+        Action = [
+          "iam:GetPolicyVersion"
+        ]
+        Resource = "arn:aws:iam::${var.prod_account_id}:policy/pl-prod-iam-001-to-admin-policy"
+      },
+      {
+        Sid    = "HelpfulForExploitationListAttachedRolePolicies"
         Effect = "Allow"
         Action = [
           "iam:ListAttachedRolePolicies"

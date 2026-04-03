@@ -13,6 +13,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Source demo permissions library for safety restore
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Configuration
 DEV_ENDPOINT_NAME="pl-glue-001-demo-endpoint"
 SSH_KEY_PATH="/tmp/pl-glue-001-demo-key"

@@ -34,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "lambda:UpdateFunctionCode"
-      resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:{prod_account_id}:function/*"
 
   helpful:
-    - permission: "lambda:ListFunctions"
-      purpose: "Discover Lambda functions in prod account"
-
-    - permission: "lambda:GetFunction"
-      purpose: "View Lambda function configuration and role"
-
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover Lambda functions in prod account"
+        - permission: "lambda:GetFunction"
+          purpose: "View Lambda function configuration and role"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

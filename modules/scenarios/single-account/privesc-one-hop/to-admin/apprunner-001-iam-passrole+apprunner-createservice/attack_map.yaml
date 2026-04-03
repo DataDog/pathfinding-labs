@@ -50,8 +50,12 @@ attackMap:
         as the instance role and specifying a StartCommand override that will execute an
         AWS CLI IAM command when the container starts.
       hints:
-        - "You can create compute services and pass roles to them."
-        - "Look for services that allow a StartCommand override — the instance role executes your command."
+        - "You have two interesting permissions: one to create a compute service, and one to hand a role to that service. Think about what happens when code runs under a privileged role."
+        - "Use apprunner:ListServices to see if any App Runner services already exist in the account to understand the environment."
+        - "App Runner accepts an InstanceRoleArn when you create a service -- that role's credentials are available to the running container."
+        - "Look at what image you could use as the container. The public AWS CLI image (public.ecr.aws/aws-cli/aws-cli:latest) has the AWS CLI as its entrypoint -- any StartCommand becomes AWS CLI arguments."
+        - "The StartCommand is passed as arguments directly to the container's entrypoint. If the entrypoint is /usr/local/bin/aws, your StartCommand is an AWS CLI subcommand."
+        - "Consider what IAM actions the target role can perform. Can it modify policies on your starting user?"
         - "Browse to https://pathfinding.cloud/paths/apprunner-001 for technique details."
       commands:
         - description: "Create the App Runner service with a StartCommand override that attaches AdministratorAccess to the starting user"
@@ -81,9 +85,11 @@ attackMap:
         so the iam attach-user-policy command executes with the target role's permissions,
         attaching AdministratorAccess to the starting user.
       hints:
-        - "The service runs with an IAM role that has sensitive permissions."
-        - "The StartCommand override lets you run arbitrary AWS CLI commands as the instance role."
-        - "Use the instance role's iam:AttachUserPolicy permission to escalate the starting user."
+        - "The service is now running with the privileged role's credentials. The StartCommand you provided has already executed -- the IAM change may have happened as soon as the container started."
+        - "Use apprunner:DescribeService to poll the service status. Watch for it to transition from OPERATION_IN_PROGRESS to RUNNING."
+        - "Once the service reaches RUNNING state, wait a few seconds for IAM policy propagation before verifying."
+        - "Check whether AdministratorAccess was attached to your starting user with iam:ListAttachedUserPolicies."
+        - "Verify the escalation worked by attempting an action your starting user could not do before, such as listing IAM users."
       commands:
         - description: "Wait for the App Runner service to reach RUNNING state and execute the privilege escalation command"
           command: "aws apprunner describe-service --service-arn <service-arn> --query 'Service.Status'"

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with iam:UpdateLoginProfile can reset password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-006
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-006-to-bucket-starting-user`):
 - `iam:UpdateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-006-to-bucket-user` -- allows resetting the console password for the target user
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-006-to-bucket-starting-user`):
 - `iam:ListUsers` -- discover users with login profiles
 - `iam:GetUser` -- view user details
 - `iam:GetLoginProfile` -- verify the target user has an existing login profile

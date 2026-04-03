@@ -8,7 +8,7 @@
 * **Cost Estimate:** $37/mo
 * **Technique:** User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sagemaker-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1525 - Implant Internal Image
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sagemaker-005-to-admin-starting-user`):
 - `sagemaker:CreateNotebookInstanceLifecycleConfig` on `*` -- create the malicious lifecycle config
 - `sagemaker:StopNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook` -- stop the notebook so its config can be modified
 - `sagemaker:UpdateNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook` -- attach the malicious lifecycle config
 - `sagemaker:StartNotebookInstance` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook` -- trigger lifecycle script execution
 
-**Helpful:**
+**Helpful** (`pl-prod-sagemaker-005-to-admin-starting-user`):
 - `sagemaker:DescribeNotebookInstance` -- view notebook details, status, and attached execution role
 - `sagemaker:ListNotebookInstances` -- discover available notebook instances to target
 - `iam:GetRole` -- verify the notebook's execution role has admin permissions

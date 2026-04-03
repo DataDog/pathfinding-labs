@@ -51,9 +51,12 @@ attackMap:
         notebook to attach the malicious lifecycle config. The notebook must be stopped
         before its lifecycle configuration can be changed.
       hints:
-        - "You can manage SageMaker notebook instances. Think about what happens when a notebook starts."
-        - "Lifecycle configurations run scripts automatically when a notebook starts — and they run with the notebook's execution role."
-        - "Stop the notebook, inject a malicious lifecycle config, then start it again to execute code with the notebook's admin role."
+        - "Start by listing and describing the SageMaker notebook instances in this account -- look at the execution role ARN attached to the notebook."
+        - "Use iam:GetRole or iam:ListAttachedRolePolicies to check what permissions the notebook's execution role carries."
+        - "SageMaker lifecycle configurations are scripts that run automatically when a notebook starts up -- and they run as the notebook's execution role, not as you."
+        - "To change a notebook's lifecycle configuration, the notebook must first be in the Stopped state. Use sagemaker:StopNotebookInstance and poll until the status is Stopped."
+        - "Create a lifecycle configuration with an on-start script that performs a privileged action using the notebook role's permissions. The script content must be base64-encoded."
+        - "After creating your lifecycle config, attach it to the notebook using sagemaker:UpdateNotebookInstance with the --lifecycle-config-name parameter."
         - "Browse to https://pathfinding.cloud/paths/sagemaker-005 for technique details."
       commands:
         - description: "Stop the notebook instance"
@@ -71,6 +74,10 @@ attackMap:
         lifecycle configuration script. The script runs with the notebook's execution
         role credentials (AdministratorAccess), attaching the AdministratorAccess managed
         policy to the starting user and completing the privilege escalation.
+      hints:
+        - "Once the notebook's lifecycle config is attached and the notebook is stopped, start it with sagemaker:StartNotebookInstance to trigger the on-start script."
+        - "The lifecycle script can take 5-8 minutes to execute -- the notebook status will move from Pending to InService once startup completes."
+        - "After the notebook reaches InService, wait a few seconds for IAM policy changes to propagate before verifying the escalation worked."
       commands:
         - description: "Start the notebook instance, triggering the malicious lifecycle script"
           command: "aws sagemaker start-notebook-instance --notebook-instance-name pl-prod-sagemaker-005-to-admin-notebook --region us-east-1"

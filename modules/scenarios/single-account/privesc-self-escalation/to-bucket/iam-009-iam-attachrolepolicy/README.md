@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Role with iam:AttachRolePolicy on itself can attach policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-009
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-prod`):
 - `iam:AttachRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-009-to-bucket-starting-role` -- allows the role to attach any managed policy to itself
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-prod`):
 - `iam:ListAttachedRolePolicies` -- list managed policies already attached to the role
 - `iam:ListPolicies` -- discover available managed policies to identify candidate policies to attach
 - `s3:ListBucket` -- verify bucket access after escalation

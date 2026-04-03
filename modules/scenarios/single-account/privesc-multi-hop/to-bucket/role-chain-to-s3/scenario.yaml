@@ -34,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/*"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available roles in the chain"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies and permissions"
-
-    - permission: "s3:ListBucket"
-      purpose: "Verify bucket access after chain"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available roles in the chain"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and permissions"
+        - permission: "s3:ListBucket"
+          purpose: "Verify bucket access after chain"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

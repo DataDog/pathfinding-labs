@@ -32,58 +32,48 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ecs:CreateCluster"
-      resource: "*"
-
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-001-to-admin-target-role"
-
-    - permission: "ecs:RegisterTaskDefinition"
-      resource: "*"
-
-    - permission: "ecs:CreateService"
-      resource: "*"
+    - principal: "pl-prod-ecs-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:CreateCluster"
+          resource: "*"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ecs-001-to-admin-target-role"
+        - permission: "ecs:RegisterTaskDefinition"
+          resource: "*"
+        - permission: "ecs:CreateService"
+          resource: "*"
 
   helpful:
-    - permission: "ec2:DescribeVpcs"
-      purpose: "Find default VPC for ECS service network configuration"
-
-    - permission: "ec2:DescribeSubnets"
-      purpose: "Find subnet in default VPC for ECS service network configuration"
-
-    - permission: "ecs:DescribeServices"
-      purpose: "Monitor service status and verify service creation"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Monitor task execution status and verify task completion"
-
-    - permission: "ecs:ListTasks"
-      purpose: "List tasks in the cluster to get task ARN for monitoring"
-
-    - permission: "ecs:UpdateService"
-      purpose: "Scale down service during cleanup"
-
-    - permission: "ecs:DeleteService"
-      purpose: "Clean up ECS service after demonstration"
-
-    - permission: "ecs:StopTask"
-      purpose: "Stop running tasks during cleanup"
-
-    - permission: "ecs:DeregisterTaskDefinition"
-      purpose: "Clean up task definition after demonstration"
-
-    - permission: "ecs:DeleteCluster"
-      purpose: "Clean up ECS cluster after demonstration"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify administrator access by listing IAM users"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
+    - principal: "pl-prod-ecs-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeVpcs"
+          purpose: "Find default VPC for ECS service network configuration"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Find subnet in default VPC for ECS service network configuration"
+        - permission: "ecs:DescribeServices"
+          purpose: "Monitor service status and verify service creation"
+        - permission: "ecs:DescribeTasks"
+          purpose: "Monitor task execution status and verify task completion"
+        - permission: "ecs:ListTasks"
+          purpose: "List tasks in the cluster to get task ARN for monitoring"
+        - permission: "ecs:UpdateService"
+          purpose: "Scale down service during cleanup"
+        - permission: "ecs:DeleteService"
+          purpose: "Clean up ECS service after demonstration"
+        - permission: "ecs:StopTask"
+          purpose: "Stop running tasks during cleanup"
+        - permission: "ecs:DeregisterTaskDefinition"
+          purpose: "Clean up task definition after demonstration"
+        - permission: "ecs:DeleteCluster"
+          purpose: "Clean up ECS cluster after demonstration"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListUsers"
+          purpose: "Verify administrator access by listing IAM users"
+        - permission: "iam:DetachUserPolicy"
+          purpose: "Remove admin policy from starting user during cleanup"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

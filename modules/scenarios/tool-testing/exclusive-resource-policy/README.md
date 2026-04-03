@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Access S3 bucket with exclusive resource policy that denies all except specific role
 * **Terraform Variable:** `enable_tool_testing_exclusive_resource_policy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-prod`):
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-exclusive-bucket-access-role` -- allows the starting user to assume the exclusive bucket access role
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-prod`):
 - `iam:ListRoles` -- discover roles with exclusive bucket access
 - `s3:GetBucketPolicy` -- view the bucket resource policy to understand the exclusive-access grant
 

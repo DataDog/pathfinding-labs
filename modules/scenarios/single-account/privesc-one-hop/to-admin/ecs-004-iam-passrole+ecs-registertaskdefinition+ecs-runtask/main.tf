@@ -52,7 +52,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -60,11 +60,25 @@ resource "aws_iam_user_policy" "starting_user_required" {
         Resource = aws_iam_role.target_role.arn
       },
       {
-        Sid    = "requiredECSPermissions"
+        Sid    = "RequiredForExploitationECS"
         Effect = "Allow"
         Action = [
           "ecs:RegisterTaskDefinition",
           "ecs:RunTask"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeTasks",
+          "ecs:DeregisterTaskDefinition",
+          "ecs:StopTask",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "iam:DetachUserPolicy",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }

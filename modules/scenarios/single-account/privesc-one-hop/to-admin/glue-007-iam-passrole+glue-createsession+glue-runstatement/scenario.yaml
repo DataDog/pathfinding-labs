@@ -32,25 +32,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role"
-
-    - permission: "glue:CreateSession"
-      resource: "*"
-
-    - permission: "glue:RunStatement"
-      resource: "*"
+    - principal: "pl-prod-glue-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role"
+        - permission: "glue:CreateSession"
+          resource: "*"
+        - permission: "glue:RunStatement"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetSession"
-      purpose: "Check session status and wait for it to be ready"
-
-    - permission: "glue:GetStatement"
-      purpose: "Check statement execution status and retrieve output"
-
-    - permission: "glue:DeleteSession"
-      purpose: "Clean up the Glue Interactive Session after the attack"
-
+    - principal: "pl-prod-glue-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetSession"
+          purpose: "Check session status and wait for it to be ready"
+        - permission: "glue:GetStatement"
+          purpose: "Check statement execution status and retrieve output"
+        - permission: "glue:DeleteSession"
+          purpose: "Clean up the Glue Interactive Session after the attack"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

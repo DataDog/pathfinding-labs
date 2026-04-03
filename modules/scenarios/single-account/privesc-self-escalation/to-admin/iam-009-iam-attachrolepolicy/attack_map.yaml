@@ -35,9 +35,11 @@ attackMap:
         The starting user assumes the starting role to obtain credentials with
         the iam:AttachRolePolicy permission needed for self-escalation.
       hints:
-        - "You can assume a role from this user. What permissions does that role have?"
-        - "The role you can assume has the ability to modify its own attached policies."
-        - "Browse to https://pathfinding.cloud/paths/iam-009 for technique details."
+        - "Start by understanding what this user is allowed to do. Enumerate the policies attached to the starting user."
+        - "Look for an sts:AssumeRole permission in the user's policies — it points to the next principal in the path."
+        - "Use iam:ListAttachedUserPolicies and iam:ListUserPolicies to find what this user has access to."
+        - "Once you identify the role ARN, inspect that role's policies before assuming it to understand what you'll be able to do."
+        - "Use aws sts assume-role with a session name of your choosing to obtain temporary credentials for the target role."
       commands:
         - description: "Assume the starting role"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role --role-session-name escalation-session"
@@ -49,9 +51,12 @@ attackMap:
         The role uses iam:AttachRolePolicy to attach the AWS-managed AdministratorAccess
         policy to itself, immediately granting full administrator privileges.
       hints:
-        - "This role can modify its own attached policies."
-        - "Look for AWS-managed policies that grant broad permissions."
-        - "Attaching AdministratorAccess to yourself is a direct path to admin."
+        - "Now that you are operating as the role, enumerate its attached and inline policies to understand what permissions it holds."
+        - "Look for iam:AttachRolePolicy in the role's policies and check which resource ARN it is scoped to."
+        - "Use iam:ListPolicies to discover what AWS-managed policies are available — look for one that grants broad administrative access."
+        - "A role with iam:AttachRolePolicy scoped to its own ARN can grant itself any managed policy, including AdministratorAccess."
+        - "After attaching the policy, wait a few seconds for IAM propagation before verifying that your permissions have changed."
+        - "Browse to https://pathfinding.cloud/paths/iam-009 for full technique details and detection guidance."
       commands:
         - description: "Attach AdministratorAccess to the starting role"
           command: "aws iam attach-role-policy --role-name pl-prod-iam-009-to-admin-starting-role --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"

@@ -88,25 +88,26 @@ resource "aws_iam_user_policy" "user1_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "RequiredForDemonstrationListAllBuckets"
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "s3:ListAllMyBuckets"
+          "sts:GetCallerIdentity",
+          "s3:ListAllMyBuckets",
         ]
         Resource = "*"
       },
       {
-        Sid    = "RequiredForDemonstrationDirectBucketAccess"
+        Sid    = "RequiredForExploitationDirectBucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
         ]
         Resource = [
           aws_s3_bucket.target_bucket.arn,
-          "${aws_s3_bucket.target_bucket.arn}/*"
+          "${aws_s3_bucket.target_bucket.arn}/*",
         ]
-      }
+      },
     ]
   })
 }
@@ -144,13 +145,13 @@ resource "aws_iam_user_policy" "user2_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "RequiredForDemonstrationAssumeRole3"
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
-          "sts:AssumeRole"
+          "sts:AssumeRole",
         ]
         Resource = aws_iam_role.role3.arn
-      }
+      },
     ]
   })
 }
@@ -189,25 +190,25 @@ resource "aws_iam_role_policy" "role3_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "RequiredForDemonstrationListAllBuckets"
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "s3:ListAllMyBuckets"
+          "s3:ListAllMyBuckets",
         ]
         Resource = "*"
       },
       {
-        Sid    = "RequiredForDemonstrationIndirectBucketAccess"
+        Sid    = "RequiredForExploitationIndirectBucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
         ]
         Resource = [
           aws_s3_bucket.target_bucket.arn,
-          "${aws_s3_bucket.target_bucket.arn}/*"
+          "${aws_s3_bucket.target_bucket.arn}/*",
         ]
-      }
+      },
     ]
   })
 }

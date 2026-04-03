@@ -33,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "cloudformation:CreateChangeSet"
-      resource: "*"
-
-    - permission: "cloudformation:ExecuteChangeSet"
-      resource: "*"
+    - principal: "pl-prod-cloudformation-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:CreateChangeSet"
+          resource: "*"
+        - permission: "cloudformation:ExecuteChangeSet"
+          resource: "*"
 
   helpful:
-    - permission: "cloudformation:DescribeChangeSet"
-      purpose: "View change set details and verify creation"
-
-    - permission: "cloudformation:DescribeStacks"
-      purpose: "Discover existing CloudFormation stacks to target"
-
-    - permission: "cloudformation:DescribeStackResource"
-      purpose: "View stack resources and service role information"
-
+    - principal: "pl-prod-cloudformation-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeChangeSet"
+          purpose: "View change set details and verify creation"
+        - permission: "cloudformation:DescribeStacks"
+          purpose: "Discover existing CloudFormation stacks to target"
+        - permission: "cloudformation:DescribeStackResource"
+          purpose: "View stack resources and service role information"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

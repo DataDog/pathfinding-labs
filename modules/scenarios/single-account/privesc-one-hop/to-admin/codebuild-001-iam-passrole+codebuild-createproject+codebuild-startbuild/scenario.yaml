@@ -32,28 +32,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "codebuild:CreateProject"
-      resource: "*"
-
-    - permission: "codebuild:StartBuild"
-      resource: "*"
-
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-codebuild-001-to-admin-target-role"
+    - principal: "pl-prod-codebuild-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "codebuild:CreateProject"
+          resource: "*"
+        - permission: "codebuild:StartBuild"
+          resource: "*"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-codebuild-001-to-admin-target-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass to CodeBuild"
-
-    - permission: "codebuild:ListProjects"
-      purpose: "List existing CodeBuild projects"
-
-    - permission: "codebuild:BatchGetBuilds"
-      purpose: "Monitor build execution status"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after escalation"
-
+    - principal: "pl-prod-codebuild-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass to CodeBuild"
+        - permission: "codebuild:ListProjects"
+          purpose: "List existing CodeBuild projects"
+        - permission: "codebuild:BatchGetBuilds"
+          purpose: "Monitor build execution status"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

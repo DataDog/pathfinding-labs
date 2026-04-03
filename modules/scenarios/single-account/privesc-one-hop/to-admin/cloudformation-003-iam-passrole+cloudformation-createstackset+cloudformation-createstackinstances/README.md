@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Passing administrative execution role to CloudFormation StackSet to create escalated IAM resources
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** cloudformation-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-cloudformation-003-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-cloudformation-003-to-admin-execution-role` -- pass the privileged execution role to CloudFormation
 - `cloudformation:CreateStackSet` on `*` -- create a new StackSet configured with the execution role
 - `cloudformation:CreateStackInstances` on `*` -- deploy a stack instance to trigger resource creation
 
-**Helpful:**
+**Helpful** (`pl-prod-cloudformation-003-to-admin-starting-user`):
 - `cloudformation:DescribeStackSet` -- monitor StackSet creation progress
 - `cloudformation:DescribeStackSetOperation` -- check StackSet operation status
 - `cloudformation:ListStackInstances` -- list stack instances for cleanup

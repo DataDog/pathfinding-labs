@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 * **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -21,11 +21,11 @@ Your objective is to learn how to validate security tool accuracy by deploying 4
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-epe-starting-user`):
 - `*` on `*` -- 15 isAdmin principals have effective `*` on `*` via various policy mechanisms (AWS managed, customer managed, inline, group membership, split policies)
 - `*` on `*` (blocked) -- 24 notAdmin principals hold `AdministratorAccess` but are restricted by explicit denies or permissions boundaries
 
-**Helpful:**
+**Helpful** (`pl-prod-epe-starting-user`):
 - `sts:GetCallerIdentity` -- verify assumed identity
 - `sts:AssumeRole` -- starting user assumes test roles to validate effective permissions at runtime
 

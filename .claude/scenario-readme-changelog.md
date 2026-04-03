@@ -4,6 +4,28 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.0.0 — 2026-04-03
+
+Major version bump: per-principal permissions structure in `### Starting Permissions` and `scenario.yaml`.
+
+**Breaking changes:**
+- **`### Starting Permissions` restructured** -- Required and Helpful headings now include the principal name in parentheses: `**Required** ({principal_name}):` and `**Helpful** ({principal_name}):`. Multi-principal scenarios have multiple headings.
+- **`scenario.yaml` `permissions.required` restructured** -- changed from a flat list of permission entries to an array of principal entries, each containing `principal`, `principal_type`, and `permissions` fields.
+- **`scenario.yaml` `permissions.helpful` restructured** -- same per-principal grouping as required permissions.
+
+**Motivation:**
+- Support temporary deny-policy validation in demo scripts: during `demo_attack.sh`, helpful permissions are denied per-principal to prove only required permissions are needed for exploitation.
+- Accurate multi-hop permission attribution: each principal in a multi-hop chain now has its own required and helpful permissions clearly associated.
+- Frontend display clarity: pathfinding.cloud can render per-principal permission breakdowns.
+
+**Migration rules:**
+- Flat `**Required:**` heading becomes `**Required** ({principal_name}):` with principal name from scenario.yaml
+- Flat `**Helpful:**` heading becomes `**Helpful** ({principal_name}):` with principal name from scenario.yaml
+- Multi-hop scenarios split permissions across multiple principal headings
+- Stamp `Schema Version: 4.0.0`
+
+---
+
 ## 3.0.0 — 2026-04-01
 
 Major version bump: README restructuring + attack map extraction + guided walkthrough creation. Separates the README into a lab guide (no spoilers) while attack data moves to `attack_map.yaml` and narrative content moves to `guided_walkthrough.md`.

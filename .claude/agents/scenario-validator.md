@@ -62,7 +62,9 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 - `attack_path.summary`: Attack flow description
 
 **Required Permissions:**
-- `permissions.required`: At least one required permission entry
+- `permissions.required`: At least one principal entry with at least one permission
+- Each principal entry must have `principal` (name), `principal_type` ("user" or "role"), and `permissions` (array)
+- `permissions.helpful` (optional): Same per-principal structure as required
 
 **Required MITRE ATT&CK:**
 - `mitre_attack.tactics`: At least one tactic

@@ -38,9 +38,12 @@ attackMap:
         iam:PutRolePolicy. After waiting for IAM propagation, assume the now-privileged role
         using sts:AssumeRole to obtain admin credentials.
       hints:
-        - "You have the ability to modify IAM role policies and assume roles."
-        - "Look for a role you can both write policies to and assume."
-        - "Modify the target role's inline policy to grant AdministratorAccess, then assume it."
+        - "Use iam:ListRoles to discover what roles exist in this account and look for ones your user has permissions on."
+        - "Use iam:GetRole to inspect each role's trust policy -- identify which roles already trust your starting principal as an allowed principal."
+        - "Use iam:ListRolePolicies and iam:GetRolePolicy to see what permissions the target role currently has before you make any changes."
+        - "You have the ability to write inline policies directly onto a role -- this lets you grant that role any permissions you choose before assuming it."
+        - "After modifying the role's policy, IAM changes take a moment to propagate. Wait 15 seconds before attempting to assume the role."
+        - "Use sts:AssumeRole with the target role's ARN to obtain temporary credentials, then export them as environment variables."
         - "Browse to https://pathfinding.cloud/paths/iam-017 for technique details."
       commands:
         - description: "Add an inline admin policy to the target role"

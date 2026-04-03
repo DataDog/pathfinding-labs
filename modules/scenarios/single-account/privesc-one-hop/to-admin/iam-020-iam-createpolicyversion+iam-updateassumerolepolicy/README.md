@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modify customer-managed policy permissions and role trust policy to gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-020
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-020-to-admin-starting-user`):
 - `iam:CreatePolicyVersion` on `arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy` -- create a new default version of the customer-managed policy with elevated permissions
 - `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role` -- modify the role's trust policy to allow the starting user to assume it
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-020-to-admin-starting-user`):
 - `iam:GetPolicy` -- get policy ARN and current version information
 - `iam:GetPolicyVersion` -- view current policy document and version details
 - `iam:ListPolicyVersions` -- list all policy versions to verify new version creation

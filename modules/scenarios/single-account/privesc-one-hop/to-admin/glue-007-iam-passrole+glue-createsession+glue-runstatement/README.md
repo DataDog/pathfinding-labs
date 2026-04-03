@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue Interactive Session and run Python code to escalate privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-007
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-007-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role` -- allows passing the admin role to the Glue service when creating a session
 - `glue:CreateSession` on `*` -- allows creating a Glue Interactive Session with an assigned IAM role
 - `glue:RunStatement` on `*` -- allows executing arbitrary Python code within the Glue session using the session's assigned role permissions
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-007-to-admin-starting-user`):
 - `glue:GetSession` -- check session status and wait for it to reach the READY state before running statements
 - `glue:GetStatement` -- check statement execution status and retrieve output after running code
 - `glue:DeleteSession` -- clean up the Glue Interactive Session after the attack to remove evidence

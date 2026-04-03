@@ -8,7 +8,7 @@
 * **Cost Estimate:** $37/mo
 * **Technique:** Pass privileged role to MWAA environment with malicious startup script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** mwaa-001
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -23,7 +23,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-mwaa-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-mwaa-001-to-admin-admin-role` -- pass the admin execution role to the MWAA service
 - `airflow:CreateEnvironment` on `*` -- create an MWAA environment with the admin execution role
 - `ec2:CreateNetworkInterface` on `*` -- MWAA validates caller has this permission (SLR does actual work)
@@ -38,7 +38,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ec2:DescribeVpcEndpointServices` on `*` -- MWAA validates caller has this permission
 - `s3:GetEncryptionConfiguration` on `*` -- MWAA validates caller has this permission
 
-**Helpful:**
+**Helpful** (`pl-prod-mwaa-001-to-admin-starting-user`):
 - `airflow:GetEnvironment` -- check environment status and wait for it to be ready
 - `airflow:DeleteEnvironment` -- clean up the MWAA environment after the attack
 - `ec2:DescribeRouteTables` -- verify subnets have routes to NAT Gateway
@@ -148,7 +148,7 @@ plabs cleanup mwaa-001-iam-passrole+airflow-createenvironment
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment
+plabs disable single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment
 plabs apply
 ```
 

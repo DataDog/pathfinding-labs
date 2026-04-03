@@ -37,9 +37,13 @@ attackMap:
         new access keys for that user. Authenticate with those keys to gain full
         administrative access to the AWS account.
       hints:
-        - "You can modify another user's permissions and create credentials for them."
-        - "Look for a user whose permissions you can elevate before creating access keys."
-        - "Browse to https://pathfinding.cloud/paths/iam-015 for technique details."
+        - "You have two permissions on a specific target user. Start by discovering who that user is and what they currently look like."
+        - "Use iam:GetUser and iam:ListAttachedUserPolicies to inspect the target user's current state — what policies are attached?"
+        - "You can attach managed policies to the target user. Think about which AWS-managed policy would grant full administrative access."
+        - "Use iam:ListPolicies with --scope AWS to browse available managed policies. Look for one with 'Administrator' in the name."
+        - "The policy attachment alone isn't enough — you'll also need a way to authenticate as that user. What's the other permission you have?"
+        - "Use iam:ListAccessKeys to check whether the target user already has active access keys before creating new ones."
+        - "Browse to https://pathfinding.cloud/paths/iam-015 for technique details on this attack path."
       commands:
         - description: "Attach AdministratorAccess to the target user"
           command: "aws iam attach-user-policy --user-name pl-prod-iam-015-to-admin-target-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"

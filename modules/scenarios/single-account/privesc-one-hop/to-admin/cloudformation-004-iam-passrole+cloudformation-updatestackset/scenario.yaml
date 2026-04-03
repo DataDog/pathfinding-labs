@@ -33,34 +33,32 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-cloudformation-004-to-admin-stackset-admin-role"
-
-    - permission: "cloudformation:UpdateStackSet"
-      resource: "arn:aws:cloudformation:*:*:stackset/pl-prod-cloudformation-004-to-admin-stackset:*"
+    - principal: "pl-prod-cloudformation-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-cloudformation-004-to-admin-stackset-admin-role"
+        - permission: "cloudformation:UpdateStackSet"
+          resource: "arn:aws:cloudformation:*:*:stackset/pl-prod-cloudformation-004-to-admin-stackset:*"
 
   helpful:
-    - permission: "cloudformation:DescribeStackSet"
-      purpose: "View StackSet details and verify configuration"
-
-    - permission: "cloudformation:DescribeStackSetOperation"
-      purpose: "Monitor StackSet update operation progress"
-
-    - permission: "cloudformation:GetTemplate"
-      purpose: "Retrieve current StackSet template for modification"
-
-    - permission: "cloudformation:CreateStackInstances"
-      purpose: "Create new stack instances if needed"
-
-    - permission: "cloudformation:DeleteStackInstances"
-      purpose: "Remove stack instances if needed"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the escalated role was created by the StackSet update"
-
-    - permission: "sts:AssumeRole"
-      purpose: "Assume the escalated role created by StackSet update"
-
+    - principal: "pl-prod-cloudformation-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeStackSet"
+          purpose: "View StackSet details and verify configuration"
+        - permission: "cloudformation:DescribeStackSetOperation"
+          purpose: "Monitor StackSet update operation progress"
+        - permission: "cloudformation:GetTemplate"
+          purpose: "Retrieve current StackSet template for modification"
+        - permission: "cloudformation:CreateStackInstances"
+          purpose: "Create new stack instances if needed"
+        - permission: "cloudformation:DeleteStackInstances"
+          purpose: "Remove stack instances if needed"
+        - permission: "iam:GetRole"
+          purpose: "Verify the escalated role was created by the StackSet update"
+        - permission: "sts:AssumeRole"
+          purpose: "Assume the escalated role created by StackSet update"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

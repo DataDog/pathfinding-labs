@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AddUserToGroup"
-      resource: "*"
+    - principal: "pl-prod-iam-013-to-admin-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AddUserToGroup"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListGroups"
-      purpose: "Discover groups to target"
-
-    - permission: "iam:GetGroup"
-      purpose: "View group members and attached policies"
-
-    - permission: "iam:ListAttachedGroupPolicies"
-      purpose: "Identify groups with admin permissions"
-
+    - principal: "pl-prod-iam-013-to-admin-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListGroups"
+          purpose: "Discover groups to target"
+        - permission: "iam:GetGroup"
+          purpose: "View group members and attached policies"
+        - permission: "iam:ListAttachedGroupPolicies"
+          purpose: "Identify groups with admin permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

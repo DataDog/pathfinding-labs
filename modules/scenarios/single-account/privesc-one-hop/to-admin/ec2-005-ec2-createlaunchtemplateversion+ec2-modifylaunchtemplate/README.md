@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ec2-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ec2-005-to-admin-starting-user`):
 - `ec2:CreateLaunchTemplateVersion` on `*` -- create a new launch template version with malicious user data
 - `ec2:ModifyLaunchTemplate` on `*` -- set the malicious version as the template default
 
-**Helpful:**
+**Helpful** (`pl-prod-ec2-005-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles already configured in existing templates
 - `ec2:DescribeLaunchTemplates` -- discover existing launch templates to target
 - `ec2:DescribeLaunchTemplateVersions` -- view existing template configuration before modification

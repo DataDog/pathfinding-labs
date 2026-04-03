@@ -34,9 +34,12 @@ attackMap:
         Create a new set of access keys for the admin user, gaining full
         administrative access to the AWS account.
       hints:
-        - "You can create credentials for other IAM users."
-        - "Look for users with elevated permissions that you can generate credentials for."
-        - "Browse to https://pathfinding.cloud/paths/iam-002 for technique details."
+        - "Start by understanding what IAM users exist in this account -- you have helpful permissions to enumerate them."
+        - "Use iam:ListUsers to discover all users, then iam:ListAttachedUserPolicies to check which ones have elevated permissions."
+        - "Once you've identified a privileged user, look at what your starting principal is actually allowed to do to that user."
+        - "You have the ability to generate new programmatic credentials for another user -- think about what API call does that."
+        - "After creating the credentials, new IAM access keys take a short time to propagate before they work. Wait at least 15 seconds."
+        - "Browse to https://pathfinding.cloud/paths/iam-002 for full technique details."
       commands:
         - description: "Create access keys for the admin user"
           command: "aws iam create-access-key --user-name pl-prod-iam-002-to-admin-target-user"

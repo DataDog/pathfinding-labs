@@ -74,6 +74,13 @@ attackMap:
         receives temporary credentials for the admin target role via the ECS task
         metadata endpoint, then executes the AWS CLI command inside the container to
         attach AdministratorAccess to the starting user, completing the privilege escalation.
+      hints:
+        - "You need to know which ECS cluster to run the task on -- use ecs:ListClusters or check the scenario resources."
+        - "Fargate tasks require network configuration: find a subnet ID using ec2:DescribeSubnets on the default VPC."
+        - "Set assignPublicIp to ENABLED so the container can reach the IAM API endpoint."
+        - "After launching, use ecs:DescribeTasks to poll the task ARN until it reaches STOPPED status."
+        - "Once the task exits with code 0, use iam:ListAttachedUserPolicies to confirm AdministratorAccess is attached."
+        - "Browse to https://pathfinding.cloud/paths/ecs-004 for technique details."
       commands:
         - description: "Run the ECS Fargate task"
           command: |

@@ -25,11 +25,17 @@ attackMap:
         Attach the AdministratorAccess managed policy to the starting user, immediately
         granting full administrative access to the AWS account.
       hints:
-        - "You can modify your own IAM user's attached policies."
-        - "Look for managed policies that grant administrative access."
-        - "Browse to https://pathfinding.cloud/paths/iam-008 for technique details."
+        - "Start by confirming your current identity and checking what permissions your user actually has. What policies are attached to you right now?"
+        - "Use iam:ListAttachedUserPolicies on your own username to see which managed policies are currently attached."
+        - "You have the ability to attach managed policies to an IAM user. Can you attach policies to yourself, or only to others?"
+        - "AWS ships a managed policy called AdministratorAccess. Think about what attaching that policy to yourself would mean."
+        - "Use iam:ListPolicies to enumerate available managed policies — look for ones that grant broad access."
+        - "Browse to https://pathfinding.cloud/paths/iam-008 for full technique details and context."
+        - "The single API call that completes this escalation targets your own username and the ARN of an AWS-managed policy."
       commands:
+        - description: "Check which managed policies are currently attached to your user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-iam-008-to-admin-starting-user"
         - description: "Attach AdministratorAccess managed policy to self"
           command: "aws iam attach-user-policy --user-name pl-prod-iam-008-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
-        - description: "Verify administrator access"
+        - description: "Verify administrator access by listing IAM users"
           command: "aws iam list-users"

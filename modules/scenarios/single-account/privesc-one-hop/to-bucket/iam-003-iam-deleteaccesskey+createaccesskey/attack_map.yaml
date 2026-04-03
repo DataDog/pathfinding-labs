@@ -48,9 +48,11 @@ attackMap:
         Delete one key to free up a slot (AWS enforces a maximum of two access keys per user),
         then create a new access key to obtain the target user's credentials.
       hints:
-        - "You can manipulate access keys for other IAM users."
-        - "The target user is at the AWS 2-key limit — think about what you need to do first."
-        - "Delete an existing key to free up a slot, then create a new one."
+        - "Start by understanding what permissions you have and which users you can target — use your helpful IAM read permissions to enumerate users and their attached policies."
+        - "You can manipulate access keys for other IAM users — but there's a catch."
+        - "AWS limits each IAM user to a maximum of two active access keys. Use iam:ListAccessKeys to see the target user's current key count."
+        - "The target user is already at the 2-key limit. You need to clear a slot before you can create a new key."
+        - "Delete one of the existing keys to free up a slot, then create a new access key to obtain credentials for the target user."
         - "Browse to https://pathfinding.cloud/paths/iam-003 for technique details."
       commands:
         - description: "List existing access keys for the target user"
@@ -67,8 +69,9 @@ attackMap:
         Use the newly created access key credentials to authenticate as the target user
         and access the sensitive S3 bucket.
       hints:
-        - "Configure the new credentials in your environment."
-        - "The target user has S3 read permissions on the sensitive bucket."
+        - "Export the new credentials into your shell environment and wait a few seconds for IAM propagation before testing."
+        - "The target user has S3 read permissions — use s3api list-buckets or s3 ls to discover the exact bucket name (it includes a random suffix)."
+        - "Once you have the bucket name, list its contents and download any files to confirm you have read access."
       commands:
         - description: "Export the new credentials"
           command: "export AWS_ACCESS_KEY_ID=<new-key-id> AWS_SECRET_ACCESS_KEY=<new-secret-key>"

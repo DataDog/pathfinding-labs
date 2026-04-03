@@ -38,8 +38,12 @@ attackMap:
         slot, then create a new access key under attacker control to gain
         administrative credentials.
       hints:
-        - "The target user already has the maximum number of access keys. Think about what that means for your approach."
-        - "You have permissions to manage access keys on another user — including deleting existing ones."
+        - "Use your helpful permissions to enumerate what IAM users exist in the account and which ones have elevated privileges."
+        - "Once you have identified the target admin user, check how many access keys they already have — AWS enforces a per-user limit."
+        - "If both key slots are occupied, a direct iam:CreateAccessKey call will be rejected. You have another permission that can help clear a slot."
+        - "Use iam:ListAccessKeys on the target user to retrieve the existing key IDs — you'll need one to proceed."
+        - "iam:DeleteAccessKey lets you remove an existing key by its ID. Deleting one key frees up a slot for a new one."
+        - "Once a slot is free, use iam:CreateAccessKey to generate a new key for the target admin user — the secret key is only shown once, so capture the full output."
         - "Browse to https://pathfinding.cloud/paths/iam-003 for technique details."
       commands:
         - description: "List existing access keys for the admin user"

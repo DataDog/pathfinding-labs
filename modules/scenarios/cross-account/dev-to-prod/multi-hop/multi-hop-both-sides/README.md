@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -21,15 +21,19 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
-- `iam:CreateLoginProfile` on `arn:aws:iam::{dev_account_id}:user/pl-Josh` -- create a console password for the dev admin user
-- `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-trustsdev` -- cross-account lateral movement from dev to prod
-- `iam:UpdateLoginProfile` on `arn:aws:iam::{prod_account_id}:user/pl-Jeremy` -- reset the prod admin user's console password
+**Required** (`pl-pathfinding-starting-user-dev`):
+- `sts:AssumeRole` on `arn:aws:iam::{dev_account_id}:role/pl-helpdesk` -- assume the helpdesk role in dev to begin the escalation chain
 
-**Helpful:**
-- `iam:GetLoginProfile` -- view existing login profile configuration
-- `iam:ListUsers` -- discover users in both accounts
-- `iam:GetUser` -- view user details and permissions
+**Required** (`pl-helpdesk`):
+- `iam:CreateLoginProfile` on `arn:aws:iam::{dev_account_id}:user/pl-Josh` -- create a console password for the dev admin user, enabling authentication as Josh
+
+**Required** (`pl-trustsdev`):
+- `iam:UpdateLoginProfile` on `arn:aws:iam::{prod_account_id}:user/pl-Jeremy` -- reset the prod admin user's console password to a value the attacker controls
+
+**Helpful** (`pl-pathfinding-starting-user-dev`):
+- `iam:GetLoginProfile` on `arn:aws:iam::{dev_account_id}:user/pl-Josh` -- check whether pl-Josh already has a login profile before attempting to create one
+- `iam:ListUsers` -- discover users in the dev account and identify high-value targets
+- `iam:GetUser` -- view user details to confirm which accounts hold elevated permissions
 
 ## Self-hosted Lab Setup
 
@@ -161,11 +165,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Role assumption from dev to the helpdesk role; alert when the source principal is the pathfinding starting user
-- `IAM: CreateLoginProfile` — Login profile created for a user; critical when the target user holds admin or elevated permissions
-- `STS: AssumeRole` — Cross-account role assumption from dev `pl-Josh` to prod `pl-trustsdev`; alert on cross-account assumptions involving non-prod principals
-- `IAM: UpdateLoginProfile` — Login profile updated for a user; high severity when the target user holds admin permissions in prod
-- `STS: GetCallerIdentity` — Identity verification calls that follow a chain of role assumptions; useful for tracing lateral movement
+- `STS: AssumeRole` -- Role assumption from dev to the helpdesk role; alert when the source principal is the pathfinding starting user
+- `IAM: CreateLoginProfile` -- Login profile created for a user; critical when the target user holds admin or elevated permissions
+- `STS: AssumeRole` -- Cross-account role assumption from dev `pl-Josh` to prod `pl-trustsdev`; alert on cross-account assumptions involving non-prod principals
+- `IAM: UpdateLoginProfile` -- Login profile updated for a user; high severity when the target user holds admin permissions in prod
+- `STS: GetCallerIdentity` -- Identity verification calls that follow a chain of role assumptions; useful for tracing lateral movement
 
 #### Detonation logs
 

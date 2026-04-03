@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** bedrock-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-bedrock-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-bedrock-001-to-admin-target-role` -- pass the privileged role to Bedrock AgentCore as an execution role
 - `bedrock-agentcore:CreateCodeInterpreter` on `*` -- create the code interpreter provisioned with the privileged execution role
 - `bedrock-agentcore:StartCodeInterpreterSession` on `*` -- start an interactive session inside the code interpreter
 - `bedrock-agentcore:InvokeCodeInterpreter` on `*` -- execute code within the session to query the metadata service
 
-**Helpful:**
+**Helpful** (`pl-prod-bedrock-001-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `iam:GetRole` -- view role trust policies and attached permissions
 - `bedrock-agentcore:GetCodeInterpreter` -- verify code interpreter creation and configuration

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $10/mo
 * **Technique:** Update existing App Runner service to execute privilege escalation commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** apprunner-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-apprunner-002-to-admin-starting-user`):
 - `apprunner:UpdateService` on `arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*` -- modify the existing service configuration to inject a malicious StartCommand
 
-**Helpful:**
+**Helpful** (`pl-prod-apprunner-002-to-admin-starting-user`):
 - `apprunner:DescribeService` -- view service configuration and verify the privileged role attached
 - `apprunner:ListServices` -- discover existing App Runner services to exploit
 - `iam:ListUsers` -- verify admin access after escalation

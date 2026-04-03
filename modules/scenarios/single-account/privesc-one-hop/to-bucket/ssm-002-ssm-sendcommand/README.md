@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ssm-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0006 - Credential Access
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ssm-002-to-bucket-starting-user`):
 - `ssm:SendCommand` on `*` -- execute arbitrary shell commands on EC2 instances via AWS Systems Manager
 
-**Helpful:**
+**Helpful** (`pl-prod-ssm-002-to-bucket-starting-user`):
 - `ssm:ListCommands` -- view command execution status and results
 - `ssm:ListCommandInvocations` -- list command invocations for the sent commands
 - `ssm:GetCommandInvocation` -- retrieve detailed command output containing extracted credentials
@@ -45,7 +45,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
+plabs enable single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
 plabs apply
 ```
 
@@ -123,7 +123,7 @@ plabs cleanup ssm-002-ssm-sendcommand
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
+plabs disable single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand
 plabs apply
 ```
 

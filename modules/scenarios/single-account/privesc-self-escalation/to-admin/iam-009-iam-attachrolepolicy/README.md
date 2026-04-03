@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:AttachRolePolicy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-009
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-009-to-admin-starting-user`):
 - `iam:AttachRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-009-to-admin-starting-role` -- allows the role to attach managed policies to itself
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-009-to-admin-starting-user`):
 - `iam:ListAttachedRolePolicies` -- list managed policies currently attached to the role
 - `iam:ListPolicies` -- discover available managed policies to attach
 

@@ -33,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "cloudformation:UpdateStack"
-      resource: "arn:aws:cloudformation:*:*:stack/pl-prod-cloudformation-002-to-admin-stack/*"
+    - principal: "pl-prod-cloudformation-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:UpdateStack"
+          resource: "arn:aws:cloudformation:*:*:stack/pl-prod-cloudformation-002-to-admin-stack/*"
 
   helpful:
-    - permission: "cloudformation:DescribeStacks"
-      purpose: "View stack details and verify stack configuration"
-
-    - permission: "cloudformation:GetTemplate"
-      purpose: "Retrieve current stack template for modification"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the escalated role was created by the stack update"
-
-    - permission: "sts:AssumeRole"
-      purpose: "Assume the escalated role created by stack update"
-
+    - principal: "pl-prod-cloudformation-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeStacks"
+          purpose: "View stack details and verify stack configuration"
+        - permission: "cloudformation:GetTemplate"
+          purpose: "Retrieve current stack template for modification"
+        - permission: "iam:GetRole"
+          purpose: "Verify the escalated role was created by the stack update"
+        - permission: "sts:AssumeRole"
+          purpose: "Assume the escalated role created by stack update"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

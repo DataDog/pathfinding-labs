@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with AttachUserPolicy and CreateAccessKey on another user can attach AWS-managed AdministratorAccess policy, create access keys, and gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-015
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-015-to-admin-starting-user`):
 - `iam:AttachUserPolicy` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user` -- allows attaching managed policies to the target user
 - `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-015-to-admin-target-user` -- allows generating new credentials for the target user
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-015-to-admin-starting-user`):
 - `iam:ListUsers` -- discover target users to escalate through
 - `iam:GetUser` -- get target user details and current permissions
 - `iam:ListAttachedUserPolicies` -- list managed policies attached to target user

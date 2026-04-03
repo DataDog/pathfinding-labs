@@ -37,6 +37,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -44,9 +45,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-bucket-access-role"
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "sts:GetCallerIdentity"
+          "sts:GetCallerIdentity",
+          "iam:ListRoles",
+          "s3:GetBucketPolicy",
+          "iam:GetRole"
         ]
         Resource = "*"
       }

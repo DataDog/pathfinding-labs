@@ -17,6 +17,7 @@ resource "aws_iam_role" "lambda_prod_updater" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowStartingUserToAssume"
         Effect = "Allow"
         Principal = {
           AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-pathfinding-starting-user-dev"
@@ -37,6 +38,7 @@ resource "aws_iam_role_policy" "lambda_prod_updater" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "RequiredForExploitationAssumeRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-lambda-updater"

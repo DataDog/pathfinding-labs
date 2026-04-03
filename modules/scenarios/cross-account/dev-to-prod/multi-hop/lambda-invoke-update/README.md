@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Cross-account Lambda function code injection to extract admin credentials
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1552.005 - Cloud Instance Metadata API
 
@@ -21,11 +21,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-dev`):
 - `lambda:UpdateFunctionCode` on `arn:aws:lambda:*:{prod_account_id}:function/*` -- allows replacing the prod Lambda function's code with a malicious payload
 - `lambda:InvokeFunction` on `arn:aws:lambda:*:{prod_account_id}:function/*` -- allows executing the now-malicious function to retrieve the execution role credentials
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-dev`):
 - `lambda:ListFunctions` -- discover Lambda functions in the prod account
 - `lambda:GetFunction` -- view Lambda function configuration and identify its execution role
 

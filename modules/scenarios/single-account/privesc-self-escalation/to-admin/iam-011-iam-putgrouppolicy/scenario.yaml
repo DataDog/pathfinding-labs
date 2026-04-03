@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutGroupPolicy"
-      resource: "*"
+    - principal: "pl-prod-iam-011-to-admin-paul"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutGroupPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListGroups"
-      purpose: "List groups the user belongs to"
-
-    - permission: "iam:GetGroupPolicy"
-      purpose: "View existing inline group policies"
-
-    - permission: "iam:ListGroupPolicies"
-      purpose: "List all inline policies on group"
-
+    - principal: "pl-prod-iam-011-to-admin-paul"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListGroups"
+          purpose: "List groups the user belongs to"
+        - permission: "iam:GetGroupPolicy"
+          purpose: "View existing inline group policies"
+        - permission: "iam:ListGroupPolicies"
+          purpose: "List all inline policies on group"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

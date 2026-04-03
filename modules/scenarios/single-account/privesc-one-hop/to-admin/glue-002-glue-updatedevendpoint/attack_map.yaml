@@ -48,9 +48,11 @@ attackMap:
         After the endpoint finishes updating (status returns to READY), SSH access is
         available using the corresponding private key.
       hints:
-        - "You can modify existing Glue development endpoints."
-        - "Look for Glue dev endpoints — they run with attached IAM roles and support SSH access."
-        - "Adding your SSH public key to an endpoint lets you SSH in and run commands as its IAM role."
+        - "Start by discovering what Glue dev endpoints exist in the account — use your helpful list permission to find them."
+        - "Look closely at each endpoint's details: what IAM role is attached? An endpoint with an administrative role is your target."
+        - "Use glue:GetDevEndpoint to retrieve the endpoint's public SSH address and verify it is in READY status before proceeding."
+        - "You can modify existing Glue development endpoints — check what update parameters are available, particularly around SSH keys."
+        - "Adding your SSH public key to an endpoint lets you SSH in and run commands as its attached IAM role."
         - "Browse to https://pathfinding.cloud/paths/glue-002 for technique details."
       commands:
         - description: "Generate a temporary SSH key pair"
@@ -70,8 +72,10 @@ attackMap:
         EC2 instance runs with the attached administrative IAM role, so all AWS CLI
         calls inherit that role's permissions.
       hints:
-        - "Use glue:GetDevEndpoint to retrieve the SSH address after your key is accepted."
-        - "Wait for the endpoint status to return to READY before attempting the SSH connection."
+        - "After injecting your key, wait for the endpoint status to return to READY — it transitions through UPDATING first."
+        - "Use glue:GetDevEndpoint to poll the status and retrieve the endpoint's public SSH address once it is ready."
+        - "The Glue endpoint runs as the 'glue' user — connect with your private key and the public address from the endpoint details."
+        - "Once connected via SSH, the AWS CLI environment on the endpoint is pre-configured with the attached IAM role's credentials via IMDS."
       commands:
         - description: "SSH into the Glue dev endpoint"
           command: "ssh -i /tmp/glue_attack_key livy@<endpoint-public-address>"

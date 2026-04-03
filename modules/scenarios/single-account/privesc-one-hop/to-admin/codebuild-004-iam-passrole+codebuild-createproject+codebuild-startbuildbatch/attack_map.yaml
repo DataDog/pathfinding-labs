@@ -50,9 +50,12 @@ attackMap:
         as the project's service role using iam:PassRole. The project is configured with
         a malicious inline buildspec.
       hints:
-        - "You can create and run CodeBuild projects, and you can pass IAM roles to services."
-        - "Think about what a CodeBuild build environment can do with a privileged service role."
-        - "Browse to https://pathfinding.cloud/paths/codebuild-004 for technique details."
+        - "Start by understanding what roles exist in this account that could be passed to a service. Use iam:ListRoles to look for roles whose trust policy references codebuild.amazonaws.com."
+        - "Once you find an interesting role, check what permissions it has -- iam:ListAttachedRolePolicies and iam:ListRolePolicies will tell you what it can do when assumed."
+        - "You can create CodeBuild projects and pass IAM roles to them. Think about what a build environment can do if it runs with a privileged service role's permissions."
+        - "When creating the project, you need to embed your attack payload as an inline buildspec in the --source parameter. CodeBuild batch builds require a batch: section with a build-list."
+        - "The --service-role and --build-batch-config serviceRole fields must both point to the target role ARN for batch builds -- CodeBuild requires this to authorize batch orchestration."
+        - "Browse to https://pathfinding.cloud/paths/codebuild-004 for full technique details."
       commands:
         - description: "Create a CodeBuild project with the privileged role as its service role"
           command: "aws codebuild create-project --name \"pl-privesc-codebuild-batch-demo\" --source '{\"type\":\"NO_SOURCE\",\"buildspec\":\"...\"}' --artifacts type=NO_ARTIFACTS --environment type=LINUX_CONTAINER,image=aws/codebuild/standard:7.0,computeType=BUILD_GENERAL1_SMALL --service-role \"arn:aws:iam::{account_id}:role/pl-prod-codebuild-004-to-admin-target-role\" --build-batch-config '{\"serviceRole\":\"arn:aws:iam::{account_id}:role/pl-prod-codebuild-004-to-admin-target-role\"}'"
@@ -66,8 +69,11 @@ attackMap:
         The buildspec calls iam:AttachUserPolicy to attach AdministratorAccess to the
         starting user, completing the privilege escalation.
       hints:
-        - "The project's service role determines what AWS actions can run inside the build."
-        - "The buildspec can contain arbitrary AWS CLI commands that execute with the service role's permissions."
+        - "With the project created, start a build batch using codebuild:StartBuildBatch. The batch will execute the buildspec you embedded in the project."
+        - "Batch builds take 2-4 minutes to complete -- they spin up orchestration infrastructure before the actual build executes. Plan to wait."
+        - "Use codebuild:BatchGetBuildBatches with the build batch ID to monitor status. Wait for SUCCEEDED before checking IAM changes."
+        - "After the build succeeds, IAM policy changes take additional time to propagate globally -- wait at least 15 seconds before verifying your escalation."
+        - "Verify the escalation succeeded by attempting an IAM action that requires admin access, such as iam:ListUsers."
       commands:
         - description: "Start the build batch to trigger the malicious buildspec"
           command: "aws codebuild start-build-batch --project-name \"pl-privesc-codebuild-batch-demo\""

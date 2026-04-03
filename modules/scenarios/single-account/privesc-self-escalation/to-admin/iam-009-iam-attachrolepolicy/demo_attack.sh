@@ -101,6 +101,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # [EXPLOIT] Step 2: Verify identity as user
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 use_starting_creds
@@ -205,6 +213,9 @@ fi
 
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the AdministratorAccess policy${NC}"
 echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

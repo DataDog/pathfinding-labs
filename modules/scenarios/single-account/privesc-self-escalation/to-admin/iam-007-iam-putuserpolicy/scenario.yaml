@@ -31,16 +31,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutUserPolicy"
-      resource: "*"
+    - principal: "pl-prod-iam-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutUserPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:GetUser"
-      purpose: "View user details and verify policy attachment"
-
-    - permission: "iam:ListUserPolicies"
-      purpose: "List existing inline policies on users"
-
+    - principal: "pl-prod-iam-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetUser"
+          purpose: "View user details and verify policy attachment"
+        - permission: "iam:ListUserPolicies"
+          purpose: "List existing inline policies on users"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

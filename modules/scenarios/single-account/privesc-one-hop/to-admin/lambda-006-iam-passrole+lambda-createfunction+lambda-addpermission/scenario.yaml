@@ -32,31 +32,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-lambda-006-to-admin-target-role"
-
-    - permission: "lambda:CreateFunction"
-      resource: "*"
-
-    - permission: "lambda:AddPermission"
-      resource: "*"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "*"
+    - principal: "pl-prod-lambda-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-lambda-006-to-admin-target-role"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
+        - permission: "lambda:AddPermission"
+          resource: "*"
+        - permission: "lambda:InvokeFunction"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
-
-    - permission: "lambda:GetFunction"
-      purpose: "Verify function creation and retrieve details"
-
-    - permission: "lambda:GetPolicy"
-      purpose: "Verify resource-based policy was added"
-
-    - permission: "lambda:DeleteFunction"
-      purpose: "Clean up attack artifacts"
-
+    - principal: "pl-prod-lambda-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+        - permission: "lambda:GetFunction"
+          purpose: "Verify function creation and retrieve details"
+        - permission: "lambda:GetPolicy"
+          purpose: "Verify resource-based policy was added"
+        - permission: "lambda:DeleteFunction"
+          purpose: "Clean up attack artifacts"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying existing Lambda function code and manually invoking it to execute malicious logic under privileged execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1525 - Implant Internal Image
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-004-to-admin-starting-user`):
 - `lambda:UpdateFunctionCode` on `arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda` -- replace the existing Lambda function code with a malicious payload
 - `lambda:InvokeFunction` on `arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda` -- immediately trigger execution of the malicious payload under the function's privileged role
 
-**Helpful:**
+**Helpful** (`pl-prod-lambda-004-to-admin-starting-user`):
 - `lambda:GetFunction` -- discover Lambda function details including handler name and execution role
 - `lambda:ListFunctions` -- discover available Lambda functions to target
 - `iam:GetRole` -- view Lambda execution role permissions to identify high-value targets

@@ -41,10 +41,12 @@ attackMap:
         IAM propagation, they assume the role with sts:AssumeRole to gain full
         administrative access.
       hints:
-        - "You can modify who is trusted to assume certain roles."
-        - "Look for roles with elevated permissions whose trust policies you can update."
-        - "Once you add your principal to a role's trust policy, you can assume it with sts:AssumeRole."
-        - "Browse to https://pathfinding.cloud/paths/iam-012 for technique details."
+        - "Use iam:ListRoles to enumerate roles in the account and look for ones with elevated permissions attached."
+        - "Use iam:GetRole on interesting roles to read their trust policy -- who (or what) is currently allowed to assume them?"
+        - "You have permission to modify who is trusted to assume certain roles. Look carefully at what permissions are granted to your starting principal."
+        - "A trust policy (AssumeRolePolicyDocument) controls which principals can call sts:AssumeRole on a role. You can rewrite that document to add your own user ARN."
+        - "After modifying the trust policy, IAM changes take about 15 seconds to propagate before you can successfully assume the role."
+        - "Browse to https://pathfinding.cloud/paths/iam-012 for technique details and a reference walkthrough."
       commands:
         - description: "Get the attacker's user ARN"
           command: "aws sts get-caller-identity --query 'Arn' --output text"

@@ -50,8 +50,10 @@ attackMap:
         and creates a stack with a malicious template. CloudFormation executes the
         template using the admin service role's permissions.
       hints:
-        - "You can pass IAM roles to AWS services. What service here accepts a service role?"
-        - "CloudFormation can create any resource in a template, including IAM roles. What if the template creates a role you can assume?"
+        - "You can pass IAM roles to AWS services. Which service here is configured to accept a service role with admin permissions?"
+        - "Use iam:ListRoles to find roles whose trust policy allows cloudformation.amazonaws.com as a principal — that's the service role you can pass."
+        - "CloudFormation can create any resource in a template, including IAM roles. What if the template creates a role that trusts your starting user?"
+        - "The --role-arn flag on cloudformation:CreateStack is how you pass a service role. CloudFormation will use it to provision every resource in the template."
         - "Browse to https://pathfinding.cloud/paths/cloudformation-001 for technique details."
       commands:
         - description: "Create a malicious CloudFormation template that defines an admin role"
@@ -86,8 +88,9 @@ attackMap:
         the IAM role defined in the malicious template. The resulting role has
         AdministratorAccess and trusts the starting user.
       hints:
-        - "The stack executes with the passed admin service role. What can it create?"
-        - "Craft a template that defines a new IAM role with AdministratorAccess and a trust policy that allows your starting user to assume it."
+        - "The stack executes with the passed admin service role. What can it create on your behalf?"
+        - "Craft a template that defines a new IAM role with AdministratorAccess and a trust policy that allows your starting user to assume it directly."
+        - "Use cloudformation:DescribeStacks to monitor the stack status. Wait for CREATE_COMPLETE before trying to assume the new role."
       commands: []
 
     - from: starting-user
@@ -96,6 +99,10 @@ attackMap:
       description: >
         The starting user assumes the newly created escalated role, obtaining
         administrative credentials for the AWS account.
+      hints:
+        - "Once the stack reaches CREATE_COMPLETE, the escalated role exists and its trust policy allows your starting user to assume it."
+        - "Use sts:AssumeRole with the role ARN from the stack outputs (or construct it from the role name in your template)."
+        - "Export the returned AccessKeyId, SecretAccessKey, and SessionToken as environment variables to operate as the escalated role."
       commands:
         - description: "Assume the escalated role created by CloudFormation"
           command: "aws sts assume-role --role-arn arn:aws:iam::ACCOUNT_ID:role/pl-prod-cloudformation-001-to-admin-escalated-role --role-session-name privesc-session"

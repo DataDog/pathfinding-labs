@@ -37,8 +37,12 @@ attackMap:
         iam:PutUserPolicy. Then create new access keys for that user via iam:CreateAccessKey.
         Authenticate with the new credentials to operate as the target user with admin access.
       hints:
-        - "You can modify inline policies on other IAM users."
-        - "Look for users you can both modify policies for and create credentials for."
+        - "Use iam:ListUsers to discover which other users exist in the account -- look for users that might have elevated permissions or be worth targeting."
+        - "Check your own policy with iam:GetUserPolicy or review the inline policy attached to the starting user to see exactly which user you can modify and create credentials for."
+        - "Use iam:ListUserPolicies and iam:GetUserPolicy on the target user to confirm they currently have minimal permissions -- this is your opportunity to change that."
+        - "You can write an inline policy to any IAM user you have iam:PutUserPolicy permission on. A policy with Action '*' and Resource '*' grants full administrative access."
+        - "After modifying the target user's policy, use iam:CreateAccessKey on that same user to generate fresh credentials -- then authenticate as them to exercise the permissions you just granted."
+        - "IAM policy changes can take 10-15 seconds to propagate. Wait before testing the new credentials."
         - "Browse to https://pathfinding.cloud/paths/iam-018 for technique details."
       commands:
         - description: "Add an inline policy granting AdministratorAccess to the target user"

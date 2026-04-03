@@ -82,6 +82,12 @@ attackMap:
       description: >
         Launch an EC2 instance using the modified launch template. The instance
         receives the admin instance profile and executes the malicious user data.
+      hints:
+        - "With the default version updated, the next instance launched from this template will carry your payload."
+        - "Check whether an Auto Scaling Group is already associated with this launch template -- if so, you may be able to trigger a launch by adjusting the ASG's desired capacity."
+        - "Use autoscaling:DescribeAutoScalingGroups to identify which ASG references this template, then increase desired capacity to trigger the launch."
+        - "If no ASG is present, you can launch an instance directly using ec2:RunInstances with the launch template reference."
+        - "Monitor the new instance with ec2:DescribeInstances to confirm it reaches the running state before waiting for the user data to execute."
       commands:
         - description: "Launch an EC2 instance using the modified template"
           command: "aws ec2 run-instances --launch-template 'LaunchTemplateName=pl-prod-ec2-005-to-admin-template,Version=$Default' --instance-type t3.micro"
@@ -93,6 +99,11 @@ attackMap:
         The instance launches with the admin instance profile (pl-prod-ec2-005-to-admin-target-role)
         and executes the malicious user data script. The script uses the instance's admin credentials
         to attach AdministratorAccess to the starting user, completing the privilege escalation.
+      hints:
+        - "The instance boots with the admin instance profile -- the user data script runs as that role automatically."
+        - "The script you injected into user data calls iam:AttachUserPolicy on the starting user using the instance's own credentials from IMDS."
+        - "Wait 2-3 minutes after the instance reaches the running state, then check whether AdministratorAccess has been attached to the starting user."
+        - "Use iam:ListAttachedUserPolicies on the starting user to confirm the policy attachment completed successfully."
       commands:
         - description: "Verify admin access after user data executes"
           command: "aws iam list-attached-user-policies --user-name pl-prod-ec2-005-to-admin-starting-user"

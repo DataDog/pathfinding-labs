@@ -32,16 +32,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role"
+    - principal: "pl-dev-xsarrt-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role"
 
   helpful:
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify current identity before and after role assumption"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover assumable roles in the target account"
-
+    - principal: "pl-dev-xsarrt-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity before and after role assumption"
+        - permission: "iam:ListRoles"
+          purpose: "Discover assumable roles in the target account"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

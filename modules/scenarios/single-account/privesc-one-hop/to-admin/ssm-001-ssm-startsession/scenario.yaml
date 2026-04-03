@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ssm:StartSession"
-      resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id} and arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell"
+    - principal: "pl-prod-ssm-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:StartSession"
+          resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id} and arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell"
 
   helpful:
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover target EC2 instances"
-
-    - permission: "ssm:DescribeInstanceInformation"
-      purpose: "Identify SSM-enabled instances"
-
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify credentials after exfiltration"
-
+    - principal: "pl-prod-ssm-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover target EC2 instances"
+        - permission: "ssm:DescribeInstanceInformation"
+          purpose: "Identify SSM-enabled instances"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify credentials after exfiltration"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

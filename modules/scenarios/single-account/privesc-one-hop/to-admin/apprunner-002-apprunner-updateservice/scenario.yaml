@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "apprunner:UpdateService"
-      resource: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*"
+    - principal: "pl-prod-apprunner-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:UpdateService"
+          resource: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*"
 
   helpful:
-    - permission: "apprunner:DescribeService"
-      purpose: "View service configuration and role attached"
-
-    - permission: "apprunner:ListServices"
-      purpose: "Discover existing App Runner services to exploit"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after escalation"
-
+    - principal: "pl-prod-apprunner-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:DescribeService"
+          purpose: "View service configuration and role attached"
+        - permission: "apprunner:ListServices"
+          purpose: "Discover existing App Runner services to exploit"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

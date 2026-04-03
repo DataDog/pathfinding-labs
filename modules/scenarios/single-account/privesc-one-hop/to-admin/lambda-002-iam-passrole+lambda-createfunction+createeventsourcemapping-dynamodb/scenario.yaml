@@ -34,40 +34,36 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-lambda-002-to-admin-target-role"
-
-    - permission: "lambda:CreateFunction"
-      resource: "*"
-
-    - permission: "lambda:CreateEventSourceMapping"
-      resource: "*"
+    - principal: "pl-prod-lambda-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-lambda-002-to-admin-target-role"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
+        - permission: "lambda:CreateEventSourceMapping"
+          resource: "*"
 
   helpful:
-    - permission: "dynamodb:ListStreams"
-      purpose: "Discover available DynamoDB streams to target"
-
-    - permission: "dynamodb:DescribeStream"
-      purpose: "Get stream ARN and configuration details"
-
-    - permission: "dynamodb:DescribeTable"
-      purpose: "Get table details including stream ARN"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "Verify Lambda function creation"
-
-    - permission: "lambda:GetFunction"
-      purpose: "Confirm function configuration and role"
-
-    - permission: "lambda:GetEventSourceMapping"
-      purpose: "Check event source mapping status and verify activation"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover privileged roles available for PassRole"
-
-    - permission: "dynamodb:PutItem"
-      purpose: "Trigger Lambda execution by inserting test record (demo only)"
-
+    - principal: "pl-prod-lambda-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "dynamodb:ListStreams"
+          purpose: "Discover available DynamoDB streams to target"
+        - permission: "dynamodb:DescribeStream"
+          purpose: "Get stream ARN and configuration details"
+        - permission: "dynamodb:DescribeTable"
+          purpose: "Get table details including stream ARN"
+        - permission: "lambda:ListFunctions"
+          purpose: "Verify Lambda function creation"
+        - permission: "lambda:GetFunction"
+          purpose: "Confirm function configuration and role"
+        - permission: "lambda:GetEventSourceMapping"
+          purpose: "Check event source mapping status and verify activation"
+        - permission: "iam:ListRoles"
+          purpose: "Discover privileged roles available for PassRole"
+        - permission: "dynamodb:PutItem"
+          purpose: "Trigger Lambda execution by inserting test record (demo only)"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

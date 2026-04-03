@@ -75,7 +75,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "coreAttackPermission1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -83,7 +83,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
         Resource = aws_iam_role.admin_role.arn
       },
       {
-        Sid    = "coreAttackPermission2"
+        Sid    = "RequiredForExploitationAirflow"
         Effect = "Allow"
         Action = [
           "airflow:CreateEnvironment"
@@ -92,7 +92,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
       },
       {
         # MWAA validates the caller has these permissions even though SLR does the work
-        Sid    = "mwaaRequiredEc2Permissions"
+        Sid    = "RequiredForExploitationMWAAValidatedEC2"
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
@@ -109,10 +109,20 @@ resource "aws_iam_user_policy" "starting_user_required" {
         Resource = "*"
       },
       {
-        Sid    = "mwaaRequiredS3Permissions"
+        Sid    = "RequiredForExploitationMWAAValidatedS3"
         Effect = "Allow"
         Action = [
           "s3:GetEncryptionConfiguration"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "airflow:GetEnvironment",
+          "airflow:DeleteEnvironment",
+          "ec2:DescribeRouteTables"
         ]
         Resource = "*"
       }

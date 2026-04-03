@@ -32,25 +32,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-019-to-admin-target-role"
-
-    - permission: "iam:UpdateAssumeRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-019-to-admin-target-role"
+    - principal: "pl-prod-iam-019-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-019-to-admin-target-role"
+        - permission: "iam:UpdateAssumeRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-019-to-admin-target-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available roles that can be modified"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies and attached policies"
-
-    - permission: "iam:ListAttachedRolePolicies"
-      purpose: "View current role permissions before and after modification"
-
-    - permission: "iam:GetUserPolicy"
-      purpose: "Verify starting user does not have sts:AssumeRole permission"
-
+    - principal: "pl-prod-iam-019-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available roles that can be modified"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and attached policies"
+        - permission: "iam:ListAttachedRolePolicies"
+          purpose: "View current role permissions before and after modification"
+        - permission: "iam:GetUserPolicy"
+          purpose: "Verify starting user does not have sts:AssumeRole permission"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

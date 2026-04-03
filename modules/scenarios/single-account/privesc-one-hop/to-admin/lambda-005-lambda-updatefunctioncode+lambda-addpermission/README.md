@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying existing Lambda function code and adding resource-based permissions to execute malicious logic under privileged execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-005-to-admin-starting-user`):
 - `lambda:UpdateFunctionCode` on `arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda` -- replace existing function code with a malicious payload
 - `lambda:AddPermission` on `arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda` -- add a resource-based policy statement granting self-invocation
 - `lambda:InvokeFunction` on `arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda` -- trigger execution of the malicious payload under the privileged role
 
-**Helpful:**
+**Helpful** (`pl-prod-lambda-005-to-admin-starting-user`):
 - `lambda:GetFunction` -- discover the target Lambda function and its execution role ARN
 - `lambda:GetPolicy` -- verify the resource-based policy statement was successfully added
 - `lambda:ListFunctions` -- enumerate available Lambda functions to identify high-privilege targets

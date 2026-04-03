@@ -33,16 +33,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "*"
+    - principal: "pl-pathfinding-starting-user-operations"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles in prod account"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies and permissions"
-
+    - principal: "pl-pathfinding-starting-user-operations"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles in prod account"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

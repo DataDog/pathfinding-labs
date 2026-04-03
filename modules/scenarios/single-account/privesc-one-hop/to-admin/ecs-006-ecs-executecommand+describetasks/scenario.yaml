@@ -32,23 +32,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ecs:ExecuteCommand"
-      resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
-
-    - permission: "ecs:DescribeTasks"
-      resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
-      purpose: "Required by AWS CLI to retrieve container runtime ID for SSM session"
+    - principal: "pl-prod-ecs-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:ExecuteCommand"
+          resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
+        - permission: "ecs:DescribeTasks"
+          resource: "arn:aws:ecs:*:*:task/pl-prod-ecs-006-to-admin-cluster/*"
 
   helpful:
-    - permission: "ecs:ListTasks"
-      purpose: "Discover task ARNs in the cluster"
-
-    - permission: "ecs:DescribeTaskDefinition"
-      purpose: "Get task definition to discover task role ARN"
-
-    - permission: "ecs:ListClusters"
-      purpose: "Discover ECS clusters in the account"
-
+    - principal: "pl-prod-ecs-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:ListTasks"
+          purpose: "Discover task ARNs in the cluster"
+        - permission: "ecs:DescribeTaskDefinition"
+          purpose: "Get task definition to discover task role ARN"
+        - permission: "ecs:ListClusters"
+          purpose: "Discover ECS clusters in the account"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

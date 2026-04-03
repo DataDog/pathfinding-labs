@@ -8,7 +8,7 @@
 * **Cost Estimate:** $10/mo
 * **Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ec2-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1578 - Modify Cloud Compute Infrastructure
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ec2-002-to-admin-starting-user`):
 - `ec2:ModifyInstanceAttribute` on `arn:aws:ec2:*:*:instance/*` -- inject the malicious userData payload
 - `ec2:StopInstances` on `arn:aws:ec2:*:*:instance/*` -- stop the instance so userData can be modified
 - `ec2:StartInstances` on `arn:aws:ec2:*:*:instance/*` -- boot the instance to trigger payload execution
 
-**Helpful:**
+**Helpful** (`pl-prod-ec2-002-to-admin-starting-user`):
 - `ec2:DescribeInstances` -- discover target EC2 instances and verify instance state
 - `ec2:DescribeInstanceAttribute` -- view current userData and instance configuration
 - `sts:GetCallerIdentity` -- verify identity during attack execution

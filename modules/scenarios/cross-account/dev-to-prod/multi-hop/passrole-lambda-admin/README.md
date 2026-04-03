@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1098 - Account Manipulation
 
@@ -21,12 +21,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-dev`):
 - `iam:PassRole` on `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin` -- allows passing the admin role to the Lambda service when creating a function
 - `lambda:CreateFunction` on `*` -- allows creating the Lambda function with the passed admin role
 - `lambda:InvokeFunction` on `*` -- allows invoking the Lambda function to execute as the admin role
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-dev`):
 - `iam:ListRoles` -- discover roles that can be passed to Lambda
 - `lambda:ListFunctions` -- view existing Lambda functions
 - `iam:GetRole` -- view role permissions and trust policies

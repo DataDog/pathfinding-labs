@@ -99,23 +99,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    # isAdmin - Full wildcard permissions
-    - permission: "*"
-      resource: "*"
-      notes: "15 principals have effective admin access via various policy mechanisms (AWS managed, customer managed, inline, group membership, split policies, many services combined)"
-
-    # notAdmin - Admin with denies or boundaries
-    - permission: "*"
-      resource: "*"
-      notes: "24 principals have AdministratorAccess policy but are blocked by explicit denies or permissions boundaries"
+    - principal: "pl-prod-epe-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "*"
+          resource: "*"
+        - permission: "*"
+          resource: "*"
 
   helpful:
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify assumed identity"
-
-    - permission: "sts:AssumeRole"
-      purpose: "Starting user assumes test roles"
-
+    - principal: "pl-prod-epe-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+        - permission: "sts:AssumeRole"
+          purpose: "Starting user assumes test roles"
 # =============================================================================
 # ADMIN DEFINITION
 # =============================================================================

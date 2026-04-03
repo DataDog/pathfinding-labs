@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:UpdateAssumeRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-012-to-admin-target-role"
-
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-012-to-admin-target-role"
+    - principal: "pl-prod-iam-012-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:UpdateAssumeRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-012-to-admin-target-role"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-012-to-admin-target-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover privileged roles to target"
-
-    - permission: "iam:GetRole"
-      purpose: "View current trust policy before modification"
-
+    - principal: "pl-prod-iam-012-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover privileged roles to target"
+        - permission: "iam:GetRole"
+          purpose: "View current trust policy before modification"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

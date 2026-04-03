@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Update existing Glue job to use privileged role and malicious script, then create trigger for automated execution with persistence
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-006
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1053 - Scheduled Task/Job, T1565.001 - Data Manipulation: Stored Data Manipulation
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-006-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::{account_id}:role/pl-prod-glue-006-to-admin-target-role` -- pass the admin role to the Glue job during update
 - `glue:UpdateJob` on `*` -- update existing Glue job to use admin role and malicious script
 - `glue:CreateTrigger` on `*` -- create scheduled trigger with `--start-on-creation` to execute job immediately
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-006-to-admin-starting-user`):
 - `glue:GetJob` -- retrieve job details and verify configuration
 - `glue:GetTrigger` -- monitor trigger state and verify activation
 - `glue:GetJobRun` -- get details about a specific job run

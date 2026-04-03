@@ -21,25 +21,30 @@ attack_path:
 
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
-    - permission: "datapipeline:CreatePipeline"
-      resource: "*"
-    - permission: "datapipeline:PutPipelineDefinition"
-      resource: "*"
-    - permission: "datapipeline:ActivatePipeline"
-      resource: "*"
+    - principal: "pl-prod-datapipeline-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
+        - permission: "datapipeline:CreatePipeline"
+          resource: "*"
+        - permission: "datapipeline:PutPipelineDefinition"
+          resource: "*"
+        - permission: "datapipeline:ActivatePipeline"
+          resource: "*"
 
   helpful:
-    - permission: "datapipeline:DescribePipelines"
-      purpose: "Monitor pipeline status and verify activation"
-    - permission: "datapipeline:GetPipelineDefinition"
-      purpose: "View pipeline configuration for verification"
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-    - permission: "iam:GetUser"
-      purpose: "Verify policy attachment after escalation"
-
+    - principal: "pl-prod-datapipeline-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "datapipeline:DescribePipelines"
+          purpose: "Monitor pipeline status and verify activation"
+        - permission: "datapipeline:GetPipelineDefinition"
+          purpose: "View pipeline configuration for verification"
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "iam:GetUser"
+          purpose: "Verify policy attachment after escalation"
 mitre_attack:
   tactics:
     - "TA0004 - Privilege Escalation"

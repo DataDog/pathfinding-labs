@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:CreatePolicyVersion
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-001-to-admin-starting-user`):
 - `iam:CreatePolicyVersion` on `arn:aws:iam::*:policy/*` -- creates a new version of the managed policy attached to the role, replacing it with an admin policy document
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-001-to-admin-starting-user`):
 - `iam:ListPolicyVersions` -- list existing policy versions before creating a new one
 - `iam:GetPolicyVersion` -- view content of existing policy versions for reconnaissance
 

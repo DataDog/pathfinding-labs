@@ -32,37 +32,34 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-execution-role"
-
-    - permission: "ecs:RunTask"
-      resource: "*"
+    - principal: "pl-prod-ecs-008-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-execution-role"
+        - permission: "ecs:RunTask"
+          resource: "*"
 
   helpful:
-    - permission: "ecs:ListTaskDefinitions"
-      purpose: "Discover existing task definitions to exploit"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Monitor task execution status and verify task completion"
-
-    - permission: "ecs:ListClusters"
-      purpose: "Discover available ECS clusters"
-
-    - permission: "ecs:StopTask"
-      purpose: "Stop running tasks during cleanup"
-
-    - permission: "ec2:DescribeVpcs"
-      purpose: "Find default VPC for Fargate task network configuration"
-
-    - permission: "ec2:DescribeSubnets"
-      purpose: "Find subnet in default VPC for Fargate task network configuration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
-
+    - principal: "pl-prod-ecs-008-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:ListTaskDefinitions"
+          purpose: "Discover existing task definitions to exploit"
+        - permission: "ecs:DescribeTasks"
+          purpose: "Monitor task execution status and verify task completion"
+        - permission: "ecs:ListClusters"
+          purpose: "Discover available ECS clusters"
+        - permission: "ecs:StopTask"
+          purpose: "Stop running tasks during cleanup"
+        - permission: "ec2:DescribeVpcs"
+          purpose: "Find default VPC for Fargate task network configuration"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Find subnet in default VPC for Fargate task network configuration"
+        - permission: "iam:DetachUserPolicy"
+          purpose: "Remove admin policy from starting user during cleanup"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

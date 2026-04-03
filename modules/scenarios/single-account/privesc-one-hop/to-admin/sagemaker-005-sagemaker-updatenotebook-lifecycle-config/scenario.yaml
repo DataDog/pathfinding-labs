@@ -33,28 +33,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sagemaker:CreateNotebookInstanceLifecycleConfig"
-      resource: "*"
-
-    - permission: "sagemaker:StopNotebookInstance"
-      resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
-
-    - permission: "sagemaker:UpdateNotebookInstance"
-      resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
-
-    - permission: "sagemaker:StartNotebookInstance"
-      resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
+    - principal: "pl-prod-sagemaker-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sagemaker:CreateNotebookInstanceLifecycleConfig"
+          resource: "*"
+        - permission: "sagemaker:StopNotebookInstance"
+          resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
+        - permission: "sagemaker:UpdateNotebookInstance"
+          resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
+        - permission: "sagemaker:StartNotebookInstance"
+          resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
 
   helpful:
-    - permission: "sagemaker:DescribeNotebookInstance"
-      purpose: "View notebook details, status, and attached execution role"
-
-    - permission: "sagemaker:ListNotebookInstances"
-      purpose: "Discover available notebook instances to target"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the notebook's execution role has admin permissions"
-
+    - principal: "pl-prod-sagemaker-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sagemaker:DescribeNotebookInstance"
+          purpose: "View notebook details, status, and attached execution role"
+        - permission: "sagemaker:ListNotebookInstances"
+          purpose: "Discover available notebook instances to target"
+        - permission: "iam:GetRole"
+          purpose: "Verify the notebook's execution role has admin permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

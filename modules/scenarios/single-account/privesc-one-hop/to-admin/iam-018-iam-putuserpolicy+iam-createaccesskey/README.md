@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User-to-user lateral movement via policy modification and credential creation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-018
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-018-to-admin-starting-user`):
 - `iam:PutUserPolicy` on `arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user` -- modify the target user's inline policies to grant admin access
 - `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user` -- create credentials for the target user after elevating their permissions
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-018-to-admin-starting-user`):
 - `iam:ListUsers` -- discover target users to escalate through
 - `iam:GetUser` -- get target user details and current permissions
 - `iam:ListUserPolicies` -- list inline policies on target user

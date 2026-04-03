@@ -1,12 +1,10 @@
 # Guided Walkthrough: Privilege Escalation via iam:AttachRolePolicy + iam:UpdateAssumeRolePolicy
 
-This scenario demonstrates a sophisticated privilege escalation vulnerability that combines two powerful IAM permissions: `iam:AttachRolePolicy` and `iam:UpdateAssumeRolePolicy`. While each permission is dangerous on its own, their combination creates a complete privilege escalation path that allows an attacker to gain full administrative access through role manipulation.
+This scenario demonstrates a privilege escalation technique that lives entirely within the IAM control plane — no compute, no Lambda, no EC2. An IAM user who can both attach managed policies to a role and modify that role's trust policy holds the keys to the entire account, even if they cannot do anything else. The first action grants the role administrative power; the second action grants you the ability to step into it.
 
-The attack works by first attaching the AdministratorAccess managed policy to a target role using `iam:AttachRolePolicy`, effectively granting that role full administrative permissions. The attacker then uses `iam:UpdateAssumeRolePolicy` to modify the role's trust policy, adding their own user as a trusted principal. Once the trust policy is updated, the attacker can assume the now-privileged role to gain administrative access.
+This pattern appears regularly in real environments when developers or automation accounts are given "just enough" IAM permissions that individually seem safe but together form a complete escalation path. Security teams often focus on permissions like `iam:CreatePolicyVersion` or `iam:PassRole` as escalation risks while overlooking the `iam:AttachRolePolicy` + `iam:UpdateAssumeRolePolicy` combination scoped to the same resource.
 
-A critical aspect of this attack is that **the starting user does not need `sts:AssumeRole` permissions**. When a principal is explicitly named in a role's trust policy, AWS allows that principal to assume the role regardless of their own IAM permissions. This is a fundamental AWS behavior that many security teams overlook — trust policies grant permission from the role's side, making `sts:AssumeRole` permissions on the assuming principal unnecessary when they are specifically trusted.
-
-This attack path is particularly dangerous because it combines infrastructure modification (attaching policies) with access control manipulation (updating trust relationships), allowing an attacker to both create and exploit administrative privileges. Organizations often fail to recognize the compound risk of granting both permissions together.
+The attack is also notable for a subtle IAM behavior: a principal does not need `sts:AssumeRole` in their own policy to assume a role. When a user's ARN is explicitly named as a trusted principal in a role's trust policy, that is sufficient. Trust flows from the role's side, not the user's side. This distinction matters for both attackers and defenders.
 
 ## The Challenge
 

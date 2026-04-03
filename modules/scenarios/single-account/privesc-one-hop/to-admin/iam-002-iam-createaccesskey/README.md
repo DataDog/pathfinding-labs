@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating access keys for privileged users to gain administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-002-to-admin-starting-user`):
 - `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-002-to-admin-target-user` -- create new programmatic credentials for the target admin user
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-002-to-admin-starting-user`):
 - `iam:ListUsers` -- discover privileged users to target
 - `iam:GetUser` -- view user details and attached policies
 - `iam:ListAttachedUserPolicies` -- identify users with admin permissions

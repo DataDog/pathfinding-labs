@@ -74,9 +74,11 @@ attackMap:
         The starting user assumes the escalation role, gaining PassRole and compute service
         creation permissions.
       hints:
-        - "You can assume roles that trust your identity."
-        - "Look for roles that have PassRole combined with compute service creation permissions."
-        - "Browse to https://pathfinding.cloud for technique details."
+        - "Your starting user can assume a role -- start by discovering which roles are available to you."
+        - "Use iam:ListRoles to enumerate roles in the account and look for one your identity can assume."
+        - "Check the trust policies of discovered roles to see which ones trust your user ARN."
+        - "Once you identify the assumable role, review its attached and inline policies to understand what it can do."
+        - "Look for roles whose policies combine iam:PassRole with compute service creation permissions -- that combination is the escalation path."
       commands:
         - description: "Assume the escalation role"
           command: >
@@ -91,10 +93,12 @@ attackMap:
         Launch an EC2 instance with the admin role attached as the instance profile. The
         instance user-data script runs a payload under AdministratorAccess.
       hints:
-        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
-        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
-        - "Launch an EC2 instance with this role as the instance profile."
-        - "Include a user-data payload that creates a new admin role trusting your starting identity."
+        - "You have iam:PassRole -- identify which service admin roles you can pass by looking for roles whose trust policy allows ec2.amazonaws.com."
+        - "Use iam:ListRoles to find roles trusted by EC2, Lambda, and CloudFormation service principals."
+        - "With ec2:RunInstances and iam:PassRole, you can launch an EC2 instance that operates under an admin role."
+        - "EC2 user-data runs as root on launch -- a user-data payload can perform IAM operations using the instance profile's credentials."
+        - "The payload should create a new IAM role with AdministratorAccess and a trust policy that allows your starting user to assume it."
+        - "After the instance completes its user-data, you can assume the newly created role from your local machine."
       commands:
         - description: "Launch EC2 instance with admin role and payload"
           command: >
@@ -112,10 +116,11 @@ attackMap:
         Create a Lambda function with the admin role as its execution role, then invoke it
         to run a payload under AdministratorAccess.
       hints:
-        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
-        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
-        - "Create a Lambda function using this execution role."
-        - "Invoke the function with a payload that creates a new admin role."
+        - "You have iam:PassRole -- identify which service admin roles you can pass by looking for roles whose trust policy allows lambda.amazonaws.com."
+        - "With lambda:CreateFunction and iam:PassRole, you can create a Lambda function that executes under an admin role."
+        - "Write a short Python function that calls iam:CreateRole and iam:AttachRolePolicy to provision a new admin role trusting your starting identity."
+        - "After creating the function, invoke it explicitly -- Lambda functions do not run until invoked."
+        - "Check the invocation response or CloudWatch Logs to confirm the payload succeeded before attempting to assume the new role."
       commands:
         - description: "Create Lambda function with admin role"
           command: >
@@ -135,10 +140,11 @@ attackMap:
         Deploy a CloudFormation stack using the admin role. The stack template includes an
         IAM role resource, executed under AdministratorAccess via CAPABILITY_NAMED_IAM.
       hints:
-        - "You have PassRole and can create compute resources. Look for service admin roles you can pass."
-        - "Each compute service (EC2, Lambda, CloudFormation) can run a payload under an admin role."
-        - "Create a CloudFormation stack with this role ARN and CAPABILITY_NAMED_IAM."
-        - "The stack template can include an IAM role resource with a trust policy pointing back to your identity."
+        - "You have iam:PassRole -- identify which service admin roles you can pass by looking for roles whose trust policy allows cloudformation.amazonaws.com."
+        - "With cloudformation:CreateStack and iam:PassRole, you can deploy a stack that executes IAM operations under an admin role."
+        - "Write a CloudFormation template that defines an AWS::IAM::Role resource with AdministratorAccess and a trust policy for your starting user."
+        - "Pass the admin role ARN to the stack using the --role-arn parameter and include CAPABILITY_NAMED_IAM in --capabilities."
+        - "Wait for the stack to reach CREATE_COMPLETE status before attempting to assume the role the stack created."
       commands:
         - description: "Create CloudFormation stack with admin role"
           command: >
@@ -154,6 +160,11 @@ attackMap:
       description: >
         The EC2 instance payload (running under AdministratorAccess) creates a new IAM role
         with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      hints:
+        - "The EC2 instance runs its user-data script as root using the instance profile's admin credentials."
+        - "Your payload should call iam:CreateRole to create a new role with a trust policy pointing to your starting user ARN."
+        - "After creating the role, attach AdministratorAccess using iam:AttachRolePolicy."
+        - "Once the instance finishes its user-data, switch back to your starting user credentials and assume the new role."
       commands: []
 
     - from: lambda-admin-role
@@ -162,6 +173,11 @@ attackMap:
       description: >
         The Lambda function payload (running under AdministratorAccess) creates a new IAM role
         with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      hints:
+        - "The Lambda function executes using the execution role's admin credentials."
+        - "Your function code should call iam:CreateRole with a trust policy that includes your starting user ARN as a principal."
+        - "After creating the role, call iam:AttachRolePolicy with the AdministratorAccess managed policy ARN."
+        - "Check the function's response payload or CloudWatch Logs to confirm the role was created successfully."
       commands: []
 
     - from: cfn-admin-role
@@ -170,4 +186,9 @@ attackMap:
       description: >
         The CloudFormation stack (executed under AdministratorAccess) provisions a new IAM role
         resource with AdministratorAccess and a trust policy allowing the starting user to assume it.
+      hints:
+        - "CloudFormation executes your template using the role you passed -- it has full admin permissions."
+        - "Define an AWS::IAM::Role resource in your template with a trust policy principal set to your starting user ARN."
+        - "Add AdministratorAccess to ManagedPolicyArns in the role definition."
+        - "Use cloudformation:DescribeStacks or cloudformation:DescribeStackResources to confirm the role was created once the stack completes."
       commands: []

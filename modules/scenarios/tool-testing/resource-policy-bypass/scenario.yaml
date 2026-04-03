@@ -33,19 +33,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles with bucket access"
-
-    - permission: "s3:GetBucketPolicy"
-      purpose: "View bucket resource policy restrictions"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles with bucket access"
+        - permission: "s3:GetBucketPolicy"
+          purpose: "View bucket resource policy restrictions"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating SageMaker training job with malicious script and admin role to execute code with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sagemaker-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sagemaker-002-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sagemaker-002-to-admin-passable-role` -- allows passing the admin execution role to the SageMaker training job
 - `sagemaker:CreateTrainingJob` on `*` -- allows creating the training job that executes the malicious script
 - `s3:PutObject` on `arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*` -- allows uploading the malicious training script to the bucket
 - `s3:GetObject` on `arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-*/*` -- allows reading objects from the training bucket
 
-**Helpful:**
+**Helpful** (`pl-prod-sagemaker-002-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `iam:GetRole` -- verify the role has administrative permissions before passing it
 - `sagemaker:DescribeTrainingJob` -- monitor training job status and execution progress

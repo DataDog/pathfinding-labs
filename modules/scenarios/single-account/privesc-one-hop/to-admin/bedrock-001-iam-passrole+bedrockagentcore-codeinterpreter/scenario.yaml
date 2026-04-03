@@ -32,28 +32,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-bedrock-001-to-admin-target-role"
-
-    - permission: "bedrock-agentcore:CreateCodeInterpreter"
-      resource: "*"
-
-    - permission: "bedrock-agentcore:StartCodeInterpreterSession"
-      resource: "*"
-
-    - permission: "bedrock-agentcore:InvokeCodeInterpreter"
-      resource: "*"
+    - principal: "pl-prod-bedrock-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-bedrock-001-to-admin-target-role"
+        - permission: "bedrock-agentcore:CreateCodeInterpreter"
+          resource: "*"
+        - permission: "bedrock-agentcore:StartCodeInterpreterSession"
+          resource: "*"
+        - permission: "bedrock-agentcore:InvokeCodeInterpreter"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies and attached permissions"
-
-    - permission: "bedrock-agentcore:GetCodeInterpreter"
-      purpose: "Verify code interpreter creation and configuration"
-
+    - principal: "pl-prod-bedrock-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and attached permissions"
+        - permission: "bedrock-agentcore:GetCodeInterpreter"
+          purpose: "Verify code interpreter creation and configuration"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

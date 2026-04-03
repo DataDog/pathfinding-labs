@@ -99,6 +99,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "${GREEN}✓ Successfully extracted and configured credentials${NC}\n"
 
 # Generate a random password suffix (8 characters)
@@ -229,6 +237,9 @@ echo "  1. Login to AWS Console with the new password"
 echo "  2. Access S3 through the console interface"
 echo "  3. View and download sensitive data from the bucket"
 
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"

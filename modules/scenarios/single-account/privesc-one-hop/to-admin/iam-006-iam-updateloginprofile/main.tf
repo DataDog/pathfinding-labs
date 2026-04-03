@@ -43,7 +43,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowUpdateLoginProfile"
+        Sid    = "RequiredForExploitationUpdateLoginProfile"
         Effect = "Allow"
         Action = [
           "iam:UpdateLoginProfile"
@@ -51,12 +51,12 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.account_id}:user/pl-prod-iam-006-to-admin-target-user"
       },
       {
-        Sid    = "AllowHelpfulActions"
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
+          "iam:ListUsers",
           "iam:GetUser",
-          "iam:GetLoginProfile",
-          "iam:ListAttachedUserPolicies"
+          "iam:GetLoginProfile"
         ]
         Resource = "*"
       }

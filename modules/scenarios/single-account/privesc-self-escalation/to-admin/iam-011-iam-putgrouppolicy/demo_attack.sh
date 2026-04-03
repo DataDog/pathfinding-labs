@@ -39,6 +39,9 @@ PRIVESC_USER="pl-prod-iam-011-to-admin-paul"
 TARGET_GROUP="pl-prod-iam-011-to-admin-escalation-group"
 POLICY_NAME="EscalatedAdminAccess"
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PutGroupPolicy Self-Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}"
@@ -100,6 +103,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user identity${NC}"

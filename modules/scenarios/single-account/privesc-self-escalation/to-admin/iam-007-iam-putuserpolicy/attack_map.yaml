@@ -27,8 +27,12 @@ attackMap:
         that grants AdministratorAccess. The escalation is immediate — no approval
         or propagation delay.
       hints:
-        - "You can modify IAM policies on users."
-        - "Check whether you can modify your own inline policies."
+        - "Start by confirming your identity and reviewing what permissions your user currently holds."
+        - "Use iam:ListUserPolicies and iam:GetUserPolicy on your own username to read the inline policies attached to you."
+        - "Look at the resource scope of iam:PutUserPolicy in your policy -- does it allow you to target your own username?"
+        - "You can write a new inline policy document and push it onto an IAM user with a single API call."
+        - "An inline policy with Effect Allow, Action *, Resource * grants full administrator access."
+        - "IAM policy changes propagate within seconds -- wait about 15 seconds after attaching the policy before verifying."
         - "Browse to https://pathfinding.cloud/paths/iam-007 for technique details."
       commands:
         - description: "Attach an inline admin policy to the starting user (self-escalation)"

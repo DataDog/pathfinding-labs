@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** cloudformation-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.003 - Account Manipulation: Additional Cloud Roles
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-cloudformation-005-to-admin-starting-user`):
 - `cloudformation:CreateChangeSet` on `*` -- create a change set against the target stack
 - `cloudformation:ExecuteChangeSet` on `*` -- execute the change set, triggering the stack's service role to create resources
 
-**Helpful:**
+**Helpful** (`pl-prod-cloudformation-005-to-admin-starting-user`):
 - `cloudformation:DescribeChangeSet` -- view change set details and verify creation
 - `cloudformation:DescribeStacks` -- discover existing CloudFormation stacks to target
 - `cloudformation:DescribeStackResource` -- view stack resources and service role information

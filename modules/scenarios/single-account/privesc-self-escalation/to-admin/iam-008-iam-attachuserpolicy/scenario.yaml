@@ -31,16 +31,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachUserPolicy"
-      resource: "*"
+    - principal: "pl-prod-iam-008-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachUserPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "List managed policies attached to user"
-
-    - permission: "iam:ListPolicies"
-      purpose: "Discover available managed policies to attach"
-
+    - principal: "pl-prod-iam-008-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "List managed policies attached to user"
+        - permission: "iam:ListPolicies"
+          purpose: "Discover available managed policies to attach"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

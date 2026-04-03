@@ -67,11 +67,22 @@ resource "aws_iam_user_policy" "privesc_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationCreateAccessKey"
         Effect = "Allow"
         Action = [
           "iam:CreateAccessKey"
         ]
         Resource = aws_iam_user.bucket_access_user.arn
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "iam:ListUsers",
+          "iam:GetUserPolicy",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

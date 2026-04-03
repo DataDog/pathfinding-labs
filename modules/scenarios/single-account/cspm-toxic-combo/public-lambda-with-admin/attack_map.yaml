@@ -48,9 +48,12 @@ attackMap:
         Send an unauthenticated HTTP request to the Lambda function URL. No AWS credentials
         or signatures are required because AuthorizationType is set to NONE.
       hints:
-        - "Look for Lambda functions that are publicly invocable without AWS credentials."
-        - "Check if the Lambda function's execution role has elevated permissions."
-        - "Lambda function URLs with AuthorizationType: NONE can be invoked by anyone."
+        - "Start by searching for Lambda function URLs in the account — these are separate HTTPS endpoints distinct from regular Lambda invocation."
+        - "If you have any low-privilege AWS credentials, use lambda:ListFunctions to enumerate functions, then check each one for a function URL."
+        - "Use lambda:GetFunctionUrlConfig on any function you find to check the AuthorizationType field — the value NONE means no credentials are required."
+        - "Check the execution role attached to any publicly invocable function — use iam:ListAttachedRolePolicies to see what permissions it carries."
+        - "A Lambda function URL with AuthorizationType: NONE can be invoked with a plain HTTP client like curl — no AWS Signature Version 4 required."
+        - "Once you have the function URL, invoke it directly with an HTTP GET or POST request and observe the response body for any sensitive data."
       commands:
         - description: "Invoke the Lambda function URL (replace URL with actual function URL from terraform output)"
           command: "curl -s https://<function-url-id>.lambda-url.<region>.on.aws/"
@@ -63,9 +66,11 @@ attackMap:
         the function. Extract AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN
         from the response to assume the admin role's identity.
       hints:
-        - "The function runtime environment exposes the execution role credentials as environment variables."
-        - "AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN are available inside the function."
-        - "Invoke the function URL and parse the response for the credential values."
+        - "When a Lambda function executes, the AWS runtime automatically injects the execution role's temporary credentials as environment variables."
+        - "Look at the function's response body — if the function exposes its environment variables, you will find AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN."
+        - "The three credential values in the response are short-lived but fully functional — they represent the execution role's identity, not the invoking caller."
+        - "Export the extracted credentials as environment variables in your local shell and call aws sts get-caller-identity to confirm which role you now control."
+        - "Use the credentials to verify the effective permissions of the execution role — if AdministratorAccess is attached, you have full account access."
       commands:
         - description: "Verify the extracted credentials grant admin access"
           command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws sts get-caller-identity"

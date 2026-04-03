@@ -36,9 +36,11 @@ attackMap:
         Add the starting user to the admin group. Group membership is effective
         immediately, granting the user all permissions attached to the group.
       hints:
-        - "You can manage group memberships in this account."
-        - "Look for IAM groups that have elevated or administrative policies attached."
-        - "Check what policies are attached to each group — group membership grants the group's policies to the member user."
+        - "Start by listing the IAM groups that exist in this account — your helpful permissions include iam:ListGroups."
+        - "Once you have a list of groups, check which policies are attached to each one using iam:ListAttachedGroupPolicies."
+        - "Look for groups with administrative policies like AdministratorAccess — group membership grants all policies attached to the group."
+        - "Now that you know which group grants admin access, think about how you might get yourself added to it."
+        - "Your required permission is iam:AddUserToGroup — it works on any group because the resource is scoped to '*'."
         - "Browse to https://pathfinding.cloud/paths/iam-013 for technique details."
       commands:
         - description: "Add the starting user to the admin group"

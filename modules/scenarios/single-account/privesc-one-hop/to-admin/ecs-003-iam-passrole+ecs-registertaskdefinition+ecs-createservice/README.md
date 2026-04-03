@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** ECS service creation with admin role to grant starting user administrative access through persistent task execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ecs-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ecs-003-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-003-to-admin-target-role` -- allows passing the admin role to ECS tasks
 - `ecs:RegisterTaskDefinition` on `*` -- allows creating a task definition specifying the admin role
 - `ecs:CreateService` on `*` -- allows deploying the task definition as a persistent Fargate service
 
-**Helpful:**
+**Helpful** (`pl-prod-ecs-003-to-admin-starting-user`):
 - `ecs:DescribeServices` -- monitor service status and verify service creation
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:DeleteService` -- clean up ECS service after demonstration

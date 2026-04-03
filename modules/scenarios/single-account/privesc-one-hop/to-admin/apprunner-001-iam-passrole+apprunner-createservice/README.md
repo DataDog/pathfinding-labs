@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to App Runner service with command override
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** apprunner-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-apprunner-001-to-admin-starting-user`):
 - `apprunner:CreateService` on `*` -- create an App Runner service to serve as the execution proxy
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-apprunner-001-to-admin-target-role` -- pass the privileged role to the App Runner service as its instance role
 - `iam:CreateServiceLinkedRole` on `arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner` -- required only for the first App Runner service in the account
 
-**Helpful:**
+**Helpful** (`pl-prod-apprunner-001-to-admin-starting-user`):
 - `apprunner:ListServices` -- list App Runner services to verify service creation
 - `apprunner:DescribeService` -- check service status and configuration
 - `iam:ListUsers` -- verify admin access after escalation

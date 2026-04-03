@@ -46,8 +46,10 @@ attackMap:
         The starting user assumes the starting role to obtain temporary credentials
         with the iam:AttachRolePolicy permission.
       hints:
-        - "You can assume roles from this user. Look for roles this user has permission to assume."
-        - "The role you can assume has permissions that allow it to modify its own policies."
+        - "Start by confirming your identity and understanding what this user can do."
+        - "This user's permissions include the ability to assume a role. Check the trust policies of roles in the account."
+        - "Use iam:ListRoles or inspect the user's policy to identify which role can be assumed."
+        - "The role you can assume has unusual permissions scoped to its own ARN — pay attention to the resource conditions."
         - "Browse to https://pathfinding.cloud/paths/iam-009 for technique details."
       commands:
         - description: "Assume the starting role"
@@ -60,9 +62,12 @@ attackMap:
         The starting role uses its iam:AttachRolePolicy permission to attach a
         managed S3 access policy to itself, escalating its own privileges.
       hints:
-        - "This role can modify its own IAM policies. What could you attach to gain access to the target?"
-        - "Look for managed policies that grant S3 access and attach one to this role."
-        - "Use iam:AttachRolePolicy with the role's own ARN as the resource."
+        - "Now that you have assumed the role, review the policies attached to it — what IAM actions does this role have?"
+        - "This role can call iam:AttachRolePolicy. The resource condition it is scoped to is significant — check what ARN it targets."
+        - "Use iam:ListAttachedRolePolicies to see what is already attached, then use iam:ListPolicies to find candidate policies to add."
+        - "Look for a customer-managed policy in the account whose name suggests it grants access to the target S3 bucket."
+        - "Attach the bucket access policy to this role using its own role name as the target."
+        - "IAM policy changes are not instant — wait at least 15 seconds after attaching before testing access."
       commands:
         - description: "Attach the bucket access policy to the current role"
           command: "aws iam attach-role-policy --role-name pl-prod-iam-009-to-bucket-starting-role --policy-arn arn:aws:iam::{account_id}:policy/pl-prod-iam-009-to-bucket-access-policy"
@@ -73,6 +78,10 @@ attackMap:
       description: >
         With the bucket access policy now attached, the role can list and read
         all objects in the target S3 bucket, accessing sensitive data.
+      hints:
+        - "After the policy change propagates, try the S3 operations that were denied before the escalation."
+        - "Use s3:ListBucket to confirm you can now see objects in the target bucket."
+        - "Once listing succeeds, download the sensitive file from the bucket."
       commands:
         - description: "List objects in the target bucket"
           command: "aws s3 ls s3://pl-prod-iam-009-to-bucket-{account_id}"

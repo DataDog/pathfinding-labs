@@ -32,25 +32,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-017-to-admin-target-role"
-
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-017-to-admin-target-role"
+    - principal: "pl-prod-iam-017-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-017-to-admin-target-role"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-017-to-admin-target-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available roles that can be modified"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies to identify assumable roles"
-
-    - permission: "iam:ListRolePolicies"
-      purpose: "View current inline role policies"
-
-    - permission: "iam:GetRolePolicy"
-      purpose: "View inline policy details before and after modification"
-
+    - principal: "pl-prod-iam-017-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available roles that can be modified"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies to identify assumable roles"
+        - permission: "iam:ListRolePolicies"
+          purpose: "View current inline role policies"
+        - permission: "iam:GetRolePolicy"
+          purpose: "View inline policy details before and after modification"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

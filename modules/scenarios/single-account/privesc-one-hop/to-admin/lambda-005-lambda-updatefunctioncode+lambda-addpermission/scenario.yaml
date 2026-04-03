@@ -32,25 +32,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "lambda:UpdateFunctionCode"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
-
-    - permission: "lambda:AddPermission"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
+    - principal: "pl-prod-lambda-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
+        - permission: "lambda:AddPermission"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-005-to-admin-target-lambda"
 
   helpful:
-    - permission: "lambda:GetFunction"
-      purpose: "Discover target Lambda function and its execution role"
-
-    - permission: "lambda:GetPolicy"
-      purpose: "Verify resource-based policy was added"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "Discover available Lambda functions"
-
+    - principal: "pl-prod-lambda-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:GetFunction"
+          purpose: "Discover target Lambda function and its execution role"
+        - permission: "lambda:GetPolicy"
+          purpose: "Verify resource-based policy was added"
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover available Lambda functions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

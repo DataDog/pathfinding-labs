@@ -33,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-cloudformation-001-to-admin-cfn-role"
-
-    - permission: "cloudformation:CreateStack"
-      resource: "*"
+    - principal: "pl-prod-cloudformation-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-cloudformation-001-to-admin-cfn-role"
+        - permission: "cloudformation:CreateStack"
+          resource: "*"
 
   helpful:
-    - permission: "cloudformation:DescribeStacks"
-      purpose: "Monitor stack creation progress"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-
-    - permission: "cloudformation:DeleteStack"
-      purpose: "Clean up attack artifacts"
-
+    - principal: "pl-prod-cloudformation-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeStacks"
+          purpose: "Monitor stack creation progress"
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "cloudformation:DeleteStack"
+          purpose: "Clean up attack artifacts"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

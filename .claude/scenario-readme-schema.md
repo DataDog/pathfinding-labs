@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `3.0.0`**
+**Current schema version: `4.0.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md`, then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -139,17 +139,35 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 #### `### Starting Permissions`
 
-Two sub-lists:
+Permissions are grouped by principal. Each principal gets its own **Required** and/or **Helpful** heading with the principal name in parentheses.
+
+**Single principal (most one-hop scenarios):**
 
 ```
-**Required:**
+**Required** (`{principal_name}`):
 - `{permission}` on `{resource}` -- {brief description}
 
-**Helpful:**
+**Helpful** (`{principal_name}`):
 - `{permission}` -- {purpose/what it enables for recon}
 ```
 
-If there are no helpful permissions, include the heading with "None" or omit the Helpful sub-list.
+**Multiple principals (multi-hop scenarios):**
+
+```
+**Required** (`{principal_name_1}`):
+- `{permission}` on `{resource}` -- {brief description}
+
+**Required** (`{principal_name_2}`):
+- `{permission}` on `{resource}` -- {brief description}
+
+**Helpful** (`{principal_name_1}`):
+- `{permission}` -- {purpose}
+
+**Helpful** (`{principal_name_2}`):
+- `{permission}` -- {purpose}
+```
+
+If a principal has no helpful permissions, omit the Helpful heading for that principal. If no principals have helpful permissions, omit all Helpful headings.
 
 ### `## Self-hosted Lab Setup`
 
@@ -376,7 +394,7 @@ Use this table when migrating READMEs from v2.0.1 to v3.0.0.
 
 **New sections to create during migration:**
 - `## Objective` -- single sentence using the "Your objective is to learn how to exploit..." template (see Section Content Rules)
-- `### Starting Permissions` -- build from removed metadata fields
+- `### Starting Permissions` -- build from removed metadata fields, using per-principal format from scenario.yaml
 - `## Self-hosted Lab Setup` -- wrapper for existing Prerequisites/Deploy sections
 - `## Attack` -- wrapper for resources, walkthrough, demo, cleanup
 - `### Guided Walkthrough` -- link to new `guided_walkthrough.md` file
@@ -390,11 +408,30 @@ Use this table when migrating READMEs from v2.0.1 to v3.0.0.
 
 ---
 
+## Migration: v3.0.0 -> v4.0.0
+
+**Change:** `### Starting Permissions` now groups both Required and Helpful permissions by principal name.
+
+| Old format | New format |
+|---|---|
+| `**Required:**` (flat list) | `**Required** ({principal_name}):` (per-principal list) |
+| `**Helpful:**` (flat list) | `**Helpful** ({principal_name}):` (per-principal list) |
+
+**Migration steps:**
+1. Read `scenario.yaml` `permissions.required` and `permissions.helpful` (now per-principal format)
+2. For each principal entry, emit a `**Required** ({principal_name}):` or `**Helpful** ({principal_name}):` heading
+3. List permissions under each heading
+4. Stamp `Schema Version: 4.0.0`
+
+For single-principal scenarios (most one-hop), the visual difference is small -- just the principal name added to the heading. For multi-hop scenarios, permissions are now properly separated by principal.
+
+---
+
 ## Compliance Checklist
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`3.0.0`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.0.0`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `guided_walkthrough.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)
@@ -407,7 +444,7 @@ A README is compliant if all of the following are true:
 - [ ] No `### Attack Map` embedded YAML section exists (extracted to `attack_map.yaml`)
 - [ ] No `### Executing the attack manually` section exists (moved to `guided_walkthrough.md`)
 - [ ] Metadata does not contain `Attack Path`, `Attack Principals`, `Required Permissions`, or `Helpful Permissions` fields
-- [ ] `## Objective` contains `### Starting Permissions` with Required and Helpful sub-lists
+- [ ] `## Objective` contains `### Starting Permissions` with per-principal Required and Helpful sub-lists (each heading includes the principal name in parentheses)
 - [ ] `## Self-hosted Lab Setup` contains `### Prerequisites`, `### Deploy with plabs non-interactive`, `### Deploy with plabs tui`
 - [ ] `### Guided Walkthrough` exists under `## Attack` with link to `guided_walkthrough.md`
 - [ ] `### Automated Demo` contains `#### Executing the automated demo_attack script`, `#### Resources Created by Attack Script`, `#### With plabs non-interactive`, `#### With plabs tui`

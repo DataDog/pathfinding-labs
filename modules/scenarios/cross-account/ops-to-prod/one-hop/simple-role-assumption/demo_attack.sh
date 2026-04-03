@@ -58,6 +58,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 use_starting_profile() {
     unset AWS_ACCESS_KEY_ID
     unset AWS_SECRET_ACCESS_KEY
@@ -255,6 +263,9 @@ echo "This demonstrates the dangers of overly permissive cross-account role assu
 echo "TEST_RESULT:x-account-from-operations-to-prod-simple-role-assumption:SUCCESS"
 echo "TEST_DETAILS:x-account-from-operations-to-prod-simple-role-assumption:Successfully demonstrated dangerous cross-account role assumption with sts:AssumeRole on *"
 echo "TEST_METRICS:x-account-from-operations-to-prod-simple-role-assumption:ops_role_assumed=true,prod_roles_assumed=3,sts_assume_role_star_demonstrated=true,security_audit_access_gained=true"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

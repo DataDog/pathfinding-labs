@@ -7,6 +7,7 @@ resource "aws_iam_role" "lambda_updater" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowDevRoleToAssume"
         Effect = "Allow"
         Principal = {
           AWS = "arn:aws:iam::${var.dev_account_id}:role/pl-lambda-prod-updater"
@@ -26,6 +27,7 @@ resource "aws_iam_policy" "lambda_updater" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRoleAndLambda"
         Effect = "Allow"
         Action = [
           "lambda:UpdateFunctionCode",
@@ -33,6 +35,16 @@ resource "aws_iam_policy" "lambda_updater" {
           "lambda:InvokeFunction",
           "lambda:CreateFunction",
           "iam:PassRole",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "lambda:ListFunctions",
+          "iam:GetRole",
         ]
         Resource = "*"
       }
@@ -56,6 +68,7 @@ resource "aws_iam_role" "lambda_admin" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaToAssume"
         Effect = "Allow"
         Principal = {
           Service = "lambda.amazonaws.com"
@@ -75,6 +88,7 @@ resource "aws_iam_policy" "lambda_admin_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AdminAccess"
         Effect   = "Allow"
         Action   = "*"
         Resource = "*"

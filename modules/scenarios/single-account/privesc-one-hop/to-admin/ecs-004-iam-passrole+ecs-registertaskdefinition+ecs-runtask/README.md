@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** ECS Fargate task execution with admin role to grant starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ecs-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ecs-004-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-004-to-admin-target-role` -- pass the admin role to the ECS task definition
 - `ecs:RegisterTaskDefinition` on `*` -- register a task definition specifying the admin role and attacker command
 - `ecs:RunTask` on `*` -- launch the registered task on AWS Fargate
 
-**Helpful:**
+**Helpful** (`pl-prod-ecs-004-to-admin-starting-user`):
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:DeregisterTaskDefinition` -- clean up task definition after demonstration
 - `ecs:StopTask` -- stop running tasks during cleanup

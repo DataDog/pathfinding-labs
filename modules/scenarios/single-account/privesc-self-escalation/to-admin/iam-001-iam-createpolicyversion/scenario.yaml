@@ -32,16 +32,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreatePolicyVersion"
-      resource: "arn:aws:iam::*:policy/*"
+    - principal: "pl-prod-iam-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreatePolicyVersion"
+          resource: "arn:aws:iam::*:policy/*"
 
   helpful:
-    - permission: "iam:ListPolicyVersions"
-      purpose: "List existing policy versions"
-
-    - permission: "iam:GetPolicyVersion"
-      purpose: "View content of policy versions"
-
+    - principal: "pl-prod-iam-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListPolicyVersions"
+          purpose: "List existing policy versions"
+        - permission: "iam:GetPolicyVersion"
+          purpose: "View content of policy versions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

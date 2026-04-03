@@ -32,19 +32,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "bedrock-agentcore:StartCodeInterpreterSession"
-      resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
-
-    - permission: "bedrock-agentcore:InvokeCodeInterpreter"
-      resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
+    - principal: "pl-prod-bedrock-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "bedrock-agentcore:StartCodeInterpreterSession"
+          resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
+        - permission: "bedrock-agentcore:InvokeCodeInterpreter"
+          resource: "arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
 
   helpful:
-    - permission: "bedrock-agentcore:ListCodeInterpreters"
-      purpose: "Discover existing code interpreters to target"
-
-    - permission: "bedrock-agentcore:GetCodeInterpreter"
-      purpose: "View interpreter details including execution role"
-
+    - principal: "pl-prod-bedrock-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "bedrock-agentcore:ListCodeInterpreters"
+          purpose: "Discover existing code interpreters to target"
+        - permission: "bedrock-agentcore:GetCodeInterpreter"
+          purpose: "View interpreter details including execution role"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

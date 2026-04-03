@@ -70,6 +70,7 @@ attackMap:
         token for the attached admin role. These credentials are returned in the SSM
         command output and can then be exported and used locally.
       hints:
-        - "The instance metadata endpoint at http://169.254.169.254/latest/meta-data/iam/security-credentials/ lists the attached role."
-        - "Use IMDSv2: first obtain a session token with a PUT request, then include it as a header when fetching credentials."
+        - "The instance metadata endpoint at http://169.254.169.254/latest/meta-data/iam/security-credentials/ lists the name of the attached IAM role."
+        - "Use IMDSv2: first obtain a session token with a PUT request to the token endpoint, then include it as an X-aws-ec2-metadata-token header when fetching credentials."
+        - "Fetch the credentials JSON from http://169.254.169.254/latest/meta-data/iam/security-credentials/<ROLE_NAME> -- the response contains AccessKeyId, SecretAccessKey, and Token fields."
       commands: []
