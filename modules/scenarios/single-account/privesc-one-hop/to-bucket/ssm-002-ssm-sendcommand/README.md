@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ssm:SendCommand to EC2 with S3 Bucket Access
+# SSM Send Command to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

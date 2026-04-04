@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + sagemaker:CreateNotebookInstance
+# SageMaker Notebook Instance Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

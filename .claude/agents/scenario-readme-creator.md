@@ -109,7 +109,7 @@ Follow the canonical section structure from the schema exactly:
 
 ### Section Guidelines
 
-**Title:** Human-readable description of the exploit.
+**Title:** Use the `title` field from `scenario.yaml` verbatim as the H1. Do not prepend a category prefix ("Privilege Escalation:", "CSPM Misconfiguration:", etc.). Example: `# Lambda Function Creation + Invocation to Admin`.
 
 **Metadata:** Map from scenario.yaml as shown above. Do NOT include Attack Path, Attack Principals, Required Permissions, or Helpful Permissions in metadata.
 

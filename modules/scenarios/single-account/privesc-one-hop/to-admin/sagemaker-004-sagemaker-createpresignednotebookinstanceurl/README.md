@@ -1,4 +1,4 @@
-# Privilege Escalation via sagemaker:CreatePresignedNotebookInstanceUrl
+# SageMaker Notebook Presigned URL to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-deleteaccesskey+createaccesskey"
+title: "IAM Access Key Rotation to Bucket"
 description: "User with iam:DeleteAccessKey and iam:CreateAccessKey can delete an existing access key and create a new one for a user with S3 access (bypassing the 2-key limit) to gain bucket access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-003"

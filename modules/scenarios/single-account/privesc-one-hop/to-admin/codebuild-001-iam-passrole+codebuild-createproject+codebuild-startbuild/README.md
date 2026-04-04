@@ -1,4 +1,4 @@
-# Privilege Escalation via CodeBuild Service Abuse
+# CodeBuild Project Creation + Build to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

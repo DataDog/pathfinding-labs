@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "glue-updatedevendpoint"
+title: "Glue Dev Endpoint Update to Bucket"
 description: "User with glue:UpdateDevEndpoint can add SSH key to existing Glue dev endpoint and access sensitive S3 buckets with the endpoint's role"
 cost_estimate: "$634/mo"
 pathfinding-cloud-id: "glue-002"

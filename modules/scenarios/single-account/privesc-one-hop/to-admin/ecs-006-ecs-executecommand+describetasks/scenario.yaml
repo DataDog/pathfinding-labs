@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "ecs:ExecuteCommand + ecs:DescribeTasks"
+title: "ECS Execute Command to Admin"
 description: "User with ecs:ExecuteCommand and ecs:DescribeTasks can shell into running ECS task with admin role to access credentials"
 cost_estimate: "$9/mo"
 pathfinding-cloud-id: "ecs-006"

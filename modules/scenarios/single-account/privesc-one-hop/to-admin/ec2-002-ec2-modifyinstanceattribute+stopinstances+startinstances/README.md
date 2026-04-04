@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ec2:ModifyInstanceAttribute + ec2:StopInstances + ec2:StartInstances
+# EC2 Instance Profile Swap to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

@@ -1,4 +1,4 @@
-# Privilege Escalation via airflow:UpdateEnvironment
+# MWAA Environment Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

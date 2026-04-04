@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:AttachUserPolicy + iam:CreateAccessKey
+# IAM User Policy Attachment + Access Key Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "ops-to-prod-simple-role-assumption"
+title: "Ops to Prod via Direct Role Assumption to Admin"
 description: "Cross-account role assumption from operations to prod"
 cost_estimate: "$0/mo"
 

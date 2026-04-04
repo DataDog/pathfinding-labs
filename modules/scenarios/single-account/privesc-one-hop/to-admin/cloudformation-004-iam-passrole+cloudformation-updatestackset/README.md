@@ -1,4 +1,4 @@
-# Privilege Escalation via cloudformation:UpdateStackSet
+# CloudFormation Stack Set Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

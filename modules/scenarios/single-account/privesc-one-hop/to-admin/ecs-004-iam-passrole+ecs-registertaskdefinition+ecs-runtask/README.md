@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:RegisterTaskDefinition + ecs:RunTask
+# ECS Task Definition Registration + Run Task to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

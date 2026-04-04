@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:PutUserPolicy
+# IAM Inline User Policy Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

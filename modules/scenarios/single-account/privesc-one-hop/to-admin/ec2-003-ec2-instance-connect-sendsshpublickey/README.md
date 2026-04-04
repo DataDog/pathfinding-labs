@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ec2-instance-connect:SendSSHPublicKey
+# EC2 Instance Connect SSH to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

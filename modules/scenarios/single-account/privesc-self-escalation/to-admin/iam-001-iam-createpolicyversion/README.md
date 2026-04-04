@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:CreatePolicyVersion
+# IAM Policy Version Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

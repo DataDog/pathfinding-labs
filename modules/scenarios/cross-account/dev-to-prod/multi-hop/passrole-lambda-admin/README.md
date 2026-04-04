@@ -1,4 +1,4 @@
-# Cross-Account PassRole to Lambda Admin
+# Dev to Prod via Lambda PassRole to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** privilege-chaining

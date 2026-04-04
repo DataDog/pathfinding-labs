@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:StartTask + ecs:RegisterContainerInstance
+# ECS Container Instance Registration + Start Task to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

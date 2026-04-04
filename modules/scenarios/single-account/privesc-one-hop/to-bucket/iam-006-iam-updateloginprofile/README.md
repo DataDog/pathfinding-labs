@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:UpdateLoginProfile
+# IAM Console Password Update to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

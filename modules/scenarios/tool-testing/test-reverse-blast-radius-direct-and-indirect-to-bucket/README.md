@@ -1,4 +1,4 @@
-# Tool Testing: Reverse Blast Radius Query Detection (Direct and Indirect S3 Access)
+# Direct and Indirect Access Paths to Bucket
 
 * **Category:** Tool Testing
 * **Sub-Category:** reverse-blast-radius

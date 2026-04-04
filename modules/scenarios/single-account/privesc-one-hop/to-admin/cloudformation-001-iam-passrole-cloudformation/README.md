@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PassRole + cloudformation:CreateStack
+# CloudFormation Stack Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

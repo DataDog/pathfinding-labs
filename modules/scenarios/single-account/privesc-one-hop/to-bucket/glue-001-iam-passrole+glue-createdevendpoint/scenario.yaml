@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+glue-createdevendpoint"
+title: "Glue Dev Endpoint Creation to Bucket"
 description: "User with iam:PassRole and glue:CreateDevEndpoint can create a Glue dev endpoint with an S3 role and access sensitive buckets via SSH"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "glue-001"

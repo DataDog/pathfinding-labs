@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "ec2-instance-connect-sendsshpublickey"
+title: "EC2 Instance Connect SSH to Bucket"
 description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 instance and extract S3 bucket role credentials via IMDS"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ec2-003"

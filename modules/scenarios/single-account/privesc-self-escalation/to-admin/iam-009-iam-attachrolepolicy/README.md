@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:AttachRolePolicy
+# IAM Managed Role Policy Attachment to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

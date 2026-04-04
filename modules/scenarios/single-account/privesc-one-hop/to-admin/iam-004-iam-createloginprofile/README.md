@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:CreateLoginProfile
+# IAM Console Password Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

@@ -1,4 +1,4 @@
-# Exclusive S3 Bucket Access Through Restrictive Resource Policy
+# Exclusive Resource Policy Access to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

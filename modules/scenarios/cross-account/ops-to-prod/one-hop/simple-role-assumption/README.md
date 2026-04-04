@@ -1,4 +1,4 @@
-# Cross-Account from Operations to Prod Simple Role Assumption
+# Ops to Prod via Direct Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** cross-account-escalation

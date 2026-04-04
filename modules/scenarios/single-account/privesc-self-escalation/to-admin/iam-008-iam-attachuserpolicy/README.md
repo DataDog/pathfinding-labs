@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:AttachUserPolicy
+# IAM Managed User Policy Attachment to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

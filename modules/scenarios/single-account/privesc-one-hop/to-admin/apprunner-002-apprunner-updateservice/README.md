@@ -1,4 +1,4 @@
-# Privilege Escalation via apprunner:UpdateService
+# App Runner Service Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ssm:StartSession to EC2 with S3 Bucket Access
+# SSM Session Start to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

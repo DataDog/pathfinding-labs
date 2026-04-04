@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:UpdateJob + glue:CreateTrigger
+# Glue Job Update + Trigger to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

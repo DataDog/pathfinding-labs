@@ -1,4 +1,4 @@
-# Privilege Escalation via ec2-instance-connect:SendSSHPublicKey to S3 Bucket
+# EC2 Instance Connect SSH to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

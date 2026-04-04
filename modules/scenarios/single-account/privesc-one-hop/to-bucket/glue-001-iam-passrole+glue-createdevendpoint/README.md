@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:CreateDevEndpoint
+# Glue Dev Endpoint Creation to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

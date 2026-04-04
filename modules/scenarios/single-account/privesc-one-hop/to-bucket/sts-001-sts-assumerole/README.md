@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: sts:AssumeRole
+# Direct Role Assumption to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

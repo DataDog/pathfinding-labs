@@ -1,4 +1,4 @@
-# Self-Escalation to S3 Bucket: iam:AttachRolePolicy
+# IAM Managed Role Policy Attachment to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

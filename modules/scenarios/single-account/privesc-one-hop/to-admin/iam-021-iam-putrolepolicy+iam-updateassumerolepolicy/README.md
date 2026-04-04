@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PutRolePolicy + iam:UpdateAssumeRolePolicy
+# IAM Inline Role Policy + Trust Policy Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

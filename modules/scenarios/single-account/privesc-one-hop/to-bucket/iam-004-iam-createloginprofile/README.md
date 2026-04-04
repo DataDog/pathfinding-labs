@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:CreateLoginProfile
+# IAM Console Password Creation to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

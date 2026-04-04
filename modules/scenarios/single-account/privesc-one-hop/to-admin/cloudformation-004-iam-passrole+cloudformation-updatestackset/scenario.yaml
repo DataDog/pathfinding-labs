@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole-cloudformation-updatestackset"
+title: "CloudFormation Stack Set Update to Admin"
 description: "User with iam:PassRole and cloudformation:UpdateStackSet can modify existing StackSet to create admin role using StackSet's elevated execution role"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "cloudformation-004"

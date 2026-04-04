@@ -1,4 +1,4 @@
-# Multi-Hop Privilege Escalation via AssumeRole and ECS Fargate
+# Role Assumption + ECS Service Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Path Type:** multi-hop

@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "cloudformation-createchangeset+executechangeset"
+title: "CloudFormation Change Set Execution to Admin"
 description: "Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "cloudformation-005"

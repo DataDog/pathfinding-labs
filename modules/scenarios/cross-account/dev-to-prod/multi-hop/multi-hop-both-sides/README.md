@@ -1,4 +1,4 @@
-# Multi-Hop Cross-Account Privilege Escalation (Both Sides)
+# Dev to Prod Multi-Hop Both Accounts to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** privilege-chaining

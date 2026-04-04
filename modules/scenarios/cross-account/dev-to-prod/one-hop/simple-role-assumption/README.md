@@ -1,4 +1,4 @@
-# Cross-Account Privilege Escalation: Dev to Prod Simple Role Assumption
+# Dev to Prod via Direct Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

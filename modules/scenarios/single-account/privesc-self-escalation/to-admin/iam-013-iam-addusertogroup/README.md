@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:AddUserToGroup
+# IAM Group Admin Membership to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

@@ -1,4 +1,4 @@
-# Comprehensive Effective Permissions Evaluation Testing
+# Effective Permissions Evaluation to Admin
 
 * **Category:** Tool Testing
 * **Sub-Category:** edge-case-detection

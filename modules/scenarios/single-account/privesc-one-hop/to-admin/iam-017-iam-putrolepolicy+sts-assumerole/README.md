@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PutRolePolicy + sts:AssumeRole
+# IAM Inline Role Policy + Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

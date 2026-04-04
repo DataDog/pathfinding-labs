@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:CreateEventSourceMapping (DynamoDB Stream)
+# Lambda Function Creation + DynamoDB Event Source to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

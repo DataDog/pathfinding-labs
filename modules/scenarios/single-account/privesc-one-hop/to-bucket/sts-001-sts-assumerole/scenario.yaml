@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "sts-assumerole"
+title: "Direct Role Assumption to Bucket"
 description: "User with sts:AssumeRole can directly assume role with S3 bucket access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "sts-001"

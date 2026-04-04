@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + AWS Data Pipeline
+# DataPipeline Job Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

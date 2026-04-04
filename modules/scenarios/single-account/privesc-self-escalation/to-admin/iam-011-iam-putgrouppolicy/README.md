@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:PutGroupPolicy
+# IAM Inline Group Policy Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

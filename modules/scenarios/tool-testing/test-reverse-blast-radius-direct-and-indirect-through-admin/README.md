@@ -1,4 +1,4 @@
-# Reverse Blast Radius: Direct and Indirect S3 Access Through Admin
+# Direct and Indirect Access via Admin to Bucket
 
 * **Category:** Tool Testing
 * **Sub-Category:** reverse-blast-radius

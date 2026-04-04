@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+glue-updatejob+glue-createtrigger"
+title: "Glue Job Update + Trigger to Admin"
 pathfinding-cloud-id: "glue-006"
 description: "User with iam:PassRole, glue:UpdateJob, and glue:CreateTrigger can update existing Glue Job to use privileged role and malicious script, then create trigger to automatically execute it and grant admin access"
 cost_estimate: "$0/mo"

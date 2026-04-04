@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + cloudformation:CreateStackSet + cloudformation:CreateStackInstances
+# CloudFormation Stack Set Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

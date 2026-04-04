@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + sagemaker:CreateTrainingJob
+# SageMaker Training Job Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

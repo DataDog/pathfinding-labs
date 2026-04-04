@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "codebuild-startbuild"
+title: "CodeBuild Build Start to Admin"
 description: "User with codebuild:StartBuild can exploit existing CodeBuild project with admin role by using buildspec-override to execute malicious commands"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "codebuild-002"

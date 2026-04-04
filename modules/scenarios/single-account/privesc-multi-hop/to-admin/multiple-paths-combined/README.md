@@ -1,4 +1,4 @@
-# Prod Role with Multiple Privilege Escalation Paths Module
+# EC2, Lambda, and CloudFormation Chains to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** privilege-chaining

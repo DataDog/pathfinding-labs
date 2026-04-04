@@ -1,4 +1,4 @@
-# Privilege Escalation via lambda:UpdateFunctionCode
+# Lambda Function Code Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

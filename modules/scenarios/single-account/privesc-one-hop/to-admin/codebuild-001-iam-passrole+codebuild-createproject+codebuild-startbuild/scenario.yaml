@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+codebuild-createproject+codebuild-startbuild"
+title: "CodeBuild Project Creation + Build to Admin"
 description: "User with codebuild:CreateProject, codebuild:StartBuild, and iam:PassRole can create a CodeBuild project with a privileged role, execute buildspec to grant themselves admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "codebuild-001"

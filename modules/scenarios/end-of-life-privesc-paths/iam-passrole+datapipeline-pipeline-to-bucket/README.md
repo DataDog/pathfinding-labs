@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + Data Pipeline with Resource Policy Bypass
+# DataPipeline Job Creation to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

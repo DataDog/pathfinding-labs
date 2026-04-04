@@ -1,4 +1,4 @@
-# role-chain-to-s3
+# Three-Hop Role Chain to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

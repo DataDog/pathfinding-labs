@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:AddPermission
+# Lambda Function Creation + Permission Grant to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

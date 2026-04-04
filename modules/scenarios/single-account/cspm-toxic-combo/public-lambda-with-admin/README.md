@@ -1,4 +1,4 @@
-# Public Lambda with Admin Role (Toxic Combination)
+# Public Lambda with Admin Role to Admin
 
 * **Category:** CSPM: Toxic Combination
 * **Sub-Category:** Publicly-accessible

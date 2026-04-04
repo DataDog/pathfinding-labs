@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "cspm-ec2-001-instance-with-privileged-role"
+title: "EC2 Instance with Privileged Role to Admin"
 description: "EC2 instance with a highly privileged IAM role attached - validates CSPM detection"
 cost_estimate: "$5/mo"
 pathfinding-cloud-id: "cspm-ec2-001"

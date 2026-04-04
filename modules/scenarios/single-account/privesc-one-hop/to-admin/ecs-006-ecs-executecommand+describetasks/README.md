@@ -1,4 +1,4 @@
-# Privilege Escalation via ecs:ExecuteCommand + ecs:DescribeTasks
+# ECS Execute Command to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

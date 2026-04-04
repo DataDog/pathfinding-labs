@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:UpdateLoginProfile
+# IAM Console Password Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

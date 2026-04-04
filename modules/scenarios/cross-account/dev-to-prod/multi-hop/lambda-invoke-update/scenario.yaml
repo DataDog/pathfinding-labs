@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "lambda-invoke-update"
+title: "Dev to Prod via Lambda Code Injection to Admin"
 description: "Cross-account Lambda function code injection to extract admin credentials"
 cost_estimate: "$0/mo"
 

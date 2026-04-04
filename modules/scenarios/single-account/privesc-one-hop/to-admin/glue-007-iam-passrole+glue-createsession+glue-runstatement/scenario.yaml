@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+glue-createsession+glue-runstatement"
+title: "Glue Interactive Session to Admin"
 description: "User with iam:PassRole and Glue session permissions can escalate to admin by creating an interactive session with an admin role and running code to attach AdministratorAccess to themselves"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "glue-007"

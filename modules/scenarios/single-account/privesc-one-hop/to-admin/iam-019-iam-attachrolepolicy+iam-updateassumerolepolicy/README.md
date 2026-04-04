@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:AttachRolePolicy + iam:UpdateAssumeRolePolicy
+# IAM Policy Attachment + Trust Policy Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:UpdateAssumeRolePolicy
+# IAM Role Trust Policy Update to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

@@ -1,4 +1,4 @@
-# Multi-Hop Privilege Escalation via Lambda Code Update and CreateAccessKey
+# Lambda Code Update + Access Key Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Path Type:** multi-hop

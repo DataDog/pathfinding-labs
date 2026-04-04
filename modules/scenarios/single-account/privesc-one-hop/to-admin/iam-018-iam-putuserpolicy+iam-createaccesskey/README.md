@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PutUserPolicy + iam:CreateAccessKey
+# IAM Inline User Policy + Access Key Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

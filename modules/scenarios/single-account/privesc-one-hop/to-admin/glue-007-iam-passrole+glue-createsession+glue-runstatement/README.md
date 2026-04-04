@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:CreateSession + glue:RunStatement
+# Glue Interactive Session to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

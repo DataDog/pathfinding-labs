@@ -1,4 +1,4 @@
-# Privilege Escalation via glue:UpdateDevEndpoint
+# Glue Dev Endpoint Update to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

@@ -1,4 +1,4 @@
-# Cross-Account Lambda Function Code Update Attack
+# Dev to Prod via Lambda Code Injection to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** privilege-chaining

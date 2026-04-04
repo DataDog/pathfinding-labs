@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:CreateCluster + ecs:RegisterTaskDefinition + ecs:CreateService
+# ECS New Cluster + Service Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

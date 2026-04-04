@@ -1,4 +1,4 @@
-# Privilege Escalation via Launch Template Modification
+# EC2 Launch Template Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

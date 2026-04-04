@@ -1,4 +1,4 @@
-# Privilege Escalation via SageMaker UpdateNotebook Lifecycle Config
+# SageMaker Notebook Lifecycle Config Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

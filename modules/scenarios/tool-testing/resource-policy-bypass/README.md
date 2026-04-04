@@ -1,4 +1,4 @@
-# S3 Bucket Access Through Resource Policy
+# Resource Policy Bypass via Role Assumption to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

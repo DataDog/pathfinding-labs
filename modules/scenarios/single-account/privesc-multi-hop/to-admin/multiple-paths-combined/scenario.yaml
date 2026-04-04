@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "multiple-paths-combined"
+title: "EC2, Lambda, and CloudFormation Chains to Admin"
 description: "Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin"
 cost_estimate: "$0/mo"
 

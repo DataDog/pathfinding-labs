@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: glue:UpdateDevEndpoint
+# Glue Dev Endpoint Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-attachuserpolicy"
+title: "IAM Managed User Policy Attachment to Admin"
 description: "User with iam:AttachUserPolicy on itself can attach managed admin policy to escalate privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-008"

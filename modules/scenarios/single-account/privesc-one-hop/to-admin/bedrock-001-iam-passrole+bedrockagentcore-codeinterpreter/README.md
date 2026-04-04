@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + Bedrock AgentCore Code Interpreter
+# Bedrock Code Interpreter Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

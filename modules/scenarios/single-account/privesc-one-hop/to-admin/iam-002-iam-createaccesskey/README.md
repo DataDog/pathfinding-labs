@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:CreateAccessKey
+# IAM Access Key Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

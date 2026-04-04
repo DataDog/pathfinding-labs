@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+sagemaker-createtrainingjob"
+title: "SageMaker Training Job Creation to Admin"
 description: "User with PassRole and CreateTrainingJob can create training job with malicious script and admin role to execute code with elevated privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "sagemaker-002"

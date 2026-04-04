@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+glue-createjob+glue-createtrigger"
+title: "Glue Job Creation + Trigger to Admin"
 pathfinding-cloud-id: "glue-004"
 description: "User with iam:PassRole, glue:CreateJob, and glue:CreateTrigger can pass privileged role to Glue Job and create trigger that grants starting user admin access"
 cost_estimate: "$0/mo"

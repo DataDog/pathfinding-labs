@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + airflow:CreateEnvironment
+# MWAA Environment Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

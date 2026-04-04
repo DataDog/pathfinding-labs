@@ -1,4 +1,4 @@
-# Privilege Escalation via Bedrock AgentCore: Accessing Existing Code Interpreters
+# Bedrock Agent Session + Invocation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole

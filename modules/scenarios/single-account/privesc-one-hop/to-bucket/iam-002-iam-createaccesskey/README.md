@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:CreateAccessKey
+# IAM Access Key Creation to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

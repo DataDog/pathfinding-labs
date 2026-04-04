@@ -1,4 +1,4 @@
-# Self-Escalation to Bucket: iam:PutRolePolicy
+# IAM Inline Role Policy Modification to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

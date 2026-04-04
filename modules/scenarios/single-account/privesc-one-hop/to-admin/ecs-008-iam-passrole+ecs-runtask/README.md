@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:RunTask (Command Override)
+# ECS Run Task to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

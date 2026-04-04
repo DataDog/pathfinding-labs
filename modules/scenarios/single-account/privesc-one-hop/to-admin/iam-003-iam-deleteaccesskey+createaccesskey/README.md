@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:DeleteAccessKey + iam:CreateAccessKey
+# IAM Access Key Rotation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access

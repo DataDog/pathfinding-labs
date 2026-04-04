@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:CreatePolicyVersion + sts:AssumeRole
+# IAM Policy Version + Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access

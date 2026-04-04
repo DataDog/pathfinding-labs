@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:AttachGroupPolicy
+# IAM Managed Group Policy Attachment to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation

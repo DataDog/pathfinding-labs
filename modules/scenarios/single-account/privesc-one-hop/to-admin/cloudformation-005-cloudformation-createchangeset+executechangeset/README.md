@@ -1,4 +1,4 @@
-# Privilege Escalation via cloudformation:CreateChangeSet + ExecuteChangeSet
+# CloudFormation Change Set Execution to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole

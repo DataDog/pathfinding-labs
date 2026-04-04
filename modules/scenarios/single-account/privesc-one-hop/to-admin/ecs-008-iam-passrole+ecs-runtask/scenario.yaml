@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-runtask"
+title: "ECS Run Task to Admin"
 description: "User with iam:PassRole and ecs:RunTask can override existing task definition commands to escalate to admin via Fargate"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ecs-008"

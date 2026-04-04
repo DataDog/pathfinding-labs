@@ -1,4 +1,4 @@
-# CSPM Misconfiguration: EC2 Instance with Highly Privileged IAM Role
+# EC2 Instance with Privileged Role to Admin
 
 * **Category:** CSPM: Misconfig
 * **Sub-Category:** Compute

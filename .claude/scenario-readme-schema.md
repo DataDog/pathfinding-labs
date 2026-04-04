@@ -19,6 +19,8 @@ This file is the canonical reference for the structure and content of all scenar
 
 The sections below must appear in this exact order with these exact H2/H3/H4 headings.
 
+**Title rule:** The H1 is the `title` field from `scenario.yaml` verbatim — no category prefix. Example: `# Lambda Function Creation + Invocation to Admin`. Do not prepend "Privilege Escalation:", "CSPM Misconfiguration:", or any other category string.
+
 ```
 # {Title}
 

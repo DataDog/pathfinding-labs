@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PassRole + ec2:RunInstances
+# EC2 Instance Launch to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
