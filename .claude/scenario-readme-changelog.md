@@ -4,6 +4,29 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.0.1 — 2026-04-05
+
+Patch: clarified public/anonymous starting point pattern for CTF, CSPM, and Toxic Combination scenarios.
+
+**Changes:**
+- **`- **Start:**` line** -- updated placeholder description to explicitly allow public resource URLs and plain descriptions for anonymous-access scenarios (not just IAM principal ARNs)
+- **`### Starting Permissions` section** -- added canonical pattern for `principal_type: "public"` entries: use a descriptive label (e.g., `anonymous (public URL)`) in the heading rather than a fabricated ARN; documented when to include a Helpful block for IAM recon principals
+- **Compliance checklist** -- loosened Starting Permissions item to accommodate descriptive labels for anonymous principals and URL-format Start lines
+- **Prohibited pattern** -- explicitly banned invented ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker` for anonymous starting points
+- **Added public-start example** alongside the existing ssm-001 IAM example in the Objective section
+
+**Motivation:**
+- CTF and CSPM scenarios that start from anonymous public access were being forced into IAM-principal framing (fabricated ARNs, awkward principal labels) because the schema only showed IAM-start examples
+- `scenario.yaml` already supported `principal_type: "public"` correctly; the README schema just lacked matching guidance
+- Fixed `cspm-toxic-combo/public-lambda-with-admin` README which had a fabricated `arn:aws:sts::...:assumed-role/unauthenticated/attacker` ARN in its Start line
+
+**Migration rules:**
+- If `- **Start:**` contains a fabricated `assumed-role/unauthenticated/...` ARN, replace with the actual public resource URL (e.g., the Lambda function URL) plus a `(public, no auth required)` note
+- If `**Required** (...)` heading uses a fabricated ARN as the principal label, replace with a descriptive label matching the `principal` field in `scenario.yaml`
+- No structural changes -- stamp `Schema Version: 4.0.1`
+
+---
+
 ## 4.0.0 — 2026-04-03
 
 Major version bump: per-principal permissions structure in `### Starting Permissions` and `scenario.yaml`.

@@ -4,7 +4,7 @@
 * **Path Type:** multi-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Cost Estimate:** ~$1/mo (ECS Fargate tasks incur minimal charges when run briefly for demonstrations)
+* **Cost Estimate:** $0/mo
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
 * **Schema Version:** 4.0.0

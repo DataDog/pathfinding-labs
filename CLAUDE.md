@@ -951,6 +951,16 @@ terraform apply
 - Include CSPM detection guidance and MITRE ATT&CK mappings
 - Provide usage instructions and prerequisites
 
+### Scenario README Schema Updates
+
+**REQUIRED: Any change to `.claude/scenario-readme-schema.md` must also:**
+
+1. Bump the `**Current schema version:**` field in `scenario-readme-schema.md` following semver (PATCH for wording/clarifications, MINOR for new required sections/fields, MAJOR for renamed/removed H2 sections or metadata fields)
+2. Add a changelog entry to `.claude/scenario-readme-changelog.md` with the new version, date, a description of what changed, the motivation, and migration rules
+3. Update the compliance checklist version reference inside `scenario-readme-schema.md` to match the new version
+
+Never modify the schema without completing all three steps.
+
 ## Future Roadmap
 
 - [ ] Web interface for scenario management

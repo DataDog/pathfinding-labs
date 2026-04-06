@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-019-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and

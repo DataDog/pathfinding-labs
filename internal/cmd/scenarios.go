@@ -203,11 +203,16 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	crossAccountDevToProd := scenarioGroup{}
 	crossAccountOpsToProd := scenarioGroup{}
 
+	// CTF
+	ctf := scenarioGroup{}
+
 	// Categorize each scenario
 	for _, s := range filtered {
 		path := s.Terraform.ModulePath
 
 		switch {
+		case strings.Contains(path, "/ctf/"):
+			ctf.scenarios = append(ctf.scenarios, s)
 		case strings.Contains(path, "cross-account/dev-to-prod"):
 			crossAccountDevToProd.scenarios = append(crossAccountDevToProd.scenarios, s)
 		case strings.Contains(path, "cross-account/ops-to-prod"):
@@ -359,6 +364,16 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 			printSection("Tool Testing", toolTesting, "  ")
 		}
+	}
+
+	// Print CTF section
+	if len(ctf.scenarios) > 0 {
+		fmt.Println()
+		fmt.Printf("%s\n", cyan("══════════════════════════════════════════════════════════════"))
+		fmt.Printf("%s\n", bold("CTF"))
+		fmt.Printf("%s\n", cyan("══════════════════════════════════════════════════════════════"))
+		fmt.Println()
+		printSection("Challenges", ctf, "  ")
 	}
 
 	// Print Cross-Account section

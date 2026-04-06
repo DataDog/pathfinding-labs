@@ -38,9 +38,9 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
-- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", or "CTF"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, CSPM, or CTF categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", "toxic-combination", or "ctf"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **attack_path.principals**: Ordered list of all principals in the attack

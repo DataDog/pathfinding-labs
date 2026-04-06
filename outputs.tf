@@ -1883,3 +1883,46 @@ output "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
   } : null
   sensitive = true
 }
+##############################################################################
+# CTF SCENARIO OUTPUTS
+##############################################################################
+
+output "ctf_ai_chatbot_to_admin" {
+  description = "All outputs for CTF-001: AI chatbot prompt injection to admin"
+  value = var.enable_ctf_ai_chatbot_to_admin ? {
+    chatbot_function_url            = module.ctf_ai_chatbot_to_admin[0].chatbot_function_url
+    chatbot_function_name           = module.ctf_ai_chatbot_to_admin[0].chatbot_function_name
+    chatbot_function_arn            = module.ctf_ai_chatbot_to_admin[0].chatbot_function_arn
+    chatbot_role_arn                = module.ctf_ai_chatbot_to_admin[0].chatbot_role_arn
+    chatbot_role_name               = module.ctf_ai_chatbot_to_admin[0].chatbot_role_name
+    flag_parameter_name             = module.ctf_ai_chatbot_to_admin[0].flag_parameter_name
+    starting_user_name              = module.ctf_ai_chatbot_to_admin[0].starting_user_name
+    starting_user_arn               = module.ctf_ai_chatbot_to_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.ctf_ai_chatbot_to_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.ctf_ai_chatbot_to_admin[0].starting_user_secret_access_key
+    attack_path                     = module.ctf_ai_chatbot_to_admin[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "ctf_ai_chatbot_lambda_pivot" {
+  description = "All outputs for CTF-002: AI chatbot prompt injection to Lambda pivot to admin"
+  value = var.enable_ctf_ai_chatbot_lambda_pivot ? {
+    chatbot_function_url            = module.ctf_ai_chatbot_lambda_pivot[0].chatbot_function_url
+    chatbot_function_name           = module.ctf_ai_chatbot_lambda_pivot[0].chatbot_function_name
+    chatbot_function_arn            = module.ctf_ai_chatbot_lambda_pivot[0].chatbot_function_arn
+    chatbot_role_arn                = module.ctf_ai_chatbot_lambda_pivot[0].chatbot_role_arn
+    chatbot_role_name               = module.ctf_ai_chatbot_lambda_pivot[0].chatbot_role_name
+    target_function_name            = module.ctf_ai_chatbot_lambda_pivot[0].target_function_name
+    target_function_arn             = module.ctf_ai_chatbot_lambda_pivot[0].target_function_arn
+    target_role_arn                 = module.ctf_ai_chatbot_lambda_pivot[0].target_role_arn
+    target_role_name                = module.ctf_ai_chatbot_lambda_pivot[0].target_role_name
+    flag_parameter_name             = module.ctf_ai_chatbot_lambda_pivot[0].flag_parameter_name
+    starting_user_name              = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_name
+    starting_user_arn               = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_arn
+    starting_user_access_key_id     = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_secret_access_key
+    attack_path                     = module.ctf_ai_chatbot_lambda_pivot[0].attack_path
+  } : null
+  sensitive = true
+}

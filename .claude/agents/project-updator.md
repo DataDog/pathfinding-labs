@@ -26,7 +26,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 **From scenario.yaml you will use:**
 - **name**: Scenario identifier (hyphenated, e.g., iam-putgrouppolicy)
 - **description**: Brief one-line description for the variable
-- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", or "CTF"
 - **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
 - **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
 - **target**: "to-admin" or "to-bucket"
@@ -66,6 +66,7 @@ Examples:
 - `enable_single_account_cspm_toxic_combo_public_lambda_with_admin` (cspm-toxic-combo)
 - `enable_tool_testing_resource_policy_bypass` (tool testing)
 - `enable_cross_account_dev_to_prod_simple_role_assumption` (cross-account)
+- `enable_ctf_ai_chatbot_to_admin` (CTF)
 
 #### Variable Format
 
@@ -117,6 +118,8 @@ Example sections (organized by account type, path_type, and target):
 # CROSS-ACCOUNT DEV-TO-PROD SCENARIOS NON-FREE
 # CROSS-ACCOUNT OPS-TO-PROD SCENARIOS
 # CROSS-ACCOUNT OPS-TO-PROD SCENARIOS NON-FREE
+# CTF SCENARIOS
+# CTF SCENARIOS NON-FREE
 
 ```
 
@@ -497,6 +500,30 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
 }
 ```
 
+### CTF Scenario
+```hcl
+# variables.tf
+variable "enable_ctf_{scenario_name}" {
+  description = "Enable: ctf → {scenario-name}"
+  type        = bool
+  default     = false
+}
+
+# main.tf
+module "ctf_{scenario_name}" {
+  count  = var.enable_ctf_{scenario_name} ? 1 : 0
+  source = "./modules/scenarios/ctf/{scenario-name}"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+```
+
 ### CSPM Toxic Combination Scenario
 ```hcl
 # variables.tf
@@ -575,6 +602,8 @@ Always follow this pattern for clarity:
 **Single-Account**: `Enable: single-account → privesc-{path_type} → to-{target} → {scenario-name}`
 
 **Cross-Account**: `Enable: cross-account → {source}-to-{dest} → {hop_type} → {scenario-name}`
+
+**CTF**: `Enable: ctf → {scenario-name}`
 
 Examples:
 - `Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy`

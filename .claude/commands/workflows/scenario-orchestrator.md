@@ -29,6 +29,7 @@ What kind of scenario should we build?
 5. **CSPM: Misconfig** - Single-condition security misconfiguration
 6. **CSPM: Toxic Combination** - Multiple compounding misconfigurations
 7. **Tool Testing** - Edge cases for testing detection engines
+8. **CTF** - Capture-the-flag challenge deploying real application infrastructure (chatbot, web app, etc.) with an intentional vulnerability; participants must discover and exploit it to retrieve a flag
 ```
 
 ### Step 2: Target Selection (for categories 1-6)
@@ -37,7 +38,7 @@ For Privilege Escalation and CSPM categories, ask about the target:
 - **to-admin** - Full administrative access
 - **to-bucket** - S3 bucket access
 
-For Tool Testing, this step may be skipped or asked contextually.
+For Tool Testing and CTF, this step may be skipped or asked contextually.
 
 ### Step 3: Cross-Account Path (only for category 4)
 
@@ -66,6 +67,19 @@ Ask for the multiple misconfigurations that combine to create risk.
 
 **Tool Testing:**
 Ask for the edge case being tested and what behavior should be validated.
+
+**CTF:**
+Ask for:
+- The vulnerable application type (e.g., AI chatbot, web API, internal tool)
+- The vulnerability being exploited (e.g., prompt injection, RCE, SSRF)
+- The attack chain (e.g., prompt injection → shell exec → credential theft → flag)
+- Difficulty level: beginner, intermediate, or advanced
+- The flag value and where it will be stored (typically SSM SecureString)
+- Whether a pivot step is involved (e.g., Lambda code update to privileged function)
+- BYOK or embedded credentials for any third-party API (e.g., OpenAI)
+- Does the attack start from anonymous public access (no AWS credentials needed), or does the attacker begin with some IAM credentials?
+
+Note: CTF scenarios do NOT include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
 
 ---
 
@@ -245,6 +259,7 @@ environments:
 | `"CSPM: Misconfig"` | Single-condition security misconfiguration | EC2 with admin role, S3 bucket public, etc. |
 | `"CSPM: Toxic Combination"` | Multiple compounding misconfigurations | Public Lambda + Admin Role, etc. |
 | `"Tool Testing"` | Detection engine edge cases and testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
+| `"CTF"` | Capture-the-flag challenge with real application infrastructure | AI chatbot with prompt injection, web API with SSRF, etc. |
 
 ##### `sub_category`
 
@@ -302,6 +317,12 @@ These values align with [pathfinding.cloud](https://pathfinding.cloud) categorie
 | `"single-condition"` | No | Single security misconfiguration | CSPM: Misconfig category |
 | `"toxic-combination"` | No | Multiple compounding misconfigurations | CSPM: Toxic Combination category |
 
+**For CTF scenarios:**
+
+| Value | Has sub_category? | Description | When to Use |
+|-------|-------------------|-------------|-------------|
+| `"ctf"` | No | Capture-the-flag challenge | CTF category |
+
 **Principal Counting Rules (for Privilege Escalation):**
 - Count only the IAM principals involved in the escalation path (users, roles)
 - Don't count AWS services (EC2, Lambda) unless they hold credentials
@@ -352,6 +373,7 @@ Examples with path IDs:
 - CSPM Toxic Combo: `modules/scenarios/single-account/cspm-toxic-combo/{scenario-name}/`
 - Tool testing: `modules/scenarios/tool-testing/{scenario-name}/`
 - Cross-account: `modules/scenarios/cross-account/{source}-to-{dest}/{scenario-name}/`
+- CTF: `modules/scenarios/ctf/{scenario-name}/`
 
 ### 2. Resource Naming Convention
 
@@ -390,6 +412,7 @@ Examples:
 - CSPM Toxic Combo: `enable_single_account_cspm_toxic_combo_{scenario_name}`
 - Tool testing: `enable_tool_testing_resource_policy_bypass`
 - Cross-account: `enable_cross_account_{src}_to_{dest}_{scenario_name}`
+- CTF: `enable_ctf_{scenario_name}` (e.g., `enable_ctf_ai_chatbot_to_admin`)
 
 ### 4. Module Naming
 
@@ -407,6 +430,7 @@ Examples:
 - CSPM Toxic Combo: `single_account_cspm_toxic_combo_{scenario_name}`
 - Tool testing: `tool_testing_resource_policy_bypass`
 - Cross-account: `cross_account_{src}_to_{dest}_{scenario_name}`
+- CTF: `ctf_{scenario_name}` (e.g., `ctf_ai_chatbot_to_admin`)
 
 ### 5. Attack Path Design Rules
 
@@ -428,8 +452,32 @@ CreateAccessKey example: `pl-prod-iam-002-to-admin-starting-user` -> iam:CreateA
 **For other scenarios (no path IDs):**
 Use descriptive shorthand instead of path IDs:
 - Multi-hop: `pl-prod-multi-hop-role-chain-starting-user`
-- Toxic combo: `pl-prod-toxic-public-lambda-starting-user`
+- Toxic combo (IAM-start): `pl-prod-toxic-public-lambda-starting-user` -- only when the attacker begins with IAM credentials; omit entirely for public/anonymous-start scenarios
 - Cross-account: `pl-dev-cross-account-simple-starting-user`
+
+**When the attack path starts from anonymous/public access** (common for CTF, CSPM Toxic Combo, CSPM Misconfig):
+
+Do NOT create a starting IAM user. The attacker is anonymous -- they access a publicly exposed resource over the internet without any AWS credentials.
+
+Example: public Lambda URL → attacker invokes via `curl` → extracts execution role credentials from the response → reaches target.
+
+In `scenario.yaml`, model this as:
+```yaml
+permissions:
+  required:
+    - principal: "anonymous (public URL)"
+      principal_type: "public"
+      permissions:
+        - permission: "lambda:InvokeFunctionUrl"
+          resource: "arn:aws:lambda:*:*:function/{function_name}"
+  helpful:                          # optional -- only if IAM recon aids discovery
+    - principal: "{recon_user_name}"
+      principal_type: "user"
+      permissions:
+        - ...
+```
+
+The first entry in `attack_path.principals` should be a descriptive string (URL or plain description) rather than an IAM ARN. The `- **Start:**` line in the README uses the public URL or a plain description -- never a fabricated ARN like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`.
 
 
 ### 6. Attack Path Diagram Structure
@@ -622,3 +670,4 @@ When reading `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`, 
 - Wizard option 5 (CSPM: Misconfig) → `category: "CSPM: Misconfig"`, `path_type: "single-condition"`
 - Wizard option 6 (CSPM: Toxic Combination) → `category: "CSPM: Toxic Combination"`, `path_type: "toxic-combination"`
 - Wizard option 7 (Tool Testing) → `category: "Tool Testing"`
+- Wizard option 8 (CTF) → `category: "CTF"`, `path_type: "ctf"` (no sub_category)

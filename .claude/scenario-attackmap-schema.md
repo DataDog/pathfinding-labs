@@ -1,6 +1,12 @@
 # Pathfinding Labs Attack Map Schema
 
-**Current schema version: `1.0.0`**
+**Current schema version: `1.2.0`**
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.2.0 | 2026-04-06 | Added CTF Scenario Pattern section with content rules for challenge-appropriate node descriptions, edge labels, hints, and commands that preserve discovery without giving away the attack path. |
+| 1.1.0 | 2026-04-06 | Added optional `access` object to nodes for structured entry-point URLs, IPs, and domains. Required on nodes that use the public access prologue. |
+| 1.0.0 | 2026-04-01 | Initial schema, extracted from README schema v3.0.0. |
 
 This file is the canonical reference for the structure and content of all scenario `attack_map.yaml` files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file when creating or extracting attack maps. Update this file when the standard changes.
 
@@ -41,6 +47,7 @@ attackMap:
 | `subType` | Yes | `iam-user`, `iam-role`, `iam-group`, `apprunner-service`, `lambda-function`, `ec2-instance`, `ecs-task`, `s3-bucket`, `glue-job`, `codebuild-project`, `cloudformation-stack`, `sagemaker-notebook`, `ssm-document`, `bedrock-agent`, etc. |
 | `isTarget` | No (default `false`) | Boolean. Exactly one node per map must have `isTarget: true` -- the final destination of the attack path. |
 | `arn` | Yes | Full ARN with `{account_id}` and `{region}` placeholders |
+| `access` | No (required on entry-point nodes) | Structured entry point for frontend display. Present only on nodes that represent a reachable starting point (public or internal network, or pre-given credentials). See Access Object below. |
 | `description` | Yes | Second-person narrative. Starting node MUST begin with the standard prologue paragraph (see below). |
 
 ### Node Types
@@ -52,15 +59,58 @@ attackMap:
 
 The `isTarget` flag marks the final destination node (admin role/user, S3 bucket, etc.) and controls distinct color/style rendering. Exactly one node per map must have `isTarget: true`.
 
+### Access Object
+
+The `access` field is an optional object present only on nodes that serve as the entry point for the attack. It gives the frontend a machine-readable address to display alongside the node — something the attacker can actually reach, not just an ARN.
+
+```yaml
+access:
+  type: public-network      # required — see enum below
+  url: "https://{function_url_id}.lambda-url.{region}.on.aws/"
+  # OR ip: "{public_ip}"
+  # OR domain: "{cloudfront_domain}"
+```
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `type` | Yes | Enum — see below |
+| `url` | Conditional | Full HTTPS URL. Use for Lambda Function URLs, API Gateway, App Runner, or any HTTP/S endpoint. |
+| `ip` | Conditional | Public IP address. Use for EC2 instances without a load balancer or CDN in front. |
+| `domain` | Conditional | DNS hostname without a scheme or path. Use for CloudFront distributions, ALBs, or other DNS-named endpoints that are not themselves full URLs. |
+
+**`type` enum:**
+
+| Value | Meaning |
+|-------|---------|
+| `public-network` | Resource is reachable from the open internet. No prior access required. |
+| `assumed-breach-network` | Resource is reachable from inside a specific network boundary (VPC, corporate LAN). Attacker is assumed to have network presence. |
+| `assumed-breach-credentials` | Attacker already holds IAM credentials for this principal. No network traversal is modeled. |
+
+**Rules:**
+- Exactly one of `url`, `ip`, or `domain` must be present when `type` is `public-network` or `assumed-breach-network`.
+- All three endpoint sub-fields are optional when `type` is `assumed-breach-credentials` (the credentials are the entry point).
+- All values use the same `{placeholder}` convention used in `arn` fields.
+- Place `access` after `arn` and before `description` in the node object.
+
+---
+
 ### Standard Starting Node Prologue
 
-Every starting node's `description` MUST begin with exactly:
+**For IAM principal starting nodes** (attacker has credentials), the `description` MUST begin with exactly:
 
 > You have gained access to this principal's AWS IAM credentials. These could have been obtained through many real-world vectors: phishing a developer and gaining access to their workstation, compromising a browser session, exploiting a vulnerable workload running in this AWS account, discovering credentials in a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
 >
 > Regardless of how you obtained them, you are now operating as this principal.
 
 Followed by scenario-specific details about what permissions this principal has.
+
+**For public/anonymous starting nodes** (no AWS credentials required), the `description` MUST begin with exactly:
+
+> This resource is publicly accessible without AWS credentials. Any attacker on the internet can reach it directly -- no IAM credentials, no AWS signature, no prior access required. This is your entry point.
+
+Followed by scenario-specific details about what the resource does, why it is vulnerable, and any optional IAM recon steps that can help discover it (e.g., `lambda:ListFunctions` if a low-privilege user is available).
+
+**Which prologue to use:** Check `scenario.yaml` → `permissions.required`. If the first entry has `principal_type: "public"`, use the public prologue. Otherwise, use the IAM prologue.
 
 ---
 
@@ -136,6 +186,45 @@ Intermediate principals get `type: principal`. Resources used as stepping stones
 ### CSPM Scenario Pattern
 
 Simpler maps with fewer/no commands (focus on detection, not exploitation). The `commands` array may be empty. Hints still guide understanding of the misconfiguration.
+
+### Public/Anonymous Entry Point Pattern
+
+For CTF, CSPM Toxic Combo, and CSPM Misconfig scenarios where the attack starts from unauthenticated public access:
+
+- **The publicly accessible resource itself is the starting node** -- do NOT add a separate "public internet" or IAM recon user node before it
+- The starting node uses `type: resource` with the appropriate `subType` (e.g., `lambda-function`, `s3-bucket`)
+- The starting node description uses the public access prologue (not the IAM prologue)
+- The `arn` field holds the real AWS ARN of the public resource -- do NOT use fabricated ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`
+- **The starting node MUST have an `access` field** with `type: public-network` and exactly one of `url`, `ip`, or `domain` set to the network address where the resource is reachable. Use `{placeholder}` syntax for values that are only known after deployment (e.g., `{function_url_id}`, `{public_ip}`).
+- Optional IAM recon (e.g., using `lambda:ListFunctions` to discover the resource) is mentioned in the starting node description or first edge description, not modeled as a separate graph node
+- The first edge represents the actual attack on the public resource (e.g., HTTP invocation, prompt injection), not an IAM permission use
+
+### CTF Scenario Pattern
+
+CTF scenarios use the same YAML structure as privesc scenarios but apply different content rules to preserve the challenge. The frontend renders attack maps in two modes: **CTF mode** (hints only, progressive disclosure) and **Walkthrough mode** (commands shown). The rules below ensure CTF mode doesn't hand players the answer while still making Walkthrough mode useful after the challenge is complete.
+
+**Node descriptions:**
+- Describe what the resource *is* (type, function, role in the architecture) without listing its IAM permissions or revealing its relationship to the attack path.
+- Let the player discover permissions through enumeration (e.g., `iam:ListAttachedRolePolicies`, `lambda:ListFunctions`). A description like "The Lambda execution role for AcmeBot" is appropriate; "The Lambda execution role -- it has `lambda:UpdateFunctionCode` on the data processor" gives away the pivot.
+- The target node description should indicate that credentials for this role are the objective, without revealing what policies it holds or where the flag is stored.
+
+**Edge labels:**
+- Use descriptive action phrases, not AWS permission names. Use `"Prompt injection"` not `"prompt injection → run_command"`. Use `"Code replacement"` not `"lambda:UpdateFunctionCode"`. Use `"Privileged invocation"` not `"lambda:InvokeFunction → extract credentials"`.
+- Exception: the label may name a permission when that permission is already obvious from the node types (e.g., an `sts:AssumeRole` edge between two IAM roles).
+
+**Hints:**
+- Guide the player toward *discovering* the technique rather than naming it. Instead of "You have `lambda:UpdateFunctionCode` on the data processor function", write "Find a Lambda whose role suggests elevated privileges -- then consider what write access to a function's code actually gives you."
+- Do not reveal exact shell commands, exact resource names, or exact IAM permission names.
+- Do not reveal the SSM parameter path, S3 key, or other specific location of the flag. Guide toward the service category instead: "consider what AWS service is commonly used to securely store secrets and configuration values."
+- The final hint(s) may be more specific but should still require the player to figure out the exact invocation.
+
+**Commands:**
+- Commands are shown only in Walkthrough mode, so they may be complete and exact.
+- For resource names the player must discover through enumeration (function names, role names, bucket names), use `<placeholder>` syntax rather than hardcoding the real value. This signals that the player must enumerate to find the value rather than treating the command as a copy-paste answer.
+- Conceptual steps (e.g., "write a handler that reads environment variables") should be expressed as a comment (`# ...`) rather than providing complete working code.
+
+**Contrast with privesc scenarios:**
+Privesc scenarios are educational and guided -- they name permissions explicitly, show exact commands, and walk the player step by step. CTF scenarios are challenges -- they point in the right direction without spelling out the path. Apply these rules only to scenarios in the `ctf/` directory.
 
 ### Target Node Identity
 
@@ -214,7 +303,8 @@ An `attack_map.yaml` is compliant if all of the following are true:
 - [ ] All nodes have required fields: `id`, `label`, `type`, `subType`, `arn`, `description`
 - [ ] Node `type` is `principal` or `resource` only
 - [ ] Exactly one node has `isTarget: true`
-- [ ] Starting node description begins with the standard prologue paragraph
+- [ ] Starting node description begins with the standard IAM credentials prologue (for IAM principal starting nodes) OR the standard public access prologue (for publicly accessible resource starting nodes -- `principal_type: "public"` in scenario.yaml)
+- [ ] Nodes using the public access prologue have an `access` field with `type: public-network` and exactly one of `url`, `ip`, or `domain`
 - [ ] All edges have required fields: `from`, `to`, `label`, `description`, `commands`, `hints`
 - [ ] All edge `hints` arrays have 3-7 entries
 - [ ] Hints are ordered by order of operations first, then vague to specific
@@ -223,4 +313,5 @@ An `attack_map.yaml` is compliant if all of the following are true:
 - [ ] No duplicate ARNs across nodes (no phantom nodes)
 - [ ] Target node represents the real infrastructure target, not the starting principal relabeled
 - [ ] Self-escalation scenarios use a self-loop edge (`from` and `to` are the same node)
+- [ ] **CTF scenarios only**: Node descriptions do not list IAM permissions or reveal the attack path; edge labels use descriptive phrases, not permission names; hints guide toward discovery without naming exact permissions, commands, resource names, or flag location; commands use `<placeholder>` syntax for enumerated resource names
 - [ ] Valid YAML that parses without errors

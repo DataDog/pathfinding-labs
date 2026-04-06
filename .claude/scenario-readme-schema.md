@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.0.0`**
+**Current schema version: `4.0.1`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md`, then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -69,8 +69,8 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 
 **Required fields (all scenarios):**
 ```
-* **Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing}
-* **Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination}
+* **Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing|CTF}
+* **Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination|ctf}
 * **Target:** {to-admin|to-bucket}
 * **Environments:** {prod|dev|operations|prod, dev}
 * **Cost Estimate:** {value, e.g., "$0/mo"}
@@ -95,6 +95,14 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **MITRE Tactics:** {TA#### - Name}, {TA#### - Name}
 * **MITRE Techniques:** {T####.### - Name}, {T####.### - Name}
 ```
+
+**CTF scenario additional fields** (in place of Sub-Category, after Cost Estimate):
+```
+* **Difficulty:** {beginner|intermediate|advanced}
+* **Flag Location:** {description of where the flag is stored}
+```
+
+CTF scenarios omit the `### Automated Demo` section entirely (participants must discover the exploit themselves). They still include `### Guided Walkthrough` (linked to `guided_walkthrough.md`, which serves as the post-competition writeup/solution). CTF scenarios may have a `cleanup_attack.sh` if the attack modifies infrastructure state, but no `demo_attack.sh`.
 
 **CSPM scenario additional fields** (after MITRE Techniques):
 ```
@@ -129,15 +137,26 @@ The sentence should name the specific resources (e.g., `pl-prod-ssm-001-to-admin
 Followed by structured context:
 
 ```
-- **Start:** `{starting principal ARN with placeholders}`
+- **Start:** `{starting point -- IAM principal ARN with placeholders, OR public resource URL/description for anonymous-access scenarios}`
 - **Destination resource:** `{target resource ARN with placeholders}`
 ```
 
-**Example (ssm-001):**
+**Example (ssm-001, IAM principal start):**
 
 ```
 Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ssm-001-to-admin-starting-user` IAM user to the `pl-prod-ssm-001-to-admin-ec2-role` administrative role by starting an interactive SSM session on an EC2 instance and extracting credentials from the Instance Metadata Service (IMDS).
 ```
+
+**Example (public/anonymous start -- CTF or CSPM):**
+
+```
+Your objective is to learn how to exploit a misconfiguration that allows you to move from the publicly accessible `pl-prod-ctf-001-acmebot` Lambda chatbot to the `pl-prod-ctf-001-chatbot-role` administrative IAM role by injecting a prompt that triggers shell execution and leaks execution role credentials.
+
+- **Start:** `https://{function_url_id}.lambda-url.{region}.on.aws/` (public, no auth required)
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role`
+```
+
+For public-start scenarios, the `- **Start:**` line uses a URL or plain description -- not a fabricated IAM ARN. Do not invent ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`.
 
 #### `### Starting Permissions`
 
@@ -170,6 +189,22 @@ Permissions are grouped by principal. Each principal gets its own **Required** a
 ```
 
 If a principal has no helpful permissions, omit the Helpful heading for that principal. If no principals have helpful permissions, omit all Helpful headings.
+
+**Public/anonymous starting point (CTF, CSPM Toxic Combo, CSPM Misconfig):**
+
+When the scenario starts from unauthenticated or anonymous access, use the `principal_type: "public"` entry from `scenario.yaml` as the principal. Label it descriptively rather than as an ARN:
+
+```
+**Required** (`anonymous (public URL)`):
+- `lambda:InvokeFunctionUrl` on `{resource}` -- no AWS credentials required; the resource accepts unauthenticated requests
+
+**Helpful** (`{iam_principal_name}`):
+- `{permission}` -- {purpose}
+```
+
+The "Helpful" block for public-start scenarios typically belongs to a low-privilege IAM user used for reconnaissance (e.g., discovering the public URL). If no IAM recon is needed, omit the Helpful block entirely.
+
+Do NOT invent a fake ARN (e.g., `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`) for the anonymous attacker. Use a descriptive label in the heading and a URL or plain description in the `- **Start:**` line.
 
 ### `## Self-hosted Lab Setup`
 
@@ -433,7 +468,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.0.0`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.0.1`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `guided_walkthrough.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)
@@ -446,11 +481,11 @@ A README is compliant if all of the following are true:
 - [ ] No `### Attack Map` embedded YAML section exists (extracted to `attack_map.yaml`)
 - [ ] No `### Executing the attack manually` section exists (moved to `guided_walkthrough.md`)
 - [ ] Metadata does not contain `Attack Path`, `Attack Principals`, `Required Permissions`, or `Helpful Permissions` fields
-- [ ] `## Objective` contains `### Starting Permissions` with per-principal Required and Helpful sub-lists (each heading includes the principal name in parentheses)
+- [ ] `## Objective` contains `### Starting Permissions` with per-principal Required and Helpful sub-lists. For IAM principals, the heading includes the principal name in parentheses. For anonymous/public starting points, the heading uses a descriptive label (e.g., `anonymous (public URL)`, `unauthenticated attacker`) and the `- **Start:**` line uses a URL or description rather than an ARN.
 - [ ] `## Self-hosted Lab Setup` contains `### Prerequisites`, `### Deploy with plabs non-interactive`, `### Deploy with plabs tui`
 - [ ] `### Guided Walkthrough` exists under `## Attack` with link to `guided_walkthrough.md`
-- [ ] `### Automated Demo` contains `#### Executing the automated demo_attack script`, `#### Resources Created by Attack Script`, `#### With plabs non-interactive`, `#### With plabs tui`
-- [ ] `### Cleanup` exists under `## Attack` with `#### With plabs non-interactive` and `#### With plabs tui`
+- [ ] `### Automated Demo` contains `#### Executing the automated demo_attack script`, `#### Resources Created by Attack Script`, `#### With plabs non-interactive`, `#### With plabs tui` *(CTF scenarios: omit this entire section)*
+- [ ] `### Cleanup` exists under `## Attack` with `#### With plabs non-interactive` and `#### With plabs tui` *(CTF scenarios: omit if no attack artifacts to clean)*
 - [ ] `## Teardown` contains `### Teardown with plabs non-interactive` and `### Teardown with plabs tui`
 - [ ] `## Defend` contains `### Detecting Misconfiguration (CSPM)` and `### Detecting Abuse (CloudSIEM)`
 - [ ] `#### CloudTrail Events to Monitor` uses `` `Service: EventName` `` format

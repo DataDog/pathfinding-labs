@@ -51,19 +51,19 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 - `pathfinding-cloud-id`: Pathfinding.cloud path ID if one exists (e.g., "IAM-005", "IAM-002")
 
 **Required Classification:**
-- `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
-- `sub_category`: Required only for privesc self-escalation/one-hop; not used for multi-hop, cross-account, or CSPM categories
-- `path_type`: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
+- `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", or "CTF"
+- `sub_category`: Required only for privesc self-escalation/one-hop; not used for multi-hop, cross-account, CSPM, or CTF categories
+- `path_type`: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", "toxic-combination", or "ctf"
 - `target`: "to-admin" or "to-bucket"
 - `environments`: Array with at least one environment
 
 **Required Attack Path:**
-- `attack_path.principals`: Array of principal ARNs
+- `attack_path.principals`: Array of principal ARNs (for public-start scenarios, the first entry may be a URL or descriptive string rather than an IAM ARN -- this is valid)
 - `attack_path.summary`: Attack flow description
 
 **Required Permissions:**
 - `permissions.required`: At least one principal entry with at least one permission
-- Each principal entry must have `principal` (name), `principal_type` ("user" or "role"), and `permissions` (array)
+- Each principal entry must have `principal` (name), `principal_type` ("user", "role", or "public"), and `permissions` (array)
 - `permissions.helpful` (optional): Same per-principal structure as required
 
 **Required MITRE ATT&CK:**
@@ -82,7 +82,9 @@ Check that the classification makes sense:
 - If `category` is "Privilege Escalation" and `path_type` is "self-escalation" or "one-hop", `sub_category` should be one of: self-escalation, principal-access, new-passrole, existing-passrole, credential-access
 - If `category` is "CSPM: Misconfig", `path_type` should be "single-condition"
 - If `category` is "CSPM: Toxic Combination", `path_type` should be "toxic-combination"
-- CSPM and Tool Testing categories do not require sub_category
+- If `category` is "CTF", `path_type` should be "ctf"; `sub_category` should NOT be present
+- CTF scenarios may have a `ctf:` block with `difficulty`, `flag_location`, and `variant` fields
+- CSPM, Tool Testing, and CTF categories do not require sub_category
 
 ### 1. Terraform Validation
 
@@ -141,12 +143,14 @@ Read `outputs.tf` and verify:
 
 **Note**: The scenario module should output individual values. The root `outputs.tf` will create a grouped output that bundles these together.
 
+**Exception for public-start scenarios:** If `permissions.required` in `scenario.yaml` contains only `principal_type: "public"` entries (no IAM user starting point), the scenario module does NOT need to output `starting_user_name`, `starting_user_arn`, `starting_user_access_key_id`, or `starting_user_secret_access_key`. Validate only the target resource outputs and `attack_path`.
+
 ### 2. README Validation
 
 #### Check Structure
 Read `README.md` and verify it contains all required sections:
 1. Title with scenario metadata matching scenario.yaml:
-   - **Category**: From scenario.yaml (Privilege Escalation, CSPM: Misconfig, CSPM: Toxic Combination, Tool Testing)
+   - **Category**: From scenario.yaml (Privilege Escalation, CSPM: Misconfig, CSPM: Toxic Combination, Tool Testing, CTF)
    - **Sub-Category**: From scenario.yaml
    - **Path Type**: From scenario.yaml (self-escalation, one-hop, multi-hop, cross-account)
    - **Target**: From scenario.yaml (to-admin, to-bucket)
@@ -195,6 +199,8 @@ The README header should match scenario.yaml exactly:
 
 ### 3. Demo Script Validation
 
+> **CTF scenarios**: `demo_attack.sh` is intentionally absent — the exploit is the challenge. Skip this entire section for CTF scenarios (`category: "CTF"` in scenario.yaml). CTF scenarios may still have `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
+
 #### Check File Existence and Permissions
 ```bash
 cd {scenario-directory}
@@ -241,6 +247,8 @@ For any command used in the demo script, determine whether it is an exploit step
 - **Observation steps** (polling, listing, status checks, VPC discovery, policy verification) should use readonly credentials via `use_readonly_creds()`. These do NOT need permissions on the starting user.
 - Validate that the demo script contains `use_starting_creds()` and `use_readonly_creds()` helper functions (or the `use_starting_user_creds()` variant).
 - Validate that the starting user does NOT have a `starting_user_helpful` policy -- if one exists, flag it for removal.
+
+**Exception for public-start scenarios:** If the scenario starts from anonymous/public access (`principal_type: "public"` in scenario.yaml required permissions), the demo script will NOT have `use_starting_creds()` or `use_starting_user_creds()` calls. Instead it will use `curl`, a browser simulation, or similar unauthenticated HTTP calls. This is expected and correct -- do not flag the absence of credential helper functions as an issue.
 
 #### Validate minimal permissions pattern (CRITICAL)
 Check that the starting user's IAM policies in main.tf do NOT contain any of the following:
@@ -371,6 +379,8 @@ Resource names should be consistent across:
 **All scenarios:**
 - cleanup_attack.sh should use admin credentials from Terraform outputs
 - README should reference the correct starting user names
+
+**Public-start scenarios (CTF, CSPM with anonymous entry):** If the attack begins from anonymous/public access, there is no starting IAM user. The demo script should use unauthenticated HTTP calls (curl, etc.) rather than AWS CLI with credentials. The cleanup script still uses admin credentials from Terraform outputs.
 
 ## Common Issues and Fixes
 
