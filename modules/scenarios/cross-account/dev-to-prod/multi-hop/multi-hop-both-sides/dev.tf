@@ -60,14 +60,22 @@ resource "aws_iam_policy" "helpdesk" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationCreateLoginProfile"
         Effect = "Allow"
         Action = [
           "iam:CreateLoginProfile",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
           "iam:GetLoginProfile",
           "iam:UpdateLoginProfile",
           "iam:DeleteLoginProfile",
           "iam:ListUsers",
-          "iam:GetUser"
+          "iam:GetUser",
         ]
         Resource = "*"
       }

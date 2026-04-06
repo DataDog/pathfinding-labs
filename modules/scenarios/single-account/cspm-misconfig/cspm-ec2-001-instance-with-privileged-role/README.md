@@ -1,4 +1,4 @@
-# CSPM Misconfiguration: EC2 Instance with Highly Privileged IAM Role
+# EC2 Instance with Privileged Role to Admin
 
 * **Category:** CSPM: Misconfig
 * **Sub-Category:** Compute
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $5/mo
 * **Technique:** EC2 instance with a highly privileged IAM role attached - validates CSPM detection
 * **Terraform Variable:** `enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.1
 * **Pathfinding.cloud ID:** cspm-ec2-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
@@ -23,15 +23,15 @@
 
 Your objective is to learn how to exploit a misconfiguration that allows you to move from the `pl-cspm-ec2-001-demo-user` IAM user (which has only SSM access) to the `pl-cspm-ec2-001-admin-role` administrative role by starting an SSM session on the `pl-cspm-ec2-001-instance` EC2 instance and extracting credentials from the Instance Metadata Service (IMDS).
 
-- **Start:** `arn:aws:iam::{PROD_ACCOUNT}:user/pl-cspm-ec2-001-demo-user`
-- **Destination resource:** `arn:aws:iam::{PROD_ACCOUNT}:role/pl-cspm-ec2-001-admin-role`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-cspm-ec2-001-demo-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-cspm-ec2-001-admin-role`
 
 ### Starting Permissions
 
-**Required:**
-- `ssm:StartSession` on `arn:aws:ec2:{REGION}:{PROD_ACCOUNT}:instance/pl-cspm-ec2-001-instance` -- allows opening an interactive session on the instance
+**Required** (`pl-cspm-ec2-001-demo-user`):
+- `ssm:StartSession` on `arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance` -- allows opening an interactive session on the instance
 
-**Helpful:**
+**Helpful** (`pl-cspm-ec2-001-demo-user`):
 - `ssm:DescribeInstanceInformation` -- allows confirming the SSM agent is online before attempting a session
 - `sts:GetCallerIdentity` -- allows verifying current identity at each stage of the attack
 
@@ -65,9 +65,9 @@ plabs apply
 
 | ARN | Purpose |
 |-----|---------|
-| `arn:aws:ec2:REGION:PROD_ACCOUNT:instance/pl-cspm-ec2-001-instance` | EC2 instance with privileged role attached |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-cspm-ec2-001-admin-role` | IAM role with AdministratorAccess attached |
-| `arn:aws:iam::PROD_ACCOUNT:instance-profile/pl-cspm-ec2-001-instance-profile` | Instance profile linking the role to the EC2 instance |
+| `arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance` | EC2 instance with privileged role attached |
+| `arn:aws:iam::{account_id}:role/pl-cspm-ec2-001-admin-role` | IAM role with AdministratorAccess attached |
+| `arn:aws:iam::{account_id}:instance-profile/pl-cspm-ec2-001-instance-profile` | Instance profile linking the role to the EC2 instance |
 
 ### Guided Walkthrough
 

@@ -1,4 +1,4 @@
-# Tool Testing: Reverse Blast Radius Query Detection (Direct and Indirect S3 Access)
+# Direct and Indirect Access Paths to Bucket
 
 * **Category:** Tool Testing
 * **Sub-Category:** reverse-blast-radius
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0009 - Collection
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object
 
@@ -21,14 +21,18 @@ Your objective is to learn how to validate that a security tool can detect both 
 
 ### Starting Permissions
 
-**Required:**
-- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*` -- user1 has explicit permission to read objects from the target bucket
-- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*` -- user1 has explicit permission to list the target bucket
-- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3` -- user2 can assume role3 to gain indirect bucket access
-- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*` -- role3 has permission to read objects from the target bucket
-- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*` -- role3 has permission to list the target bucket
+**Required** (`pl-prod-rbr-di-user1`):
+- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*` -- direct permission to read objects from the target bucket
+- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*` -- direct permission to list the target bucket
 
-**Helpful:**
+**Required** (`pl-prod-rbr-di-user2`):
+- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3` -- can assume role3 to gain indirect bucket access
+
+**Required** (`pl-prod-rbr-di-role3`):
+- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*/*` -- permission to read objects from the target bucket (inherited by user2 via role assumption)
+- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-di-*` -- permission to list the target bucket (inherited by user2 via role assumption)
+
+**Helpful** (`pl-prod-rbr-di-user1`):
 - `sts:GetCallerIdentity` -- verify current identity
 - `s3:ListAllMyBuckets` -- discover available buckets
 

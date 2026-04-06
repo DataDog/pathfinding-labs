@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:CreateJob + glue:StartJobRun
+# Glue Job Creation + Run to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue Job with inline Python script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-003-to-admin-starting-user`):
 - `iam:PassRole` on `*` -- allows passing the admin target role to the Glue job at creation time
 - `glue:CreateJob` on `*` -- allows creating the Glue Python shell job with the malicious script
 - `glue:StartJobRun` on `*` -- allows triggering execution of the created job
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-003-to-admin-starting-user`):
 - `glue:GetJob` -- retrieve job details and verify configuration
 - `glue:GetJobRun` -- get details about a specific job run to monitor execution status
 - `glue:GetJobRuns` -- list job runs to monitor execution status

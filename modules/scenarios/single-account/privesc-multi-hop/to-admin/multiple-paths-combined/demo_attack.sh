@@ -90,6 +90,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 export AWS_DEFAULT_REGION="us-west-2"
 
 # [EXPLOIT] Step 1: Assume the role with multiple privilege escalation paths
@@ -432,6 +440,9 @@ echo "TEST_METRICS:prod_role_with_multiple_privesc_paths:paths_tested=3,admin_ro
 
 # Clean up temp files
 rm -f /tmp/ec2-userdata.sh /tmp/lambda_function.py /tmp/lambda-response.json /tmp/cf-template.yaml
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

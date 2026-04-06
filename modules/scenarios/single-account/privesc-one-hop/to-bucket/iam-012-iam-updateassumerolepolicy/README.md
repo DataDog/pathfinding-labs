@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:UpdateAssumeRolePolicy
+# IAM Role Trust Policy Update to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-012
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-012-to-bucket-starting-user`):
 - `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-012-to-bucket-target-role` -- modify the target role's trust policy to allow assumption by the starting role
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-iam-012-to-bucket-target-role` -- assume the target role once its trust policy has been updated
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-012-to-bucket-starting-user`):
 - `iam:ListRoles` -- discover roles with S3 access
 - `iam:GetRole` -- view the current trust policy before modification
 

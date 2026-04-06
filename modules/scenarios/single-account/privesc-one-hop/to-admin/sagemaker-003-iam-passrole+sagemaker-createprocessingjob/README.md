@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + sagemaker:CreateProcessingJob
+# SageMaker Processing Job Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with PassRole and CreateProcessingJob can create processing job with malicious script and admin role to execute code with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sagemaker-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sagemaker-003-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sagemaker-003-to-admin-passable-role` -- allows passing the admin-privileged execution role to SageMaker
 - `sagemaker:CreateProcessingJob` on `*` -- allows creating a processing job that runs arbitrary code
 - `s3:PutObject` on `arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*` -- allows uploading the malicious script to the staging bucket
 - `s3:GetObject` on `arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*` -- allows the processing job to download the script from S3
 
-**Helpful:**
+**Helpful** (`pl-prod-sagemaker-003-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `iam:GetRole` -- verify the role has administrative permissions before passing it
 - `sagemaker:DescribeProcessingJob` -- monitor processing job status and execution

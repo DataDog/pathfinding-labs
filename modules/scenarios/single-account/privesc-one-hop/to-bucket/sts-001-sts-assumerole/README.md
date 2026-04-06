@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: sts:AssumeRole
+# Direct Role Assumption to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with sts:AssumeRole can directly assume role with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sts-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sts-001-to-bucket-starting-user`):
 - `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role` -- allows the starting user to assume the bucket access role directly
 
-**Helpful:**
+**Helpful** (`pl-prod-sts-001-to-bucket-starting-user`):
 - `iam:ListRoles` -- discover available roles to assume
 - `iam:GetRole` -- view role permissions and trust policy
 - `s3:ListBucket` -- verify S3 access after role assumption

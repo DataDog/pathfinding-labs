@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "ec2-modifyinstanceattribute+stopinstances+startinstances"
+title: "EC2 Instance Profile Swap to Admin"
 description: "Principal with ec2:ModifyInstanceAttribute, ec2:StopInstances, and ec2:StartInstances can inject malicious code into an EC2 instance's userData to extract credentials from the attached IAM role via IMDS"
 cost_estimate: "$10/mo"
 pathfinding-cloud-id: "ec2-002"
@@ -33,25 +34,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ec2:ModifyInstanceAttribute"
-      resource: "arn:aws:ec2:*:*:instance/*"
-
-    - permission: "ec2:StopInstances"
-      resource: "arn:aws:ec2:*:*:instance/*"
-
-    - permission: "ec2:StartInstances"
-      resource: "arn:aws:ec2:*:*:instance/*"
+    - principal: "pl-prod-ec2-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:ModifyInstanceAttribute"
+          resource: "arn:aws:ec2:*:*:instance/*"
+        - permission: "ec2:StopInstances"
+          resource: "arn:aws:ec2:*:*:instance/*"
+        - permission: "ec2:StartInstances"
+          resource: "arn:aws:ec2:*:*:instance/*"
 
   helpful:
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover target EC2 instances and verify instance state"
-
-    - permission: "ec2:DescribeInstanceAttribute"
-      purpose: "View current user data and instance configuration"
-
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify identity during attack execution"
-
+    - principal: "pl-prod-ec2-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover target EC2 instances and verify instance state"
+        - permission: "ec2:DescribeInstanceAttribute"
+          purpose: "View current user data and instance configuration"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify identity during attack execution"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

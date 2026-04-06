@@ -36,12 +36,22 @@ resource "aws_iam_policy" "dev_lambda_invoke_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitation"
         Effect = "Allow"
         Action = [
           "lambda:InvokeFunction",
           "lambda:UpdateFunctionCode"
         ]
         Resource = "arn:aws:lambda:us-west-2:${var.prod_account_id}:function:pl-prod-hello-world-*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunction",
+          "lambda:ListFunctions"
+        ]
+        Resource = "*"
       }
     ]
   })

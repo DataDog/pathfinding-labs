@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
+title: "ECS Container Instance Registration + Start Task to Admin"
 description: "Attacker with RCE on an EC2 instance can register it to an ECS cluster and override task commands to escalate to admin, using only ecs:RegisterContainerInstance, ecs:StartTask, iam:PassRole, and ecs:DeregisterContainerInstance on the instance role"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ecs-007"

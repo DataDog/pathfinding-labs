@@ -1,4 +1,4 @@
-# Prod Role with Multiple Privilege Escalation Paths Module
+# EC2, Lambda, and CloudFormation Chains to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** privilege-chaining
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1648 - Serverless Execution
 
@@ -21,14 +21,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-prod`):
 - `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-role-with-multiple-privesc-paths` -- initial hop from starting user into the escalation role
+
+**Required** (`pl-prod-role-with-multiple-privesc-paths`):
 - `iam:PassRole` on `arn:aws:iam::*:role/*` -- required to attach admin service roles to EC2, Lambda, or CloudFormation
 - `ec2:RunInstances` on `*` -- EC2 path: launch an instance with the admin role
 - `lambda:CreateFunction` on `*` -- Lambda path: create a function with the admin role
 - `cloudformation:CreateStack` on `*` -- CloudFormation path: deploy a stack with the admin role
 
-**Helpful:**
+**Helpful** (`pl-prod-role-with-multiple-privesc-paths`):
 - `iam:ListRoles` -- discover available privileged roles in the environment
 - `ec2:DescribeInstances` -- verify the EC2 escalation path
 - `lambda:ListFunctions` -- verify the Lambda escalation path

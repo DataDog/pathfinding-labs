@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.1.0"
 name: "iam-putuserpolicy+iam-createaccesskey"
+title: "IAM Inline User Policy + Access Key Creation to Admin"
 description: "User with PutUserPolicy and CreateAccessKey on a target user can add admin inline policy to that user, create access keys for them, and gain admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-018"
@@ -32,28 +33,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutUserPolicy"
-      resource: "arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user"
-
-    - permission: "iam:CreateAccessKey"
-      resource: "arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user"
+    - principal: "pl-prod-iam-018-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutUserPolicy"
+          resource: "arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user"
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-iam-018-to-admin-target-user"
 
   helpful:
-    - permission: "iam:ListUsers"
-      purpose: "Discover target users to escalate through"
-
-    - permission: "iam:GetUser"
-      purpose: "Get target user details and current permissions"
-
-    - permission: "iam:ListUserPolicies"
-      purpose: "List inline policies on target user"
-
-    - permission: "iam:GetUserPolicy"
-      purpose: "View target user's inline policies"
-
-    - permission: "iam:ListAccessKeys"
-      purpose: "List existing access keys for target user"
-
+    - principal: "pl-prod-iam-018-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover target users to escalate through"
+        - permission: "iam:GetUser"
+          purpose: "Get target user details and current permissions"
+        - permission: "iam:ListUserPolicies"
+          purpose: "List inline policies on target user"
+        - permission: "iam:GetUserPolicy"
+          purpose: "View target user's inline policies"
+        - permission: "iam:ListAccessKeys"
+          purpose: "List existing access keys for target user"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

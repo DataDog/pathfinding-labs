@@ -47,17 +47,22 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationDeleteAndCreateAccessKey"
         Effect = "Allow"
         Action = [
-          "iam:ListAccessKeys",
           "iam:DeleteAccessKey",
           "iam:CreateAccessKey"
         ]
         Resource = aws_iam_user.admin_user.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
+          "iam:ListAccessKeys",
+          "iam:ListUsers",
+          "iam:GetUser",
+          "iam:ListAttachedUserPolicies",
           "sts:GetCallerIdentity"
         ]
         Resource = "*"

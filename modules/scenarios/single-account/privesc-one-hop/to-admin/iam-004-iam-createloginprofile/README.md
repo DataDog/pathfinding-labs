@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:CreateLoginProfile
+# IAM Console Password Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating console password for admin user to gain console access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-004-to-admin-starting-user`):
 - `iam:CreateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-004-to-admin-target-user` -- creates a console password for the target admin user, enabling console login
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-004-to-admin-starting-user`):
 - `iam:ListUsers` -- discover users without login profiles
 - `iam:GetUser` -- view user details
 - `iam:GetLoginProfile` -- check if a user already has a login profile

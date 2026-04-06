@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-attachrolepolicy"
+title: "IAM Managed Role Policy Attachment to Bucket"
 description: "Role with iam:AttachRolePolicy on itself can attach policy granting S3 bucket access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-009"
@@ -33,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-bucket-starting-role"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-bucket-starting-role"
 
   helpful:
-    - permission: "iam:ListAttachedRolePolicies"
-      purpose: "List managed policies attached to the role"
-
-    - permission: "iam:ListPolicies"
-      purpose: "Discover available managed policies"
-
-    - permission: "s3:ListBucket"
-      purpose: "Verify bucket access after escalation"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListAttachedRolePolicies"
+          purpose: "List managed policies attached to the role"
+        - permission: "iam:ListPolicies"
+          purpose: "Discover available managed policies"
+        - permission: "s3:ListBucket"
+          purpose: "Verify bucket access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

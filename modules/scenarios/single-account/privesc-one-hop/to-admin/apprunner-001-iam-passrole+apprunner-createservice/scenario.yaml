@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+apprunner-createservice"
+title: "App Runner Service Creation to Admin"
 description: "User with apprunner:CreateService and iam:PassRole can create an App Runner service with a privileged role, using StartCommand override to grant themselves admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "apprunner-001"
@@ -32,26 +33,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "apprunner:CreateService"
-      resource: "*"
-
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-apprunner-001-to-admin-target-role"
-
-    - permission: "iam:CreateServiceLinkedRole"
-      resource: "arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
-      note: "Required only for the first App Runner service in the account"
+    - principal: "pl-prod-apprunner-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:CreateService"
+          resource: "*"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-apprunner-001-to-admin-target-role"
+        - permission: "iam:CreateServiceLinkedRole"
+          resource: "arn:aws:iam::*:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 
   helpful:
-    - permission: "apprunner:ListServices"
-      purpose: "List App Runner services to verify service creation"
-
-    - permission: "apprunner:DescribeService"
-      purpose: "Check service status and configuration"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after escalation"
-
+    - principal: "pl-prod-apprunner-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:ListServices"
+          purpose: "List App Runner services to verify service creation"
+        - permission: "apprunner:DescribeService"
+          purpose: "Check service status and configuration"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

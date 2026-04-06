@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+airflow-createenvironment"
+title: "MWAA Environment Creation to Admin"
 description: "User with iam:PassRole and airflow:CreateEnvironment can escalate to admin by creating an MWAA environment with an admin execution role and a malicious startup script"
 cost_estimate: "$37/mo"
 pathfinding-cloud-id: "mwaa-001"
@@ -32,56 +33,46 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-mwaa-001-to-admin-admin-role"
-
-    - permission: "airflow:CreateEnvironment"
-      resource: "*"
-
-    # MWAA validates caller has these EC2 permissions (even though SLR does actual work)
-    - permission: "ec2:CreateNetworkInterface"
-      resource: "*"
-
-    - permission: "ec2:CreateNetworkInterfacePermission"
-      resource: "*"
-
-    - permission: "ec2:DescribeNetworkInterfaces"
-      resource: "*"
-
-    - permission: "ec2:DescribeSubnets"
-      resource: "*"
-
-    - permission: "ec2:DescribeSecurityGroups"
-      resource: "*"
-
-    - permission: "ec2:DescribeVpcs"
-      resource: "*"
-
-    - permission: "ec2:CreateVpcEndpoint"
-      resource: "*"
-
-    - permission: "ec2:DeleteVpcEndpoints"
-      resource: "*"
-
-    - permission: "ec2:DescribeVpcEndpoints"
-      resource: "*"
-
-    - permission: "ec2:DescribeVpcEndpointServices"
-      resource: "*"
-
-    - permission: "s3:GetEncryptionConfiguration"
-      resource: "*"
+    - principal: "pl-prod-mwaa-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-mwaa-001-to-admin-admin-role"
+        - permission: "airflow:CreateEnvironment"
+          resource: "*"
+        - permission: "ec2:CreateNetworkInterface"
+          resource: "*"
+        - permission: "ec2:CreateNetworkInterfacePermission"
+          resource: "*"
+        - permission: "ec2:DescribeNetworkInterfaces"
+          resource: "*"
+        - permission: "ec2:DescribeSubnets"
+          resource: "*"
+        - permission: "ec2:DescribeSecurityGroups"
+          resource: "*"
+        - permission: "ec2:DescribeVpcs"
+          resource: "*"
+        - permission: "ec2:CreateVpcEndpoint"
+          resource: "*"
+        - permission: "ec2:DeleteVpcEndpoints"
+          resource: "*"
+        - permission: "ec2:DescribeVpcEndpoints"
+          resource: "*"
+        - permission: "ec2:DescribeVpcEndpointServices"
+          resource: "*"
+        - permission: "s3:GetEncryptionConfiguration"
+          resource: "*"
 
   helpful:
-    - permission: "airflow:GetEnvironment"
-      purpose: "Check environment status and wait for it to be ready"
-
-    - permission: "airflow:DeleteEnvironment"
-      purpose: "Clean up the MWAA environment after the attack"
-
-    - permission: "ec2:DescribeRouteTables"
-      purpose: "Verify subnets have routes to NAT Gateway"
-
+    - principal: "pl-prod-mwaa-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "airflow:GetEnvironment"
+          purpose: "Check environment status and wait for it to be ready"
+        - permission: "airflow:DeleteEnvironment"
+          purpose: "Clean up the MWAA environment after the attack"
+        - permission: "ec2:DescribeRouteTables"
+          purpose: "Verify subnets have routes to NAT Gateway"
 # =============================================================================
 # PREREQUISITES
 # =============================================================================

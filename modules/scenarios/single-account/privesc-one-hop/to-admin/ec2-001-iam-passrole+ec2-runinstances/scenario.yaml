@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ec2-runinstances"
+title: "EC2 Instance Launch to Admin"
 description: "User with iam:PassRole and ec2:RunInstances can escalate by launching EC2 with admin instance profile"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ec2-001"
@@ -32,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ec2-001-to-admin-target-role"
-
-    - permission: "ec2:RunInstances"
-      resource: "*"
+    - principal: "pl-prod-ec2-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ec2-001-to-admin-target-role"
+        - permission: "ec2:RunInstances"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Verify instance launch and get connection details"
-
-    - permission: "iam:ListInstanceProfiles"
-      purpose: "Find instance profiles with privileged roles"
-
+    - principal: "pl-prod-ec2-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Verify instance launch and get connection details"
+        - permission: "iam:ListInstanceProfiles"
+          purpose: "Find instance profiles with privileged roles"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

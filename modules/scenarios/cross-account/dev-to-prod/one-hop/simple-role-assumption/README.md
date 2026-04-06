@@ -1,4 +1,4 @@
-# Cross-Account Privilege Escalation: Dev to Prod Simple Role Assumption
+# Dev to Prod via Direct Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Direct cross-account role assumption from dev user to prod admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-dev-xsare-to-admin-starting-user`):
 - `sts:AssumeRole` on `arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role` -- allows direct cross-account role assumption to gain administrative access in prod
 
-**Helpful:**
+**Helpful** (`pl-dev-xsare-to-admin-starting-user`):
 - `sts:GetCallerIdentity` -- verify current identity before and after role assumption
 - `iam:ListRoles` -- discover assumable roles in the target account
 

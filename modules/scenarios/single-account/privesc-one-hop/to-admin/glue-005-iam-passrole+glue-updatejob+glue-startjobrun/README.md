@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:UpdateJob + glue:StartJobRun
+# Glue Job Update + Run to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modify existing Glue Job to use privileged role and malicious script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1565.001 - Data Manipulation: Stored Data Manipulation
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-005-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::{account_id}:role/pl-prod-glue-005-to-admin-target-role` -- pass the admin role to the Glue job during update
 - `glue:UpdateJob` on `*` -- update existing Glue job to use admin role and malicious script
 - `glue:StartJobRun` on `*` -- execute the updated Glue job with admin privileges
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-005-to-admin-starting-user`):
 - `glue:GetJob` -- retrieve job details and verify configuration
 - `glue:GetJobRun` -- get details about a specific job run
 - `glue:GetJobRuns` -- list job runs to monitor execution status

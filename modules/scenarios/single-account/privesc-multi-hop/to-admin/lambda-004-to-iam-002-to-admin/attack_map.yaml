@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -59,9 +61,12 @@ attackMap:
         that reads the execution role's environment variables and returns them in
         the function response.
       hints:
-        - "You can modify the code of Lambda functions."
-        - "Lambda functions run with an IAM execution role — what credentials might they expose?"
-        - "Update the function code to return the execution role credentials, then invoke it."
+        - "Start by discovering what Lambda functions exist in the account — use your helpful permissions to list and inspect them."
+        - "Use lambda:GetFunction on the target function to find its execution role ARN. That role is your real target."
+        - "Lambda functions run with an IAM execution role, and those role credentials are injected as environment variables into every invocation."
+        - "You can replace this function's code with anything you want. Think about what a function could return to you that would be useful."
+        - "The replacement code must use the same handler name as the original function. Check the configuration before writing your payload."
+        - "Package your replacement code as a zip file and deploy it with lambda:UpdateFunctionCode, then wait a few seconds for the update to finish."
         - "Browse to https://pathfinding.cloud/paths/lambda-004 for technique details."
       commands:
         - description: "Create the malicious Lambda payload"
@@ -83,9 +88,11 @@ attackMap:
         payload. The response body contains the execution role's temporary AWS
         credentials (access key ID, secret access key, and session token).
       hints:
-        - "What IAM role does this Lambda function execute under?"
-        - "Lambda functions receive execution role credentials as environment variables."
-        - "Replace the handler with code that returns AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN."
+        - "Now that the function code is replaced, invoke it and inspect the response body carefully."
+        - "Lambda injects three environment variables for the execution role: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN."
+        - "Parse the response body as JSON to extract the three credential values, then export them as environment variables."
+        - "Confirm you've switched identities by calling sts:GetCallerIdentity — you should now see the Lambda execution role ARN."
+        - "These are temporary STS credentials, so include AWS_SESSION_TOKEN in every subsequent API call."
       commands:
         - description: "Invoke the function and capture credentials"
           command: "aws lambda invoke --function-name pl-prod-lambda-004-to-iam-002-target-function --payload '{}' /tmp/response.json && cat /tmp/response.json | jq -r '.body' | jq '.'"
@@ -98,8 +105,10 @@ attackMap:
         access key pair for the admin user. This grants full AdministratorAccess
         to the AWS account.
       hints:
-        - "This role has IAM permissions. What can it do to IAM users?"
-        - "Look for iam:CreateAccessKey in the role's attached policies."
+        - "You are now operating as the Lambda execution role. Check what IAM permissions it has."
+        - "Look at the policies attached to this role — what can it do to IAM users?"
+        - "The role has permission to create credentials for a specific IAM user. Use iam:CreateAccessKey to generate a permanent key pair."
+        - "Unlike the temporary STS credentials you just exfiltrated, access keys are permanent — unset AWS_SESSION_TOKEN after switching to them."
         - "Browse to https://pathfinding.cloud/paths/iam-002 for technique details."
       commands:
         - description: "Create access keys for the admin user"

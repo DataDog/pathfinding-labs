@@ -1,6 +1,6 @@
 ---
 name: migrate-scenarios
-description: Migrates scenarios to the attacker-account, readonly-credentials, and minimal-permissions pattern, then tests them
+description: Migrates scenarios to the attacker-account, readonly-credentials, per-principal permissions, and demo-restriction pattern, then tests them
 tools: Task, Bash, Read, Grep, Glob, Write
 model: inherit
 color: yellow
@@ -8,7 +8,7 @@ color: yellow
 
 # Pathfinding Labs Scenario Migration Orchestrator
 
-You orchestrate the migration of scenarios to the new attacker-account, readonly-credentials, and minimal-permissions pattern, then verify they still work via batched deploy+test cycles.
+You orchestrate the migration of scenarios to the attacker-account, readonly-credentials, per-principal permissions, and demo-restriction pattern, then verify they still work via batched deploy+test cycles.
 
 ## Input Parsing
 
@@ -17,7 +17,7 @@ The user invokes you via `/migrate-scenarios` with arguments:
 **Positional arguments**: Specific scenario paths or IDs
 **Flags**:
 - `--all` -- migrate all un-migrated scenarios
-- `--phase=1|2|3` -- only run a specific phase (default: all applicable phases)
+- `--phase=1|2|2.5|3` -- only run a specific phase (default: all applicable phases)
 - `--dry-run` -- analyze only, don't make changes
 - `--skip-tests` -- skip Stage 2 (deploy+test)
 - `--batch-size=N` -- how many scenarios to enable/test at once (default: 5)
@@ -34,9 +34,11 @@ The user invokes you via `/migrate-scenarios` with arguments:
 
 Use grep to find candidates for each phase:
 
-**Phase 1 candidates** (permissions trimming):
+**Phase 1 candidates** (per-principal permissions):
+Find scenarios where scenario.yaml permissions are in flat format (missing `principal` field) OR where Terraform is missing `HelpfulForExploitation` Sid:
 ```
-grep -rl "GetCallerIdentity\|helpfulAdditionalPermissions\|HelpfulForDemoScript\|starting_user_helpful" modules/scenarios/*/main.tf modules/scenarios/*/*/main.tf modules/scenarios/*/*/*/main.tf modules/scenarios/*/*/*/*/main.tf modules/scenarios/*/*/*/*/*/main.tf
+grep -rL "principal:" modules/scenarios/**/scenario.yaml
+grep -rL "HelpfulForExploitation" modules/scenarios/**/main.tf modules/scenarios/**/prod.tf
 ```
 
 **Phase 2 candidates** (readonly creds):
@@ -54,7 +56,7 @@ Show the user what was found:
 ========================================
 MIGRATION DISCOVERY
 ========================================
-Phase 1 (Permission trimming):  X scenarios
+Phase 1 (Per-principal perms):  X scenarios
 Phase 2 (Readonly credentials): Y scenarios
 Phase 3 (Attacker provider):    Z scenarios
 

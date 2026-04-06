@@ -37,6 +37,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -44,9 +45,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-role-with-multiple-privesc-paths"
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "sts:GetCallerIdentity"
+          "sts:GetCallerIdentity",
+          "iam:ListRoles",
+          "ec2:DescribeInstances",
+          "lambda:ListFunctions"
         ]
         Resource = "*"
       }
@@ -90,17 +95,25 @@ resource "aws_iam_policy" "prod_privesc_policy_with_multiple_paths" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRoleAndServices"
         Effect = "Allow"
         Action = [
           "iam:PassRole",
           "lambda:CreateFunction",
           "lambda:InvokeFunction",
-          "lambda:GetFunctionConfiguration",
           "cloudformation:CreateStack",
-          "cloudformation:DescribeStacks",
           "ec2:RunInstances",
-          "ec2:DescribeImages",
           "ec2:CreateTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunctionConfiguration",
+          "cloudformation:DescribeStacks",
+          "ec2:DescribeImages"
         ]
         Resource = "*"
       }

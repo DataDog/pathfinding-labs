@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-008-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -75,6 +77,11 @@ attackMap:
         to attach AdministratorAccess to the starting user. After the task completes,
         the attacker uses their original credentials to verify and exercise full admin
         access.
+      hints:
+        - "Poll the task status using ecs:DescribeTasks until the task reports STOPPED -- this confirms the injected command has finished executing."
+        - "Use iam:ListAttachedUserPolicies on your starting user to verify that AdministratorAccess was successfully attached after the task stops."
+        - "Wait a few seconds after the task stops before checking IAM -- policy attachments can take a moment to propagate across AWS infrastructure."
+        - "Once the policy is attached, confirm admin access by attempting a privileged operation such as listing IAM users -- this should now succeed."
       commands:
         - description: "Verify privilege escalation succeeded"
           command: "aws iam list-attached-user-policies --user-name pl-prod-ecs-008-to-admin-starting-user"

@@ -1,13 +1,13 @@
-# Multi-Hop Privilege Escalation via AssumeRole and ECS Fargate
+# Role Assumption + ECS Service Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Path Type:** multi-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Cost Estimate:** ~$1/mo (ECS Fargate tasks incur minimal charges when run briefly for demonstrations)
+* **Cost Estimate:** $0/mo
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sts-001 + ecs-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -21,19 +21,23 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sts001-ecs002-starting-user`):
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-sts001-ecs002-intermediate-role` -- allows assuming the intermediate role (Hop 1)
-- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role` -- allows attaching the admin role to an ECS task definition (held by intermediate role)
-- `ecs:CreateCluster` on `*` -- allows creating an ECS cluster to host the malicious task (held by intermediate role)
-- `ecs:RegisterTaskDefinition` on `*` -- allows registering a task definition with the admin role attached (held by intermediate role)
-- `ecs:RunTask` on `*` -- allows launching the Fargate task that escalates privileges (held by intermediate role)
 
-**Helpful:**
-- `ec2:DescribeVpcs` -- Find default VPC for Fargate network configuration
-- `ec2:DescribeSubnets` -- Find subnets for Fargate network configuration
-- `ecs:DescribeTasks` -- Monitor task status and completion
-- `iam:ListRoles` -- Discover available roles that trust ecs-tasks.amazonaws.com
-- `iam:GetRole` -- View role permissions and trust policies
+**Required** (`pl-prod-sts001-ecs002-intermediate-role`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sts001-ecs002-admin-role` -- allows attaching the admin role to an ECS task definition (Hop 2)
+- `ecs:CreateCluster` on `*` -- allows creating an ECS cluster to host the malicious task (Hop 2)
+- `ecs:RegisterTaskDefinition` on `*` -- allows registering a task definition with the admin role attached (Hop 2)
+- `ecs:RunTask` on `*` -- allows launching the Fargate task that escalates privileges (Hop 2)
+
+**Helpful** (`pl-prod-sts001-ecs002-starting-user`):
+- `iam:ListRoles` -- discover available roles that trust ecs-tasks.amazonaws.com
+- `iam:GetRole` -- view role permissions and trust policies before assuming
+
+**Helpful** (`pl-prod-sts001-ecs002-intermediate-role`):
+- `ec2:DescribeVpcs` -- find the default VPC for Fargate network configuration
+- `ec2:DescribeSubnets` -- find subnets for Fargate network configuration
+- `ecs:DescribeTasks` -- monitor task status and completion
 
 ## Self-hosted Lab Setup
 

@@ -45,6 +45,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAttachUserPolicyAndCreateAccessKey"
         Effect = "Allow"
         Action = [
           "iam:AttachUserPolicy",
@@ -53,6 +54,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_user.target_user.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "iam:ListUsers",

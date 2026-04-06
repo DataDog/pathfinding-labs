@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:PutUserPolicy
+# IAM Inline User Policy Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:PutUserPolicy to attach inline admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-007
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-007-to-admin-starting-user`):
 - `iam:PutUserPolicy` on `*` -- allows attaching an inline policy to any IAM user, including yourself
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-007-to-admin-starting-user`):
 - `iam:GetUser` -- view user details and verify policy attachment
 - `iam:ListUserPolicies` -- list existing inline policies on users
 

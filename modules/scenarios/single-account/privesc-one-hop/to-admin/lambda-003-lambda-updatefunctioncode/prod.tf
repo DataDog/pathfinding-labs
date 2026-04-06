@@ -46,32 +46,22 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationLambda"
         Effect = "Allow"
         Action = [
           "lambda:UpdateFunctionCode",
           "lambda:InvokeFunction",
-          "lambda:GetFunction"
         ]
         Resource = aws_lambda_function.target_function.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "lambda:ListFunctions"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole"
-        ]
-        Resource = aws_iam_role.target_role.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sts:GetCallerIdentity"
+          "lambda:GetFunction",
+          "lambda:ListFunctions",
+          "iam:GetRole",
+          "sts:GetCallerIdentity",
         ]
         Resource = "*"
       }

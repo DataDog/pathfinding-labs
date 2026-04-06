@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:DeleteAccessKey + iam:CreateAccessKey
+# IAM Access Key Rotation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Bypassing AWS's 2-access-key limit by deleting an existing key before creating a new one for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-003-to-admin-starting-user`):
 - `iam:DeleteAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-003-to-admin-target-user` -- delete one of the target admin user's existing access keys to free up a slot
 - `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-iam-003-to-admin-target-user` -- create a new access key for the target admin user under attacker control
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-003-to-admin-starting-user`):
 - `iam:ListAccessKeys` -- list existing access keys to identify which one to delete
 - `iam:ListUsers` -- discover privileged users to target
 - `iam:GetUser` -- view user details and attached policies

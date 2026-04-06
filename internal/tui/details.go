@@ -177,8 +177,11 @@ func (d *DetailsPane) buildContent() []string {
 	// Short Name (ID)
 	lines = append(lines, d.styles.DetailLabel.Render("Short Name ")+d.styles.DetailHighlight.Bold(true).Render(d.scenario.UniqueID()))
 
-	// Long Name (truncated if needed)
-	name := d.scenario.Name
+	// Long Name (truncated if needed) — use Title if set, fall back to Name
+	name := d.scenario.Title
+	if name == "" {
+		name = d.scenario.Name
+	}
 	if len(name) > contentWidth-11 {
 		name = name[:contentWidth-14] + "..."
 	}
@@ -192,7 +195,7 @@ func (d *DetailsPane) buildContent() []string {
 	} else if d.enabled && !d.deployed {
 		statusLine += d.styles.PendingDeployIndicator.Render() + d.styles.PendingDeployLabel.Render(" [Enablement pending apply]")
 	} else if !d.enabled && d.deployed {
-		statusLine += d.styles.PendingDestroyIndicator.Render() + d.styles.PendingDestroyLabel.Render(" [Disablement pending deploy]")
+		statusLine += d.styles.PendingDestroyIndicator.Render() + d.styles.PendingDestroyLabel.Render(" [Disablement pending apply]")
 	} else {
 		statusLine += d.styles.ScenarioDisabled.Render("○ Disabled")
 	}

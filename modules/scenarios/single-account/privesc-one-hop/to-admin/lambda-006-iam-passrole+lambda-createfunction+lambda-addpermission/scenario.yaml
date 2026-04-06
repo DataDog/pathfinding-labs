@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+lambda-createfunction+lambda-addpermission"
+title: "Lambda Function Creation + Permission Grant to Admin"
 description: "User with iam:PassRole, lambda:CreateFunction, and lambda:AddPermission can create a new Lambda function with an admin role, add permission to invoke it, and execute malicious code to gain admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-006"
@@ -32,31 +33,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-lambda-006-to-admin-target-role"
-
-    - permission: "lambda:CreateFunction"
-      resource: "*"
-
-    - permission: "lambda:AddPermission"
-      resource: "*"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "*"
+    - principal: "pl-prod-lambda-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-lambda-006-to-admin-target-role"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
+        - permission: "lambda:AddPermission"
+          resource: "*"
+        - permission: "lambda:InvokeFunction"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
-
-    - permission: "lambda:GetFunction"
-      purpose: "Verify function creation and retrieve details"
-
-    - permission: "lambda:GetPolicy"
-      purpose: "Verify resource-based policy was added"
-
-    - permission: "lambda:DeleteFunction"
-      purpose: "Clean up attack artifacts"
-
+    - principal: "pl-prod-lambda-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+        - permission: "lambda:GetFunction"
+          purpose: "Verify function creation and retrieve details"
+        - permission: "lambda:GetPolicy"
+          purpose: "Verify resource-based policy was added"
+        - permission: "lambda:DeleteFunction"
+          purpose: "Clean up attack artifacts"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

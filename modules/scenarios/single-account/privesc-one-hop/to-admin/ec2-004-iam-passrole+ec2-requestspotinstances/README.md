@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:PassRole + ec2:RequestSpotInstances
+# EC2 Spot Instance Request to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ec2-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ec2-004-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role` -- allows passing the admin role to an EC2 Spot Instance via instance profile
 - `ec2:RequestSpotInstances` on `*` -- allows requesting a Spot Instance with the admin instance profile and a user-data backdoor
 
-**Helpful:**
+**Helpful** (`pl-prod-ec2-004-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles
 - `ec2:DescribeInstances` -- verify instance launch and get connection details
 - `iam:ListInstanceProfiles` -- find instance profiles with privileged roles

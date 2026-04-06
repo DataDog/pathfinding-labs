@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+glue-updatejob+glue-createtrigger"
+title: "Glue Job Update + Trigger to Admin"
 pathfinding-cloud-id: "glue-006"
 description: "User with iam:PassRole, glue:UpdateJob, and glue:CreateTrigger can update existing Glue Job to use privileged role and malicious script, then create trigger to automatically execute it and grant admin access"
 cost_estimate: "$0/mo"
@@ -32,37 +33,32 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::{account_id}:role/pl-prod-glue-006-to-admin-target-role"
-      purpose: "Pass the admin role to the Glue job during update"
-
-    - permission: "glue:UpdateJob"
-      resource: "*"
-      purpose: "Update existing Glue job to use admin role and malicious script"
-
-    - permission: "glue:CreateTrigger"
-      resource: "*"
-      purpose: "Create scheduled trigger with --start-on-creation to execute job immediately"
+    - principal: "pl-prod-glue-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-glue-006-to-admin-target-role"
+        - permission: "glue:UpdateJob"
+          resource: "*"
+        - permission: "glue:CreateTrigger"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetJob"
-      purpose: "Retrieve job details and verify configuration"
-
-    - permission: "glue:GetTrigger"
-      purpose: "Monitor trigger state and verify activation"
-
-    - permission: "glue:GetJobRun"
-      purpose: "Get details about a specific job run"
-
-    - permission: "glue:GetJobRuns"
-      purpose: "List job runs to monitor execution status"
-
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify current identity and account ID"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after privilege escalation"
-
+    - principal: "pl-prod-glue-006-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetJob"
+          purpose: "Retrieve job details and verify configuration"
+        - permission: "glue:GetTrigger"
+          purpose: "Monitor trigger state and verify activation"
+        - permission: "glue:GetJobRun"
+          purpose: "Get details about a specific job run"
+        - permission: "glue:GetJobRuns"
+          purpose: "List job runs to monitor execution status"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity and account ID"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after privilege escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

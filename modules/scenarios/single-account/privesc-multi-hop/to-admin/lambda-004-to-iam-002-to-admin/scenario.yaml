@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "lambda-004-to-iam-002-to-admin"
+title: "Lambda Code Update + Access Key Creation to Admin"
 description: "Multi-hop privilege escalation: update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-004 + iam-002"
@@ -33,26 +34,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "lambda:UpdateFunctionCode"
-      resource: "arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function"
-
-    - permission: "iam:CreateAccessKey"
-      resource: "arn:aws:iam::*:user/pl-prod-lambda-004-to-iam-002-admin-user"
-      note: "This permission is held by the Lambda execution role, not the starting user"
+    - principal: "pl-prod-lambda-004-to-iam-002-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function"
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-lambda-004-to-iam-002-admin-user"
 
   helpful:
-    - permission: "lambda:ListFunctions"
-      purpose: "Discover available Lambda functions to target"
-
-    - permission: "lambda:GetFunction"
-      purpose: "View function details including execution role ARN"
-
-    - permission: "lambda:GetFunctionConfiguration"
-      purpose: "View function configuration details"
-
+    - principal: "pl-prod-lambda-004-to-iam-002-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover available Lambda functions to target"
+        - permission: "lambda:GetFunction"
+          purpose: "View function details including execution role ARN"
+        - permission: "lambda:GetFunctionConfiguration"
+          purpose: "View function configuration details"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

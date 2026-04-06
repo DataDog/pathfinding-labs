@@ -16,6 +16,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Source demo permissions library for safety restore
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Configuration
 INSTANCE_ROLE_NAME="pl-prod-ecs-007-to-admin-instance-role"
 EXISTING_TASK_FAMILY="pl-prod-ecs-007-existing-task"

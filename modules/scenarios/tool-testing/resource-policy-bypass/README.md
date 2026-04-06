@@ -1,4 +1,4 @@
-# S3 Bucket Access Through Resource Policy
+# Resource Policy Bypass via Role Assumption to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Bypass S3 bucket resource policy restrictions by assuming role with bucket access
 * **Terraform Variable:** `enable_tool_testing_resource_policy_bypass`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0005 - Defense Evasion, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-prod`):
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-bucket-access-role` -- allows the starting user to assume the role that the bucket's resource policy grants access to
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-prod`):
 - `iam:ListRoles` -- discover roles with bucket access
 - `s3:GetBucketPolicy` -- view bucket resource policy restrictions
 - `iam:GetRole` -- view role permissions

@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-bucket-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could have been
         obtained through many real-world vectors: phishing a developer and gaining access to
@@ -60,9 +62,11 @@ attackMap:
         Start an interactive shell session on the target EC2 instance using SSM Session
         Manager. No SSH keys, bastion hosts, or open network ports are required.
       hints:
-        - "You can interact with compute resources in this account."
-        - "Look for EC2 instances that have IAM roles with interesting permissions."
-        - "SSM Session Manager gives you shell-level access without SSH keys or open ports."
+        - "Your starting user has a permission that lets you interact with compute resources in this account — look at the policy carefully."
+        - "Use ec2:DescribeInstances to list running instances and inspect which ones have IAM instance profiles attached."
+        - "Use ssm:DescribeInstanceInformation to confirm which instances have the SSM agent running and are in Online state."
+        - "SSM Session Manager gives you interactive shell access without SSH keys, open ports, or a bastion host — purely via AWS API."
+        - "Review the policy attached to your starting user to see which specific instance resource ARN is permitted."
         - "Browse to https://pathfinding.cloud/paths/ssm-001 for technique details."
       commands:
         - description: "Identify SSM-managed instances"
@@ -77,9 +81,10 @@ attackMap:
         From within the SSM shell session, query the Instance Metadata Service to retrieve
         the temporary credentials of the EC2 instance role. IMDSv2 requires a token first.
       hints:
-        - "This instance has an IAM role attached. What permissions does that role have?"
-        - "The Instance Metadata Service at http://169.254.169.254 exposes the role's credentials."
-        - "Use IMDSv2: first get a token with a PUT request, then use it to fetch credentials."
+        - "You are now inside the EC2 instance. Think about what services are available from within an EC2 instance that expose AWS credentials."
+        - "The Instance Metadata Service at http://169.254.169.254 exposes the role's temporary credentials to any process running on the instance."
+        - "This instance uses IMDSv2 — you need to first get a session token with a PUT request before you can query the credentials endpoint."
+        - "The credentials endpoint path is /latest/meta-data/iam/security-credentials/ — first list available role names, then fetch credentials for the specific role."
       commands:
         - description: "Obtain an IMDSv2 session token"
           command: "TOKEN=$(curl -s -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\")"
@@ -94,6 +99,11 @@ attackMap:
       description: >
         Export the extracted credentials as environment variables locally (after exiting the
         SSM session), then use them to list and download objects from the sensitive S3 bucket.
+      hints:
+        - "You have credentials for the EC2 instance role — exit the SSM session and use them locally."
+        - "Export the AccessKeyId, SecretAccessKey, and Token as environment variables, then verify your identity with sts:GetCallerIdentity."
+        - "With the instance role credentials, try listing the contents of any S3 buckets the role has access to."
+        - "Use s3:ListBucket to discover what objects are in the bucket, then s3:GetObject to download the sensitive data."
       commands:
         - description: "Export extracted credentials as environment variables"
           command: "export AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token>"

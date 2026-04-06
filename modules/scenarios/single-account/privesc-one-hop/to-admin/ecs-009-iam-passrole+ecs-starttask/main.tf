@@ -56,7 +56,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "requiredPermissions1"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -67,10 +67,40 @@ resource "aws_iam_user_policy" "starting_user_required" {
         ]
       },
       {
-        Sid    = "requiredPermissions2"
+        Sid    = "RequiredForExploitationECSStartTask"
         Effect = "Allow"
         Action = [
           "ecs:StartTask"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Helpful permissions policy for demo script observation steps
+resource "aws_iam_user_policy" "starting_user_helpful" {
+  provider = aws.prod
+  name     = "pl-prod-ecs-009-to-admin-helpful-permissions"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "HelpfulForDemoScript"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListContainerInstances",
+          "ecs:ListTaskDefinitions",
+          "ecs:DescribeTasks",
+          "ecs:ListClusters",
+          "ecs:StopTask",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "iam:DetachUserPolicy",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }

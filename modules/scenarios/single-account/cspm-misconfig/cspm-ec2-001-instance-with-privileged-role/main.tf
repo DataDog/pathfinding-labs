@@ -8,7 +8,7 @@ terraform {
   }
 }
 
-# CSPM Misconfiguration: EC2 Instance with Highly Privileged IAM Role
+#  EC2 Instance with Highly Privileged IAM Role
 #
 # This scenario creates an EC2 instance with an administrative IAM role attached.
 # This is a common CSPM detection: EC2 instances should not have highly privileged

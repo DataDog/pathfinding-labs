@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:AttachRolePolicy + sts:AssumeRole
+# IAM Policy Attachment + Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Attaching administrator policy to an assumable role to gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-014
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-014-to-admin-starting-user`):
 - `iam:AttachRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-014-to-admin-target-role` -- attach managed policies to the target role
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-iam-014-to-admin-target-role` -- assume the target role after elevating its permissions
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-014-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available roles that can be modified
 - `iam:GetRole` -- view role trust policies to identify assumable roles
 - `iam:ListAttachedRolePolicies` -- view current role permissions before and after modification

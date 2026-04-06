@@ -10,6 +10,13 @@ export AWS_PAGER=""
 echo "🧹 Starting Cross-Account Lambda Attack Cleanup"
 echo "=============================================="
 
+# Source demo permissions library for safety restore
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Check if AWS CLI is configured
 if ! command -v aws &> /dev/null; then
     echo "❌ AWS CLI is not installed or not in PATH"

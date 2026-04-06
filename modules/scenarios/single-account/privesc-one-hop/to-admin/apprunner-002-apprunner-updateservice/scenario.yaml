@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "apprunner-updateservice"
+title: "App Runner Service Update to Admin"
 description: "User with apprunner:UpdateService can exploit existing App Runner service with privileged role by updating the image and StartCommand to grant themselves admin access"
 cost_estimate: "$10/mo"
 pathfinding-cloud-id: "apprunner-002"
@@ -33,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "apprunner:UpdateService"
-      resource: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*"
+    - principal: "pl-prod-apprunner-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:UpdateService"
+          resource: "arn:aws:apprunner:{region}:{account_id}:service/pl-prod-apprunner-002-to-admin-target-service/*"
 
   helpful:
-    - permission: "apprunner:DescribeService"
-      purpose: "View service configuration and role attached"
-
-    - permission: "apprunner:ListServices"
-      purpose: "Discover existing App Runner services to exploit"
-
-    - permission: "iam:ListUsers"
-      purpose: "Verify admin access after escalation"
-
+    - principal: "pl-prod-apprunner-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "apprunner:DescribeService"
+          purpose: "View service configuration and role attached"
+        - permission: "apprunner:ListServices"
+          purpose: "Discover existing App Runner services to exploit"
+        - permission: "iam:ListUsers"
+          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

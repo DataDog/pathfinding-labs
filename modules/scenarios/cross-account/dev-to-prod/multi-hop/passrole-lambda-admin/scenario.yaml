@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "passrole-lambda-admin"
+title: "Dev to Prod via Lambda PassRole to Admin"
 description: "Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role"
 cost_estimate: "$0/mo"
 
@@ -34,25 +35,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin"
-
-    - permission: "lambda:CreateFunction"
-      resource: "*"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "*"
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin"
+        - permission: "lambda:CreateFunction"
+          resource: "*"
+        - permission: "lambda:InvokeFunction"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles that can be passed to Lambda"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "View existing Lambda functions"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions and trust policies"
-
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles that can be passed to Lambda"
+        - permission: "lambda:ListFunctions"
+          purpose: "View existing Lambda functions"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions and trust policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

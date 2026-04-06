@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:PutRolePolicy
+# IAM Inline Role Policy Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:PutRolePolicy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-005-to-admin-starting-role`):
 - `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-admin-starting-role` -- allows the role to add inline policies to itself, enabling self-escalation
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-005-to-admin-starting-user`):
 - `iam:GetRolePolicy` -- view existing inline policies on the role
 - `iam:ListRolePolicies` -- list all inline policies attached to the role
 

@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ec2-instance-connect:SendSSHPublicKey
+# EC2 Instance Connect SSH to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** SSH into EC2 instance with privileged role and extract credentials via IMDS
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ec2-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ec2-003-to-admin-starting-user`):
 - `ec2-instance-connect:SendSSHPublicKey` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id}` -- push a temporary SSH public key to the target EC2 instance
 
-**Helpful:**
+**Helpful** (`pl-prod-ec2-003-to-admin-starting-user`):
 - `ec2:DescribeInstances` -- discover EC2 instances with privileged roles attached via instance profiles
 - `iam:GetInstanceProfile` -- view instance profile to determine attached role permissions
 - `iam:GetRole` -- view role permissions and policies

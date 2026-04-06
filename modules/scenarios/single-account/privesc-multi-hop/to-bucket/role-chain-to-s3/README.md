@@ -1,4 +1,4 @@
-# role-chain-to-s3
+# Three-Hop Role Chain to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Three-hop role assumption chain to reach S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-pathfinding-starting-user-prod`):
 - `sts:AssumeRole` on `arn:aws:iam::*:role/*` -- allows the starting user to begin traversing the role chain
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-prod`):
 - `iam:ListRoles` -- discover available roles in the account to identify chain candidates
 - `iam:GetRole` -- view role trust policies to map the chain path
 - `s3:ListBucket` -- verify bucket access after completing the chain
@@ -154,10 +154,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Role assumption recorded; three sequential `AssumeRole` calls from the same originating identity within a short time window is a strong indicator of role chain traversal
-- `S3: GetObject` — Object retrieved from the sensitive bucket; especially suspicious when the requesting principal is a role assumed via a chain of `AssumeRole` calls
-- `S3: ListBucket` — Bucket contents listed; baseline recon step after gaining S3 access via a role chain
-- `STS: GetCallerIdentity` — Identity verification call; commonly used by attackers to confirm which role they currently hold at each hop
+- `STS: AssumeRole` -- Role assumption recorded; three sequential `AssumeRole` calls from the same originating identity within a short time window is a strong indicator of role chain traversal
+- `S3: GetObject` -- Object retrieved from the sensitive bucket; especially suspicious when the requesting principal is a role assumed via a chain of `AssumeRole` calls
+- `S3: ListBucket` -- Bucket contents listed; baseline recon step after gaining S3 access via a role chain
+- `STS: GetCallerIdentity` -- Identity verification call; commonly used by attackers to confirm which role they currently hold at each hop
 
 #### Detonation logs
 

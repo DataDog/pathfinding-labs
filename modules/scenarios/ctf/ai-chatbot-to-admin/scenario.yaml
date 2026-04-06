@@ -1,0 +1,75 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "ai-chatbot-to-admin"
+pathfinding-cloud-id: "ctf-001"
+title: "AcmeBot"
+description: "Acme Corp has deployed an AI-powered customer assistant at a public Lambda endpoint. Escalate to administrative access and retrieve the flag."
+cost_estimate: "$1/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "CTF"
+path_type: "ctf"
+target: "to-admin"
+environments:
+  - "prod"
+
+# CTF-specific metadata
+ctf:
+  difficulty: "beginner"
+  flag_location: "SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)"
+  variant: "ctf-001"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "https://{function_url_id}.lambda-url.{region}.on.aws/ (public chatbot)"
+    - "arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-001-acmebot"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role"
+
+  summary: "Browser → AcmeBot chatbot (public URL) → prompt injection → run_command tool (shell exec) → process.env (AWS creds) → chatbot role (AdministratorAccess) → SSM GetParameter → flag"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "anonymous (public URL)"
+      principal_type: "public"
+      permissions:
+        - permission: "lambda:InvokeFunctionUrl"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-ctf-001-acmebot"
+
+  helpful:
+    - principal: "pl-prod-ctf-001-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:ListFunctions"
+          purpose: "Enumerate Lambda functions to discover the chatbot"
+        - permission: "lambda:GetFunctionUrlConfig"
+          purpose: "Retrieve the public Function URL for the chatbot"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0001 - Initial Access"
+    - "TA0006 - Credential Access"
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1190 - Exploit Public-Facing Application"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1059 - Command and Scripting Interpreter"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_ctf_ai_chatbot_to_admin"
+  module_path: "modules/scenarios/ctf/ai-chatbot-to-admin"

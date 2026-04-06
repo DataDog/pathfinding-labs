@@ -97,6 +97,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
@@ -218,6 +226,9 @@ echo ""
 echo -e "${YELLOW}To clean up temporary files:${NC}"
 echo "  ./cleanup_attack.sh"
 echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

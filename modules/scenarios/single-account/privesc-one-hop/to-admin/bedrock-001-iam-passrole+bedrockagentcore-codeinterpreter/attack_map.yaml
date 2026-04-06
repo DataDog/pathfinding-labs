@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -47,8 +49,11 @@ attackMap:
         Pass the privileged target role to a new Bedrock AgentCore code interpreter.
         The interpreter is provisioned with that role as its execution role.
       hints:
-        - "You can pass IAM roles to AWS services — think about which services accept execution roles."
-        - "Bedrock AgentCore code interpreters run in Firecracker MicroVMs that expose a metadata service."
+        - "Use iam:ListRoles to enumerate roles in the account and find privileged ones you can interact with."
+        - "Use iam:GetRole to inspect a role's trust policy -- look for roles that trust bedrock-agentcore.amazonaws.com as a service principal."
+        - "You have iam:PassRole on a specific role. Check which service you can pass it to by examining the PassedToService condition in your policy."
+        - "Bedrock AgentCore code interpreters accept an execution role when created. Try creating one and passing the admin role as that execution role."
+        - "The bedrock-agentcore-control API namespace is used for control-plane operations like creating interpreters. Check aws bedrock-agentcore-control create-code-interpreter."
         - "Browse to https://pathfinding.cloud/paths/bedrock-001 for technique details."
       commands:
         - description: "Create the code interpreter with the admin execution role"
@@ -62,8 +67,11 @@ attackMap:
         MicroVM Metadata Service at 169.254.169.254 to retrieve temporary credentials
         for the execution role (the admin target role).
       hints:
-        - "The code interpreter's execution role credentials are reachable from within the MicroVM."
-        - "Try querying 169.254.169.254/latest/meta-data/iam/security-credentials/ inside the interpreter."
+        - "After creating the code interpreter, wait a few seconds for it to initialize before starting a session."
+        - "Use bedrock-agentcore:StartCodeInterpreterSession to open an interactive session on the interpreter, then bedrock-agentcore:InvokeCodeInterpreter to run code inside it."
+        - "Code interpreters run in Firecracker MicroVMs. Like EC2, MicroVMs expose a metadata service at 169.254.169.254 that vends temporary credentials for the execution role."
+        - "Inside the interpreter, use Python's urllib to query http://169.254.169.254/latest/meta-data/iam/security-credentials/ -- first get the role name, then fetch its credentials. IMDSv2 requires a PUT token first."
+        - "Once you have the AccessKeyId, SecretAccessKey, and Token from the metadata service, export them as environment variables locally and verify your new identity with aws sts get-caller-identity."
       commands:
         - description: "Start a code interpreter session and invoke credential extraction code (via Python/boto3)"
           command: "python3 /tmp/extract_bedrock_creds.py $INTERPRETER_ID $AWS_REGION"

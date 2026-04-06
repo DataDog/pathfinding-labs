@@ -1,0 +1,9 @@
+{
+  "name": "acmebot-chatbot",
+  "version": "1.0.0",
+  "description": "AcmeBot internal engineering assistant Lambda handler",
+  "main": "index.js",
+  "dependencies": {
+    "openai": "^4.96.0"
+  }
+}

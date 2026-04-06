@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + glue:CreateDevEndpoint
+# Glue Dev Endpoint Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint for SSH-based command execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-glue-001-to-admin-target-role` -- allows passing the admin role to the Glue service when creating a dev endpoint
 - `glue:CreateDevEndpoint` on `*` -- allows creating a Glue development endpoint that will assume the passed role
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-001-to-admin-starting-user`):
 - `glue:GetDevEndpoint` -- check endpoint provisioning status and retrieve the public address for SSH access
 - `iam:ListRoles` -- discover available privileged roles that can be passed to Glue
 - `glue:DeleteDevEndpoint` -- clean up created endpoints after the demonstration

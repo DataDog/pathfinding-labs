@@ -1,4 +1,4 @@
-# Self-Escalation to Bucket: iam:PutRolePolicy
+# IAM Inline Role Policy Modification to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Role with iam:PutRolePolicy on itself can add inline policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-005-to-bucket-starting-user`):
 - `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-005-to-bucket-starting-role` -- allows the role to write an inline policy to itself, granting S3 bucket access
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-005-to-bucket-starting-user`):
 - `iam:GetRolePolicy` -- view existing inline policies on the role
 - `iam:ListRolePolicies` -- list all inline policies attached to the role
 - `s3:ListBucket` -- verify bucket access after escalation

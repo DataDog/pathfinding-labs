@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-registertaskdefinition+ecs-starttask"
+title: "ECS Task Definition Registration + Start Task to Admin"
 description: "User with iam:PassRole, ecs:RegisterTaskDefinition, and ecs:StartTask can escalate privileges by starting ECS task with admin role that grants starting user admin access"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ecs-005"
@@ -32,40 +33,36 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-005-to-admin-target-role"
-
-    - permission: "ecs:RegisterTaskDefinition"
-      resource: "*"
-
-    - permission: "ecs:StartTask"
-      resource: "*"
+    - principal: "pl-prod-ecs-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ecs-005-to-admin-target-role"
+        - permission: "ecs:RegisterTaskDefinition"
+          resource: "*"
+        - permission: "ecs:StartTask"
+          resource: "*"
 
   helpful:
-    - permission: "ecs:ListContainerInstances"
-      purpose: "Retrieve container instance ARN for StartTask command"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Monitor task execution status and verify task completion"
-
-    - permission: "ecs:DeregisterTaskDefinition"
-      purpose: "Clean up task definition after demonstration"
-
-    - permission: "ecs:StopTask"
-      purpose: "Stop running tasks during cleanup"
-
-    - permission: "ec2:DescribeVpcs"
-      purpose: "Find default VPC for ECS task network configuration"
-
-    - permission: "ec2:DescribeSubnets"
-      purpose: "Find subnet in default VPC for ECS task network configuration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
-
+    - principal: "pl-prod-ecs-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:ListContainerInstances"
+          purpose: "Retrieve container instance ARN for StartTask command"
+        - permission: "ecs:DescribeTasks"
+          purpose: "Monitor task execution status and verify task completion"
+        - permission: "ecs:DeregisterTaskDefinition"
+          purpose: "Clean up task definition after demonstration"
+        - permission: "ecs:StopTask"
+          purpose: "Stop running tasks during cleanup"
+        - permission: "ec2:DescribeVpcs"
+          purpose: "Find default VPC for ECS task network configuration"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Find subnet in default VPC for ECS task network configuration"
+        - permission: "iam:DetachUserPolicy"
+          purpose: "Remove admin policy from starting user during cleanup"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

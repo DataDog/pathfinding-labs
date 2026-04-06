@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: codebuild:StartBuildBatch
+# CodeBuild Batch Build Start to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Exploit existing CodeBuild project with buildspec-override to execute privileged commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** codebuild-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-codebuild-003-to-admin-starting-user`):
 - `codebuild:StartBuildBatch` on `*` -- trigger a batch build with a buildspec override against the existing target project
 
-**Helpful:**
+**Helpful** (`pl-prod-codebuild-003-to-admin-starting-user`):
 - `codebuild:ListProjects` -- discover existing CodeBuild projects to exploit
 - `codebuild:BatchGetProjects` -- view project details including the attached service role
 - `codebuild:BatchGetBuildBatches` -- monitor build batch execution status

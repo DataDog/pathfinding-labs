@@ -44,6 +44,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPutUserPolicyAndCreateAccessKey"
         Effect = "Allow"
         Action = [
           "iam:PutUserPolicy",
@@ -52,19 +53,14 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_user.target_user.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "iam:ListUsers",
           "iam:GetUser",
           "iam:ListUserPolicies",
           "iam:GetUserPolicy",
-          "iam:ListAccessKeys"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
+          "iam:ListAccessKeys",
           "sts:GetCallerIdentity"
         ]
         Resource = "*"
@@ -96,6 +92,7 @@ resource "aws_iam_user_policy" "target_user_initial_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "BaselineIdentityPermissions"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",

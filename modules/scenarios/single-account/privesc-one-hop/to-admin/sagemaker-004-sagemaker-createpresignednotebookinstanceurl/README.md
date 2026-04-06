@@ -1,4 +1,4 @@
-# Privilege Escalation via sagemaker:CreatePresignedNotebookInstanceUrl
+# SageMaker Notebook Presigned URL to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $37/mo
 * **Technique:** User with CreatePresignedNotebookInstanceUrl can generate presigned URL to access existing notebook with admin role and execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sagemaker-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552 - Unsecured Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sagemaker-004-to-admin-starting-user`):
 - `sagemaker:CreatePresignedNotebookInstanceUrl` on `arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook` -- generates a presigned URL granting access to the Jupyter interface, which runs as the notebook's admin execution role
 
-**Helpful:**
+**Helpful** (`pl-prod-sagemaker-004-to-admin-starting-user`):
 - `sagemaker:ListNotebookInstances` -- discover available notebook instances to target
 - `sagemaker:DescribeNotebookInstance` -- view notebook details and verify the admin execution role
 - `iam:GetRole` -- verify the notebook's execution role has admin permissions

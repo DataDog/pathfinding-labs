@@ -1,0 +1,6 @@
+{
+  "name": "acme-data-processor",
+  "version": "1.0.0",
+  "description": "Acme Corp data processing Lambda",
+  "main": "index.js"
+}

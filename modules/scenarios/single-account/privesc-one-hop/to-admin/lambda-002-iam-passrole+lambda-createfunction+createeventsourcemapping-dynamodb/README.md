@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:CreateEventSourceMapping (DynamoDB Stream)
+# Lambda Function Creation + DynamoDB Event Source to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to Lambda function, link to DynamoDB stream for passive execution without requiring InvokeFunction permission
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-002-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-002-to-admin-target-role` -- pass the privileged target role to a Lambda function
 - `lambda:CreateFunction` on `*` -- create a Lambda function with the privileged role as its execution role
 - `lambda:CreateEventSourceMapping` on `*` -- link the Lambda function to a DynamoDB stream to trigger it passively
 
-**Helpful:**
+**Helpful** (`pl-prod-lambda-002-to-admin-starting-user`):
 - `dynamodb:ListStreams` -- discover available DynamoDB streams to target
 - `dynamodb:DescribeStream` -- get stream ARN and configuration details
 - `dynamodb:DescribeTable` -- get table details including stream ARN

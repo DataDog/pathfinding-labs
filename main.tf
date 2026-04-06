@@ -1368,3 +1368,29 @@ module "cross_account_ops_to_prod_one_hop_simple_role_assumption" {
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
 }
+
+##############################################################################
+# CTF SCENARIOS
+##############################################################################
+
+module "ctf_ai_chatbot_to_admin" {
+  count  = var.enable_ctf_ai_chatbot_to_admin ? 1 : 0
+  source = "./modules/scenarios/ctf/ai-chatbot-to-admin"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "ctf_ai_chatbot_lambda_pivot" {
+  count  = var.enable_ctf_ai_chatbot_lambda_pivot ? 1 : 0
+  source = "./modules/scenarios/ctf/ai-chatbot-lambda-pivot"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}

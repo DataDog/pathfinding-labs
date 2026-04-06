@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-005-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -34,10 +36,11 @@ attackMap:
       description: >
         Assume the starting role using the starting user's credentials.
       hints:
-        - "You can assume a role from this user."
-        - "Look at what permissions the assumed role has on itself."
-        - "The role can modify its own inline policies."
-        - "Browse to https://pathfinding.cloud/paths/iam-005 for technique details."
+        - "Start by figuring out what this user is allowed to do -- look at the policies attached to the starting user."
+        - "This user is allowed to assume at least one IAM role. Use iam:ListAttachedUserPolicies and iam:GetPolicy to inspect what the user's policy permits."
+        - "Look for an sts:AssumeRole permission in the user's policy -- it should point you to a specific role ARN."
+        - "Once you know the target role ARN, use sts:AssumeRole to obtain temporary credentials for that role."
+        - "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN from the AssumeRole response before proceeding."
       commands:
         - description: "Assume the starting role"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role --role-session-name escalation-session"
@@ -50,8 +53,11 @@ attackMap:
         Because the role has iam:PutRolePolicy on itself, this self-modification
         immediately elevates its permissions to administrator.
       hints:
-        - "This role can modify its own inline policies."
-        - "Use iam:PutRolePolicy to add an administrator policy to this role."
+        - "Now that you are operating as the role, inspect what permissions it has -- look at both managed and inline policies."
+        - "Use iam:ListRolePolicies and iam:GetRolePolicy to see what inline policies are already attached to this role."
+        - "Notice that the role has iam:PutRolePolicy scoped to its own ARN -- it can write new inline policies to itself."
+        - "Craft a policy document that grants Action: '*' on Resource: '*' and use iam:PutRolePolicy to apply it to this role."
+        - "IAM policy changes take a few seconds to propagate -- wait briefly before verifying that your new permissions are active."
         - "Browse to https://pathfinding.cloud/paths/iam-005 for technique details."
       commands:
         - description: "Add an inline administrator policy to the role"

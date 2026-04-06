@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-glue-005-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -50,9 +52,11 @@ attackMap:
         the administrative target role and change the script location to the malicious
         escalation script stored in S3.
       hints:
-        - "You can modify existing AWS Glue jobs, including changing their execution role."
-        - "Look for a Glue job already deployed in this account and consider what you could change about it."
-        - "You have iam:PassRole — find a privileged role you can pass to the Glue service and update the job to use it with a malicious script."
+        - "Start by discovering what Glue resources exist in this account — use glue:GetJob or look for running ETL workloads."
+        - "You can modify existing AWS Glue jobs, including changing both the execution role and the script location."
+        - "Review the policy on your starting principal — which role is explicitly listed in your iam:PassRole permission?"
+        - "You have iam:PassRole on an admin role and glue:UpdateJob. Update the existing job to use the admin role and a malicious script location."
+        - "The malicious script needs to be reachable by the Glue service. The scenario has already staged a script in an S3 bucket — use glue:GetJob to find where scripts are currently stored."
         - "Browse to https://pathfinding.cloud/paths/glue-005 for technique details."
       commands:
         - description: "Retrieve current job configuration"
@@ -67,6 +71,12 @@ attackMap:
         Trigger execution of the updated Glue job. The job runs under the administrative
         target role and executes the malicious Python script, which attaches
         AdministratorAccess to the starting user via iam:AttachUserPolicy.
+      hints:
+        - "Now that you have updated the job, you need to trigger it to run."
+        - "Use glue:StartJobRun to execute the updated job and capture the JobRunId from the response."
+        - "Poll the job status using glue:GetJobRun with the run ID until you see SUCCEEDED."
+        - "After the job completes, wait about 15 seconds for IAM policy changes to propagate before verifying."
+        - "Verify the escalation worked by checking the policies attached to the starting user, then confirm admin access with iam:ListUsers."
       commands:
         - description: "Start the job run"
           command: "aws glue start-job-run --job-name pl-glue-005-to-admin-job"

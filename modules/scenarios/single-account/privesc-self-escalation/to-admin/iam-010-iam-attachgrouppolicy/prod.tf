@@ -53,6 +53,7 @@ resource "aws_iam_user_policy" "attach_group_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAttachGroupPolicy"
         Effect = "Allow"
         Action = [
           "iam:AttachGroupPolicy"
@@ -60,10 +61,14 @@ resource "aws_iam_user_policy" "attach_group_policy" {
         Resource = aws_iam_group.vulnerable_group.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",
-          "iam:ListGroupsForUser"
+          "iam:ListGroupsForUser",
+          "iam:ListGroups",
+          "iam:ListAttachedGroupPolicies",
+          "iam:ListPolicies"
         ]
         Resource = "*"
       }

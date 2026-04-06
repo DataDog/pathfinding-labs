@@ -1,4 +1,4 @@
-# Multi-Hop Privilege Escalation via Lambda Code Update and CreateAccessKey
+# Lambda Code Update + Access Key Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Path Type:** multi-hop
@@ -7,7 +7,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-004 + iam-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0006 - Credential Access
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1059 - Command and Scripting Interpreter
@@ -21,12 +21,14 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-004-to-iam-002-starting-user`):
 - `lambda:UpdateFunctionCode` on `arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function` -- replace the function's code with a credential exfiltration payload
 - `lambda:InvokeFunction` on `arn:aws:lambda:*:*:function:pl-prod-lambda-004-to-iam-002-target-function` -- execute the modified function to receive the execution role's temporary credentials
-- `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-lambda-004-to-iam-002-admin-user` -- held by the Lambda execution role (not the starting user); used in the second hop to create permanent admin credentials
 
-**Helpful:**
+**Required** (`pl-prod-lambda-004-to-iam-002-lambda-role`):
+- `iam:CreateAccessKey` on `arn:aws:iam::*:user/pl-prod-lambda-004-to-iam-002-admin-user` -- used in the second hop to create permanent admin credentials after exfiltrating this role's credentials from the Lambda execution environment
+
+**Helpful** (`pl-prod-lambda-004-to-iam-002-starting-user`):
 - `lambda:ListFunctions` -- discover available Lambda functions to target
 - `lambda:GetFunction` -- view function details including the execution role ARN
 - `lambda:GetFunctionConfiguration` -- view function configuration details

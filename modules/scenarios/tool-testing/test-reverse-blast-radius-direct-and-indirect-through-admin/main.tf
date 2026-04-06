@@ -56,15 +56,7 @@ resource "aws_iam_user_policy" "user1_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "RequiredForDemonstrationListBuckets"
-        Effect = "Allow"
-        Action = [
-          "s3:ListAllMyBuckets"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "RequiredForDemonstrationDirectBucketAccess"
+        Sid    = "RequiredForExploitationDirectBucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
@@ -74,6 +66,15 @@ resource "aws_iam_user_policy" "user1_policy" {
           aws_s3_bucket.target_bucket.arn,
           "${aws_s3_bucket.target_bucket.arn}/*"
         ]
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity",
+          "s3:ListAllMyBuckets"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -112,7 +113,7 @@ resource "aws_iam_user_policy" "user2_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "RequiredForDemonstrationAssumeAdminRole"
+        Sid    = "RequiredForExploitationAssumeAdminRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"

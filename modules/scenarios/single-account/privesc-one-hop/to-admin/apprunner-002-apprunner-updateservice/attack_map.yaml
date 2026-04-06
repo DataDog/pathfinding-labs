@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-apprunner-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -47,6 +49,14 @@ attackMap:
         Update the App Runner service configuration to replace the container image
         with the AWS CLI image and set a StartCommand that attaches AdministratorAccess
         to the starting user.
+      hints:
+        - "Use your apprunner:ListServices permission to discover existing services in the account and find one that looks interesting."
+        - "Once you have a service ARN, use apprunner:DescribeService to inspect its configuration — pay close attention to the InstanceConfiguration section."
+        - "Notice the role attached to the service's InstanceConfiguration. Use iam:ListAttachedRolePolicies to understand what that role can do."
+        - "App Runner services support a StartCommand field in ImageConfiguration. Think about what happens if you swap the container image and control the StartCommand."
+        - "The public AWS CLI container (public.ecr.aws/aws-cli/aws-cli:latest) has /usr/local/bin/aws as its entrypoint — any StartCommand you set becomes arguments passed directly to the aws binary."
+        - "The service role's permissions are what execute your StartCommand. If the role has iam:AttachUserPolicy, you can attach any managed policy to any user."
+        - "Browse to https://pathfinding.cloud/paths/apprunner-002 for technique details and to see the full attack path."
       commands:
         - description: "Get current service ARN and configuration"
           command: "aws apprunner list-services --query 'ServiceSummaryList[?ServiceName==`pl-prod-apprunner-002-to-admin-target-service`].[ServiceArn]' --output text"
@@ -64,6 +74,11 @@ attackMap:
         using this role's credentials. The AWS CLI container executes the StartCommand
         as the privileged role, attaching the AdministratorAccess managed policy to
         the starting user, granting full administrative access to the AWS account.
+      hints:
+        - "After triggering the update, the service needs time to redeploy — App Runner will pull the new container and restart (typically 3-5 minutes)."
+        - "Poll the service status with apprunner:DescribeService until it returns RUNNING. Once it does, the StartCommand has already executed."
+        - "Wait a few seconds for IAM policy propagation, then verify your escalation by attempting an IAM call you previously couldn't make."
+        - "Try aws iam list-users or aws iam list-attached-user-policies on your own user to confirm that AdministratorAccess has been attached."
       commands:
         - description: "Verify administrator access with original starting user credentials"
           command: "aws iam list-users --max-items 1"

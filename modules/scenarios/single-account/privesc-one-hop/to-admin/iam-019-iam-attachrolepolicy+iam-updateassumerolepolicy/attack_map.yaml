@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-019-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -38,10 +40,12 @@ attackMap:
         Attach the AdministratorAccess managed policy to the target role, granting it
         full administrative permissions.
       hints:
-        - "You can modify IAM roles — both their permissions and who is allowed to assume them."
-        - "Look for roles you can attach policies to and also update the trust policy on."
-        - "Attach AdministratorAccess to a role, then modify its trust policy to trust yourself, then assume it."
-        - "Browse to https://pathfinding.cloud/paths/iam-019 for technique details."
+        - "Start by understanding what roles exist in this account — use your helpful permissions to enumerate them."
+        - "Use iam:ListRoles to find roles you can interact with, then iam:ListAttachedRolePolicies to see what each one already has."
+        - "Look for a role with minimal permissions that you have iam:AttachRolePolicy rights on — that's your escalation target."
+        - "Attach a highly privileged AWS managed policy (like AdministratorAccess) to that role using its name, not its ARN."
+        - "Remember: attaching a policy grants the role those permissions, but you still need a way to assume the role — that comes next."
+        - "Browse to https://pathfinding.cloud/paths/iam-019 for full technique details."
       commands:
         - description: "Attach AdministratorAccess to the target role"
           command: "aws iam attach-role-policy --role-name pl-prod-iam-019-to-admin-target-role --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
@@ -53,10 +57,14 @@ attackMap:
         Modify the target role's trust policy to add the starting user as a trusted
         principal, then assume the now-privileged role to gain full administrative access.
         Because the starting user is explicitly named in the trust policy, no
-        sts:AssumeRole permission is required on the user itself.
+        sts:AssumeRole permission is required in the user's own IAM policy.
       hints:
-        - "This role can be modified — try attaching a highly privileged managed policy to it."
-        - "Once you have elevated its permissions, check whether you can also update who is allowed to assume it."
+        - "Now that the role has admin permissions, you need a way to assume it — check whether you can modify who the role trusts."
+        - "Use iam:GetRole to read the role's current trust policy (the AssumeRolePolicyDocument field)."
+        - "You have iam:UpdateAssumeRolePolicy — use it to replace the trust policy with one that names your current user ARN as a trusted principal."
+        - "A principal explicitly named in a trust policy can call sts:AssumeRole even without sts:AssumeRole in their own IAM policy — trust is granted from the role's side."
+        - "After updating the trust policy, wait a few seconds for IAM changes to propagate before attempting to assume the role."
+        - "Use iam:GetUserPolicy to verify your starting user does not already have sts:AssumeRole — this confirms the trust policy change is the enabler."
       commands:
         - description: "Update the role trust policy to trust the starting user"
           command: "aws iam update-assume-role-policy --role-name pl-prod-iam-019-to-admin-target-role --policy-document '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::{account_id}:user/pl-prod-iam-019-to-admin-starting-user\"},\"Action\":\"sts:AssumeRole\"}]}'"

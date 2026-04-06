@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+sagemaker-createprocessingjob"
+title: "SageMaker Processing Job Creation to Admin"
 description: "User with PassRole and CreateProcessingJob can create processing job with malicious script and admin role to execute code with elevated privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "sagemaker-003"
@@ -34,31 +35,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sagemaker-003-to-admin-passable-role"
-
-    - permission: "sagemaker:CreateProcessingJob"
-      resource: "*"
-
-    - permission: "s3:PutObject"
-      resource: "arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*"
-
-    - permission: "s3:GetObject"
-      resource: "arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*"
+    - principal: "pl-prod-sagemaker-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-sagemaker-003-to-admin-passable-role"
+        - permission: "sagemaker:CreateProcessingJob"
+          resource: "*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*"
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-*/*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify role has administrative permissions"
-
-    - permission: "sagemaker:DescribeProcessingJob"
-      purpose: "Monitor processing job status and execution"
-
-    - permission: "s3:ListBucket"
-      purpose: "Verify S3 bucket access and list contents"
-
+    - principal: "pl-prod-sagemaker-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass"
+        - permission: "iam:GetRole"
+          purpose: "Verify role has administrative permissions"
+        - permission: "sagemaker:DescribeProcessingJob"
+          purpose: "Monitor processing job status and execution"
+        - permission: "s3:ListBucket"
+          purpose: "Verify S3 bucket access and list contents"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

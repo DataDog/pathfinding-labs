@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-createaccesskey"
+title: "IAM Access Key Creation to Admin"
 description: "User with iam:CreateAccessKey can create credentials for admin user to gain admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-002"
@@ -32,18 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreateAccessKey"
-      resource: "arn:aws:iam::*:user/pl-prod-iam-002-to-admin-target-user"
+    - principal: "pl-prod-iam-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-iam-002-to-admin-target-user"
 
   helpful:
-    - permission: "iam:ListUsers"
-      purpose: "Discover privileged users to target"
+    - principal: "pl-prod-iam-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover privileged users to target"
 
-    - permission: "iam:GetUser"
-      purpose: "View user details and attached policies"
+        - permission: "iam:GetUser"
+          purpose: "View user details and attached policies"
 
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Identify users with admin permissions"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Identify users with admin permissions"
 
 # =============================================================================
 # MITRE ATT&CK

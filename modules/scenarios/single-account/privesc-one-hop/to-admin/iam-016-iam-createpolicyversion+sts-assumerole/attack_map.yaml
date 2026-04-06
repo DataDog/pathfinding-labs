@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-016-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -48,10 +50,12 @@ attackMap:
         (Action: "*", Resource: "*"). The new version is set as the default, immediately
         elevating the permissions of any principal that has the policy attached.
       hints:
-        - "You can modify managed policies attached to privileged roles."
-        - "Look for customer-managed policies attached to roles with elevated permissions."
-        - "Creating a new policy version automatically sets it as the default."
-        - "Browse to https://pathfinding.cloud/paths/iam-016 for technique details."
+        - "Start by understanding what policy you have write access to. Use iam:GetPolicy to retrieve its metadata and see which version is currently the default."
+        - "Use iam:GetPolicyVersion to read the actual document of the current default version and confirm it has no admin permissions yet."
+        - "Use iam:ListRoles and iam:GetRole to discover which roles have this policy attached -- that tells you what you'll be able to do once you modify it."
+        - "AWS customer-managed policies support versioning. You can create a new version with any content you choose, and the --set-as-default flag makes it active immediately."
+        - "A policy granting Action:* on Resource:* is the simplest path to AdministratorAccess. Write that document and create it as a new version."
+        - "Browse to https://pathfinding.cloud/paths/iam-016 for full technique details."
       commands:
         - description: "Create a new policy version with admin permissions"
           command: >
@@ -66,6 +70,10 @@ attackMap:
       description: >
         The modified policy is already attached to the target role. Once the new default
         version grants AdministratorAccess, the role inherits those permissions automatically.
+      hints:
+        - "You do not need to attach or detach anything -- the policy is already attached to the target role."
+        - "As soon as the new policy version is set as default, the role's effective permissions update automatically."
+        - "Use iam:ListPolicyVersions after creating your new version to confirm it appears and is marked as the default."
       commands: []
 
     - from: starting-user
@@ -75,6 +83,11 @@ attackMap:
         Assume the target role, which now has AdministratorAccess via the modified policy.
         This yields a temporary set of credentials with full administrative control over
         the AWS account.
+      hints:
+        - "IAM policy propagation can take a few seconds. Wait ~15 seconds after creating the new policy version before attempting to assume the role."
+        - "The trust policy on the target role already allows your starting user to assume it -- no trust policy modification is needed."
+        - "Use sts:AssumeRole to obtain temporary credentials for the target role and export them as environment variables."
+        - "Verify success by attempting a privileged action such as listing IAM users, which would have been denied before the escalation."
       commands:
         - description: "Assume the now-privileged target role"
           command: >

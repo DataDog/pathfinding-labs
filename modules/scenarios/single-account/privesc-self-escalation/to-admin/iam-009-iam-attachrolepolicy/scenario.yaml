@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-attachrolepolicy"
+title: "IAM Managed Role Policy Attachment to Admin"
 description: "Role with iam:AttachRolePolicy on itself can attach managed admin policy to escalate privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-009"
@@ -32,16 +33,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:AttachRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-admin-starting-role"
+    - principal: "pl-prod-iam-009-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-009-to-admin-starting-role"
 
   helpful:
-    - permission: "iam:ListAttachedRolePolicies"
-      purpose: "List managed policies attached to the role"
-
-    - permission: "iam:ListPolicies"
-      purpose: "Discover available managed policies to attach"
-
+    - principal: "pl-prod-iam-009-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListAttachedRolePolicies"
+          purpose: "List managed policies attached to the role"
+        - permission: "iam:ListPolicies"
+          purpose: "Discover available managed policies to attach"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

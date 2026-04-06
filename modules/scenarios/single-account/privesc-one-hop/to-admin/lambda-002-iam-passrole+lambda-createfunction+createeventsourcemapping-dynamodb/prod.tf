@@ -48,6 +48,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -55,39 +56,26 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.target_role.arn
       },
       {
+        Sid    = "RequiredForExploitationLambda"
         Effect = "Allow"
         Action = [
           "lambda:CreateFunction",
-          "lambda:CreateEventSourceMapping",
-          "lambda:GetEventSourceMapping",
-          "lambda:ListFunctions",
-          "lambda:GetFunction"
+          "lambda:CreateEventSourceMapping"
         ]
         Resource = "*"
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
+          "lambda:GetEventSourceMapping",
+          "lambda:ListFunctions",
+          "lambda:GetFunction",
           "dynamodb:ListStreams",
           "dynamodb:DescribeStream",
           "dynamodb:DescribeTable",
-          "dynamodb:PutItem"
-        ]
-        Resource = [
-          aws_dynamodb_table.trigger_table.arn,
-          "${aws_dynamodb_table.trigger_table.arn}/stream/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:ListRoles"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
+          "dynamodb:PutItem",
+          "iam:ListRoles",
           "sts:GetCallerIdentity"
         ]
         Resource = "*"

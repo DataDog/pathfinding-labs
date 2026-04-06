@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ecs-createcluster+ecs-registertaskdefinition+ecs-runtask"
+title: "ECS New Cluster + Run Task to Admin"
 description: "User with ecs:CreateCluster, iam:PassRole, ecs:RegisterTaskDefinition, and ecs:RunTask can escalate privileges by creating ECS cluster and running task with admin role that grants starting user admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ecs-002"
@@ -32,43 +33,38 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ecs:CreateCluster"
-      resource: "*"
-
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ecs-002-to-admin-target-role"
-
-    - permission: "ecs:RegisterTaskDefinition"
-      resource: "*"
-
-    - permission: "ecs:RunTask"
-      resource: "*"
+    - principal: "pl-prod-ecs-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ecs:CreateCluster"
+          resource: "*"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ecs-002-to-admin-target-role"
+        - permission: "ecs:RegisterTaskDefinition"
+          resource: "*"
+        - permission: "ecs:RunTask"
+          resource: "*"
 
   helpful:
-    - permission: "ec2:DescribeVpcs"
-      purpose: "Find default VPC for ECS task network configuration"
-
-    - permission: "ec2:DescribeSubnets"
-      purpose: "Find subnet in default VPC for ECS task network configuration"
-
-    - permission: "ecs:DescribeTasks"
-      purpose: "Monitor task execution status and verify task completion"
-
-    - permission: "ecs:StopTask"
-      purpose: "Stop running tasks during cleanup"
-
-    - permission: "ecs:DeregisterTaskDefinition"
-      purpose: "Clean up task definition after demonstration"
-
-    - permission: "ecs:DeleteCluster"
-      purpose: "Clean up ECS cluster after demonstration"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
+    - principal: "pl-prod-ecs-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeVpcs"
+          purpose: "Find default VPC for ECS task network configuration"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Find subnet in default VPC for ECS task network configuration"
+        - permission: "ecs:DescribeTasks"
+          purpose: "Monitor task execution status and verify task completion"
+        - permission: "ecs:StopTask"
+          purpose: "Stop running tasks during cleanup"
+        - permission: "ecs:DeregisterTaskDefinition"
+          purpose: "Clean up task definition after demonstration"
+        - permission: "ecs:DeleteCluster"
+          purpose: "Clean up ECS cluster after demonstration"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:DetachUserPolicy"
+          purpose: "Remove admin policy from starting user during cleanup"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

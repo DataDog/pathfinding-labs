@@ -80,6 +80,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -92,6 +93,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         }
       },
       {
+        Sid    = "RequiredForExploitationLambda"
         Effect = "Allow"
         Action = [
           "lambda:CreateFunction",
@@ -100,6 +102,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",

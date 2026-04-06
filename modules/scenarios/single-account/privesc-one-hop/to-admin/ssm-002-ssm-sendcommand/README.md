@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ssm:SendCommand to EC2 with Admin Role
+# SSM Send Command to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ssm-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ssm-002-to-admin-starting-user`):
 - `ssm:SendCommand` on `*` -- execute arbitrary shell commands on EC2 instances via SSM
 
-**Helpful:**
+**Helpful** (`pl-prod-ssm-002-to-admin-starting-user`):
 - `ssm:ListCommands` -- track command execution status during the attack
 - `ssm:ListCommandInvocations` -- retrieve command output containing the extracted credentials
 - `ec2:DescribeInstances` -- discover target EC2 instances with privileged roles attached

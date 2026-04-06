@@ -56,12 +56,20 @@ resource "aws_iam_policy" "trustsdev" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationUpdateLoginProfile"
         Effect = "Allow"
         Action = [
           "iam:UpdateLoginProfile",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
           "iam:GetLoginProfile",
           "iam:ListUsers",
-          "iam:GetUser"
+          "iam:GetUser",
         ]
         Resource = "*"
       }

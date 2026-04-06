@@ -1,4 +1,4 @@
-# Privilege Escalation via airflow:UpdateEnvironment
+# MWAA Environment Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $37/mo
 * **Technique:** Update existing MWAA environment's DAG source bucket to attacker-controlled bucket containing malicious DAG that executes with admin credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** mwaa-002
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -23,7 +23,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-mwaa-002-to-admin-starting-user`):
 - `airflow:UpdateEnvironment` on `arn:aws:airflow:*:*:environment/pl-prod-mwaa-002-to-admin-env` -- change the DAG source bucket to an attacker-controlled bucket
 - `airflow:CreateCliToken` on `arn:aws:airflow:*:*:environment/pl-prod-mwaa-002-to-admin-env` -- obtain a CLI token to trigger DAGs via the Airflow REST API
 - `ec2:DescribeSubnets` on `*` -- MWAA validates these even when not changing network config
@@ -31,7 +31,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ec2:DescribeSecurityGroups` on `*` -- MWAA validates these even when not changing network config
 - `s3:GetEncryptionConfiguration` on `*` -- MWAA validates bucket encryption settings
 
-**Helpful:**
+**Helpful** (`pl-prod-mwaa-002-to-admin-starting-user`):
 - `airflow:GetEnvironment` -- check environment status and wait for update to complete
 - `iam:ListAttachedUserPolicies` -- verify that AdministratorAccess was attached after the attack
 

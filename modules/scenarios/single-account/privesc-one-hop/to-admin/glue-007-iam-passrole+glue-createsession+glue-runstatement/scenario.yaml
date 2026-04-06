@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+glue-createsession+glue-runstatement"
+title: "Glue Interactive Session to Admin"
 description: "User with iam:PassRole and Glue session permissions can escalate to admin by creating an interactive session with an admin role and running code to attach AdministratorAccess to themselves"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "glue-007"
@@ -32,25 +33,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role"
-
-    - permission: "glue:CreateSession"
-      resource: "*"
-
-    - permission: "glue:RunStatement"
-      resource: "*"
+    - principal: "pl-prod-glue-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-glue-007-to-admin-admin-role"
+        - permission: "glue:CreateSession"
+          resource: "*"
+        - permission: "glue:RunStatement"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetSession"
-      purpose: "Check session status and wait for it to be ready"
-
-    - permission: "glue:GetStatement"
-      purpose: "Check statement execution status and retrieve output"
-
-    - permission: "glue:DeleteSession"
-      purpose: "Clean up the Glue Interactive Session after the attack"
-
+    - principal: "pl-prod-glue-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetSession"
+          purpose: "Check session status and wait for it to be ready"
+        - permission: "glue:GetStatement"
+          purpose: "Check statement execution status and retrieve output"
+        - permission: "glue:DeleteSession"
+          purpose: "Clean up the Glue Interactive Session after the attack"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

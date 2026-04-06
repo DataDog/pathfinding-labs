@@ -339,6 +339,19 @@ Edge cases and scenarios designed to test detection engine capabilities.
 
 ---
 
+### CTF Scenarios
+
+Capture-the-flag challenges that blend real-world attack techniques with a hidden flag. No demo script is provided -- the exploit is the challenge.
+
+#### CTF (2 scenarios)
+
+| Scenario | Difficulty | Description |
+|----------|------------|-------------|
+| [`ai-chatbot-to-admin`](modules/scenarios/ctf/ai-chatbot-to-admin/README.md) | Beginner | Prompt injection against an LLM chatbot with an unrestricted shell execution tool leaks Lambda execution role credentials (AdministratorAccess) |
+| [`ai-chatbot-lambda-pivot`](modules/scenarios/ctf/ai-chatbot-lambda-pivot/README.md) | Intermediate | Prompt injection leaks limited Lambda credentials; update the function code to pivot to full admin access |
+
+---
+
 ### Cross-Account Scenarios
 
 Privilege escalation paths that span multiple AWS accounts. These scenarios require at least two AWS accounts (dev/ops and prod).

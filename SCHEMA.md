@@ -338,29 +338,47 @@ summary: "starting_user → (iam:CreateAccessKey) → admin_user credentials →
 
 ### Permissions
 
-Required and helpful AWS IAM permissions for executing the attack.
+Required and helpful AWS IAM permissions for executing the attack, grouped by principal.
+
+Both `required` and `helpful` are arrays of **principal entries**. Each principal entry associates a named IAM principal with its permissions. This structure supports multi-hop scenarios where different principals in the chain have different permissions.
 
 ```yaml
 permissions:
   required:
-    - permission: "iam:PutUserPolicy"
-      resource: "*"
+    - principal: "pl-prod-scenario-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutUserPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:GetUser"
-      purpose: "View user details and verify policy attachment"
+    - principal: "pl-prod-scenario-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetUser"
+          purpose: "View user details and verify policy attachment"
 ```
 
 #### Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `required` | array | ✅ Yes | Permissions absolutely required to execute the attack |
-| `helpful` | array | ❌ No | Permissions that aid in discovery, verification, or cleanup |
+| `required` | array of principal entries | ✅ Yes | Permissions absolutely required to execute the attack, grouped by principal |
+| `helpful` | array of principal entries | ❌ No | Permissions that aid in discovery, verification, or cleanup, grouped by principal |
 
-#### Required Permissions
+#### Principal Entry
 
-Each required permission entry:
+Each entry in `required` or `helpful` is a principal entry:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `principal` | string | ✅ Yes | IAM principal name (e.g., `"pl-prod-iam-002-to-admin-starting-user"`) |
+| `principal_type` | string | ✅ Yes | Either `"user"` or `"role"` |
+| `permissions` | array | ✅ Yes | List of permission entries for this principal |
+
+#### Required Permission Entry
+
+Each permission within a required principal entry:
 
 ```yaml
 - permission: "iam:PutUserPolicy"    # AWS IAM action
@@ -375,25 +393,31 @@ Each required permission entry:
 
 ```yaml
 required:
-  # Simple permission
-  - permission: "iam:CreateAccessKey"
-    resource: "*"
+  # One-hop: single principal with all required permissions
+  - principal: "pl-prod-iam-002-to-admin-starting-user"
+    principal_type: "user"
+    permissions:
+      - permission: "iam:CreateAccessKey"
+        resource: "arn:aws:iam::*:user/pl-prod-iam-002-to-admin-target-user"
 
-  # Permission with specific resource
-  - permission: "iam:PassRole"
-    resource: "arn:aws:iam::*:role/pl-EC2Admin"
-
-  # Multiple actions on same resource
-  - permission: "ec2:RunInstances"
-    resource: "*"
-
-  - permission: "iam:PassRole"
-    resource: "arn:aws:iam::*:role/*"
+  # Multi-hop: multiple principals each with their required permissions
+  # - principal: "pl-prod-scenario-starting-user"
+  #   principal_type: "user"
+  #   permissions:
+  #     - permission: "sts:AssumeRole"
+  #       resource: "arn:aws:iam::*:role/pl-prod-scenario-intermediate-role"
+  # - principal: "pl-prod-scenario-intermediate-role"
+  #   principal_type: "role"
+  #   permissions:
+  #     - permission: "iam:PassRole"
+  #       resource: "arn:aws:iam::*:role/pl-prod-scenario-admin-role"
+  #     - permission: "ec2:RunInstances"
+  #       resource: "*"
 ```
 
-#### Helpful Permissions
+#### Helpful Permission Entry
 
-Each helpful permission entry:
+Each permission within a helpful principal entry:
 
 ```yaml
 - permission: "iam:ListUsers"
@@ -408,17 +432,20 @@ Each helpful permission entry:
 
 ```yaml
 helpful:
-  - permission: "iam:ListRoles"
-    purpose: "Discover available privileged roles"
+  - principal: "pl-prod-scenario-starting-user"
+    principal_type: "user"
+    permissions:
+      - permission: "iam:ListRoles"
+        purpose: "Discover available privileged roles"
 
-  - permission: "iam:GetRole"
-    purpose: "View role permissions and trust policies"
+      - permission: "iam:GetRole"
+        purpose: "View role permissions and trust policies"
 
-  - permission: "ec2:DescribeInstances"
-    purpose: "Verify instance launch and get connection details"
+      - permission: "ec2:DescribeInstances"
+        purpose: "Verify instance launch and get connection details"
 
-  - permission: "s3:ListBuckets"
-    purpose: "Discover target buckets after escalation"
+      - permission: "s3:ListBuckets"
+        purpose: "Discover target buckets after escalation"
 ```
 
 ---
@@ -624,15 +651,21 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreateAccessKey"
-      resource: "arn:aws:iam::*:user/pl-cak-admin"
+    - principal: "pl-cak-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-cak-admin"
 
   helpful:
-    - permission: "iam:ListUsers"
-      purpose: "Discover privileged users to target"
+    - principal: "pl-cak-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover privileged users to target"
 
-    - permission: "iam:GetUser"
-      purpose: "View user details and attached policies"
+        - permission: "iam:GetUser"
+          purpose: "View user details and attached policies"
 
 # =============================================================================
 # MITRE ATT&CK
@@ -691,18 +724,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-EC2Admin"
+    - principal: "pl-prod-per-starting-role"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-EC2Admin"
 
-    - permission: "ec2:RunInstances"
-      resource: "*"
+        - permission: "ec2:RunInstances"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
+    - principal: "pl-prod-per-starting-role"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
 
-    - permission: "ec2:DescribeInstances"
-      purpose: "Verify instance launch and get connection details"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Verify instance launch and get connection details"
 
 # =============================================================================
 # MITRE ATT&CK
@@ -763,21 +802,27 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-role-b-admin"
+    - principal: "pl-prod-role-a-non-admin"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:PutRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-role-b-admin"
 
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-role-b-admin"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-role-b-admin"
 
   helpful:
-    - permission: "iam:GetRolePolicy"
-      purpose: "View existing policies on RoleB"
+    - principal: "pl-prod-role-a-non-admin"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:GetRolePolicy"
+          purpose: "View existing policies on RoleB"
 
-    - permission: "iam:DeleteRolePolicy"
-      purpose: "Clean up injected policies after demo"
+        - permission: "iam:DeleteRolePolicy"
+          purpose: "Clean up injected policies after demo"
 
-    - permission: "s3:ListBuckets"
-      purpose: "Discover demo bucket after escalation"
+        - permission: "s3:ListBuckets"
+          purpose: "Discover demo bucket after escalation"
 
 # =============================================================================
 # MITRE ATT&CK
@@ -838,15 +883,21 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ssm:StartSession"
-      resource: "arn:aws:ec2:*:*:instance/i-*"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:StartSession"
+          resource: "arn:aws:ec2:*:*:instance/i-*"
 
   helpful:
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover target instances"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover target instances"
 
-    - permission: "ssm:DescribeInstanceInformation"
-      purpose: "Identify SSM-enabled instances"
+        - permission: "ssm:DescribeInstanceInformation"
+          purpose: "Identify SSM-enabled instances"
 
 # =============================================================================
 # MITRE ATT&CK
@@ -928,16 +979,22 @@ Always use the `"$X/mo"` format with rounding to the nearest dollar:
 
 ### 5. Required vs Helpful Permissions
 
+Both required and helpful permissions are grouped by principal. Each principal entry specifies `principal` (the IAM name), `principal_type` (`"user"` or `"role"`), and a `permissions` array.
+
 **Required Permissions:**
 - Must be permissions absolutely necessary to complete the attack
 - Without these, the attack cannot succeed
 - Focus on the escalation permissions
+- Associate each permission with the principal that needs it
 
 **Helpful Permissions:**
 - Discovery permissions (List*, Describe*, Get*)
 - Verification permissions
 - Cleanup permissions
 - Not strictly required but make the attack easier
+- Associate each permission with the principal that uses it (important for multi-hop scenarios)
+
+**Per-principal grouping matters** because during demo validation runs, a deny policy is temporarily attached to each principal to ensure the attack succeeds with only required permissions. The deny policy needs to know which helpful permissions belong to which principal.
 
 ### 6. Setup Hops Don't Count
 
@@ -986,7 +1043,7 @@ Before submitting a scenario, verify all required fields are present:
 - [ ] `environments`
 - [ ] `attack_path.principals`
 - [ ] `attack_path.summary`
-- [ ] `permissions.required` (at least one entry)
+- [ ] `permissions.required` (at least one principal entry with at least one permission)
 - [ ] `mitre_attack.tactics` (at least one entry)
 - [ ] `mitre_attack.techniques` (at least one entry)
 - [ ] `terraform.variable_name`

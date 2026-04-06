@@ -1,5 +1,6 @@
 schema_version: "1.2.0"
 name: "iam-passrole+datapipeline-pipeline"
+title: "DataPipeline Job Creation to Bucket"
 description: "User with iam:PassRole and datapipeline permissions can create a pipeline that exfiltrates S3 data using read-only role, bypassing IAM via overly permissive bucket resource policy"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "datapipeline-001"
@@ -23,25 +24,30 @@ attack_path:
 
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-bucket-pipeline-role"
-    - permission: "datapipeline:CreatePipeline"
-      resource: "*"
-    - permission: "datapipeline:PutPipelineDefinition"
-      resource: "*"
-    - permission: "datapipeline:ActivatePipeline"
-      resource: "*"
-    - permission: "s3:GetObject"
-      resource: "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}/*"
+    - principal: "pl-prod-datapipeline-001-to-bucket-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-datapipeline-001-to-bucket-pipeline-role"
+        - permission: "datapipeline:CreatePipeline"
+          resource: "*"
+        - permission: "datapipeline:PutPipelineDefinition"
+          resource: "*"
+        - permission: "datapipeline:ActivatePipeline"
+          resource: "*"
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}/*"
 
   helpful:
-    - permission: "datapipeline:DescribePipelines"
-      purpose: "View pipeline status and configuration"
-    - permission: "datapipeline:GetPipelineDefinition"
-      purpose: "Retrieve pipeline definition for verification"
-    - permission: "s3:ListBucket"
-      purpose: "List objects in buckets for verification"
-
+    - principal: "pl-prod-datapipeline-001-to-bucket-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "datapipeline:DescribePipelines"
+          purpose: "View pipeline status and configuration"
+        - permission: "datapipeline:GetPipelineDefinition"
+          purpose: "Retrieve pipeline definition for verification"
+        - permission: "s3:ListBucket"
+          purpose: "List objects in buckets for verification"
 mitre_attack:
   tactics:
     - "TA0004 - Privilege Escalation"

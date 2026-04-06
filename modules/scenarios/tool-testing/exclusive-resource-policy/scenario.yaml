@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "exclusive-resource-policy"
+title: "Exclusive Resource Policy Access to Bucket"
 description: "Access S3 bucket with exclusive resource policy that denies all except specific role"
 cost_estimate: "$0/mo"
 
@@ -33,16 +34,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-exclusive-role"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-exclusive-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles with exclusive bucket access"
-
-    - permission: "s3:GetBucketPolicy"
-      purpose: "View bucket resource policy"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles with exclusive bucket access"
+        - permission: "s3:GetBucketPolicy"
+          purpose: "View bucket resource policy"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

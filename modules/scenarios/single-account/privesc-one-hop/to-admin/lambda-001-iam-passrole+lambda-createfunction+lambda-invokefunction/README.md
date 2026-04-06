@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:InvokeFunction
+# Lambda Function Creation + Invocation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating Lambda function with admin role and invoking it to extract temporary credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1648 - Serverless Execution
@@ -22,12 +22,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-001-to-admin-target-role` -- allows associating the admin role as the Lambda execution role
 - `lambda:CreateFunction` on `*` -- allows creating a new Lambda function
 - `lambda:InvokeFunction` on `*` -- allows invoking the Lambda function to extract credentials
 
-**Helpful:**
+**Helpful** (`pl-prod-lambda-001-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles that can be passed to Lambda
 - `lambda:GetFunction` -- verify function creation succeeded before invoking
 - `lambda:DeleteFunction` -- clean up attack artifacts after credential extraction

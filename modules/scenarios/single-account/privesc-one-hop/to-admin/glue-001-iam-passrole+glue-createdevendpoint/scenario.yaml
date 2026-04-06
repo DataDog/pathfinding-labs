@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+glue-createdevendpoint"
+title: "Glue Dev Endpoint Creation to Admin"
 description: "User with iam:PassRole and glue:CreateDevEndpoint can create a Glue dev endpoint with an admin role and execute commands via SSH"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "glue-001"
@@ -32,22 +33,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-glue-001-to-admin-target-role"
-
-    - permission: "glue:CreateDevEndpoint"
-      resource: "*"
+    - principal: "pl-prod-glue-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-glue-001-to-admin-target-role"
+        - permission: "glue:CreateDevEndpoint"
+          resource: "*"
 
   helpful:
-    - permission: "glue:GetDevEndpoint"
-      purpose: "Check endpoint status and retrieve SSH connection details"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles to pass to Glue"
-
-    - permission: "glue:DeleteDevEndpoint"
-      purpose: "Clean up created endpoints after demonstration"
-
+    - principal: "pl-prod-glue-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "glue:GetDevEndpoint"
+          purpose: "Check endpoint status and retrieve SSH connection details"
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass to Glue"
+        - permission: "glue:DeleteDevEndpoint"
+          purpose: "Clean up created endpoints after demonstration"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

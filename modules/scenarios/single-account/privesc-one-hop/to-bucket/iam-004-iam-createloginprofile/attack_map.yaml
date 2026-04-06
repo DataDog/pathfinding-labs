@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -47,8 +49,12 @@ attackMap:
         Create a console login profile (password) for the target user, enabling
         console access for a user that previously only had programmatic access.
       hints:
-        - "You can create console passwords for other IAM users."
-        - "Look for users who have data access but no console login profile yet."
+        - "Start by confirming your identity and understanding what permissions your starting user actually has."
+        - "You can create console login credentials (passwords) for other IAM users — check which users that permission is scoped to."
+        - "Use iam:ListUsers to enumerate users in the account, then use iam:GetLoginProfile on each one to see which lack a console password."
+        - "A user without a login profile cannot log into the AWS Console — but you might be able to change that."
+        - "Use iam:GetUser or iam:ListUserPolicies to understand what permissions the target user has before investing in the attack."
+        - "Once you know the target user has valuable permissions, create a login profile with a password you control using iam:CreateLoginProfile."
         - "Browse to https://pathfinding.cloud/paths/iam-004 for technique details."
       commands:
         - description: "Create a console login profile for the target user"
@@ -61,8 +67,10 @@ attackMap:
         Log into the AWS Management Console as the hop1 user and access the sensitive
         S3 bucket using the user's existing S3 read permissions.
       hints:
-        - "This user has S3 access but no console password — yet."
-        - "Use the console to navigate to S3 and read the sensitive data."
+        - "After creating the login profile, the hop1 user can now authenticate to the AWS Management Console."
+        - "Navigate to the account-specific sign-in URL: https://{account_id}.signin.aws.amazon.com/console"
+        - "Sign in as pl-prod-iam-004-bucket-hop1 with the password you set, then browse to S3."
+        - "If you prefer CLI access, look at whether you also have iam:CreateAccessKey to generate programmatic credentials for this user."
       commands:
         - description: "List objects in the sensitive bucket (using hop1 credentials)"
           command: "aws s3 ls s3://pl-sensitive-data-iam-004-{account_id}/"

@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate"
+title: "EC2 Launch Template Modification to Admin"
 description: "User with CreateLaunchTemplateVersion and ModifyLaunchTemplate can update existing template to launch instances with admin role"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ec2-005"
@@ -33,31 +34,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ec2:CreateLaunchTemplateVersion"
-      resource: "*"
-
-    - permission: "ec2:ModifyLaunchTemplate"
-      resource: "*"
+    - principal: "pl-prod-ec2-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:CreateLaunchTemplateVersion"
+          resource: "*"
+        - permission: "ec2:ModifyLaunchTemplate"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles already configured in existing templates"
-
-    - permission: "ec2:DescribeLaunchTemplates"
-      purpose: "Discover existing launch templates to target"
-
-    - permission: "ec2:DescribeLaunchTemplateVersions"
-      purpose: "View existing template configuration before modification"
-
-    - permission: "autoscaling:DescribeAutoScalingGroups"
-      purpose: "Identify which ASGs use the target launch template"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Monitor instance launch and verify user data execution"
-
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify privilege escalation was successful"
-
+    - principal: "pl-prod-ec2-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles already configured in existing templates"
+        - permission: "ec2:DescribeLaunchTemplates"
+          purpose: "Discover existing launch templates to target"
+        - permission: "ec2:DescribeLaunchTemplateVersions"
+          purpose: "View existing template configuration before modification"
+        - permission: "autoscaling:DescribeAutoScalingGroups"
+          purpose: "Identify which ASGs use the target launch template"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Monitor instance launch and verify user data execution"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify privilege escalation was successful"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

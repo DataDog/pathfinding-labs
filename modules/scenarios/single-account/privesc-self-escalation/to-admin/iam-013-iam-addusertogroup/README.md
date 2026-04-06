@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:AddUserToGroup
+# IAM Group Admin Membership to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-escalation via iam:AddUserToGroup to admin group
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-013
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-013-to-admin-user`):
 - `iam:AddUserToGroup` on `*` -- add the starting user to the admin group
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-013-to-admin-user`):
 - `iam:ListGroups` -- discover groups to target
 - `iam:GetGroup` -- view group members and attached policies
 - `iam:ListAttachedGroupPolicies` -- identify groups with admin permissions

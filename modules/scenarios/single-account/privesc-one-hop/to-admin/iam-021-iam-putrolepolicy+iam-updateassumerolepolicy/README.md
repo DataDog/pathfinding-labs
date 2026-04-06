@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PutRolePolicy + iam:UpdateAssumeRolePolicy
+# IAM Inline Role Policy + Trust Policy Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying a role's inline policy to grant admin permissions and updating its trust policy to allow assumption
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-021
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-021-to-admin-starting-user`):
 - `iam:PutRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-021-to-admin-target-role` -- add an inline policy granting administrative permissions to the target role
 - `iam:UpdateAssumeRolePolicy` on `arn:aws:iam::*:role/pl-prod-iam-021-to-admin-target-role` -- modify the target role's trust policy to allow the starting user to assume it
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-021-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available roles that can be modified
 - `iam:GetRole` -- view role trust policies and current policies
 - `iam:ListRolePolicies` -- view current inline role policies

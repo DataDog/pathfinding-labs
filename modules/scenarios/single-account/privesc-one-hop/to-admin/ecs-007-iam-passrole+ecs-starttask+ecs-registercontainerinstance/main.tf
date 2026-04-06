@@ -267,7 +267,7 @@ resource "aws_iam_role_policy" "container_instance_attack_permissions" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "ecsPermissions"
+        Sid    = "RequiredForExploitationECS"
         Effect = "Allow"
         Action = [
           "ecs:RegisterContainerInstance",
@@ -277,7 +277,7 @@ resource "aws_iam_role_policy" "container_instance_attack_permissions" {
         Resource = "*"
       },
       {
-        Sid    = "passRole"
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -308,7 +308,7 @@ resource "aws_iam_role_policy" "container_instance_agent_permissions" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "ecsAgentOperational"
+        Sid    = "HelpfulForExploitationAgentOperational"
         Effect = "Allow"
         Action = [
           "ecs:DiscoverPollEndpoint",
@@ -317,6 +317,17 @@ resource "aws_iam_role_policy" "container_instance_agent_permissions" {
           "ecs:SubmitTaskStateChange",
           "ecs:SubmitContainerStateChange",
           "ecs:SubmitAttachment"
+        ]
+        Resource = "*"
+      },
+      {
+        # Helpful for observing attack progress: verify registration, discover task definitions, monitor task status
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListContainerInstances",
+          "ecs:ListTaskDefinitions",
+          "ecs:DescribeTasks"
         ]
         Resource = "*"
       }

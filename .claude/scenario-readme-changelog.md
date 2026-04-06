@@ -4,6 +4,51 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.0.1 — 2026-04-05
+
+Patch: clarified public/anonymous starting point pattern for CTF, CSPM, and Toxic Combination scenarios.
+
+**Changes:**
+- **`- **Start:**` line** -- updated placeholder description to explicitly allow public resource URLs and plain descriptions for anonymous-access scenarios (not just IAM principal ARNs)
+- **`### Starting Permissions` section** -- added canonical pattern for `principal_type: "public"` entries: use a descriptive label (e.g., `anonymous (public URL)`) in the heading rather than a fabricated ARN; documented when to include a Helpful block for IAM recon principals
+- **Compliance checklist** -- loosened Starting Permissions item to accommodate descriptive labels for anonymous principals and URL-format Start lines
+- **Prohibited pattern** -- explicitly banned invented ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker` for anonymous starting points
+- **Added public-start example** alongside the existing ssm-001 IAM example in the Objective section
+
+**Motivation:**
+- CTF and CSPM scenarios that start from anonymous public access were being forced into IAM-principal framing (fabricated ARNs, awkward principal labels) because the schema only showed IAM-start examples
+- `scenario.yaml` already supported `principal_type: "public"` correctly; the README schema just lacked matching guidance
+- Fixed `cspm-toxic-combo/public-lambda-with-admin` README which had a fabricated `arn:aws:sts::...:assumed-role/unauthenticated/attacker` ARN in its Start line
+
+**Migration rules:**
+- If `- **Start:**` contains a fabricated `assumed-role/unauthenticated/...` ARN, replace with the actual public resource URL (e.g., the Lambda function URL) plus a `(public, no auth required)` note
+- If `**Required** (...)` heading uses a fabricated ARN as the principal label, replace with a descriptive label matching the `principal` field in `scenario.yaml`
+- No structural changes -- stamp `Schema Version: 4.0.1`
+
+---
+
+## 4.0.0 — 2026-04-03
+
+Major version bump: per-principal permissions structure in `### Starting Permissions` and `scenario.yaml`.
+
+**Breaking changes:**
+- **`### Starting Permissions` restructured** -- Required and Helpful headings now include the principal name in parentheses: `**Required** ({principal_name}):` and `**Helpful** ({principal_name}):`. Multi-principal scenarios have multiple headings.
+- **`scenario.yaml` `permissions.required` restructured** -- changed from a flat list of permission entries to an array of principal entries, each containing `principal`, `principal_type`, and `permissions` fields.
+- **`scenario.yaml` `permissions.helpful` restructured** -- same per-principal grouping as required permissions.
+
+**Motivation:**
+- Support temporary deny-policy validation in demo scripts: during `demo_attack.sh`, helpful permissions are denied per-principal to prove only required permissions are needed for exploitation.
+- Accurate multi-hop permission attribution: each principal in a multi-hop chain now has its own required and helpful permissions clearly associated.
+- Frontend display clarity: pathfinding.cloud can render per-principal permission breakdowns.
+
+**Migration rules:**
+- Flat `**Required:**` heading becomes `**Required** ({principal_name}):` with principal name from scenario.yaml
+- Flat `**Helpful:**` heading becomes `**Helpful** ({principal_name}):` with principal name from scenario.yaml
+- Multi-hop scenarios split permissions across multiple principal headings
+- Stamp `Schema Version: 4.0.0`
+
+---
+
 ## 3.0.0 — 2026-04-01
 
 Major version bump: README restructuring + attack map extraction + guided walkthrough creation. Separates the README into a lab guide (no spoilers) while attack data moves to `attack_map.yaml` and narrative content moves to `guided_walkthrough.md`.

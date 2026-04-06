@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-013-to-admin-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -36,9 +38,11 @@ attackMap:
         Add the starting user to the admin group. Group membership is effective
         immediately, granting the user all permissions attached to the group.
       hints:
-        - "You can manage group memberships in this account."
-        - "Look for IAM groups that have elevated or administrative policies attached."
-        - "Check what policies are attached to each group — group membership grants the group's policies to the member user."
+        - "Start by listing the IAM groups that exist in this account — your helpful permissions include iam:ListGroups."
+        - "Once you have a list of groups, check which policies are attached to each one using iam:ListAttachedGroupPolicies."
+        - "Look for groups with administrative policies like AdministratorAccess — group membership grants all policies attached to the group."
+        - "Now that you know which group grants admin access, think about how you might get yourself added to it."
+        - "Your required permission is iam:AddUserToGroup — it works on any group because the resource is scoped to '*'."
         - "Browse to https://pathfinding.cloud/paths/iam-013 for technique details."
       commands:
         - description: "Add the starting user to the admin group"

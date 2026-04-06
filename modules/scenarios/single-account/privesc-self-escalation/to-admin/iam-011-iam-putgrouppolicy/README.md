@@ -1,4 +1,4 @@
-# Self-Escalation Privilege Escalation: iam:PutGroupPolicy
+# IAM Inline Group Policy Modification to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** self-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-escalation via inline policy addition to own group
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-011
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-011-to-admin-paul`):
 - `iam:PutGroupPolicy` on `*` -- add inline policies to IAM groups
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-011-to-admin-paul`):
 - `iam:ListGroups` -- list groups the user belongs to
 - `iam:GetGroupPolicy` -- view existing inline group policies
 - `iam:ListGroupPolicies` -- list all inline policies on a group

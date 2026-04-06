@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-passrole+ec2-requestspotinstances"
+title: "EC2 Spot Instance Request to Admin"
 description: "User with iam:PassRole and ec2:RequestSpotInstances can escalate by launching spot instance with admin instance profile"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "ec2-004"
@@ -32,25 +33,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role"
-
-    - permission: "ec2:RequestSpotInstances"
-      resource: "*"
+    - principal: "pl-prod-ec2-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role"
+        - permission: "ec2:RequestSpotInstances"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available privileged roles"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Verify instance launch and get connection details"
-
-    - permission: "iam:ListInstanceProfiles"
-      purpose: "Find instance profiles with privileged roles"
-
-    - permission: "ec2:DescribeSpotInstanceRequests"
-      purpose: "Verify spot instance request and get instance details"
-
+    - principal: "pl-prod-ec2-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Verify instance launch and get connection details"
+        - permission: "iam:ListInstanceProfiles"
+          purpose: "Find instance profiles with privileged roles"
+        - permission: "ec2:DescribeSpotInstanceRequests"
+          purpose: "Verify spot instance request and get instance details"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

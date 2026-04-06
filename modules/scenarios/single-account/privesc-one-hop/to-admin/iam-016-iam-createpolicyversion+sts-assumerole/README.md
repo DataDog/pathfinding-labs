@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:CreatePolicyVersion + sts:AssumeRole
+# IAM Policy Version + Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** principal-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modify customer-managed policy version to grant admin permissions, then assume role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_sts_assumerole`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-016
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-016-to-admin-starting-user`):
 - `iam:CreatePolicyVersion` on `arn:aws:iam::*:policy/pl-prod-iam-016-to-admin-target-policy` -- create a new default version of the customer-managed policy with arbitrary permissions
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-prod-iam-016-to-admin-target-role` -- assume the target role after its policy has been elevated to admin
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-016-to-admin-starting-user`):
 - `iam:GetPolicy` -- get policy ARN and current version information
 - `iam:GetPolicyVersion` -- view current policy document and version details
 - `iam:ListPolicyVersions` -- list all policy versions to verify new version creation

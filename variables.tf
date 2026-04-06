@@ -820,3 +820,19 @@ variable "create_mwaa_slr" {
   type        = bool
   default     = true
 }
+
+##############################################################################
+# CTF SCENARIOS
+##############################################################################
+
+variable "enable_ctf_ai_chatbot_to_admin" {
+  description = "Enable: ctf → ai-chatbot-to-admin (prompt injection → Lambda creds → admin)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ctf_ai_chatbot_lambda_pivot" {
+  description = "Enable: ctf → ai-chatbot-lambda-pivot (prompt injection → limited creds → Lambda code update → admin)"
+  type        = bool
+  default     = false
+}

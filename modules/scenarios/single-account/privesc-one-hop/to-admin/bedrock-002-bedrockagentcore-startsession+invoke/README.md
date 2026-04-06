@@ -1,4 +1,4 @@
-# Privilege Escalation via Bedrock AgentCore: Accessing Existing Code Interpreters
+# Bedrock Agent Session + Invocation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** bedrock-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-bedrock-002-to-admin-starting-user`):
 - `bedrock-agentcore:StartCodeInterpreterSession` on `arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter` -- initiate a session on the existing code interpreter
 - `bedrock-agentcore:InvokeCodeInterpreter` on `arn:aws:bedrock-agentcore:*:*:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter` -- execute Python code within the interpreter session to reach the metadata service
 
-**Helpful:**
+**Helpful** (`pl-prod-bedrock-002-to-admin-starting-user`):
 - `bedrock-agentcore:ListCodeInterpreters` -- discover existing code interpreters to target
 - `bedrock-agentcore:GetCodeInterpreter` -- view interpreter details including the execution role
 

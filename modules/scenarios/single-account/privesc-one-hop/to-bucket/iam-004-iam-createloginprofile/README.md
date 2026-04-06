@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: iam:CreateLoginProfile
+# IAM Console Password Creation to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** credential-access
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with iam:CreateLoginProfile can set password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** iam-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-iam-004-bucket-starting-user`):
 - `iam:CreateLoginProfile` on `arn:aws:iam::*:user/pl-prod-iam-004-bucket-hop1` -- creates a console password for the target user, enabling console login
 
-**Helpful:**
+**Helpful** (`pl-prod-iam-004-bucket-starting-user`):
 - `iam:ListUsers` -- discover IAM users and identify candidates without login profiles
 - `iam:GetUser` -- view details of individual IAM users
 - `iam:GetLoginProfile` -- check whether a user already has a console login profile set

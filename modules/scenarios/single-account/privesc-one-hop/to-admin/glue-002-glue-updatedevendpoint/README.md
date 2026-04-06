@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: glue:UpdateDevEndpoint
+# Glue Dev Endpoint Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** glue-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1021.004 - Remote Services: SSH
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-glue-002-to-admin-starting-user`):
 - `glue:UpdateDevEndpoint` on `*` -- add an SSH public key to any existing Glue development endpoint
 
-**Helpful:**
+**Helpful** (`pl-prod-glue-002-to-admin-starting-user`):
 - `glue:GetDevEndpoint` -- retrieve endpoint details including the public address needed for the SSH connection
 - `glue:GetDevEndpoints` -- list existing endpoints to identify targets with privileged roles attached
 

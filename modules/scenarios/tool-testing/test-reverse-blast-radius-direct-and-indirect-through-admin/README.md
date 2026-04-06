@@ -1,4 +1,4 @@
-# Reverse Blast Radius: Direct and Indirect S3 Access Through Admin
+# Direct and Indirect Access via Admin to Bucket
 
 * **Category:** Tool Testing
 * **Sub-Category:** reverse-blast-radius
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Validating security tool detection of both direct and indirect S3 bucket access via administrative permissions
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -21,13 +21,17 @@ Your objective is to learn how to exploit a tool testing scenario that validates
 
 ### Starting Permissions
 
-**Required:**
-- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-admin-*/*` -- user1 has explicit permission to read objects from the target bucket
-- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-admin-*` -- user1 has explicit permission to list the target bucket
-- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3` -- user2 can assume the administrative role
-- `*` on `*` -- role3 has AdministratorAccess, granting implicit access to all resources including the target S3 bucket
+**Required** (`pl-prod-rbr-admin-user1`):
+- `s3:GetObject` on `arn:aws:s3:::pl-sensitive-data-rbr-admin-*/*` -- explicit permission to read objects from the target bucket
+- `s3:ListBucket` on `arn:aws:s3:::pl-sensitive-data-rbr-admin-*` -- explicit permission to list the target bucket
 
-**Helpful:**
+**Required** (`pl-prod-rbr-admin-user2`):
+- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-prod-rbr-admin-role3` -- can assume the administrative role
+
+**Required** (`pl-prod-rbr-admin-role3`):
+- `*` on `*` -- AdministratorAccess policy grants implicit access to all resources including the target S3 bucket
+
+**Helpful** (`pl-prod-rbr-admin-user1`):
 - `sts:GetCallerIdentity` -- verify current identity
 - `s3:ListAllMyBuckets` -- discover available buckets
 

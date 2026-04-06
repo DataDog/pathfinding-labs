@@ -30,14 +30,18 @@ resource "aws_iam_user_policy" "starting_user_basic" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",
-          "iam:GetUser"
+          "iam:GetUser",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies"
         ]
         Resource = "*"
       },
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -77,6 +81,7 @@ resource "aws_iam_policy" "privesc_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPutRolePolicy"
         Effect = "Allow"
         Action = [
           "iam:PutRolePolicy"

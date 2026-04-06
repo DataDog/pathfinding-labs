@@ -6,6 +6,8 @@ attackMap:
       subType: iam-user
       isTarget: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-010-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -54,8 +56,9 @@ attackMap:
         is attached, all group members — including the attacker — inherit those
         permissions automatically.
       hints:
-        - "Attach the AWS-managed AdministratorAccess policy to this group."
-        - "Use iam:AttachGroupPolicy with the group ARN and the AdministratorAccess policy ARN."
+        - "Group policy attachments propagate immediately to all group members -- no further action needed."
+        - "Wait a few seconds for IAM to propagate the policy, then test your new permissions."
+        - "Try an action that requires admin access to confirm the escalation worked, such as listing IAM users."
       commands:
         - description: "Verify administrator access via group membership"
           command: "aws iam list-users"

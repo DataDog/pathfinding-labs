@@ -30,6 +30,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPutUserPolicy"
         Effect = "Allow"
         Action = [
           "iam:PutUserPolicy"
@@ -37,6 +38,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_user.starting_user.arn
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
           "sts:GetCallerIdentity",

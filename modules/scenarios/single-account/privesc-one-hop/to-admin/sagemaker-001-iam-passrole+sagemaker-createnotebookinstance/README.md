@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + sagemaker:CreateNotebookInstance
+# SageMaker Notebook Instance Creation to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** sagemaker-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-sagemaker-001-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-sagemaker-001-to-admin-passable-role` -- pass the admin role to a SageMaker notebook instance
 - `sagemaker:CreateNotebookInstance` on `*` -- create a notebook instance that assumes the passed role
 
-**Helpful:**
+**Helpful** (`pl-prod-sagemaker-001-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `iam:GetRole` -- verify a role has administrative permissions before passing it
 - `sagemaker:CreatePresignedNotebookInstanceUrl` -- generate a presigned URL for notebook access (can also access directly via console)

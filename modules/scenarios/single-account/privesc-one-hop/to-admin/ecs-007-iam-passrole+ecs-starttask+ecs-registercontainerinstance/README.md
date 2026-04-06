@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:StartTask + ecs:RegisterContainerInstance
+# ECS Container Instance Registration + Start Task to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** Registering an unregistered EC2 instance to an ECS cluster via SSM, then using ecs:StartTask with --overrides to launch an existing task definition with an admin role and malicious command
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ecs-007
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ecs-007-to-admin-instance-role`):
 - `ecs:RegisterContainerInstance` on `*` -- register the EC2 instance to the target ECS cluster via direct API call using IMDS identity documents
 - `ecs:StartTask` on `*` -- start a task on the registered container instance with --overrides to override taskRoleArn and container command
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-target-role, arn:aws:iam::*:role/pl-prod-ecs-007-to-admin-execution-role` -- pass the admin target role as the task role override in ecs:StartTask
 - `ecs:DeregisterContainerInstance` on `*` -- deregister the container instance from the cluster (cleanup)
 
-**Helpful:**
+**Helpful** (`pl-prod-ecs-007-to-admin-instance-role`):
 - `ecs:ListContainerInstances` -- verify container instance registered and retrieve its ARN
 - `ecs:ListTaskDefinitions` -- discover existing task definitions to exploit
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
@@ -46,7 +46,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance
+plabs enable single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance
 plabs apply
 ```
 
@@ -89,7 +89,7 @@ The script will:
 
 #### Resources Created by Attack Script
 
-- AdministratorAccess policy attached to `pl-prod-ecs-007-to-admin-starting-user`
+- AdministratorAccess policy attached to `pl-prod-ecs-007-to-admin-instance-role`
 - ECS container instance registration for the EC2 instance in `pl-prod-ecs-007-cluster`
 - ECS task launched on the container instance via `ecs:StartTask` with overrides
 
@@ -126,7 +126,7 @@ plabs cleanup ecs-007-iam-passrole+ecs-starttask+ecs-registercontainerinstance
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance
+plabs disable single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance
 plabs apply
 ```
 

@@ -1,4 +1,4 @@
-# One-Hop Privilege Escalation: ssm:StartSession to EC2 with S3 Bucket Access
+# SSM Session Start to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $5/mo
 * **Technique:** Start interactive shell sessions on EC2 instances with S3 access roles to extract credentials via IMDS and access sensitive buckets
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ssm-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ssm-001-to-bucket-starting-user`):
 - `ssm:StartSession` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id}` and `arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell` -- allows establishing an interactive shell session on the target EC2 instance
 
-**Helpful:**
+**Helpful** (`pl-prod-ssm-001-to-bucket-starting-user`):
 - `ec2:DescribeInstances` -- discover target EC2 instances and their attached instance profiles
 - `ssm:DescribeInstanceInformation` -- identify which instances have the SSM agent running and are reachable
 - `sts:GetCallerIdentity` -- verify credentials after exfiltration from IMDS

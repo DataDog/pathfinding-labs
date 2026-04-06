@@ -99,6 +99,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # [EXPLOIT] Step 2: Verify identity as pl-prod-iam-013-to-admin-user
 echo -e "${YELLOW}Step 2: Verifying identity as $START_USER${NC}"
 use_starting_creds
@@ -208,6 +216,9 @@ UPDATED_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'G
 echo "Current groups: $UPDATED_GROUPS"
 
 # Summary
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ SELF-ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"

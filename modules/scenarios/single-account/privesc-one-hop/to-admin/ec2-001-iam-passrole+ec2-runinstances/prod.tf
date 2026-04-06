@@ -54,6 +54,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
           "iam:PassRole"
@@ -61,16 +62,27 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = aws_iam_role.admin_role.arn
       },
       {
+        Sid    = "RequiredForExploitationEC2"
         Effect = "Allow"
         Action = [
           "ec2:RunInstances",
+          "ec2:CreateTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity",
           "ec2:DescribeInstances",
           "ec2:DescribeInstanceStatus",
           "ec2:DescribeImages",
           "ec2:DescribeVpcs",
           "ec2:DescribeSubnets",
-          "ec2:CreateTags",
-          "iam:GetRole"
+          "iam:GetRole",
+          "iam:ListRoles",
+          "iam:ListInstanceProfiles"
         ]
         Resource = "*"
       }

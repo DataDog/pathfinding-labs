@@ -80,6 +80,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source shared permission restriction library and activate deny policy
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 ```
 
 **Example for specific scenario**:
@@ -100,6 +108,16 @@ export AWS_REGION=$AWS_REGION
 
 echo "Using region: $AWS_REGION"
 ```
+
+### Permission Restriction During Demos
+
+Demo scripts source a shared library (`scripts/lib/demo_permissions.sh`) that temporarily denies "helpful" permissions on scenario principals during the demo run. This validates that only the permissions declared in `scenario.yaml` are actually needed for the attack. The deny policy acts as a safety net on top of the EXPLOIT/OBSERVATION credential separation.
+
+- **After credential retrieval** (before the attack): call `restrict_helpful_permissions` and `setup_demo_restriction_trap` (the trap ensures permissions are restored even if the script exits early)
+- **Before the success summary**: call `restore_helpful_permissions`
+- **In cleanup scripts**: call `restore_helpful_permissions` as a safety fallback (with error suppression)
+
+The existing credential switching pattern (`use_starting_creds`, `use_readonly_creds`) stays the same.
 
 ### Credential Context Rules (CRITICAL)
 
@@ -364,6 +382,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source shared permission restriction library and activate deny policy
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_user_creds
@@ -390,6 +416,9 @@ echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
 # Additional steps follow the attack path...
+
+# Restore helpful permissions before printing summary
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
@@ -681,6 +710,11 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Safety restore: ensure helpful permissions deny policy is removed
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -965,10 +999,14 @@ Before completing, verify:
 21. ✅ **Cleanup script retrieves region from Terraform**
 22. ✅ **Cleanup script uses region in all EC2 commands**
 23. ✅ **Cleanup script does not use AWS_PROFILE_FLAG variable**
-24. ✅ Error handling for missing resources in cleanup
-25. ✅ Clear step numbering and descriptions
-26. ✅ Final summary is accurate
-27. ✅ Scripts will be made executable (chmod +x)
+24. ✅ **Permission restriction library sourced** (`scripts/lib/demo_permissions.sh`) after credential retrieval
+25. ✅ **`restrict_helpful_permissions` and `setup_demo_restriction_trap` called** before the attack begins
+26. ✅ **`restore_helpful_permissions` called** before the success summary
+27. ✅ **Cleanup script includes safety `restore_helpful_permissions`** call (with `2>/dev/null || true`)
+28. ✅ Error handling for missing resources in cleanup
+29. ✅ Clear step numbering and descriptions
+30. ✅ Final summary is accurate
+31. ✅ Scripts will be made executable (chmod +x)
 
 ## File Permissions
 

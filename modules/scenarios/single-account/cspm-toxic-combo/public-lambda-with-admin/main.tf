@@ -17,6 +17,7 @@ resource "aws_iam_role" "lambda_admin_role" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {

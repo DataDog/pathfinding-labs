@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "test-reverse-blast-radius-direct-and-indirect-to-bucket"
+title: "Direct and Indirect Access Paths to Bucket"
 description: "Tool testing scenario validating reverse blast radius detection - tests whether security tools identify both direct S3 access (user1) and indirect access via role assumption (user2 -> role3 -> bucket)"
 cost_estimate: "$0/mo"
 
@@ -40,36 +41,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    # User1 - Direct S3 access
-    - permission: "s3:GetObject"
-      resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*/*"
-      notes: "User1 has explicit permission to read objects from target bucket"
-    
-    - permission: "s3:ListBucket"
-      resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*"
-      notes: "User1 has explicit permission to list target bucket"
-    
-    # User2 - Indirect access via role assumption
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3"
-      notes: "User2 can assume role3"
-    
-    # Role3 - S3 access
-    - permission: "s3:GetObject"
-      resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*/*"
-      notes: "Role3 has permission to read objects from target bucket"
-    
-    - permission: "s3:ListBucket"
-      resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*"
-      notes: "Role3 has permission to list target bucket"
+    - principal: "pl-prod-rbr-di-user1"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3"
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-di-*"
 
   helpful:
-    - permission: "sts:GetCallerIdentity"
-      purpose: "Verify current identity"
-    
-    - permission: "s3:ListAllMyBuckets"
-      purpose: "Discover available buckets"
-
+    - principal: "pl-prod-rbr-di-user1"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity"
+        - permission: "s3:ListAllMyBuckets"
+          purpose: "Discover available buckets"
 # =============================================================================
 # TEST GROUPS
 # =============================================================================

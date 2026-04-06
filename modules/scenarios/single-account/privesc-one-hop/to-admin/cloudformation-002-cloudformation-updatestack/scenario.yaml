@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "cloudformation-updatestack"
+title: "CloudFormation Stack Update to Admin"
 description: "User with cloudformation:UpdateStack can modify existing stack to create admin role using stack's elevated service role"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "cloudformation-002"
@@ -33,22 +34,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "cloudformation:UpdateStack"
-      resource: "arn:aws:cloudformation:*:*:stack/pl-prod-cloudformation-002-to-admin-stack/*"
+    - principal: "pl-prod-cloudformation-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:UpdateStack"
+          resource: "arn:aws:cloudformation:*:*:stack/pl-prod-cloudformation-002-to-admin-stack/*"
 
   helpful:
-    - permission: "cloudformation:DescribeStacks"
-      purpose: "View stack details and verify stack configuration"
-
-    - permission: "cloudformation:GetTemplate"
-      purpose: "Retrieve current stack template for modification"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the escalated role was created by the stack update"
-
-    - permission: "sts:AssumeRole"
-      purpose: "Assume the escalated role created by stack update"
-
+    - principal: "pl-prod-cloudformation-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "cloudformation:DescribeStacks"
+          purpose: "View stack details and verify stack configuration"
+        - permission: "cloudformation:GetTemplate"
+          purpose: "Retrieve current stack template for modification"
+        - permission: "iam:GetRole"
+          purpose: "Verify the escalated role was created by the stack update"
+        - permission: "sts:AssumeRole"
+          purpose: "Assume the escalated role created by stack update"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

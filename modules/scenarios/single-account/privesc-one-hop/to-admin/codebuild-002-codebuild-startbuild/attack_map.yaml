@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-codebuild-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -50,10 +52,11 @@ attackMap:
         Trigger a build on the existing project using --buildspec-override to supply
         a malicious buildspec that attaches AdministratorAccess to the starting user.
       hints:
-        - "You can trigger builds on existing CodeBuild projects."
-        - "Look for CodeBuild projects whose service roles have IAM modification permissions."
-        - "Check what IAM role this project uses as its service role — use codebuild:BatchGetProjects to inspect the serviceRole field."
-        - "The --buildspec-override parameter lets you replace a project's build instructions without modifying the project itself."
+        - "Use codebuild:ListProjects to enumerate all CodeBuild projects in the account — look for any that sound privileged or prod-facing."
+        - "Once you have a project name, use codebuild:BatchGetProjects to inspect its details, particularly the serviceRole field."
+        - "A project whose service role name contains 'admin' or 'prod' is worth investigating — find out what policies that role has."
+        - "The codebuild:StartBuild API accepts a --buildspec-override parameter that completely replaces the project's build instructions for that single run — without modifying the project itself."
+        - "Your buildspec override only needs to run a single AWS CLI command using the project role's permissions."
         - "Browse to https://pathfinding.cloud/paths/codebuild-002 for technique details."
       commands:
         - description: "List existing CodeBuild projects"
@@ -75,6 +78,10 @@ attackMap:
         The CodeBuild project executes the override buildspec using its attached service
         role. The malicious buildspec uses the project role's IAM permissions to attach
         AdministratorAccess directly to the starting user, completing the escalation.
+      hints:
+        - "The build runs under the project's service role — any AWS CLI command in your buildspec executes with that role's permissions."
+        - "After the build status reaches SUCCEEDED, wait 15 seconds for IAM policy propagation before testing your new permissions."
+        - "Verify the escalation succeeded by running an IAM operation that would have been denied before — such as listing IAM users."
       commands:
         - description: "Verify administrator access with original credentials"
           command: "aws iam list-users --max-items 1"

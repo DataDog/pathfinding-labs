@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-codebuild-003-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -55,9 +57,12 @@ attackMap:
         to inject a malicious buildspec that will execute under the project's
         privileged service role.
       hints:
-        - "You can start builds on existing CodeBuild projects. Look at what permissions those projects' service roles have."
-        - "CodeBuild allows you to override the buildspec at invocation time. Think about what you could execute using the project's service role."
-        - "Use --buildspec-override to inject commands that modify IAM on behalf of the privileged service role."
+        - "Use your helpful permissions to enumerate CodeBuild projects in the account and identify which ones exist."
+        - "Once you have a project name, use codebuild:BatchGetProjects to inspect the project details -- pay close attention to the serviceRole field."
+        - "Consider what the project's service role is allowed to do. A role with IAM modification permissions is your target."
+        - "CodeBuild allows callers to override the buildspec at invocation time using --buildspec-override. Think about what code you could run using the project's role."
+        - "The buildspec override for a batch build must use the batch format (with a top-level 'batch:' key and a 'build-list'). Write your malicious commands in the nested buildspec's phases.build.commands section."
+        - "Your injected commands will run as the project's service role -- use that to make an IAM change that grants your starting user elevated permissions."
         - "Browse to https://pathfinding.cloud/paths/codebuild-003 for technique details."
       commands:
         - description: "List available CodeBuild projects"
@@ -93,6 +98,11 @@ attackMap:
         The malicious buildspec runs as the service role and attaches the
         AdministratorAccess managed policy to the starting user, completing the
         privilege escalation.
+      hints:
+        - "Wait for the build batch status to reach SUCCEEDED before verifying the outcome -- batch orchestration takes 2-3 minutes."
+        - "Use codebuild:BatchGetBuildBatches with the batch build ID to poll the buildBatchStatus field."
+        - "After the build succeeds, allow 15 seconds for IAM policy changes to propagate before testing access."
+        - "Verify the escalation by attempting an operation that requires admin access, such as listing IAM users."
       commands:
         - description: "Verify admin access after the build completes"
           command: "aws iam list-users --max-items 1"

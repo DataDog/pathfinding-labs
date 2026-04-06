@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-putuserpolicy"
+title: "IAM Inline User Policy Modification to Admin"
 description: "User with iam:PutUserPolicy on itself can add inline admin policy to escalate privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-007"
@@ -31,16 +32,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PutUserPolicy"
-      resource: "*"
+    - principal: "pl-prod-iam-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PutUserPolicy"
+          resource: "*"
 
   helpful:
-    - permission: "iam:GetUser"
-      purpose: "View user details and verify policy attachment"
-
-    - permission: "iam:ListUserPolicies"
-      purpose: "List existing inline policies on users"
-
+    - principal: "pl-prod-iam-007-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetUser"
+          purpose: "View user details and verify policy attachment"
+        - permission: "iam:ListUserPolicies"
+          purpose: "List existing inline policies on users"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

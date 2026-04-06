@@ -1,5 +1,6 @@
 schema_version: "1.2.0"
 name: "ssm-sendcommand"
+title: "SSM Send Command to Bucket"
 description: "User with ssm:SendCommand executes commands on EC2 with S3 access to extract credentials and access sensitive bucket"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ssm-002"
@@ -22,25 +23,26 @@ attack_path:
 
 permissions:
   required:
-    - permission: "ssm:SendCommand"
-      resource: "*"
+    - principal: "pl-prod-ssm-002-to-bucket-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:SendCommand"
+          resource: "*"
 
   helpful:
-    - permission: "ssm:ListCommands"
-      purpose: "View command execution status and results"
-
-    - permission: "ssm:ListCommandInvocations"
-      purpose: "List command invocations for the sent commands"
-
-    - permission: "ssm:GetCommandInvocation"
-      purpose: "Retrieve detailed command output containing extracted credentials"
-
-    - permission: "ssm:DescribeInstanceInformation"
-      purpose: "Verify SSM agent status on target instances"
-
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover EC2 instances with S3 access roles attached"
-
+    - principal: "pl-prod-ssm-002-to-bucket-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ssm:ListCommands"
+          purpose: "View command execution status and results"
+        - permission: "ssm:ListCommandInvocations"
+          purpose: "List command invocations for the sent commands"
+        - permission: "ssm:GetCommandInvocation"
+          purpose: "Retrieve detailed command output containing extracted credentials"
+        - permission: "ssm:DescribeInstanceInformation"
+          purpose: "Verify SSM agent status on target instances"
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover EC2 instances with S3 access roles attached"
 mitre_attack:
   tactics:
     - "TA0004 - Privilege Escalation"

@@ -1,4 +1,4 @@
-# Guided Walkthrough: role-chain-to-s3
+# Guided Walkthrough: Three-Hop Role Assumption Chain to S3
 
 This scenario demonstrates a simple 3-hop role assumption chain where each role can assume the next role in the chain, ultimately granting access to an S3 bucket. The chain also includes an IAM user that can directly assume the intermediate role.
 

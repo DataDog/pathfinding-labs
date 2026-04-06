@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "multi-hop-both-sides"
+title: "Dev to Prod Multi-Hop Both Accounts to Admin"
 description: "Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation"
 cost_estimate: "$0/mo"
 
@@ -35,25 +36,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreateLoginProfile"
-      resource: "arn:aws:iam::{dev_account_id}:user/pl-Josh"
-
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::{prod_account_id}:role/pl-trustsdev"
-
-    - permission: "iam:UpdateLoginProfile"
-      resource: "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreateLoginProfile"
+          resource: "arn:aws:iam::{dev_account_id}:user/pl-Josh"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-trustsdev"
+        - permission: "iam:UpdateLoginProfile"
+          resource: "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
 
   helpful:
-    - permission: "iam:GetLoginProfile"
-      purpose: "View existing login profile configuration"
-
-    - permission: "iam:ListUsers"
-      purpose: "Discover users in both accounts"
-
-    - permission: "iam:GetUser"
-      purpose: "View user details and permissions"
-
+    - principal: "pl-pathfinding-starting-user-dev"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetLoginProfile"
+          purpose: "View existing login profile configuration"
+        - permission: "iam:ListUsers"
+          purpose: "Discover users in both accounts"
+        - permission: "iam:GetUser"
+          purpose: "View user details and permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

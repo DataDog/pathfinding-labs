@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-cloudformation-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -52,9 +54,12 @@ attackMap:
         resource with AdministratorAccess and a trust policy allowing the starting user
         to assume it. The stack executes the update using its administrative service role.
       hints:
-        - "You can update infrastructure stacks. Look for stacks with elevated service roles."
-        - "Inspect the stack's service role to understand what permissions CloudFormation has. Retrieve the current stack template and examine what resource types it already manages."
-        - "Add a new IAM role resource to the template that trusts your starting principal, then submit the stack update."
+        - "Your starting user can update CloudFormation stacks. Start by finding which stacks exist in the account and reviewing their configuration."
+        - "Use cloudformation:DescribeStacks to list stacks and check for a RoleARN field — this tells you which service role CloudFormation uses when executing updates."
+        - "Use cloudformation:GetTemplate to retrieve the current stack template. Understanding what resources already exist helps you craft a safe modification."
+        - "A stack update runs with the service role's permissions, not yours. If that role has AdministratorAccess, you can add IAM resources to the template that you couldn't create directly."
+        - "Craft a modified template that keeps the existing resources and adds a new AWS::IAM::Role with AdministratorAccess and a trust policy pointing to your starting user's ARN."
+        - "The cloudformation:UpdateStack call requires the --capabilities CAPABILITY_NAMED_IAM flag when the template creates named IAM resources."
         - "Browse to https://pathfinding.cloud/paths/cloudformation-002 for technique details."
       commands:
         - description: "Retrieve the current stack template"
@@ -70,6 +75,10 @@ attackMap:
       description: >
         The CloudFormation stack, executing with its administrative service role, creates
         the new IAM role and attaches the AdministratorAccess managed policy to it.
+      hints:
+        - "This transition is handled automatically by CloudFormation once the stack update is submitted — you don't need to take any action here."
+        - "Wait for the cloudformation:wait stack-update-complete command to return before attempting to use the new role."
+        - "After the stack update completes, you can verify the role exists using iam:GetRole on the role name specified in your template."
       commands: []
 
     - from: starting-principal
@@ -78,6 +87,11 @@ attackMap:
       description: >
         With the escalated role now created by the stack update, the starting user assumes
         it to gain full administrative access to the AWS account.
+      hints:
+        - "The stack update created a new IAM role with a trust policy that explicitly allows your starting user to assume it."
+        - "Use iam:GetRole to confirm the role exists and review its trust policy before attempting assumption."
+        - "Allow 15 seconds after the stack update completes for IAM to propagate the new role before calling sts:AssumeRole."
+        - "Export the returned AccessKeyId, SecretAccessKey, and SessionToken as environment variables to operate as the escalated role."
       commands:
         - description: "Assume the escalated admin role"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-cloudformation-002-to-admin-escalated-role --role-session-name escalation-session"

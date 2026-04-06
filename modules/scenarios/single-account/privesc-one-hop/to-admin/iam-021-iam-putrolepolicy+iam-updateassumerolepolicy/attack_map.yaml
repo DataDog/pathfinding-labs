@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-user
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-021-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -41,8 +43,12 @@ attackMap:
         is required in the starting user's own policies because the trust policy
         explicitly names the starting user's ARN.
       hints:
-        - "You can modify the permissions and trust relationships of certain IAM roles."
-        - "Consider what happens if you give a role admin permissions and then make it trust you."
+        - "You have two distinct IAM permissions on the target role -- think about what each one lets you control."
+        - "Use iam:ListRoles and iam:GetRole to find the target role and inspect its current trust policy and inline policies."
+        - "Use iam:ListRolePolicies and iam:GetRolePolicy to see what permissions the target role currently has -- it likely starts with minimal access."
+        - "Your first move is to escalate the role's permissions: use iam:PutRolePolicy to attach an inline policy granting broad administrative access."
+        - "Your second move is to make the role assumable by you: use iam:UpdateAssumeRolePolicy to add your own ARN as a trusted principal in the role's trust policy."
+        - "When your ARN is explicitly listed in a role's trust policy, you can assume it without needing sts:AssumeRole in your own identity policies."
         - "Browse to https://pathfinding.cloud/paths/iam-021 for technique details."
       commands:
         - description: "Add an admin inline policy to the target role"

@@ -1,4 +1,4 @@
-# Privilege Escalation via cloudformation:UpdateStackSet
+# CloudFormation Stack Set Update to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying existing CloudFormation StackSet to create admin role using StackSet's elevated execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** cloudformation-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-cloudformation-004-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-cloudformation-004-to-admin-stackset-admin-role` -- allows the user to specify the StackSet administration role when calling UpdateStackSet
 - `cloudformation:UpdateStackSet` on `arn:aws:cloudformation:*:*:stackset/pl-prod-cloudformation-004-to-admin-stackset:*` -- allows modifying the StackSet template, which the elevated execution role then applies
 
-**Helpful:**
+**Helpful** (`pl-prod-cloudformation-004-to-admin-starting-user`):
 - `cloudformation:DescribeStackSet` -- view StackSet details and verify configuration
 - `cloudformation:DescribeStackSetOperation` -- monitor StackSet update operation progress
 - `cloudformation:GetTemplate` -- retrieve current StackSet template for modification

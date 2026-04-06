@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "lambda-updatefunctioncode+lambda-invokefunction"
+title: "Lambda Code Update + Invocation to Admin"
 description: "User with lambda:UpdateFunctionCode and lambda:InvokeFunction can modify existing Lambda function code and manually invoke it to execute malicious logic under the function's privileged role and gain admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "lambda-004"
@@ -33,22 +34,24 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "lambda:UpdateFunctionCode"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
-
-    - permission: "lambda:InvokeFunction"
-      resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
+    - principal: "pl-prod-lambda-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-lambda-004-to-admin-target-lambda"
 
   helpful:
-    - permission: "lambda:GetFunction"
-      purpose: "Discover Lambda function details including handler name and execution role"
-
-    - permission: "lambda:ListFunctions"
-      purpose: "Discover available Lambda functions to target"
-
-    - permission: "iam:GetRole"
-      purpose: "View Lambda execution role permissions to identify high-value targets"
-
+    - principal: "pl-prod-lambda-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:GetFunction"
+          purpose: "Discover Lambda function details including handler name and execution role"
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover available Lambda functions to target"
+        - permission: "iam:GetRole"
+          purpose: "View Lambda execution role permissions to identify high-value targets"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

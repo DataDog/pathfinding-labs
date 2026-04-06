@@ -113,6 +113,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 use_role_creds() {
     export AWS_ACCESS_KEY_ID="$ROLE_ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$ROLE_SECRET_ACCESS_KEY"
@@ -489,6 +497,9 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
 fi
 
 # Summary
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}MULTI-HOP PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"

@@ -37,6 +37,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationAssumeRole"
         Effect = "Allow"
         Action = [
           "sts:AssumeRole"
@@ -44,9 +45,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-initial-role"
       },
       {
+        Sid    = "HelpfulForExploitation"
         Effect = "Allow"
         Action = [
-          "sts:GetCallerIdentity"
+          "sts:GetCallerIdentity",
+          "iam:ListRoles",
+          "iam:GetRole",
+          "s3:ListBucket"
         ]
         Resource = "*"
       }
@@ -105,6 +110,7 @@ resource "aws_iam_policy" "prod_s3_access_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationS3ListAll"
         Effect = "Allow"
         Action = [
           "s3:ListAllMyBuckets"
@@ -112,6 +118,7 @@ resource "aws_iam_policy" "prod_s3_access_policy" {
         Resource = "*"
       },
       {
+        Sid    = "RequiredForExploitationS3BucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
@@ -181,6 +188,7 @@ resource "aws_iam_policy" "prod_intermediate_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "RequiredForExploitationAssumeRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = aws_iam_role.prod_s3_access_role.arn

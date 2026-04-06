@@ -5,6 +5,8 @@ attackMap:
       type: principal
       subType: iam-role
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-starting-role"
+      access:
+        type: assumed-breach-credentials
       description: >
         You have gained access to this principal's AWS IAM credentials. These could
         have been obtained through many real-world vectors: phishing a developer and
@@ -44,9 +46,12 @@ attackMap:
         Modify the trust policy of the target role to allow the starting role to
         assume it. This grants the attacker a path to the S3 bucket.
       hints:
-        - "You have a permission that lets you change who can assume a role."
-        - "Look for roles with S3 bucket access whose trust policies you can modify."
-        - "Browse to https://pathfinding.cloud/paths/iam-012 for technique details."
+        - "You have a permission that lets you change who is allowed to assume a role -- think about what that unlocks."
+        - "Use iam:ListRoles to discover which roles exist in the account and look for ones with S3 access."
+        - "Use iam:GetRole on the target role to read its current trust policy and understand why you cannot assume it yet."
+        - "The trust policy is just a JSON document -- you have a permission that lets you replace it entirely."
+        - "When writing the new trust policy, the Principal should be the ARN of your current role."
+        - "Browse to https://pathfinding.cloud/paths/iam-012 for technique details on this escalation path."
       commands:
         - description: "Get the current trust policy of the target role"
           command: "aws iam get-role --role-name pl-prod-iam-012-to-bucket-target-role --query 'Role.AssumeRolePolicyDocument'"
@@ -69,6 +74,11 @@ attackMap:
       description: >
         Assume the target role using the now-modified trust policy, then use the
         role's S3 permissions to read sensitive data from the bucket.
+      hints:
+        - "IAM changes take time to propagate -- wait about 15 seconds before attempting to assume the role."
+        - "Use sts:AssumeRole with the target role ARN and export the returned credentials into your shell."
+        - "Once you have the target role's credentials, use aws s3 ls to confirm bucket access."
+        - "Download the sensitive file from the bucket with aws s3 cp."
       commands:
         - description: "Assume the target role"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-target-role --role-session-name attacker-session"

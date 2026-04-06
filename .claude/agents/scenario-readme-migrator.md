@@ -1,17 +1,17 @@
 ---
 name: scenario-readme-migrator
-description: Migrates a single Pathfinding Labs scenario README from v2.x to v3.0.0. Extracts attack_map.yaml, creates guided_walkthrough.md, and restructures the README.
+description: Migrates a single Pathfinding Labs scenario README from v2.x/v3.x to v4.0.0. Extracts attack_map.yaml, creates guided_walkthrough.md, restructures the README, and uses per-principal permissions from scenario.yaml.
 tools: Read, Edit, Write, Glob, Grep
 model: sonnet
 color: cyan
 ---
 
-# Pathfinding Labs README Migrator Agent (v3.0.0)
+# Pathfinding Labs README Migrator Agent (v4.0.0)
 
-You migrate a single scenario from the v2.x README structure to v3.0.0. This involves three outputs:
+You migrate a single scenario from the v2.x or v3.x README structure to v4.0.0. This involves three outputs:
 1. **README.md** -- restructured as a lab guide (no attack spoilers)
-2. **attack_map.yaml** -- extracted from the embedded `### Attack Map` YAML
-3. **guided_walkthrough.md** -- narrative CTF writeup synthesized from attack content
+2. **attack_map.yaml** -- extracted from the embedded `### Attack Map` YAML (if not already present)
+3. **guided_walkthrough.md** -- narrative CTF writeup synthesized from attack content (if not already present)
 
 ## Required Input
 
@@ -27,7 +27,7 @@ Read both schema files -- these are your source of truth:
 {project_root}/.claude/scenario-attackmap-schema.md
 ```
 
-Extract the **current README schema version** (should be `3.0.0`) and the attack map schema version.
+Extract the **current README schema version** (should be `4.0.0`) and the attack map schema version.
 
 ## Step 2: Read the Target README
 
@@ -37,9 +37,9 @@ If the file does not exist, report that and stop.
 
 ### Version Fast-Check
 
-Look for: `* **Schema Version:** 3.0.0`
+Look for: `* **Schema Version:** 4.0.0`
 
-If found and matches exactly, report "Already at schema version 3.0.0 -- no migration needed" and stop.
+If found and matches exactly, report "Already at schema version 4.0.0 -- no migration needed" and stop.
 
 ## Step 3: Read Supporting Files
 
@@ -53,8 +53,8 @@ From the README and scenario.yaml, extract:
 - **Scenario directory name** (last path component, e.g., `ssm-001-ssm-startsession`)
 - **Terraform variable name** from `* **Terraform Variable:**` metadata line
 - **Pathfinding.cloud ID** from scenario.yaml `pathfinding-cloud-id` field (if present)
-- **Required Permissions** from `* **Required Permissions:**` metadata line
-- **Helpful Permissions** from `* **Helpful Permissions:**` metadata line
+- **Per-principal permissions** from scenario.yaml `permissions.required` and `permissions.helpful` arrays (new v4.0.0 per-principal format -- see Step 7a)
+- **Legacy flat permissions** from `* **Required Permissions:**` and `* **Helpful Permissions:**` metadata lines (old v2.x format -- only if scenario.yaml lacks the per-principal structure)
 - **Attack Overview prose** (paragraphs between `## Attack Overview` and `### MITRE ATT&CK Mapping`)
 - **Attack Steps content** (numbered list under `### Attack Steps`)
 - **Attack Map YAML** (the YAML code block under `### Attack Map`)
@@ -119,7 +119,9 @@ Write to `{scenario_directory}/guided_walkthrough.md`.
 
 ## Step 7: Restructure the README
 
-Apply the v2.x -> v3.0.0 migration. Work through these changes in order:
+Apply the v2.x/v3.x -> v4.0.0 migration. Work through these changes in order.
+
+**Detecting source version:** If the README has `Schema Version: 3.0.0`, it already has the v3 structure (Objective, Self-hosted Lab Setup, Attack, Teardown, Defend sections, companion files). In that case, skip Steps 5, 6, 7b, 7c, 7d, 7e and only apply 7a (rebuild Starting Permissions with per-principal format), 7f, 7g, and 7h.
 
 ### 7a: Build new Objective section
 
@@ -133,7 +135,44 @@ This is a SINGLE sentence -- not the old Attack Overview prose (that goes in gui
 
 Then add:
 - Start/Destination ARN lines from attack_map.yaml starting node and target node ARNs
-- `### Starting Permissions` from the removed metadata fields
+- `### Starting Permissions` built from scenario.yaml per-principal permissions structure
+
+#### Building `### Starting Permissions` from scenario.yaml
+
+Read `permissions.required` and `permissions.helpful` from scenario.yaml. These are now arrays of principal entries:
+
+```yaml
+permissions:
+  required:
+    - principal: "pl-prod-lambda-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/..."
+          description: "Pass a role to a Lambda function"
+  helpful:
+    - principal: "pl-prod-lambda-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles"
+```
+
+For each entry in `permissions.required`, emit:
+```
+**Required** (`{principal}`):
+- `{permission}` on `{resource}` -- {description}
+```
+
+For each entry in `permissions.helpful`, emit:
+```
+**Helpful** (`{principal}`):
+- `{permission}` -- {purpose}
+```
+
+If a principal has no helpful permissions, omit the Helpful heading for that principal.
+
+**Fallback for old flat format:** If scenario.yaml does not have the per-principal structure (i.e., `permissions.required` is a flat list of strings or is absent), fall back to extracting permissions from the old `* **Required Permissions:**` and `* **Helpful Permissions:**` metadata lines in the README. In this case, use the starting principal name from the attack_map.yaml starting node as the principal name for all permissions.
 
 ### 7b: Remove old Attack Overview content
 
@@ -194,7 +233,7 @@ Remove these lines from the metadata block:
 
 ### 7g: Stamp schema version
 
-Update `* **Schema Version:**` to `3.0.0`.
+Update `* **Schema Version:**` to `4.0.0`.
 
 ### 7h: Keep References
 
@@ -202,35 +241,38 @@ If `## References` exists, keep it as-is at the end.
 
 ## Step 8: Final Verification
 
-Re-read the README and verify against the v3.0.0 compliance checklist. Check that:
-- attack_map.yaml was written
-- guided_walkthrough.md was written
+Re-read the README and verify against the v4.0.0 compliance checklist. Check that:
+- attack_map.yaml exists
+- guided_walkthrough.md exists
 - README has the correct H2 structure
 - No removed sections remain
 - No removed metadata fields remain
+- `### Starting Permissions` uses per-principal headings (each `**Required**` and `**Helpful**` heading includes the principal name in parentheses)
+- Schema version is stamped as `4.0.0`
 
 ## Step 9: Report
 
 ```
 ========================================
-README MIGRATION COMPLETE (v3.0.0)
+README MIGRATION COMPLETE (v4.0.0)
 {scenario_directory}
-Schema version: {previous_version} -> 3.0.0
+Schema version: {previous_version} -> 4.0.0
 ========================================
-Files created:
-  - attack_map.yaml (extracted + hints improved)
-  - guided_walkthrough.md (narrative CTF writeup)
+Files created/verified:
+  - attack_map.yaml (extracted + hints improved, or already present)
+  - guided_walkthrough.md (narrative CTF writeup, or already present)
 
 README changes:
-  - Created ## Objective with ### Starting Permissions
-  - Removed ## Attack Overview and all sub-sections
-  - Split ## Attack Lab into ## Self-hosted Lab Setup + ## Attack
-  - Added ### Guided Walkthrough link
-  - Added ### Automated Demo wrapper
-  - Created ## Teardown (promoted from Attack Lab)
-  - Created ## Defend (demoted CSPM + CloudSIEM)
+  - Created/updated ## Objective with ### Starting Permissions (per-principal format)
+  - Removed ## Attack Overview and all sub-sections (if migrating from v2.x)
+  - Split ## Attack Lab into ## Self-hosted Lab Setup + ## Attack (if migrating from v2.x)
+  - Added ### Guided Walkthrough link (if migrating from v2.x)
+  - Added ### Automated Demo wrapper (if migrating from v2.x)
+  - Created ## Teardown (if migrating from v2.x)
+  - Created ## Defend (if migrating from v2.x)
   - Removed metadata: Attack Path, Attack Principals, Required/Helpful Permissions
-  - Stamped version 3.0.0
+  - Rebuilt ### Starting Permissions with per-principal grouping from scenario.yaml
+  - Stamped version 4.0.0
 
 Final compliance: PASS
 ========================================

@@ -60,7 +60,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "executeCommandOnClusterAndTasks"
+        Sid    = "RequiredForExploitationExecuteCommand"
         Effect = "Allow"
         Action = [
           "ecs:ExecuteCommand"
@@ -71,7 +71,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
         ]
       },
       {
-        Sid    = "describeTasksRequired"
+        Sid    = "RequiredForExploitationDescribeTasks"
         Effect = "Allow"
         Action = [
           "ecs:DescribeTasks"
@@ -82,6 +82,30 @@ resource "aws_iam_user_policy" "starting_user_required" {
             "ecs:cluster" = "arn:aws:ecs:*:${var.account_id}:cluster/${aws_ecs_cluster.cluster.name}"
           }
         }
+      }
+    ]
+  })
+}
+
+# Helpful permissions for observation/discovery during demo
+# These are not required for exploitation but make it easier to find the target task
+resource "aws_iam_user_policy" "starting_user_helpful" {
+  provider = aws.prod
+  name     = "pl-prod-ecs-006-to-admin-helpful-permissions"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "HelpfulForExploitation"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListTasks",
+          "ecs:DescribeTaskDefinition",
+          "ecs:ListClusters"
+        ]
+        Resource = "*"
       }
     ]
   })

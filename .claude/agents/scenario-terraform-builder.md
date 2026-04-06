@@ -38,15 +38,15 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 The orchestrator will provide you with a complete `scenario.yaml` file that conforms to the schema defined in `/SCHEMA.md` at the project root. This YAML file contains all the information you need:
 
 **From scenario.yaml you will use:**
-- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", or "Tool Testing"
-- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, or CSPM categories.
-- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", or "toxic-combination"
+- **category**: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", or "CTF"
+- **sub_category**: For privesc (self-escalation/one-hop only): "self-escalation", "principal-access", "new-passrole", "existing-passrole", "credential-access". Not used for multi-hop, cross-account, CSPM, or CTF categories.
+- **path_type**: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", "toxic-combination", or "ctf"
 - **target**: "to-admin" or "to-bucket"
 - **environments**: Array of environments involved (e.g., ["prod"] or ["dev", "prod"])
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
-- **permissions.required**: Required IAM permissions for the attack in a statement called requiredPermissions
-- **permissions.helpful**: For documentation/CSPM context only -- do NOT create a `starting_user_helpful` policy resource. Non-exploit permissions are handled by the admin cleanup user in demo scripts.
+- **permissions.required**: Array of principal entries. Each entry has a `principal` name, `principal_type` (user/role), and `permissions` array. Required permissions should use `RequiredForExploitation` Sid prefix in IAM policy statements.
+- **permissions.helpful**: Array of principal entries (same structure as required). Helpful permissions SHOULD be added to each principal's IAM policy as a separate statement with `HelpfulForExploitation` Sid prefix. These are non-essential permissions that make exploitation easier (e.g., `iam:ListRoles` to discover targets).
 - **terraform.module_path**: Where to create the Terraform files
 - **name**: Scenario name
 
@@ -134,6 +134,8 @@ resource "aws_iam_role" "vulnerable_role" {
 }
 
 # Attach policy granting the exploitable permission(s)
+# Each principal in permissions.required gets a RequiredForExploitation statement
+# Each principal in permissions.helpful gets a HelpfulForExploitation statement
 resource "aws_iam_role_policy" "vulnerable_role_policy" {
   provider = aws.prod
   name     = "pl-{environment}-{scenario-shorthand}-policy"
@@ -143,11 +145,20 @@ resource "aws_iam_role_policy" "vulnerable_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "RequiredForExploitationPassRole"
         Effect = "Allow"
         Action = [
-          # Add the exploitable permissions here
+          # Add the required permissions from scenario.yaml here
         ]
         Resource = "*"  # Or more specific resources
+      },
+      {
+        Sid    = "HelpfulForExploitationDiscovery"
+        Effect = "Allow"
+        Action = [
+          # Add the helpful permissions from scenario.yaml here
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -618,7 +629,7 @@ Before considering your work done:
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
 8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", etc.
-9. **Do NOT create `starting_user_helpful` policies** - Starting users should ONLY get permissions required for the exploit itself. Do NOT include `sts:GetCallerIdentity`, `HelpfulForDemoScript`, `helpfulAdditionalPermissions`, or any observation-only actions (`Describe*`, `List*`, `Get*` for non-exploit purposes). Non-exploit permissions (polling, listing, identity checks, cleanup) are handled by the readonly user and admin cleanup user in demo scripts.
+9. **Add helpful permissions as a separate IAM policy statement** - For each principal in `permissions.helpful`, add a statement with Sid `HelpfulForExploitation{Purpose}` to that principal's IAM policy. These are permissions that make exploitation easier but are not strictly required (e.g., `iam:ListRoles` to discover targets). Do NOT include demo-only actions like `sts:GetCallerIdentity` or script-polling actions -- those are handled by the readonly user and admin cleanup user in demo scripts.
 10. When scenarios need attacker-side infrastructure (S3 buckets with exploit scripts, ECR repos, etc.), use the `aws.attacker` provider alias. This requires:
     - Adding `aws.attacker` to `configuration_aliases`: `configuration_aliases = [aws.prod, aws.attacker]`
     - Using `provider = aws.attacker` on attacker-controlled resources (S3 buckets, objects, bucket policies, PABs)
@@ -626,7 +637,7 @@ Before considering your work done:
     - Adding a bucket policy granting the prod account (`var.account_id`) read access via resource policy
     - Adding `attacker_account_id` variable to variables.tf
     - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
-11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` pattern for all Statement Ids (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `RequiredForExploitationLambda`).
+11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements and `HelpfulForExploitation{Purpose}` for helpful permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `HelpfulForExploitationListRoles`).
 
 ## Output Format
 

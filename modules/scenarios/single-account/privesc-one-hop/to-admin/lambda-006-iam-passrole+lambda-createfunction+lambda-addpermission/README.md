@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + lambda:CreateFunction + lambda:AddPermission
+# Lambda Function Creation + Permission Grant to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating Lambda function with admin role and granting self-invocation permission to execute malicious code
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** lambda-006
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution
@@ -22,13 +22,13 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-lambda-006-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-lambda-006-to-admin-target-role` -- allows assigning the admin role as the Lambda execution role
 - `lambda:CreateFunction` on `*` -- allows creating a new Lambda function
 - `lambda:AddPermission` on `*` -- allows adding a resource-based policy granting invocation rights
 - `lambda:InvokeFunction` on `*` -- allows invoking the Lambda function once permissions are set
 
-**Helpful:**
+**Helpful** (`pl-prod-lambda-006-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles
 - `lambda:GetFunction` -- verify function creation and retrieve details
 - `lambda:GetPolicy` -- verify resource-based policy was added

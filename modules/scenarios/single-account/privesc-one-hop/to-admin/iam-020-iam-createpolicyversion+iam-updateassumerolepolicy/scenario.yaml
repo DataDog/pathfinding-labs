@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "iam-createpolicyversion+iam-updateassumerolepolicy"
+title: "IAM Policy Version + Trust Policy Update to Admin"
 description: "User with CreatePolicyVersion on a customer-managed policy attached to a role can create a new policy version with admin permissions, update that role's trust policy to allow assumption, then assume the role to gain admin access"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "iam-020"
@@ -33,28 +34,28 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:CreatePolicyVersion"
-      resource: "arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy"
-
-    - permission: "iam:UpdateAssumeRolePolicy"
-      resource: "arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role"
+    - principal: "pl-prod-iam-020-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreatePolicyVersion"
+          resource: "arn:aws:iam::*:policy/pl-prod-iam-020-to-admin-target-policy"
+        - permission: "iam:UpdateAssumeRolePolicy"
+          resource: "arn:aws:iam::*:role/pl-prod-iam-020-to-admin-target-role"
 
   helpful:
-    - permission: "iam:GetPolicy"
-      purpose: "Get policy ARN and current version information"
-
-    - permission: "iam:GetPolicyVersion"
-      purpose: "View current policy document and version details"
-
-    - permission: "iam:ListPolicyVersions"
-      purpose: "List all policy versions to verify new version creation"
-
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles that have the target policy attached"
-
-    - permission: "iam:GetRole"
-      purpose: "View role details, trust policy, and attached policies"
-
+    - principal: "pl-prod-iam-020-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:GetPolicy"
+          purpose: "Get policy ARN and current version information"
+        - permission: "iam:GetPolicyVersion"
+          purpose: "View current policy document and version details"
+        - permission: "iam:ListPolicyVersions"
+          purpose: "List all policy versions to verify new version creation"
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles that have the target policy attached"
+        - permission: "iam:GetRole"
+          purpose: "View role details, trust policy, and attached policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

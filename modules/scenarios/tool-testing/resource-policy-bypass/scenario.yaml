@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "resource-policy-bypass"
+title: "Resource Policy Bypass via Role Assumption to Bucket"
 description: "Bypass S3 bucket resource policy restrictions by assuming role with bucket access"
 cost_estimate: "$0/mo"
 
@@ -33,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles with bucket access"
-
-    - permission: "s3:GetBucketPolicy"
-      purpose: "View bucket resource policy restrictions"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions"
-
+    - principal: "pl-pathfinding-starting-user-prod"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles with bucket access"
+        - permission: "s3:GetBucketPolicy"
+          purpose: "View bucket resource policy restrictions"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

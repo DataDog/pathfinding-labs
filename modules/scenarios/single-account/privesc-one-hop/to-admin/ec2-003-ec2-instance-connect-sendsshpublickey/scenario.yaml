@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "ec2-instance-connect-sendsshpublickey"
+title: "EC2 Instance Connect SSH to Admin"
 description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 instance and extract admin role credentials via IMDS"
 cost_estimate: "$8/mo"
 pathfinding-cloud-id: "ec2-003"
@@ -33,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "ec2-instance-connect:SendSSHPublicKey"
-      resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id}"
+    - principal: "pl-prod-ec2-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2-instance-connect:SendSSHPublicKey"
+          resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id}"
 
   helpful:
-    - permission: "ec2:DescribeInstances"
-      purpose: "Discover EC2 instances with privileged roles"
-
-    - permission: "iam:GetInstanceProfile"
-      purpose: "View instance profile to determine attached role permissions"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions and policies"
-
+    - principal: "pl-prod-ec2-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Discover EC2 instances with privileged roles"
+        - permission: "iam:GetInstanceProfile"
+          purpose: "View instance profile to determine attached role permissions"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions and policies"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

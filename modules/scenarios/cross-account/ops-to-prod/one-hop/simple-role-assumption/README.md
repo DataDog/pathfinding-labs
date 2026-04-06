@@ -1,4 +1,4 @@
-# Cross-Account from Operations to Prod Simple Role Assumption
+# Ops to Prod via Direct Role Assumption to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** cross-account-escalation
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Cross-account role assumption from operations to prod
 * **Terraform Variable:** `enable_cross_account_ops_to_prod_one_hop_simple_role_assumption`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -21,10 +21,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
-- `sts:AssumeRole` on `*` -- held by `pl-x-account-ops-role-with-assume-role-star`; enables cross-account role assumption into any prod role that trusts the operations account
+**Required** (`pl-pathfinding-starting-user-operations`):
+- `sts:AssumeRole` on `*` -- allows the starting user to assume `pl-x-account-ops-role-with-assume-role-star`, which itself carries an unrestricted `sts:AssumeRole` on `*` enabling cross-account role assumption into any prod role that trusts the operations account
 
-**Helpful:**
+**Helpful** (`pl-pathfinding-starting-user-operations`):
 - `iam:ListRoles` -- discover roles in the prod account to identify assumable targets
 - `iam:GetRole` -- view role trust policies and permissions to select the most privileged target
 
@@ -153,8 +153,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Cross-account role assumption; alert when a principal in the operations account assumes a role in the prod account, especially admin-level roles
-- `IAM: ListRoles` — Enumeration of roles in the prod account; expected from legitimate ops tooling but suspicious if not from a known automation principal
+- `STS: AssumeRole` -- Cross-account role assumption; alert when a principal in the operations account assumes a role in the prod account, especially admin-level roles
+- `IAM: ListRoles` -- Enumeration of roles in the prod account; expected from legitimate ops tooling but suspicious if not from a known automation principal
 
 #### Detonation logs
 

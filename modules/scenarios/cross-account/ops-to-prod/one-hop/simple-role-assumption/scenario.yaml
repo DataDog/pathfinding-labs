@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.0.0"
 name: "ops-to-prod-simple-role-assumption"
+title: "Ops to Prod via Direct Role Assumption to Admin"
 description: "Cross-account role assumption from operations to prod"
 cost_estimate: "$0/mo"
 
@@ -33,16 +34,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "*"
+    - principal: "pl-pathfinding-starting-user-operations"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "*"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover roles in prod account"
-
-    - permission: "iam:GetRole"
-      purpose: "View role trust policies and permissions"
-
+    - principal: "pl-pathfinding-starting-user-operations"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles in prod account"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

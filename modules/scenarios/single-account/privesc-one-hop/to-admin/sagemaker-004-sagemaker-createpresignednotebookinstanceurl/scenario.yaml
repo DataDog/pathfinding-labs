@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "sagemaker-createpresignednotebookinstanceurl"
+title: "SageMaker Notebook Presigned URL to Admin"
 description: "User with CreatePresignedNotebookInstanceUrl can generate presigned URL to access existing notebook with admin role and execute commands with elevated privileges"
 cost_estimate: "$37/mo"
 pathfinding-cloud-id: "sagemaker-004"
@@ -33,19 +34,22 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sagemaker:CreatePresignedNotebookInstanceUrl"
-      resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook"
+    - principal: "pl-prod-sagemaker-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sagemaker:CreatePresignedNotebookInstanceUrl"
+          resource: "arn:aws:sagemaker:*:*:notebook-instance/pl-prod-sagemaker-004-to-admin-notebook"
 
   helpful:
-    - permission: "sagemaker:ListNotebookInstances"
-      purpose: "Discover available notebook instances to target"
-
-    - permission: "sagemaker:DescribeNotebookInstance"
-      purpose: "View notebook details and verify admin execution role"
-
-    - permission: "iam:GetRole"
-      purpose: "Verify the notebook's execution role has admin permissions"
-
+    - principal: "pl-prod-sagemaker-004-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sagemaker:ListNotebookInstances"
+          purpose: "Discover available notebook instances to target"
+        - permission: "sagemaker:DescribeNotebookInstance"
+          purpose: "View notebook details and verify admin execution role"
+        - permission: "iam:GetRole"
+          purpose: "Verify the notebook's execution role has admin permissions"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

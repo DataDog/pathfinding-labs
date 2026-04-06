@@ -3,6 +3,7 @@
 # =============================================================================
 schema_version: "1.2.0"
 name: "sts-assumerole"
+title: "Direct Role Assumption to Admin"
 description: "User with sts:AssumeRole can directly assume admin role"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: "sts-001"
@@ -32,16 +33,20 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "sts:AssumeRole"
-      resource: "arn:aws:iam::*:role/pl-prod-sts-001-to-admin-target-role"
+    - principal: "pl-prod-sts-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::*:role/pl-prod-sts-001-to-admin-target-role"
 
   helpful:
-    - permission: "iam:ListRoles"
-      purpose: "Discover available roles to assume"
-
-    - permission: "iam:GetRole"
-      purpose: "View role permissions and trust policy"
-
+    - principal: "pl-prod-sts-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available roles to assume"
+        - permission: "iam:GetRole"
+          purpose: "View role permissions and trust policy"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

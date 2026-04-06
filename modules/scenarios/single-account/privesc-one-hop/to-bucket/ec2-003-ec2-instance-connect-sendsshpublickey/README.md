@@ -1,4 +1,4 @@
-# Privilege Escalation via ec2-instance-connect:SendSSHPublicKey to S3 Bucket
+# EC2 Instance Connect SSH to Bucket
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** existing-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ec2-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0009 - Collection
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
@@ -22,10 +22,10 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ec2-003-to-bucket-starting-user`):
 - `ec2-instance-connect:SendSSHPublicKey` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id}` -- push a temporary SSH public key to the target EC2 instance
 
-**Helpful:**
+**Helpful** (`pl-prod-ec2-003-to-bucket-starting-user`):
 - `ec2:DescribeInstances` -- discover EC2 instances with S3 bucket access roles attached
 - `iam:GetInstanceProfile` -- view the instance profile to determine which role is attached
 - `iam:GetRole` -- view role permissions and confirm S3 bucket access

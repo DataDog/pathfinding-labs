@@ -14,6 +14,7 @@ type Scenario struct {
 	// Core metadata
 	SchemaVersion      string `yaml:"schema_version"`
 	Name               string `yaml:"name"`
+	Title              string `yaml:"title"`
 	Description        string `yaml:"description"`
 	CostEstimate       string `yaml:"cost_estimate"`
 	PathfindingCloudID string `yaml:"pathfinding-cloud-id"`
@@ -155,6 +156,8 @@ func (s *Scenario) CategoryShort() string {
 		return "tool-testing"
 	case strings.Contains(s.Terraform.ModulePath, "cross-account"):
 		return "cross-account"
+	case strings.Contains(s.Terraform.ModulePath, "/ctf/"):
+		return "ctf"
 	default:
 		return s.PathType
 	}

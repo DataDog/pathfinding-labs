@@ -1,4 +1,4 @@
-# Privilege Escalation via iam:PassRole + ecs:RunTask (Command Override)
+# ECS Run Task to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Overriding ECS task definition commands and task role at runtime via ecs:RunTask to escalate to admin without ecs:RegisterTaskDefinition
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask`
-* **Schema Version:** 3.0.0
+* **Schema Version:** 4.0.0
 * **Pathfinding.cloud ID:** ecs-008
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
@@ -22,11 +22,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 
 ### Starting Permissions
 
-**Required:**
+**Required** (`pl-prod-ecs-008-to-admin-starting-user`):
 - `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-target-role` and `arn:aws:iam::*:role/pl-prod-ecs-008-to-admin-execution-role` -- allows passing the admin role to an ECS task via the taskRoleArn override
 - `ecs:RunTask` on `*` -- allows launching ECS tasks against any cluster or task definition
 
-**Helpful:**
+**Helpful** (`pl-prod-ecs-008-to-admin-starting-user`):
 - `ecs:ListTaskDefinitions` -- discover existing task definitions to exploit
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:ListClusters` -- discover available ECS clusters
