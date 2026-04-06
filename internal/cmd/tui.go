@@ -46,22 +46,19 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	// Check if initialized - if not, run the setup wizard first
-	if !paths.RepoExists() || !isInitialized() {
+	// In dev mode the repo lives at the local path, not ~/.plabs/pathfinding-labs/,
+	// so RepoExists() will always be false. Skip the init wizard entirely when
+	// dev mode is active and rely on getWorkingPaths() to resolve the correct dir.
+	if !isDevMode() && (!paths.RepoExists() || !isInitialized()) {
 		if err := runTUIInit(paths); err != nil {
 			return err
 		}
-		// Refresh paths after init
-		paths, err = getWorkingPaths()
-		if err != nil {
-			return fmt.Errorf("failed to get paths after init: %w", err)
-		}
-	} else {
-		// Use working paths (respects dev mode)
-		paths, err = getWorkingPaths()
-		if err != nil {
-			return fmt.Errorf("failed to get paths: %w", err)
-		}
+	}
+
+	// Use working paths (respects dev mode)
+	paths, err = getWorkingPaths()
+	if err != nil {
+		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
 	// Create the TUI model
