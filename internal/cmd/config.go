@@ -156,6 +156,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 				if _, err := os.Stat(scenariosPath); err == nil {
 					cfg.DevMode = true
 					cfg.DevModePath = dir
+					cfg.Initialized = true
 					found = true
 					break
 				}
@@ -183,14 +184,12 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Regenerate terraform.tfvars
-	paths, err := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
-	if err != nil {
-		return fmt.Errorf("failed to get paths: %w", err)
-	}
-
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
-		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
+	// Regenerate terraform.tfvars (best-effort: terraform dir may not exist yet
+	// when setting individual keys before dev-mode is configured)
+	if paths, pathErr := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath); pathErr == nil {
+		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
+			_ = cfg.SyncTFVars(paths.TerraformDir)
+		}
 	}
 
 	fmt.Printf("%s Set %s = %s\n", green("OK"), key, value)

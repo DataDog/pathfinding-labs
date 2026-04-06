@@ -145,7 +145,7 @@ func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Skip check for init, version, help, and tui commands
 		// TUI handles its own initialization flow
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || cmd.Name() == "config" {
 			return nil
 		}
 
