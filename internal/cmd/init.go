@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -145,7 +146,9 @@ func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Skip check for init, version, help, and tui commands
 		// TUI handles its own initialization flow
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || cmd.Name() == "config" {
+		// CommandPath() returns the full path e.g. "plabs config set", so we check
+		// for " config" to exempt "plabs config" and all its subcommands (set, show, sync).
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || strings.Contains(cmd.CommandPath(), " config") {
 			return nil
 		}
 
