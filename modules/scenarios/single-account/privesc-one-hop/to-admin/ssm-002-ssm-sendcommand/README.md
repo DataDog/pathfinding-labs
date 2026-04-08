@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** ssm-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -43,16 +43,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
+plabs enable ssm-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ssm-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -66,11 +66,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ssm-002-to-admin-ec2-admin-profile` | Instance profile associating the admin role with the EC2 instance |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and admin role attached |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -100,7 +100,7 @@ plabs demo ssm-002-ssm-sendcommand
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ssm-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -115,7 +115,7 @@ plabs cleanup ssm-002-ssm-sendcommand
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ssm-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -123,14 +123,14 @@ plabs cleanup ssm-002-ssm-sendcommand
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
+plabs disable ssm-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ssm-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

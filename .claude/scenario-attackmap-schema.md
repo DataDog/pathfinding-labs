@@ -2,11 +2,7 @@
 
 **Current schema version: `1.2.0`**
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.2.0 | 2026-04-06 | Added CTF Scenario Pattern section with content rules for challenge-appropriate node descriptions, edge labels, hints, and commands that preserve discovery without giving away the attack path. |
-| 1.1.0 | 2026-04-06 | Added optional `access` object to nodes for structured entry-point URLs, IPs, and domains. Required on nodes that use the public access prologue. |
-| 1.0.0 | 2026-04-01 | Initial schema, extracted from README schema v3.0.0. |
+See `.claude/scenario-attackmap-changelog.md` for version history and migration rules.
 
 This file is the canonical reference for the structure and content of all scenario `attack_map.yaml` files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file when creating or extracting attack maps. Update this file when the standard changes.
 

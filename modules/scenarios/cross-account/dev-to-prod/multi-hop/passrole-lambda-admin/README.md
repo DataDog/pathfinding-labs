@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1098 - Account Manipulation
 
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin
+plabs enable passrole-lambda-admin-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `passrole-lambda-admin-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -65,11 +65,11 @@ plabs apply
 | `arn:aws:iam::{prod_account_id}:role/pl-lambda-updater` | Prod role trusted by dev role; holds PassRole + Lambda permissions |
 | `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin` | Admin role passable to Lambda; grants full administrative access |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -98,7 +98,7 @@ plabs demo passrole-lambda-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `passrole-lambda-admin-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -113,7 +113,7 @@ plabs cleanup passrole-lambda-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `passrole-lambda-admin-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -121,14 +121,14 @@ plabs cleanup passrole-lambda-admin
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin
+plabs disable passrole-lambda-admin-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `passrole-lambda-admin-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

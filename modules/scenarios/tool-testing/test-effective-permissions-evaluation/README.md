@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 * **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -42,16 +42,16 @@ Your objective is to learn how to validate security tool accuracy by deploying 4
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_tool_testing_test_effective_permissions_evaluation
+plabs enable test-effective-permissions-evaluation-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-effective-permissions-evaluation-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -101,11 +101,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-epe-role-notAdmin-split-boundary-mismatch` | Role: Policy-boundary no intersection |
 | `arn:aws:s3:::pl-sensitive-data-epe-{account_id}-{suffix}` | Target resource for access validation |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -140,7 +140,7 @@ plabs demo test-effective-permissions-evaluation
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-effective-permissions-evaluation-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -157,7 +157,7 @@ plabs cleanup test-effective-permissions-evaluation
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-effective-permissions-evaluation-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -165,14 +165,14 @@ plabs cleanup test-effective-permissions-evaluation
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_tool_testing_test_effective_permissions_evaluation
+plabs disable test-effective-permissions-evaluation-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-effective-permissions-evaluation-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

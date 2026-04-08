@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** cloudformation-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.003 - Account Manipulation: Additional Cloud Roles
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset
+plabs enable cloudformation-005-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-005-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -66,11 +66,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-stack-role` | CloudFormation service role with AdministratorAccess attached to target stack |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role` | Admin role created by demo attack script via change set execution |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -100,7 +100,7 @@ plabs demo cloudformation-005-cloudformation-createchangeset+executechangeset
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-005-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -115,7 +115,7 @@ plabs cleanup cloudformation-005-cloudformation-createchangeset+executechangeset
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-005-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -123,14 +123,14 @@ plabs cleanup cloudformation-005-cloudformation-createchangeset+executechangeset
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset
+plabs disable cloudformation-005-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-005-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

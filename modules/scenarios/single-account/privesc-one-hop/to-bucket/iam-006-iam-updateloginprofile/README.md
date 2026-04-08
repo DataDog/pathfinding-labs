@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** User with iam:UpdateLoginProfile can reset password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** iam-006
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
@@ -43,16 +43,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile
+plabs enable iam-006-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-006-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -66,11 +66,11 @@ plabs apply
 | `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -98,7 +98,7 @@ plabs demo iam-006-iam-updateloginprofile
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-006-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -113,7 +113,7 @@ plabs cleanup iam-006-iam-updateloginprofile
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-006-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -121,14 +121,14 @@ plabs cleanup iam-006-iam-updateloginprofile
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile
+plabs disable iam-006-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-006-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

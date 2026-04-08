@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to Lambda function, link to DynamoDB stream for passive execution without requiring InvokeFunction permission
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** lambda-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -50,16 +50,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb
+plabs enable lambda-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -72,11 +72,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-lambda-002-to-admin-starting-policy` | Allows PassRole, CreateFunction, CreateEventSourceMapping permissions |
 | `arn:aws:dynamodb:{region}:{account_id}:table/pl-prod-lambda-002-to-admin-trigger-table` | DynamoDB table with streams enabled to trigger Lambda execution |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -104,7 +104,7 @@ plabs demo lambda-002-iam-passrole+lambda-createfunction+createeventsourcemappin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -119,7 +119,7 @@ plabs cleanup lambda-002-iam-passrole+lambda-createfunction+createeventsourcemap
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -127,14 +127,14 @@ plabs cleanup lambda-002-iam-passrole+lambda-createfunction+createeventsourcemap
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb
+plabs disable lambda-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

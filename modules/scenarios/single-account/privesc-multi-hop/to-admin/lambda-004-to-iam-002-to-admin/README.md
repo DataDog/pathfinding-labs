@@ -7,7 +7,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** lambda-004 + iam-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0006 - Credential Access
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1059 - Command and Scripting Interpreter
@@ -46,16 +46,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002
+plabs enable lambda-004-to-iam-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-iam-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -70,11 +70,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-lambda-004-to-iam-002-starting-policy` | Policy granting starting user Lambda permissions |
 | `arn:aws:iam::{account_id}:policy/pl-prod-lambda-004-to-iam-002-lambda-policy` | Policy granting Lambda role iam:CreateAccessKey on admin user |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -105,7 +105,7 @@ plabs demo lambda-004-to-iam-002-to-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-iam-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -120,7 +120,7 @@ plabs cleanup lambda-004-to-iam-002-to-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-iam-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -128,14 +128,14 @@ plabs cleanup lambda-004-to-iam-002-to-admin
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002
+plabs disable lambda-004-to-iam-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-iam-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

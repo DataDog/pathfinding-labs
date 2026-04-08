@@ -9,7 +9,7 @@
 * **Flag Location:** SSM Parameter Store at /ctf/ctf-002/flag (requires admin credentials)
 * **Technique:** Acme Corp's AI assistant fronts a suite of internal Lambda services. Chain your way from the public chatbot to administrative access and retrieve the flag.
 * **Terraform Variable:** `enable_ctf_ai_chatbot_lambda_pivot`
-* **Schema Version:** 4.0.1
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** ctf-002
 * **MITRE Tactics:** TA0001 - Initial Access, TA0006 - Credential Access, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1525 - Implant Internal Image, T1059 - Command and Scripting Interpreter
@@ -55,16 +55,16 @@ Acme Corp runs an AI-powered chatbot alongside internal backend services, all on
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_ctf_ai_chatbot_lambda_pivot
+plabs enable ctf-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ctf-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -79,11 +79,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-ctf-002-starting-user` | Starting IAM user for CLI-based participants |
 | `arn:aws:ssm:{region}:{account_id}:parameter/ctf/ctf-002/flag` | CTF flag (SecureString, requires admin credentials to read) |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Cleanup
 
@@ -99,7 +99,7 @@ plabs cleanup ai-chatbot-lambda-pivot
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ctf-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -107,14 +107,14 @@ plabs cleanup ai-chatbot-lambda-pivot
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_ctf_ai_chatbot_lambda_pivot
+plabs disable ctf-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ctf-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

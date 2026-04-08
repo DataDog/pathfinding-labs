@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Passing administrative execution role to CloudFormation StackSet to create escalated IAM resources
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** cloudformation-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -50,16 +50,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances
+plabs enable cloudformation-003-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-003-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -71,11 +71,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-003-to-admin-execution-role` | Privileged execution role with AdministratorAccess policy that can be passed to StackSets |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-003-to-admin-escalated-role` | Escalated admin role created by the StackSet with full administrative permissions |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -106,7 +106,7 @@ plabs demo cloudformation-003-iam-passrole+cloudformation-createstackset+cloudfo
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-003-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -121,7 +121,7 @@ plabs cleanup cloudformation-003-iam-passrole+cloudformation-createstackset+clou
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-003-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -129,14 +129,14 @@ plabs cleanup cloudformation-003-iam-passrole+cloudformation-createstackset+clou
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances
+plabs disable cloudformation-003-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-003-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

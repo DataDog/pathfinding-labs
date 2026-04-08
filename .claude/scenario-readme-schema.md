@@ -1,8 +1,8 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.0.1`**
+**Current schema version: `4.1.1`**
 
-This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md`, then run `/migrate-readmes` to propagate changes to all existing READMEs.
+This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
 **Version bump guide:**
 - **PATCH** (e.g., `1.0.0` -> `1.0.1`): boilerplate wording tweaks, content rule clarifications, no structural change
@@ -11,7 +11,7 @@ This file is the canonical reference for the structure and content of all scenar
 
 **Companion files:**
 - `.claude/scenario-attackmap-schema.md` -- schema for `attack_map.yaml` (structured attack graph data)
-- `guided_walkthrough.md` -- narrative CTF writeup per scenario (see Guided Walkthrough Format below)
+- `solution.md` -- narrative CTF writeup per scenario (see Solution Format below)
 
 ---
 
@@ -36,7 +36,7 @@ The sections below must appear in this exact order with these exact H2/H3/H4 hea
 
 ## Attack
 ### Scenario Specific Resources Created
-### Guided Walkthrough
+### Solution
 ### Automated Demo
 #### Executing the automated demo_attack script
 #### Resources Created by Attack Script
@@ -102,7 +102,7 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **Flag Location:** {description of where the flag is stored}
 ```
 
-CTF scenarios omit the `### Automated Demo` section entirely (participants must discover the exploit themselves). They still include `### Guided Walkthrough` (linked to `guided_walkthrough.md`, which serves as the post-competition writeup/solution). CTF scenarios may have a `cleanup_attack.sh` if the attack modifies infrastructure state, but no `demo_attack.sh`.
+CTF scenarios omit the `### Automated Demo` section entirely (participants must discover the exploit themselves). They still include `### Solution` (linked to `solution.md`, which serves as the post-competition writeup/solution). CTF scenarios may have a `cleanup_attack.sh` if the attack modifies infrastructure state, but no `demo_attack.sh`.
 
 **CSPM scenario additional fields** (after MITRE Techniques):
 ```
@@ -132,7 +132,7 @@ A single sentence using this exact template pattern:
 Your objective is to learn how to exploit a [privilege escalation vulnerability | misconfiguration | combination of multiple misconfigurations] that allows you to move from the [initial entry point -- starting principal name, publicly accessible service, etc.] to [destination/target/conclusion of the attack -- admin role name, S3 bucket name, etc.] by [brief description of the technique].
 ```
 
-The sentence should name the specific resources (e.g., `pl-prod-ssm-001-to-admin-starting-user`) rather than generic descriptions. Keep it to one sentence -- all the detailed context lives in `guided_walkthrough.md`.
+The sentence should name the specific resources (e.g., `pl-prod-ssm-001-to-admin-starting-user`) rather than generic descriptions. Keep it to one sentence -- all the detailed context lives in `solution.md`.
 
 Followed by structured context:
 
@@ -220,22 +220,24 @@ Container section for deployment instructions. No prose content at this level.
 2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 ```
 
-#### `### Deploy with plabs non-interactive` -- use the terraform variable name:
+#### `### Deploy with plabs non-interactive` -- use the scenario's plabs ID:
 
 ```
 ```bash
-plabs enable {terraform_variable_name}
+plabs enable {scenario_plabs_id}
 plabs apply
 ```
 ```
 
-#### `### Deploy with plabs tui` -- exact boilerplate:
+`{scenario_plabs_id}` is the scenario's unique ID used by the `plabs` CLI (e.g., `apprunner-001-to-admin`, `public-lambda-with-admin-to-admin`). For scenarios with a `pathfinding-cloud-id` in `scenario.yaml`, it is `{pathfinding-cloud-id}-{target}`. Otherwise it is `{name}-{target}`.
+
+#### `### Deploy with plabs tui` -- use the scenario's plabs ID in the navigation instruction:
 
 ```
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `{scenario_plabs_id}` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 ```
 
 ### `## Attack`
@@ -246,14 +248,14 @@ Container section for attack content. No prose content at this level.
 
 Markdown table with columns `ARN` and `Purpose`. Full ARN format with account/region placeholders.
 
-#### `### Guided Walkthrough`
+#### `### Solution`
 
 Link to the companion walkthrough file:
 
 ```
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 ```
 
 #### `### Automated Demo`
@@ -314,16 +316,16 @@ Container section for infrastructure destruction.
 
 ```
 ```bash
-plabs disable {terraform_variable_name}
+plabs disable {scenario_plabs_id}
 plabs apply
 ```
 ```
 
-#### `### Teardown with plabs tui` -- exact boilerplate:
+#### `### Teardown with plabs tui` -- use the scenario's plabs ID in the navigation instruction:
 
 ```
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `{scenario_plabs_id}` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 ```
@@ -372,13 +374,13 @@ Optional. Include when there are meaningful external links (pathfinding.cloud pa
 
 ---
 
-## Guided Walkthrough Format (`guided_walkthrough.md`)
+## Solution Format (`solution.md`)
 
-A separate file per scenario, located in the same directory as the README. Written as a **narrative CTF writeup** -- the kind of post you'd read on a security blog after a CTF competition. Linked from `### Guided Walkthrough` in the README.
+A separate file per scenario, located in the same directory as the README. Written as a **narrative CTF writeup** -- the kind of post you'd read on a security blog after a CTF competition. Linked from `### Solution` in the README.
 
 **Structure:**
 
-1. **Title** -- `# Guided Walkthrough: {Scenario Title}`
+1. **Title** -- `# Solution: {Scenario Title}`
 2. **Opening** -- the Attack Overview prose (relocated from README v2.x). Frames the challenge: what kind of vulnerability, why it's dangerous, when it appears in real environments. 2-3 paragraphs.
 3. **The Challenge** (`## The Challenge`) -- what you start with (your principal, your permissions) and what you need to achieve (the target). References Terraform-created resources where relevant.
 4. **Reconnaissance** (`## Reconnaissance`) -- walks through discovery steps using helpful permissions. Narrative tone: "First, let's figure out what we're working with..." Includes AWS CLI commands inline in code blocks.
@@ -398,11 +400,11 @@ Use this table when migrating READMEs from v2.0.1 to v3.0.0.
 
 | Old heading / content | New heading / action |
 |---|---|
-| `## Attack Overview` (H2) | Prose moves to `guided_walkthrough.md` opening. Remove H2. |
+| `## Attack Overview` (H2) | Prose moves to `solution.md` opening. Remove H2. |
 | `### MITRE ATT&CK Mapping` (prose section) | Remove section. Data stays in metadata fields only. |
 | `### Principals in the attack path` | Remove section. Data lives in `attack_map.yaml` nodes. |
 | `### Attack Path Diagram` (mermaid) | Remove section. Frontend renders from `attack_map.yaml`. |
-| `### Attack Steps` | Content moves to `guided_walkthrough.md`. Remove section. |
+| `### Attack Steps` | Content moves to `solution.md`. Remove section. |
 | `### Attack Map` (embedded YAML) | Extract YAML to `attack_map.yaml` file. Remove section. |
 | `### Scenario specific resources created` | Move to `### Scenario Specific Resources Created` under `## Attack`. |
 | `## Attack Lab` | Split into `## Self-hosted Lab Setup` + `## Attack`. |
@@ -413,7 +415,7 @@ Use this table when migrating READMEs from v2.0.1 to v3.0.0.
 | `#### Resources created by attack script` | Rename to `#### Resources Created by Attack Script` under `### Automated Demo`. |
 | `#### With plabs non-interactive` (demo) | Move under `### Automated Demo`. |
 | `#### With plabs tui` (demo) | Move under `### Automated Demo`. |
-| `### Executing the attack manually` | Content moves to `guided_walkthrough.md`. Remove section. |
+| `### Executing the attack manually` | Content moves to `solution.md`. Remove section. |
 | `### Cleanup` | Move under `## Attack`. |
 | `### Teardown with plabs non-interactive` | Move under `## Teardown`. |
 | `### Teardown with plabs tui` | Move under `## Teardown`. |
@@ -434,14 +436,14 @@ Use this table when migrating READMEs from v2.0.1 to v3.0.0.
 - `### Starting Permissions` -- build from removed metadata fields, using per-principal format from scenario.yaml
 - `## Self-hosted Lab Setup` -- wrapper for existing Prerequisites/Deploy sections
 - `## Attack` -- wrapper for resources, walkthrough, demo, cleanup
-- `### Guided Walkthrough` -- link to new `guided_walkthrough.md` file
+- `### Solution` -- link to new `solution.md` file
 - `### Automated Demo` -- wrapper for existing demo sub-sections
 - `## Teardown` -- wrapper for existing teardown sections
 - `## Defend` -- wrapper for existing CSPM and CloudSIEM sections
 
 **New companion files to create during migration:**
 - `attack_map.yaml` -- extracted from `### Attack Map` embedded YAML
-- `guided_walkthrough.md` -- synthesized from Attack Overview + Attack Steps + manual execution + demo_attack.sh
+- `solution.md` -- synthesized from Attack Overview + Attack Steps + manual execution + demo_attack.sh
 
 ---
 
@@ -468,22 +470,22 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.0.1`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.1.1`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
-- [ ] No `## Attack Overview` H2 exists (moved to `guided_walkthrough.md`)
+- [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)
 - [ ] No `## Detecting Misconfiguration (CSPM)` H2 exists (now H3 under `Defend`)
 - [ ] No `## Detection Abuse (CloudSIEM)` H2 exists (now H3 under `Defend`)
 - [ ] No `### MITRE ATT&CK Mapping` section exists (data in metadata only)
 - [ ] No `### Principals in the attack path` section exists (data in `attack_map.yaml`)
 - [ ] No `### Attack Path Diagram` section exists (rendered from `attack_map.yaml`)
-- [ ] No `### Attack Steps` section exists (moved to `guided_walkthrough.md`)
+- [ ] No `### Attack Steps` section exists (moved to `solution.md`)
 - [ ] No `### Attack Map` embedded YAML section exists (extracted to `attack_map.yaml`)
-- [ ] No `### Executing the attack manually` section exists (moved to `guided_walkthrough.md`)
+- [ ] No `### Executing the attack manually` section exists (moved to `solution.md`)
 - [ ] Metadata does not contain `Attack Path`, `Attack Principals`, `Required Permissions`, or `Helpful Permissions` fields
 - [ ] `## Objective` contains `### Starting Permissions` with per-principal Required and Helpful sub-lists. For IAM principals, the heading includes the principal name in parentheses. For anonymous/public starting points, the heading uses a descriptive label (e.g., `anonymous (public URL)`, `unauthenticated attacker`) and the `- **Start:**` line uses a URL or description rather than an ARN.
 - [ ] `## Self-hosted Lab Setup` contains `### Prerequisites`, `### Deploy with plabs non-interactive`, `### Deploy with plabs tui`
-- [ ] `### Guided Walkthrough` exists under `## Attack` with link to `guided_walkthrough.md`
+- [ ] `### Solution` exists under `## Attack` with link to `solution.md`
 - [ ] `### Automated Demo` contains `#### Executing the automated demo_attack script`, `#### Resources Created by Attack Script`, `#### With plabs non-interactive`, `#### With plabs tui` *(CTF scenarios: omit this entire section)*
 - [ ] `### Cleanup` exists under `## Attack` with `#### With plabs non-interactive` and `#### With plabs tui` *(CTF scenarios: omit if no attack artifacts to clean)*
 - [ ] `## Teardown` contains `### Teardown with plabs non-interactive` and `### Teardown with plabs tui`
@@ -491,4 +493,4 @@ A README is compliant if all of the following are true:
 - [ ] `#### CloudTrail Events to Monitor` uses `` `Service: EventName` `` format
 - [ ] `#### Detonation logs` contains the standard placeholder text
 - [ ] Companion `attack_map.yaml` file exists (validated separately per attackmap schema)
-- [ ] Companion `guided_walkthrough.md` file exists with link from README
+- [ ] Companion `solution.md` file exists with link from README

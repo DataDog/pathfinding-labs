@@ -7,7 +7,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** sts-001 + ecs-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -52,16 +52,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin
+plabs enable sts-001-to-ecs-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sts-001-to-ecs-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -73,11 +73,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-intermediate-role` | Intermediate role with ECS management permissions and iam:PassRole on the admin role |
 | `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-admin-role` | Target admin role with AdministratorAccess, trusts ecs-tasks.amazonaws.com (also serves as task execution role) |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -110,7 +110,7 @@ plabs demo sts-001-to-ecs-002-to-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sts-001-to-ecs-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -125,7 +125,7 @@ plabs cleanup sts-001-to-ecs-002-to-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sts-001-to-ecs-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -133,14 +133,14 @@ plabs cleanup sts-001-to-ecs-002-to-admin
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin
+plabs disable sts-001-to-ecs-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sts-001-to-ecs-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

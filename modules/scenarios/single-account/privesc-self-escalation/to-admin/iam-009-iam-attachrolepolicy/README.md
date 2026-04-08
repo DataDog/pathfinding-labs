@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Self-modification via iam:AttachRolePolicy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** iam-009
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -42,16 +42,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy
+plabs enable iam-009-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-009-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -63,11 +63,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role` | Starting role with policy attachment capability |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-009-to-admin-policy` | Allows `iam:AttachRolePolicy` on the role itself |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -95,7 +95,7 @@ plabs demo iam-009-iam-attachrolepolicy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-009-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -110,7 +110,7 @@ plabs cleanup iam-009-iam-attachrolepolicy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-009-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -118,14 +118,14 @@ plabs cleanup iam-009-iam-attachrolepolicy
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy
+plabs disable iam-009-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-009-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

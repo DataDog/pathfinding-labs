@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Pass privileged role to App Runner service with command override
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** apprunner-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
@@ -45,16 +45,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice
+plabs enable apprunner-001-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `apprunner-001-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -67,11 +67,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-apprunner-001-to-admin-passrole-policy` | Allows `iam:PassRole` on target role and `apprunner:CreateService` |
 | `arn:aws:iam::{account_id}:policy/pl-prod-apprunner-001-to-admin-admin-attach-policy` | Grants target role permission to attach policies to the starting user |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -100,7 +100,7 @@ plabs demo apprunner-001-iam-passrole+apprunner-createservice
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `apprunner-001-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -115,7 +115,7 @@ plabs cleanup apprunner-001-iam-passrole+apprunner-createservice
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `apprunner-001-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -123,14 +123,14 @@ plabs cleanup apprunner-001-iam-passrole+apprunner-createservice
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice
+plabs disable apprunner-001-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `apprunner-001-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

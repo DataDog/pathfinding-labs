@@ -8,7 +8,7 @@
 * **Cost Estimate:** $8/mo
 * **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** ec2-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0009 - Collection
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey
+plabs enable ec2-003-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ec2-003-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -68,11 +68,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-003-to-bucket-ec2-bucket-profile` | Instance profile linking the IAM role to the EC2 instance |
 | `arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}` | Target S3 bucket containing sensitive data files |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -103,7 +103,7 @@ plabs demo ec2-003-ec2-instance-connect-sendsshpublickey
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ec2-003-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -118,7 +118,7 @@ plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ec2-003-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -126,14 +126,14 @@ plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey
+plabs disable ec2-003-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ec2-003-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

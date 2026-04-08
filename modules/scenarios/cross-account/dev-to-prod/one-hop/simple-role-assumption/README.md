@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Direct cross-account role assumption from dev user to prod admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -41,16 +41,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_cross_account_dev_to_prod_one_hop_simple_role_assumption
+plabs enable dev-to-prod-simple-role-assumption-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `dev-to-prod-simple-role-assumption-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -61,11 +61,11 @@ plabs apply
 | `arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
 | `arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role` | Prod account role with AdministratorAccess that trusts the dev user |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -92,7 +92,7 @@ plabs demo simple-role-assumption
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `dev-to-prod-simple-role-assumption-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -109,7 +109,7 @@ plabs cleanup simple-role-assumption
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `dev-to-prod-simple-role-assumption-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -117,14 +117,14 @@ plabs cleanup simple-role-assumption
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_cross_account_dev_to_prod_one_hop_simple_role_assumption
+plabs disable dev-to-prod-simple-role-assumption-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `dev-to-prod-simple-role-assumption-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

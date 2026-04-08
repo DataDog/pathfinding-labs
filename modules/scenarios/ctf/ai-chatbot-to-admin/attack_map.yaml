@@ -10,9 +10,13 @@ attackMap:
         url: "https://{function_url_id}.lambda-url.{region}.on.aws/"
       description: >
         This resource is publicly accessible without AWS credentials. Any attacker on the
-        internet can reach it directly. This is your entry point. 
+        internet can reach it directly -- no IAM credentials, no AWS signature, no prior access
+        required. This is your entry point.
 
-        Note: You will need to enter your own OpenAI API key here, which will be used for the demo        
+        AcmeBot is Acme Corp's internal engineering assistant deployed as a Lambda with a public
+        Function URL. It accepts chat messages and uses an LLM with a run_command tool to answer
+        engineering questions. Note: You will need to enter your own OpenAI API key in the chat
+        interface to interact with the bot.
 
     - id: chatbot-role
       label: "Chatbot Admin Role"

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** bedrock-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -43,16 +43,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke
+plabs enable bedrock-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `bedrock-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -65,11 +65,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-bedrock-002-to-admin-target-role` | Target privileged role with AdministratorAccess (pre-attached to interpreter) |
 | `arn:aws:iam::{account_id}:policy/pl-prod-bedrock-002-to-admin-starting-user-policy` | Policy granting Start/Invoke permissions (NO PassRole or CreateCodeInterpreter) |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -98,7 +98,7 @@ plabs demo bedrock-002-bedrockagentcore-startsession+invoke
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `bedrock-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -113,7 +113,7 @@ plabs cleanup bedrock-002-bedrockagentcore-startsession+invoke
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `bedrock-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -121,14 +121,14 @@ plabs cleanup bedrock-002-bedrockagentcore-startsession+invoke
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke
+plabs disable bedrock-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `bedrock-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

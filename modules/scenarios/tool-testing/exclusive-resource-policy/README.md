@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Access S3 bucket with exclusive resource policy that denies all except specific role
 * **Terraform Variable:** `enable_tool_testing_exclusive_resource_policy`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -41,16 +41,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_tool_testing_exclusive_resource_policy
+plabs enable exclusive-resource-policy-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `exclusive-resource-policy-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -61,11 +61,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role` | Role that trusts the prod starting user; IAM policy contains only `s3:ListAllMyBuckets` |
 | `arn:aws:s3:::pl-exclusive-sensitive-data-bucket-{account_id}` | Bucket with highly sensitive sample data, encryption enabled, and restrictive resource policy |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -97,7 +97,7 @@ plabs demo exclusive-resource-policy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `exclusive-resource-policy-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -112,7 +112,7 @@ plabs cleanup exclusive-resource-policy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `exclusive-resource-policy-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -120,14 +120,14 @@ plabs cleanup exclusive-resource-policy
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_tool_testing_exclusive_resource_policy
+plabs disable exclusive-resource-policy-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `exclusive-resource-policy-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $9/mo
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** ecs-006
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks
+plabs enable ecs-006-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ecs-006-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -67,11 +67,11 @@ plabs apply
 | `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-006-to-admin-cluster` | ECS cluster hosting the vulnerable task |
 | `arn:aws:ecs:{region}:{account_id}:service/pl-prod-ecs-006-to-admin-cluster/pl-prod-ecs-006-to-admin-service` | ECS service that maintains the running task with ECS Exec enabled |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -97,7 +97,7 @@ plabs demo ecs-006-ecs-executecommand+describetasks
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ecs-006-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -112,7 +112,7 @@ plabs cleanup ecs-006-ecs-executecommand+describetasks
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ecs-006-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -120,14 +120,14 @@ plabs cleanup ecs-006-ecs-executecommand+describetasks
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks
+plabs disable ecs-006-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `ecs-006-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

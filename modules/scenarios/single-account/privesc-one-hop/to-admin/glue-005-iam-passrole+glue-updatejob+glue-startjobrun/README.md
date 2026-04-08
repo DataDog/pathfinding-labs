@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modify existing Glue Job to use privileged role and malicious script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** glue-005
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1565.001 - Data Manipulation: Stored Data Manipulation
@@ -47,16 +47,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun
+plabs enable glue-005-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `glue-005-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -72,11 +72,11 @@ plabs apply
 | `arn:aws:s3:::pl-glue-scripts-glue-005-{account_id}-{suffix}/escalation_script.py` | Malicious Python script that performs privilege escalation |
 | `arn:aws:glue:{region}:{account_id}:job/pl-glue-005-to-admin-job` | Pre-existing Glue Python shell job that will be updated during the attack |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -107,7 +107,7 @@ plabs demo glue-005-iam-passrole+glue-updatejob+glue-startjobrun
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `glue-005-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -122,7 +122,7 @@ plabs cleanup glue-005-iam-passrole+glue-updatejob+glue-startjobrun
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `glue-005-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -130,14 +130,14 @@ plabs cleanup glue-005-iam-passrole+glue-updatejob+glue-startjobrun
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun
+plabs disable glue-005-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `glue-005-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

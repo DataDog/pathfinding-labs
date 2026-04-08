@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** CloudFormation stack creation with privileged service role to create escalated IAM roles
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** cloudformation-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation
+plabs enable cloudformation-001-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-001-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -64,11 +64,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-cloudformation-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-001-to-admin-cfn-role` | Privileged role with AdministratorAccess, trusted by cloudformation.amazonaws.com |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -99,7 +99,7 @@ plabs demo cloudformation-001-iam-passrole-cloudformation
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-001-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -114,7 +114,7 @@ plabs cleanup cloudformation-001-iam-passrole-cloudformation
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-001-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -122,14 +122,14 @@ plabs cleanup cloudformation-001-iam-passrole-cloudformation
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation
+plabs disable cloudformation-001-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cloudformation-001-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

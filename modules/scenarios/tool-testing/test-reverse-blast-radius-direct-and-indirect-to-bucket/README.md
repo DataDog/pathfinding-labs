@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0009 - Collection
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object
 
@@ -49,16 +49,16 @@ Your objective is to learn how to validate that a security tool can detect both 
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket
+plabs enable test-reverse-blast-radius-direct-and-indirect-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -71,11 +71,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3` | Role with S3 bucket access, assumable by user2 |
 | `arn:aws:s3:::pl-sensitive-data-rbr-di-{account_id}-{suffix}` | Target sensitive S3 bucket containing test data |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -104,7 +104,7 @@ plabs demo test-reverse-blast-radius-direct-and-indirect-to-bucket
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -119,7 +119,7 @@ plabs cleanup test-reverse-blast-radius-direct-and-indirect-to-bucket
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -127,14 +127,14 @@ plabs cleanup test-reverse-blast-radius-direct-and-indirect-to-bucket
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket
+plabs disable test-reverse-blast-radius-direct-and-indirect-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

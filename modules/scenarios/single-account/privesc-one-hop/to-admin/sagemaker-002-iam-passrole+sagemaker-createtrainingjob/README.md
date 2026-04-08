@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Creating SageMaker training job with malicious script and admin role to execute code with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** sagemaker-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -47,16 +47,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob
+plabs enable sagemaker-002-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sagemaker-002-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -69,11 +69,11 @@ plabs apply
 | `arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-{account_id}-{suffix}` | S3 bucket for storing training scripts and outputs |
 | Policy attached to starting user | Grants `iam:PassRole` on admin role, `sagemaker:CreateTrainingJob`, and S3 upload/download permissions |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -104,7 +104,7 @@ plabs demo sagemaker-002-iam-passrole+sagemaker-createtrainingjob
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sagemaker-002-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -119,7 +119,7 @@ plabs cleanup sagemaker-002-iam-passrole+sagemaker-createtrainingjob
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sagemaker-002-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -127,14 +127,14 @@ plabs cleanup sagemaker-002-iam-passrole+sagemaker-createtrainingjob
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob
+plabs disable sagemaker-002-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `sagemaker-002-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

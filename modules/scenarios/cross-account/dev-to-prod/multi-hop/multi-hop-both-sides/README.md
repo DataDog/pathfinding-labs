@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -48,16 +48,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides
+plabs enable multi-hop-both-sides-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `multi-hop-both-sides-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -71,11 +71,11 @@ plabs apply
 | `arn:aws:iam::{prod_account_id}:role/pl-trustsdev` | Prod role that trusts Josh user from dev account |
 | `arn:aws:iam::{prod_account_id}:user/pl-Jeremy` | Admin user in prod; target of login profile update |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -106,7 +106,7 @@ plabs demo multi-hop-both-sides
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `multi-hop-both-sides-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -121,7 +121,7 @@ plabs cleanup multi-hop-both-sides
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `multi-hop-both-sides-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -129,14 +129,14 @@ plabs cleanup multi-hop-both-sides
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides
+plabs disable multi-hop-both-sides-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `multi-hop-both-sides-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

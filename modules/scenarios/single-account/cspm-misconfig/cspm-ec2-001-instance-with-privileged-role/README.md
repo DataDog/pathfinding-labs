@@ -8,7 +8,7 @@
 * **Cost Estimate:** $5/mo
 * **Technique:** EC2 instance with a highly privileged IAM role attached - validates CSPM detection
 * **Terraform Variable:** `enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role`
-* **Schema Version:** 4.0.1
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** cspm-ec2-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
@@ -48,16 +48,16 @@ Your objective is to learn how to exploit a misconfiguration that allows you to 
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
+plabs enable cspm-ec2-001-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cspm-ec2-001-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -69,11 +69,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-cspm-ec2-001-admin-role` | IAM role with AdministratorAccess attached |
 | `arn:aws:iam::{account_id}:instance-profile/pl-cspm-ec2-001-instance-profile` | Instance profile linking the role to the EC2 instance |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -99,7 +99,7 @@ plabs demo cspm-ec2-001-instance-with-privileged-role
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cspm-ec2-001-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -114,7 +114,7 @@ plabs cleanup cspm-ec2-001-instance-with-privileged-role
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cspm-ec2-001-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -122,14 +122,14 @@ plabs cleanup cspm-ec2-001-instance-with-privileged-role
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
+plabs disable cspm-ec2-001-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `cspm-ec2-001-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

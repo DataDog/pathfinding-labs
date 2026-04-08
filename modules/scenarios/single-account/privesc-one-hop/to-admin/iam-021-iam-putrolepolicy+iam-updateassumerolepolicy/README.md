@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying a role's inline policy to grant admin permissions and updating its trust policy to allow assumption
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** iam-021
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
@@ -45,16 +45,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy
+plabs enable iam-021-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-021-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -66,11 +66,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-021-to-admin-target-role` | Target role with minimal initial permissions that can be escalated |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-021-to-admin-starting-user-policy` | Inline policy granting iam:PutRolePolicy and iam:UpdateAssumeRolePolicy on target role |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -99,7 +99,7 @@ plabs demo iam-021-iam-putrolepolicy+iam-updateassumerolepolicy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-021-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -114,7 +114,7 @@ plabs cleanup iam-021-iam-putrolepolicy+iam-updateassumerolepolicy
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-021-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -122,14 +122,14 @@ plabs cleanup iam-021-iam-putrolepolicy+iam-updateassumerolepolicy
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy
+plabs disable iam-021-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `iam-021-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

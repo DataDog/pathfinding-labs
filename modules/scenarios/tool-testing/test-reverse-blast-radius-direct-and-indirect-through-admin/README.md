@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Validating security tool detection of both direct and indirect S3 bucket access via administrative permissions
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -48,16 +48,16 @@ Your objective is to learn how to exploit a tool testing scenario that validates
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
+plabs enable test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -72,11 +72,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-rbr-admin-user2-assume-policy` | Policy granting user2 permission to assume role3 |
 | `arn:aws:s3:::pl-sensitive-data-rbr-admin-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -104,7 +104,7 @@ plabs demo test-reverse-blast-radius-direct-and-indirect-through-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -121,7 +121,7 @@ plabs cleanup test-reverse-blast-radius-direct-and-indirect-through-admin
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -129,14 +129,14 @@ plabs cleanup test-reverse-blast-radius-direct-and-indirect-through-admin
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
+plabs disable test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `test-reverse-blast-radius-direct-and-indirect-through-admin-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

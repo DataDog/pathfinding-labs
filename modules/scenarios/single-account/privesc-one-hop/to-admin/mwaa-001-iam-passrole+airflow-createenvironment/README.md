@@ -8,7 +8,7 @@
 * **Cost Estimate:** $37/mo
 * **Technique:** Pass privileged role to MWAA environment with malicious startup script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** mwaa-001
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -56,16 +56,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment
+plabs enable mwaa-001-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `mwaa-001-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -78,11 +78,11 @@ plabs apply
 | `arn:aws:ec2:{region}:{account_id}:vpc/pl-prod-mwaa-001-vpc` | Dedicated VPC with private subnets and NAT Gateway for MWAA |
 | `arn:aws:s3:::pl-mwaa-001-attacker-bucket-{account_id}-{suffix}` | S3 bucket containing DAGs folder and malicious startup script |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -115,7 +115,7 @@ plabs demo mwaa-001-iam-passrole+airflow-createenvironment
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `mwaa-001-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -140,7 +140,7 @@ plabs cleanup mwaa-001-iam-passrole+airflow-createenvironment
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `mwaa-001-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -155,7 +155,7 @@ plabs apply
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `mwaa-001-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

@@ -8,7 +8,7 @@
 * **Cost Estimate:** $0/mo
 * **Technique:** Modifying existing Lambda function code and manually invoking it to execute malicious logic under privileged execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction`
-* **Schema Version:** 4.0.0
+* **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** lambda-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1525 - Implant Internal Image
@@ -44,16 +44,16 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction
+plabs enable lambda-004-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-admin` in the scenarios list
 3. Press `space` to enable it
-4. Press `d` to deploy
+4. Press `a` to apply
 
 ## Attack
 
@@ -66,11 +66,11 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-lambda-004-to-admin-target-role` | Lambda execution role with AdministratorAccess policy attached |
 | Inline policy on starting user | Grants starting user lambda:UpdateFunctionCode and lambda:InvokeFunction permissions |
 
-### Guided Walkthrough
+### Solution
 
 For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-[Guided Walkthrough](guided_walkthrough.md)
+[Solution](solution.md)
 
 ### Automated Demo
 
@@ -97,7 +97,7 @@ plabs demo lambda-004-lambda-updatefunctioncode+lambda-invokefunction
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -112,7 +112,7 @@ plabs cleanup lambda-004-lambda-updatefunctioncode+lambda-invokefunction
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -120,14 +120,14 @@ plabs cleanup lambda-004-lambda-updatefunctioncode+lambda-invokefunction
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction
+plabs disable lambda-004-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to this scenario in the scenarios list
+2. Navigate to `lambda-004-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 
