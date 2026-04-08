@@ -51,9 +51,9 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 - `pathfinding-cloud-id`: Pathfinding.cloud path ID if one exists (e.g., "IAM-005", "IAM-002")
 
 **Required Classification:**
-- `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", or "CTF"
+- `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", "CTF", or "Attack Simulation"
 - `sub_category`: Required only for privesc self-escalation/one-hop; not used for multi-hop, cross-account, CSPM, or CTF categories
-- `path_type`: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", "toxic-combination", or "ctf"
+- `path_type`: "self-escalation", "one-hop", "multi-hop", "cross-account", "single-condition", "toxic-combination", "ctf", or "attack-simulation"
 - `target`: "to-admin" or "to-bucket"
 - `environments`: Array with at least one environment
 
@@ -84,7 +84,9 @@ Check that the classification makes sense:
 - If `category` is "CSPM: Toxic Combination", `path_type` should be "toxic-combination"
 - If `category` is "CTF", `path_type` should be "ctf"; `sub_category` should NOT be present
 - CTF scenarios may have a `ctf:` block with `difficulty`, `flag_location`, and `variant` fields
-- CSPM, Tool Testing, and CTF categories do not require sub_category
+- If `category` is "Attack Simulation", `path_type` should be "attack-simulation"; `sub_category` should NOT be present
+- If `category` is "Attack Simulation", a `source` block should be present with `url`, `title`, `author`, and `date` fields
+- CSPM, Tool Testing, CTF, and Attack Simulation categories do not require sub_category
 
 ### 1. Terraform Validation
 
@@ -249,6 +251,9 @@ For any command used in the demo script, determine whether it is an exploit step
 - Validate that the starting user does NOT have a `starting_user_helpful` policy -- if one exists, flag it for removal.
 
 **Exception for public-start scenarios:** If the scenario starts from anonymous/public access (`principal_type: "public"` in scenario.yaml required permissions), the demo script will NOT have `use_starting_creds()` or `use_starting_user_creds()` calls. Instead it will use `curl`, a browser simulation, or similar unauthenticated HTTP calls. This is expected and correct -- do not flag the absence of credential helper functions as an issue.
+
+#### Attack Simulation `|| true` pattern
+Attack Simulation demo scripts may include commands with `|| true` for recon and failed attempt steps. This is expected and should not be flagged as an error.
 
 #### Validate minimal permissions pattern (CRITICAL)
 Check that the starting user's IAM policies in main.tf do NOT contain any of the following:

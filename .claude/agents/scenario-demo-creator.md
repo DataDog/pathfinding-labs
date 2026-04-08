@@ -972,6 +972,55 @@ echo ""
 - Focus on demonstrating the compound vulnerability
 - Show why the combination is dangerous
 
+## Attack Simulation Demo Scripts
+
+Attack Simulation scenarios recreate real-world breaches. The demo script follows the chronological order of the original attack as described in the source blog post. Key differences from other categories:
+
+### Recon and Failed Attempts
+
+The demo script includes commands that the original attacker ran but which may fail or produce no useful output. These are important for faithfully recreating the attack narrative.
+
+- **Failed commands**: Use `|| true` after commands expected to fail. The yellow description text before the command should note it is expected to fail (e.g., "The attacker attempted to assume the Administrator role -- this will fail as the role does not allow assumption from this principal").
+- **Recon commands**: Include enumeration commands the attacker ran (e.g., `aws secretsmanager list-secrets`, `aws iam list-users`) even if they don't directly contribute to the exploit. The yellow description text should explain what the attacker was looking for.
+- **No new step labels**: Use `[EXPLOIT]` and `[OBSERVATION]` as normal. The yellow description text (printed before each command) communicates whether a step is recon, a failed attempt, or a successful exploit.
+
+### Script Structure
+
+1. **Chronological order**: Steps follow the timeline from the source blog post, not grouped by type. If the attacker did recon, then exploited, then more recon, that order is preserved.
+2. **Attacker intent commentary**: Each step includes a brief yellow description explaining what the attacker was trying to achieve, referencing the blog post narrative. Example:
+   ```bash
+   echo -e "${YELLOW}The attacker enumerated Secrets Manager to check for stored credentials${NC}"
+   show_cmd "Attacker" "aws secretsmanager list-secrets --region $AWS_REGION"
+   aws secretsmanager list-secrets --region $AWS_REGION 2>&1 || true
+   ```
+3. **Failed attempt display**: Show the command and handle the error gracefully:
+   ```bash
+   echo -e "${YELLOW}The attacker tried to assume the Administrator role (expected to fail)${NC}"
+   show_cmd "Attacker" "aws sts assume-role --role-arn arn:aws:iam::${ACCOUNT_ID}:role/Administrator --role-session-name test"
+   aws sts assume-role --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/Administrator" --role-session-name test 2>&1 || true
+   ```
+4. **`show_attack_cmd` vs `show_cmd`**: Only use `show_attack_cmd` for successful exploit steps. Recon and failed attempts use `show_cmd`.
+5. **Summary section**: The final summary should reference the source blog and note key metrics:
+   ```bash
+   echo -e "\n${GREEN}=== Attack Simulation Complete ===${NC}"
+   echo -e "${YELLOW}Source: ${SOURCE_TITLE}${NC}"
+   echo ""
+   echo -e "Attack commands used:"
+   for cmd in "${ATTACK_COMMANDS[@]}"; do
+     echo -e "  ${CYAN}$cmd${NC}"
+   done
+   ```
+
+### Credential and Permission Patterns
+
+- The starting user may have broad read access (e.g., ReadOnlyAccess) to enable the recon phase. This is a required permission for exploitation, not a helpful permission.
+- Credential switching works the same as other categories (`use_starting_user_creds`, `use_readonly_creds`).
+- The permission restriction library is sourced and used as normal.
+
+### Cleanup Script
+
+Cleanup scripts for attack simulation work identically to other categories -- remove artifacts created during the demo, preserve infrastructure.
+
 ## Quality Checklist
 
 Before completing, verify:

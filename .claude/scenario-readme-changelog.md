@@ -4,6 +4,38 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.2.0 — 2026-04-08
+
+Minor version bump: added Attack Simulation category support.
+
+**Changes:**
+- **Metadata block** -- added `Attack Simulation` to Category enum, `attack-simulation` to Path Type enum
+- **Conditional metadata fields** -- added Source URL, Source Title, Source Author, Source Date for Attack Simulation scenarios
+- **Canonical section structure** -- added `### Modifications from Original Attack` (Attack Simulation only, between `### Scenario Specific Resources Created` and `### Solution`)
+- **Section Content Rules** -- added Attack Simulation subsection documenting `## Objective` phrasing, `### Modifications from Original Attack` content, `## References` requirement, and demo script behavior
+
+**Motivation:**
+- New scenario category converts real-world breach blog posts into lab environments
+- Requires source attribution metadata and documentation of modifications made for lab safety/cost
+- Demo scripts follow chronological order of the original attack, including recon and failed attempts
+
+**Migration rules:**
+- No migration needed -- new category only, no structural changes to existing READMEs
+- Stamp `Schema Version: 4.2.0` for new Attack Simulation scenarios only
+
+```yaml
+migration:
+  tier: none
+  scope:
+    field: "category"
+    equals: "Attack Simulation"
+  requires_scenario_yaml_fields: [source]
+  affected_sections: []
+  operations: []
+```
+
+---
+
 ## 4.1.1 — 2026-04-07
 
 Patch: fixed `plabs enable`/`plabs disable` commands and TUI navigation instructions in deploy and teardown boilerplate.

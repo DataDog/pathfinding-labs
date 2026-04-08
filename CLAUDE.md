@@ -55,6 +55,7 @@ pathfinding-labs/
 │       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
 │       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
 │       ├── tool-testing/         # Edge cases for testing detection engines
+│       ├── attack-simulation/    # Real-world breach recreations
 │       └── cross-account/
 │           ├── dev-to-prod/     # Dev → Prod attack paths
 │           └── ops-to-prod/     # Ops → Prod attack paths
@@ -105,6 +106,13 @@ pathfinding-labs/
 - Can be single-account or cross-account, to-admin or to-bucket, one-hop or multi-hop
 - Focus on testing CSPM and security tool detection rather than new attack techniques
 - Deploy to: **prod account** (for single-account) or **cross-account**
+
+**Attack Simulation**
+- Real-world breach recreations from blog posts and incident reports
+- Demo scripts include failed attempts, recon commands, and enumeration steps mirroring the original attack
+- Attack map records only the actual successful attack path (not failed attempts)
+- Source attribution to original blog post or report
+- Deploy to: **prod account only** (cross-account movement from source may be simplified to single-account)
 
 ### Account Usage Strategy
 
@@ -820,6 +828,7 @@ enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = tru
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = true
 enable_tool_testing_resource_policy_bypass = true
 enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
+enable_attack_simulation_sysdig_8_minutes_to_admin = true
 ```
 
 ## Pathfinding Starting Users

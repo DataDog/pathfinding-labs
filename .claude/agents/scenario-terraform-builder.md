@@ -562,6 +562,27 @@ resource "aws_iam_role" "target_role" {
 }
 ```
 
+## Attack Simulation Scenarios
+
+Attack Simulation scenarios follow standard Terraform patterns with these additional considerations:
+
+1. **Cost consciousness**: Avoid expensive resources when the blog post describes them. Substitute:
+   - GPU instances (p4d, p5) → t3.micro or omit entirely
+   - Crypto mining workloads → simple Lambda function or skip
+   - LLMjacking (Bedrock large models) → skip or simulate cheaply
+   - Large EBS volumes → minimal 8GB volumes
+
+2. **Resource naming**: Uses the standard non-path-ID pattern: `pl-{environment}-{scenario-shorthand}-{purpose}`
+   - Example: `pl-prod-sysdig-8min-starting-user`, `pl-prod-sysdig-8min-lambda-role`
+
+3. **Broad read permissions**: The starting user typically needs broad read access (e.g., ReadOnlyAccess or a custom policy with List*/Describe*/Get* actions) to enable the recon phase of the attack. Model this as a required permission, not helpful.
+
+4. **Failure target resources**: Create resources that exist only so the attacker can fail against them (e.g., IAM roles named with common admin patterns that deny assumption). These produce realistic error messages during the demo script's failed attempt steps.
+
+5. **Provider**: Single-account (`aws.prod`) by default. Use cross-account providers only when the orchestrator explicitly specifies cross-account movement was preserved from the source blog.
+
+6. **The `pl-` prefix applies to ALL resources**: Even resources that represent attacker-created artifacts from the original attack (e.g., if the attacker created a user called `backdoor-admin`, name it `pl-prod-sysdig-8min-backdoor-admin`).
+
 ## Tags
 
 Always include these tags on every resource:

@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.1.1`**
+**Current schema version: `4.2.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -36,6 +36,7 @@ The sections below must appear in this exact order with these exact H2/H3/H4 hea
 
 ## Attack
 ### Scenario Specific Resources Created
+### Modifications from Original Attack  <- Attack Simulation only
 ### Solution
 ### Automated Demo
 #### Executing the automated demo_attack script
@@ -69,8 +70,8 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 
 **Required fields (all scenarios):**
 ```
-* **Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing|CTF}
-* **Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination|ctf}
+* **Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing|CTF|Attack Simulation}
+* **Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination|ctf|attack-simulation}
 * **Target:** {to-admin|to-bucket}
 * **Environments:** {prod|dev|operations|prod, dev}
 * **Cost Estimate:** {value, e.g., "$0/mo"}
@@ -103,6 +104,16 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 ```
 
 CTF scenarios omit the `### Automated Demo` section entirely (participants must discover the exploit themselves). They still include `### Solution` (linked to `solution.md`, which serves as the post-competition writeup/solution). CTF scenarios may have a `cleanup_attack.sh` if the attack modifies infrastructure state, but no `demo_attack.sh`.
+
+**Attack Simulation scenario additional fields** (after Cost Estimate, before Technique):
+```
+* **Source URL:** {url}
+* **Source Title:** {title}
+* **Source Author:** {author/organization}
+* **Source Date:** {YYYY-MM-DD}
+```
+
+Attack Simulation scenarios omit `Sub-Category`. They include all standard sections (including `### Automated Demo`). They add a `### Modifications from Original Attack` section under `## Attack` (see Section Content Rules below).
 
 **CSPM scenario additional fields** (after MITRE Techniques):
 ```
@@ -243,6 +254,19 @@ plabs apply
 ### `## Attack`
 
 Container section for attack content. No prose content at this level.
+
+#### Attack Simulation Scenarios
+
+Attack Simulation scenarios have these additional requirements under `## Attack`:
+
+- **`### Modifications from Original Attack`** -- appears after `### Scenario Specific Resources Created` and before `### Solution`. Documents what was changed from the original real-world attack for the lab environment. Use a bulleted list:
+  - Steps that were simplified (e.g., "Cross-account movement simplified to single-account role assumption")
+  - Steps that were omitted (e.g., "GPU instance provisioning omitted for cost")
+  - Steps that were simulated differently (e.g., "t3.micro used instead of p5.48xlarge")
+  - Resource substitutions and cost-saving changes
+- **`## Objective`** opening sentence references the real-world incident: "Your objective is to recreate the attack chain from [{source_title}]({source_url}), where an attacker moved from {starting point} to {target} by {technique summary}."
+- **`## References`** MUST include the source blog post as the first reference
+- **`### Automated Demo` description** should note that the demo script follows the chronological order of the original attack, including recon and failed attempts as described in the source blog post
 
 #### `### Scenario Specific Resources Created`
 
@@ -470,7 +494,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.1.1`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.2.0`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

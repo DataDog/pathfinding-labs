@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.2.0`
+### Current Version: `1.3.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3.0 | 2026-04-08 | Added `"CTF"` and `"Attack Simulation"` categories, `"ctf"` and `"attack-simulation"` path_types, `title` and `interactive_demo` core fields, `ctf` optional block, `source` optional block. Fixed `sub_category` requiredness (conditional, not always required). |
 | 1.2.1 | 2026-02-05 | Standardized `cost_estimate` format to `"$X/mo"` (e.g., `"$0/mo"`, `"$9/mo"`). Replaced `"free"` and other formats. |
 | 1.2.0 | 2025-11-03 | Added `pathfinding-cloud-id` to help map scenarios with Pathfinding.cloud paths when applicable. |
 | 1.1.0 | 2025-10-21 | Added `cross-account` path_type; Changed `no-hop` to `self-escalation`; Added `privilege-chaining` and `cross-account-escalation` sub_categories; Added principal counting rules |
@@ -72,11 +73,13 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.0.0"
+schema_version: "1.3.0"
 name: "iam-putuserpolicy"
+title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
 cost_estimate: "$0/mo"
 pathfinding-cloud-id: IAM-005
+interactive_demo: false
 ```
 
 #### Fields
@@ -85,9 +88,11 @@ pathfinding-cloud-id: IAM-005
 |-------|------|----------|-------------|
 | `schema_version` | string | ✅ Yes | Schema version this file conforms to. Format: `"X.Y.Z"` |
 | `name` | string | ✅ Yes | Unique identifier for the scenario. Should match directory name. Use kebab-case. |
+| `title` | string | No | Human-readable scenario title. Used as the README H1 heading. If omitted, agents derive a title from the name and technique. |
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
 | `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario. Always use `"$X/mo"` format rounded to nearest dollar (e.g., `"$0/mo"`, `"$9/mo"`, `"$321/mo"`) |
-| `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. | 
+| `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
+| `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
 
 #### Cost Estimate Examples
 
@@ -127,7 +132,7 @@ environments:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `category` | string | ✅ Yes | High-level scenario category |
-| `sub_category` | string | ✅ Yes | Specific technique or finding type |
+| `sub_category` | string | Conditional | Required for `self-escalation` and `one-hop` path_types only. Not used for multi-hop, cross-account, CTF, Attack Simulation, CSPM, or Tool Testing. |
 | `path_type` | string | ✅ Yes | Number of privilege escalation hops |
 | `target` | string | ✅ Yes | Ultimate goal of the attack |
 | `environments` | array | ✅ Yes | List of AWS accounts involved |
@@ -142,6 +147,8 @@ environments:
 | `"CSPM: Misconfig"` | Single-condition security misconfiguration | EC2 with admin role, S3 bucket public, etc. |
 | `"CSPM: Toxic Combination"` | Multiple compounding misconfigurations | Public Lambda + Admin Role, etc. |
 | `"Tool Testing"` | Detection engine edge cases and testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
+| `"CTF"` | Capture-the-flag challenge with real application infrastructure | AI chatbot with prompt injection, web API with SSRF, etc. |
+| `"Attack Simulation"` | Real-world breach recreation as a lab environment | Sysdig "8 Minutes to Admin", Unit42 reports, etc. |
 
 ##### `sub_category`
 
@@ -160,9 +167,13 @@ These values align with [pathfinding.cloud](https://pathfinding.cloud) categorie
 **Not used for:**
 - `multi-hop` path_type - chains multiple techniques (e.g., self-escalation + new-passrole)
 - `cross-account` path_type - spans accounts, often multiple techniques
+- `ctf` path_type - CTF scenarios
+- `attack-simulation` path_type - attack simulation scenarios
 - `CSPM: Misconfig` category - the category name is descriptive enough
 - `CSPM: Toxic Combination` category - the category name is descriptive enough
 - `Tool Testing` category - the category name is descriptive enough
+- `CTF` category - the category name is descriptive enough
+- `Attack Simulation` category - the category name is descriptive enough
 
 **For `category: "CSPM: Misconfig"` or `"CSPM: Toxic Combination"` (optional):**
 
@@ -198,6 +209,18 @@ These values align with [pathfinding.cloud](https://pathfinding.cloud) categorie
 |-------|-------------------|-------------|-------------|
 | `"single-condition"` | No | Single security misconfiguration | CSPM: Misconfig category |
 | `"toxic-combination"` | No | Multiple compounding misconfigurations | CSPM: Toxic Combination category |
+
+**For CTF scenarios:**
+
+| Value | Has sub_category? | Description | When to Use |
+|-------|-------------------|-------------|-------------|
+| `"ctf"` | No | Capture-the-flag challenge | CTF category |
+
+**For Attack Simulation scenarios:**
+
+| Value | Has sub_category? | Description | When to Use |
+|-------|-------------------|-------------|-------------|
+| `"attack-simulation"` | No | Real-world breach recreation | Attack Simulation category |
 
 **Principal Counting Rules (for Privilege Escalation):**
 - Count only the IAM principals involved in the escalation path (users, roles)
@@ -549,6 +572,10 @@ terraform:
 
 **Cross-Account Format**: `enable_cross_account_{source_to_dest}_{name}`
 
+**CTF Format**: `enable_ctf_{scenario_name}`
+
+**Attack Simulation Format**: `enable_attack_simulation_{scenario_name}`
+
 **Examples:**
 
 ```yaml
@@ -578,6 +605,12 @@ variable_name: "enable_tool_testing_exclusive_resource_policy"
 variable_name: "enable_cross_account_dev_to_prod_simple_role_assumption"
 variable_name: "enable_cross_account_dev_to_prod_passrole_lambda_admin"
 variable_name: "enable_cross_account_ops_to_prod_simple_role_assumption"
+
+# CTF
+variable_name: "enable_ctf_ai_chatbot_to_admin"
+
+# Attack Simulation
+variable_name: "enable_attack_simulation_sysdig_8_minutes_to_admin"
 ```
 
 #### Module Path
@@ -608,7 +641,57 @@ module_path: "modules/scenarios/tool-testing/exclusive-resource-policy"
 
 # Cross-account
 module_path: "modules/scenarios/cross-account/dev-to-prod/simple-role-assumption"
+
+# CTF
+module_path: "modules/scenarios/ctf/ai-chatbot-to-admin"
+
+# Attack Simulation
+module_path: "modules/scenarios/attack-simulation/sysdig-8-minutes-to-admin"
 ```
+
+---
+
+### CTF Metadata
+
+Optional block for CTF scenarios. Required when `category` is `"CTF"`.
+
+```yaml
+ctf:
+  difficulty: "beginner"
+  flag_location: "SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)"
+  variant: "ctf-001"
+```
+
+#### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ctf.difficulty` | string | Yes (if ctf block) | `"beginner"`, `"intermediate"`, or `"advanced"` |
+| `ctf.flag_location` | string | Yes (if ctf block) | Where the flag is stored and what access is needed to retrieve it |
+| `ctf.variant` | string | No | CTF variant identifier |
+
+---
+
+### Source Metadata
+
+Optional block for Attack Simulation scenarios. Required when `category` is `"Attack Simulation"`.
+
+```yaml
+source:
+  url: "https://www.sysdig.com/blog/ai-assisted-cloud-intrusion-achieves-admin-access-in-8-minutes"
+  title: "AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes"
+  author: "Sysdig Threat Research Team"
+  date: "2025-06-12"
+```
+
+#### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source.url` | string | Yes (if source block) | URL of the blog post or report |
+| `source.title` | string | Yes (if source block) | Title of the source material |
+| `source.author` | string | Yes (if source block) | Author or organization that published the report |
+| `source.date` | string | Yes (if source block) | Publication date in `YYYY-MM-DD` format |
 
 ---
 
@@ -920,6 +1003,188 @@ terraform:
 
 ---
 
+### Example 5: CTF Scenario
+
+```yaml
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.3.0"
+name: "ai-chatbot-to-admin"
+pathfinding-cloud-id: "ctf-001"
+title: "AcmeBot"
+description: "Acme Corp has deployed an AI-powered customer assistant at a public Lambda endpoint. Escalate to administrative access and retrieve the flag."
+cost_estimate: "$1/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "CTF"
+path_type: "ctf"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# CTF METADATA
+# =============================================================================
+ctf:
+  difficulty: "beginner"
+  flag_location: "SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)"
+  variant: "ctf-001"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "https://{function_url_id}.lambda-url.{region}.on.aws/ (public chatbot)"
+    - "arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-001-acmebot"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role"
+
+  summary: "Browser → AcmeBot chatbot (public URL) → prompt injection → run_command tool (shell exec) → process.env (AWS creds) → chatbot role (AdministratorAccess) → SSM GetParameter → flag"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "anonymous (public URL)"
+      principal_type: "public"
+      permissions:
+        - permission: "lambda:InvokeFunctionUrl"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-ctf-001-acmebot"
+
+  helpful:
+    - principal: "pl-prod-ctf-001-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:ListFunctions"
+          purpose: "Enumerate Lambda functions to discover the chatbot"
+        - permission: "lambda:GetFunctionUrlConfig"
+          purpose: "Retrieve the public Function URL for the chatbot"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0001 - Initial Access"
+    - "TA0006 - Credential Access"
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1190 - Exploit Public-Facing Application"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+    - "T1059 - Command and Scripting Interpreter"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_ctf_ai_chatbot_to_admin"
+  module_path: "modules/scenarios/ctf/ai-chatbot-to-admin"
+```
+
+---
+
+### Example 6: Attack Simulation
+
+```yaml
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.3.0"
+name: "sysdig-8-minutes-to-admin"
+title: "AI-Assisted Cloud Intrusion: 8 Minutes to Admin"
+description: "Recreation of a real-world attack where compromised IAM credentials led to admin access via Lambda code injection in under 8 minutes"
+cost_estimate: "$0/mo"
+
+# =============================================================================
+# SOURCE METADATA
+# =============================================================================
+source:
+  url: "https://www.sysdig.com/blog/ai-assisted-cloud-intrusion-achieves-admin-access-in-8-minutes"
+  title: "AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes"
+  author: "Sysdig Threat Research Team"
+  date: "2025-06-12"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Attack Simulation"
+path_type: "attack-simulation"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-sysdig-8min-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-sysdig-8min-lambda-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-sysdig-8min-admin-user"
+
+  summary: "starting_user (ReadOnlyAccess + Lambda write) → recon → (lambda:UpdateFunctionCode) → Lambda role credentials → (iam:CreateAccessKey) → admin_user credentials → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-sysdig-8min-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-sysdig-8min-*"
+        - permission: "lambda:UpdateFunctionConfiguration"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-sysdig-8min-*"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-sysdig-8min-*"
+    - principal: "pl-prod-sysdig-8min-lambda-role"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-sysdig-8min-admin-user"
+
+  helpful:
+    - principal: "pl-prod-sysdig-8min-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover IAM users and identify admin targets"
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover Lambda functions to target for code injection"
+        - permission: "sts:AssumeRole"
+          purpose: "Attempt to assume various roles during recon"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0007 - Discovery"
+    - "TA0002 - Execution"
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1526 - Cloud Service Discovery"
+    - "T1059 - Command and Scripting Interpreter"
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_attack_simulation_sysdig_8_minutes_to_admin"
+  module_path: "modules/scenarios/attack-simulation/sysdig-8-minutes-to-admin"
+```
+
+---
+
 ## Guidelines and Best Practices
 
 ### 1. Naming Conventions
@@ -1073,10 +1338,10 @@ name: "example"
 description: "Example scenario"
 
 # ✅ Good
-schema_version: "1.0.0"
+schema_version: "1.3.0"
 name: "example"
 description: "Example scenario"
-cost_estimate: "free"
+cost_estimate: "$0/mo"
 ```
 
 **2. Invalid category values**
@@ -1150,5 +1415,5 @@ For questions about the schema or suggestions for improvements:
 2. Reference this SCHEMA.md file in your question
 3. Provide examples when possible
 
-**Last Updated:** 2026-02-05
-**Schema Version:** 1.2.1
+**Last Updated:** 2026-04-08
+**Schema Version:** 1.3.0

@@ -218,6 +218,33 @@ When the scenario starts from unauthenticated/public access (indicated by `princ
 - `solution.md` `## The Challenge` section: describe what the anonymous attacker starts with (a public URL, a webpage, an open API endpoint) rather than IAM credentials
 - Demo scripts do not need `use_starting_creds()` -- the attack begins with `curl`, a browser, or similar unauthenticated HTTP calls
 
+### Category: Attack Simulation
+
+Attack Simulation scenarios recreate real-world breaches as lab environments. Key differences from other categories:
+
+**README specifics:**
+- **Title**: Use a descriptive title derived from the blog post (e.g., "AI-Assisted Cloud Intrusion: 8 Minutes to Admin")
+- **Metadata block**: Includes Source URL, Source Title, Source Author, Source Date fields after Cost Estimate
+- **`## Objective`**: References the real-world incident. Opening sentence pattern: "Your objective is to recreate the attack chain from [{source_title}]({source_url}), where an attacker moved from {starting point} to {target} by {brief technique summary}."
+- **`### Modifications from Original Attack`**: Required section under `## Attack`, placed after `### Scenario Specific Resources Created` and before `### Solution`. Documents:
+  - Steps that were simplified (e.g., "Cross-account movement simplified to single-account role assumption")
+  - Steps that were omitted (e.g., "GPU instance provisioning omitted for cost")
+  - Steps that were simulated differently (e.g., "t3.micro used instead of p5.48xlarge")
+  - Resource substitutions and cost-saving changes
+- **`## References`**: MUST include the source blog post as the first reference
+- **`## Defend`**: Should reference detection opportunities from the real incident where possible
+
+**solution.md specifics:**
+- Opening frames the real-world incident and its significance
+- `## The Challenge` describes the lab setup and how it maps to the real attack
+- Exploitation sections reference the original attack timeline
+- `## What Happened` connects the lab back to the real incident and its impact
+
+**attack_map.yaml specifics:**
+- Records only the successful attack path (not failed attempts or recon)
+- Nodes and edges follow the standard schema
+- Starting node description can reference the source material for context
+
 ## Quality Standards
 
 Before considering your work done, run through both compliance checklists:

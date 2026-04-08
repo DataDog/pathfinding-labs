@@ -19,6 +19,14 @@ type Scenario struct {
 	CostEstimate       string `yaml:"cost_estimate"`
 	PathfindingCloudID string `yaml:"pathfinding-cloud-id"`
 
+	// Source metadata (for Attack Simulation scenarios)
+	Source struct {
+		URL    string `yaml:"url"`
+		Title  string `yaml:"title"`
+		Author string `yaml:"author"`
+		Date   string `yaml:"date"`
+	} `yaml:"source"`
+
 	// Classification
 	Category     string   `yaml:"category"`
 	SubCategory  string   `yaml:"sub_category"`
@@ -156,6 +164,8 @@ func (s *Scenario) CategoryShort() string {
 		return "tool-testing"
 	case strings.Contains(s.Terraform.ModulePath, "cross-account"):
 		return "cross-account"
+	case strings.Contains(s.Terraform.ModulePath, "attack-simulation"):
+		return "attack-simulation"
 	case strings.Contains(s.Terraform.ModulePath, "/ctf/"):
 		return "ctf"
 	default:
