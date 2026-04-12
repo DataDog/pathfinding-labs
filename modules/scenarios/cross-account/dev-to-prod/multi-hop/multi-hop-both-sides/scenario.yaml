@@ -6,6 +6,7 @@ name: "multi-hop-both-sides"
 title: "Dev to Prod Multi-Hop Both Accounts to Admin"
 description: "Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

@@ -1,0 +1,142 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.4.0"
+name: "sysdig-8-minutes-to-admin"
+title: "AI-Assisted Cloud Intrusion: 8 Minutes to Admin"
+description: "Recreation of the Nov 2025 Sysdig TRT breach: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+interactive_demo: false
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Attack Simulation"
+path_type: "attack-simulation"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-8min-starting-user"
+    - "arn:aws:s3:::pl-prod-8min-rag-data-{account_id}-{suffix}"
+    - "arn:aws:iam::{account_id}:user/pl-prod-8min-compromised-user"
+    - "arn:aws:lambda:{region}:{account_id}:function/pl-prod-8min-ec2-init"
+    - "arn:aws:iam::{account_id}:role/pl-prod-8min-ec2-init-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-8min-frick"
+
+  summary: "pl-prod-8min-starting-user → (s3:ListBucket + s3:GetObject) → private RAG S3 bucket (credentials file embedded) → extracts pl-prod-8min-compromised-user creds → (lambda:UpdateFunctionCode + lambda:UpdateFunctionConfiguration + lambda:InvokeFunction) → pl-prod-8min-ec2-init Lambda → (iam:CreateAccessKey via ec2-init-role) → pl-prod-8min-frick (admin) → (iam:CreateUser + iam:AttachUserPolicy) → backdoor-admin (AdministratorAccess)"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-8min-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-prod-8min-rag-data-{account_id}-{suffix}"
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-prod-8min-rag-data-{account_id}-{suffix}/*"
+    - principal: "pl-prod-8min-compromised-user"
+      principal_type: "user"
+      permissions:
+        - permission: "lambda:UpdateFunctionCode"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-8min-ec2-init"
+        - permission: "lambda:UpdateFunctionConfiguration"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-8min-ec2-init"
+        - permission: "lambda:InvokeFunction"
+          resource: "arn:aws:lambda:*:*:function/pl-prod-8min-ec2-init"
+    - principal: "pl-prod-8min-ec2-init-role"
+      principal_type: "role"
+      permissions:
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-8min-frick"
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::*:user/pl-prod-8min-admingh"
+
+  helpful:
+    - principal: "pl-prod-8min-compromised-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListUsers"
+          purpose: "Discover admin user frick and other high-privilege accounts to target"
+        - permission: "iam:ListAccessKeys"
+          purpose: "Enumerate existing access keys to understand credential posture"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Confirm frick has AdministratorAccess policy attached"
+        - permission: "iam:GetUser"
+          purpose: "Get detailed info on targeted users"
+        - permission: "iam:ListRoles"
+          purpose: "Discover assumable roles for lateral movement"
+        - permission: "iam:GetRole"
+          purpose: "Inspect role trust policies to identify which roles can be assumed"
+        - permission: "lambda:ListFunctions"
+          purpose: "Discover EC2-init Lambda function with the privileged execution role"
+        - permission: "lambda:GetFunction"
+          purpose: "View Lambda configuration to identify its execution role and permissions"
+        - permission: "s3:ListAllMyBuckets"
+          purpose: "Enumerate all S3 buckets as data collection targets after escalation"
+        - permission: "bedrock:ListFoundationModels"
+          purpose: "Enumerate available Bedrock models for unauthorized invocation"
+        - permission: "bedrock:GetModelInvocationLoggingConfiguration"
+          purpose: "Verify Bedrock logging is disabled before invoking models"
+        - permission: "ssm:DescribeParameters"
+          purpose: "Discover SSM parameters containing sensitive configuration"
+        - permission: "secretsmanager:ListSecrets"
+          purpose: "Discover secrets available for data collection"
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity at each stage of the attack chain"
+        - permission: "sts:AssumeRole"
+          purpose: "Assume low-privilege roles (sysadmin, developer, account) for reconnaissance"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0001 - Initial Access"
+    - "TA0007 - Discovery"
+    - "TA0004 - Privilege Escalation"
+    - "TA0003 - Persistence"
+    - "TA0005 - Defense Evasion"
+    - "TA0009 - Collection"
+    - "TA0011 - Impact"
+  techniques:
+    - "T1552.001 - Credentials In Files"
+    - "T1087.004 - Cloud Accounts"
+    - "T1613 - Container and Resource Discovery"
+    - "T1648 - Serverless Execution"
+    - "T1098.001 - Additional Cloud Credentials"
+    - "T1078.004 - Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1496 - Resource Hijacking"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_attack_simulation_sysdig_8_minutes_to_admin"
+  module_path: "modules/scenarios/attack-simulation/sysdig-8-minutes-to-admin"
+
+# =============================================================================
+# SOURCE
+# =============================================================================
+source:
+  url: "https://www.sysdig.com/blog/ai-assisted-cloud-intrusion-achieves-admin-access-in-8-minutes"
+  title: "AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes"
+  author: "Alessandro Brucato and Michael Clark (Sysdig Threat Research Team)"
+  date: "2026-02-03"
+
+# =============================================================================
+# LAB MODIFICATIONS
+# =============================================================================
+modifications:
+  - "In the original attack, the entry point was a publicly accessible S3 bucket containing embedded IAM credentials discovered via external recon. In this lab, the RAG data bucket is private — a starting IAM user (pl-prod-8min-starting-user) is pre-provisioned with read access to avoid publicly exposing real AWS credentials."
+  - "In the original attack, the attacker first attempted to launch p5.48xlarge GPU instances for unauthorized AI model training (which failed with InsufficientInstanceCapacity) before succeeding with p3.2xlarge. The lab demo replicates both attempts exactly, but the p3.2xlarge instance auto-terminates after 2 hours as a cost safeguard."

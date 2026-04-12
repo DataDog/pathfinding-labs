@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $37/mo
+* **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** Pass privileged role to MWAA environment with malicious startup script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment`
 * **Schema Version:** 4.1.1
@@ -97,7 +98,7 @@ The script will:
 4. Create an MWAA environment with the admin execution role
 5. Wait for environment creation (20-30 minutes with progress updates)
 6. Verify successful privilege escalation by demonstrating admin access
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

@@ -67,6 +67,7 @@ Examples:
 - `enable_tool_testing_resource_policy_bypass` (tool testing)
 - `enable_cross_account_dev_to_prod_simple_role_assumption` (cross-account)
 - `enable_ctf_ai_chatbot_to_admin` (CTF)
+- `enable_attack_simulation_{scenario_name}` (Attack Simulation)
 
 #### Variable Format
 
@@ -120,6 +121,8 @@ Example sections (organized by account type, path_type, and target):
 # CROSS-ACCOUNT OPS-TO-PROD SCENARIOS NON-FREE
 # CTF SCENARIOS
 # CTF SCENARIOS NON-FREE
+# ATTACK SIMULATION SCENARIOS
+# ATTACK SIMULATION SCENARIOS NON-FREE
 
 ```
 
@@ -417,6 +420,14 @@ Find the appropriate table based on scenario type and add a new row.
 | `dev-to-prod/simple-role-assumption` | One-hop | Direct cross-account role assumption |
 ```
 
+##### For Attack Simulation
+```markdown
+### Attack Simulation
+| Scenario | Source | Description |
+|----------|--------|-------------|
+| `{scenario-name}` | [{source_author}]({source_url}) | {description} |
+```
+
 #### Placement
 - Add in alphabetical order within the table
 - Maintain consistent column alignment
@@ -524,6 +535,30 @@ module "ctf_{scenario_name}" {
 }
 ```
 
+### Attack Simulation Scenario
+```hcl
+# variables.tf
+variable "enable_attack_simulation_{scenario_name}" {
+  description = "Enable: attack-simulation → {scenario-name}"
+  type        = bool
+  default     = false
+}
+
+# main.tf  
+module "attack_simulation_{scenario_name}" {
+  count  = var.enable_attack_simulation_{scenario_name} ? 1 : 0
+  source = "./modules/scenarios/attack-simulation/{scenario-name}"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+```
+
 ### CSPM Toxic Combination Scenario
 ```hcl
 # variables.tf
@@ -604,6 +639,8 @@ Always follow this pattern for clarity:
 **Cross-Account**: `Enable: cross-account → {source}-to-{dest} → {hop_type} → {scenario-name}`
 
 **CTF**: `Enable: ctf → {scenario-name}`
+
+**Attack Simulation**: `"Enable: attack-simulation → {scenario-name}"`
 
 Examples:
 - `Enable: single-account → privesc-self-escalation → to-admin → iam-putuserpolicy`

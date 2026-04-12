@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Update existing Glue job to use privileged role and malicious script, then create trigger for automated execution with persistence
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger`
 * **Schema Version:** 4.1.1
@@ -91,7 +92,7 @@ The script will:
 6. Create a SCHEDULED trigger with `--start-on-creation` for automatic execution
 7. Wait for the trigger to activate and execute the job (typically 1-2 minutes)
 8. Verify successful privilege escalation by testing admin permissions
-9. Output standardized test results for automation
+
 
 **Note on Costs**: AWS Glue Python shell jobs cost approximately $0.44 per DPU-hour. This demo runs briefly (~30 seconds) and costs less than $0.01 per execution. The trigger is scheduled but will be cleaned up immediately after the demo. Total estimated cost: **~$0.10/month** for occasional testing.
 

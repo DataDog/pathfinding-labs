@@ -123,12 +123,6 @@ variable "operations_account_aws_profile" {
   default     = ""
 }
 
-variable "github_repo" {
-  description = "The github repo for the OIDC-GitHub challenge"
-  type        = string
-  default     = null
-}
-
 variable "resource_suffix" {
   description = "Random suffix for globally namespaced resources to prevent conflicts"
   type        = string

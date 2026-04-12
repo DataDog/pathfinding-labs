@@ -6,6 +6,7 @@ name: "lambda-updatefunctioncode"
 title: "Lambda Function Code Update to Admin"
 description: "User with lambda:UpdateFunctionCode can modify existing Lambda function code to execute malicious logic under the function's privileged role and gain admin access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "lambda-003"
 
 # =============================================================================

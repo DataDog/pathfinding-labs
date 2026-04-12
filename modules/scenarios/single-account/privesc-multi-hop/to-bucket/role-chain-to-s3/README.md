@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Three-hop role assumption chain to reach S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3`
 * **Schema Version:** 4.1.1

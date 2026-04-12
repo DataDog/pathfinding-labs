@@ -73,9 +73,15 @@ type Model struct {
 	patternInput       textinput.Model // input for pattern entry
 
 	// Disable operation state
-	choosingDisableType bool            // true when showing disable type choice
-	enteringDisablePattern bool         // true when entering a disable pattern
+	choosingDisableType    bool            // true when showing disable type choice
+	enteringDisablePattern bool            // true when entering a disable pattern
 	disablePatternInput    textinput.Model // input for disable pattern entry
+
+	// Per-scenario config editing state
+	editingScenarioConfig     bool            // true while user is editing a config key
+	editingConfigKeyIndex     int             // index into scenario.Config slice
+	editingConfigScenarioName string          // name of the scenario being configured
+	scenarioConfigInput       textinput.Model // input widget for the config value
 
 	// Simple action confirmation state (for deploy, demo, cleanup, plan)
 	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
@@ -179,6 +185,11 @@ func NewModel(paths *repo.Paths) *Model {
 	di.Placeholder = "e.g., iam-*, lambda-001, one-hop/*"
 	di.CharLimit = 50
 
+	// Input for per-scenario config editing
+	sci := textinput.New()
+	sci.Placeholder = "Enter value..."
+	sci.CharLimit = 200
+
 	m := &Model{
 		paths:               paths,
 		styles:              styles,
@@ -193,6 +204,7 @@ func NewModel(paths *repo.Paths) *Model {
 		confirmInput:        ci,
 		patternInput:        pi,
 		disablePatternInput: di,
+		scenarioConfigInput: sci,
 		currentPane:         PaneScenarios,
 		loading:             true,
 	}
@@ -788,6 +800,22 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle per-scenario config editing
+	if m.editingScenarioConfig {
+		switch {
+		case key.Matches(msg, m.keys.Esc):
+			m.editingScenarioConfig = false
+			m.scenarioConfigInput.Blur()
+			return m, nil
+		case msg.Type == tea.KeyEnter:
+			return m.saveScenarioConfigValue()
+		default:
+			var cmd tea.Cmd
+			m.scenarioConfigInput, cmd = m.scenarioConfigInput.Update(msg)
+			return m, cmd
+		}
+	}
+
 	// Handle filter mode
 	if m.filtering {
 		switch {
@@ -876,6 +904,12 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.showDestroyTypeChoice()
 
 	case key.Matches(msg, m.keys.Enable):
+		// In the details pane, 'e' edits per-scenario config when the scenario has config keys
+		if m.currentPane == PaneDetails {
+			if selected := m.scenariosPane.Selected(); selected != nil && selected.Scenario.HasConfig() {
+				return m.startEditScenarioConfig(selected.Scenario)
+			}
+		}
 		return m, m.showEnableTypeChoice()
 
 	case key.Matches(msg, m.keys.Disable):
@@ -1008,6 +1042,23 @@ func (m *Model) updateDetails() {
 	m.details.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed, selected.DemoActive)
 	m.actions.SetScenario(selected.Scenario, selected.Enabled, selected.Deployed, selected.DemoActive)
 
+	// Pass per-scenario config values to the details pane.
+	// Re-read config from disk to pick up changes made via the CLI while the TUI is open.
+	if selected.Scenario.HasConfig() {
+		if !m.editingScenarioConfig {
+			if freshCfg, err := config.Load(); err == nil {
+				m.config = freshCfg
+			}
+		}
+		if m.config != nil {
+			m.details.SetConfigValues(m.config.GetAllScenarioConfigs(selected.Scenario.Name))
+		} else {
+			m.details.SetConfigValues(nil)
+		}
+	} else {
+		m.details.SetConfigValues(nil)
+	}
+
 	// Get credentials if deployed (using cached outputs)
 	if selected.Deployed && m.cachedOutputs != nil {
 		outputName := strings.TrimPrefix(selected.Scenario.Terraform.VariableName, "enable_")
@@ -1033,6 +1084,26 @@ func (m *Model) updateDetailsForSelected() {
 }
 
 func (m *Model) toggleSelected() tea.Cmd {
+	// Check BEFORE toggling: if about to enable, validate required config keys are set
+	current := m.scenariosPane.Selected()
+	if current != nil && m.config != nil && !current.Enabled && current.Scenario.HasConfig() {
+		var missingKeys []string
+		for _, cfgKey := range current.Scenario.Config {
+			if cfgKey.Required {
+				val, _ := m.config.GetScenarioConfig(current.Scenario.Name, cfgKey.Key)
+				if val == "" {
+					missingKeys = append(missingKeys, cfgKey.Key)
+				}
+			}
+		}
+		if len(missingKeys) > 0 {
+			m.overlay.Show(OverlayError, "Config Required",
+				fmt.Sprintf("Cannot enable %s\n\nMissing required config:\n  %s\n\nSwitch to the Details pane (Tab) and press 'e' to set these values.",
+					current.Scenario.Name, strings.Join(missingKeys, "\n  ")))
+			return nil
+		}
+	}
+
 	scenario := m.scenariosPane.Toggle()
 	if scenario == nil || m.config == nil {
 		return nil
@@ -1085,6 +1156,18 @@ func (m *Model) updateInfoCounts() {
 }
 
 func (m *Model) runDeploy() tea.Cmd {
+	// Block deploy if any enabled scenario is missing required config
+	if missing := m.getMissingRequiredConfigs(); len(missing) > 0 {
+		var sb strings.Builder
+		sb.WriteString("Cannot deploy — required configuration is missing:\n\n")
+		for _, msg := range missing {
+			sb.WriteString("  " + msg + "\n")
+		}
+		sb.WriteString("\nSwitch to the Details pane (Tab) and press 'e' to set config values.")
+		m.overlay.Show(OverlayError, "Config Required", sb.String())
+		return nil
+	}
+
 	// Check for disabled scenarios with active demos
 	warningIDs := m.scenariosPane.GetDisabledDemoActiveScenarioIDs()
 	if len(warningIDs) > 0 {
@@ -1099,6 +1182,35 @@ func (m *Model) runDeploy() tea.Cmd {
 }
 
 func (m *Model) executeDeploy() tea.Cmd {
+	// Re-read config from disk and sync tfvars before running terraform.
+	// This picks up any changes made via the CLI while the TUI was open,
+	// mirroring what 'plabs apply' does.
+	if freshCfg, err := config.Load(); err == nil {
+		m.config = freshCfg
+	}
+	if m.config != nil {
+		// Detect which service-linked roles already exist so Terraform doesn't
+		// try to create duplicates (mirrors CLI deploy behavior).
+		//
+		// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
+		// If Terraform already owns the SLR in state, keep create=true — flipping it to
+		// false would make count=0 and cause Terraform to destroy the SLR.
+		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.AWS.Prod.Profile); err == nil {
+			inState := &aws.ServiceLinkedRoleStatus{}
+			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
+				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
+					inState = aws.SLRInState(stateResources)
+				}
+			}
+			m.config.SLRFlags = &config.ServiceLinkedRoleFlags{
+				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
+			}
+		}
+		_ = m.config.SyncTFVars(m.paths.TerraformDir)
+	}
 	m.overlay.ShowRunning(OverlayTerraform, "Apply")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
 	cmd.Env = m.buildTerraformEnv()
@@ -1112,6 +1224,27 @@ func (m *Model) runPlan() tea.Cmd {
 }
 
 func (m *Model) executePlan() tea.Cmd {
+	// Re-read config, detect SLRs, and sync tfvars — same as executeDeploy.
+	if freshCfg, err := config.Load(); err == nil {
+		m.config = freshCfg
+	}
+	if m.config != nil {
+		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.AWS.Prod.Profile); err == nil {
+			inState := &aws.ServiceLinkedRoleStatus{}
+			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
+				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
+					inState = aws.SLRInState(stateResources)
+				}
+			}
+			m.config.SLRFlags = &config.ServiceLinkedRoleFlags{
+				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
+			}
+		}
+		_ = m.config.SyncTFVars(m.paths.TerraformDir)
+	}
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
 	cmd.Env = m.buildTerraformEnv()
@@ -1334,12 +1467,30 @@ func (m *Model) executeEnableAll() tea.Cmd {
 	singleAccountMode := m.config.IsSingleAccountMode()
 	enabledCount := 0
 	skippedCrossAccount := 0
+	skippedMissingConfig := 0
 
 	for _, s := range m.allScenarios {
 		// Skip cross-account scenarios in single-account mode
 		if singleAccountMode && s.RequiresMultiAccount() {
 			skippedCrossAccount++
 			continue
+		}
+		// Skip scenarios with missing required config
+		if s.HasConfig() {
+			missingRequired := false
+			for _, cfgKey := range s.Config {
+				if cfgKey.Required {
+					val, _ := m.config.GetScenarioConfig(s.Name, cfgKey.Key)
+					if val == "" {
+						missingRequired = true
+						break
+					}
+				}
+			}
+			if missingRequired {
+				skippedMissingConfig++
+				continue
+			}
 		}
 		m.config.EnableScenario(s.Terraform.VariableName)
 		enabledCount++
@@ -1370,6 +1521,9 @@ func (m *Model) executeEnableAll() tea.Cmd {
 	if skippedCrossAccount > 0 {
 		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
 	}
+	if skippedMissingConfig > 0 {
+		msg += fmt.Sprintf("\n\nSkipped %d scenario(s) with missing required config. Set values via the Details pane (Tab → e).", skippedMissingConfig)
+	}
 	msg += "\n\nPress [a] to apply."
 	m.overlay.Show(OverlayInfo, "Enable All", msg)
 	return nil
@@ -1384,6 +1538,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 	singleAccountMode := m.config.IsSingleAccountMode()
 	enabledCount := 0
 	skippedCrossAccount := 0
+	skippedMissingConfigPattern := 0
 	var enabledNames []string
 
 	for _, s := range m.allScenarios {
@@ -1398,12 +1553,30 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 			continue
 		}
 
+		// Skip scenarios with missing required config
+		if s.HasConfig() {
+			missingRequired := false
+			for _, cfgKey := range s.Config {
+				if cfgKey.Required {
+					val, _ := m.config.GetScenarioConfig(s.Name, cfgKey.Key)
+					if val == "" {
+						missingRequired = true
+						break
+					}
+				}
+			}
+			if missingRequired {
+				skippedMissingConfigPattern++
+				continue
+			}
+		}
+
 		m.config.EnableScenario(s.Terraform.VariableName)
 		enabledCount++
 		enabledNames = append(enabledNames, s.UniqueID())
 	}
 
-	if enabledCount == 0 && skippedCrossAccount == 0 {
+	if enabledCount == 0 && skippedCrossAccount == 0 && skippedMissingConfigPattern == 0 {
 		m.overlay.Show(OverlayError, "Enable Pattern", fmt.Sprintf("No scenarios match pattern: %s", pattern))
 		return nil
 	}
@@ -1440,6 +1613,9 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 	}
 	if skippedCrossAccount > 0 {
 		msg += fmt.Sprintf("\n\nSkipped %d cross-account scenario(s) (single-account mode).", skippedCrossAccount)
+	}
+	if skippedMissingConfigPattern > 0 {
+		msg += fmt.Sprintf("\n\nSkipped %d scenario(s) with missing required config. Set values via the Details pane (Tab → e).", skippedMissingConfigPattern)
 	}
 	if enabledCount > 0 {
 		msg += "\n\nPress [a] to apply."
@@ -2089,6 +2265,11 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderDisablePatternBar()
 	}
 
+	// Per-scenario config editing bar
+	if m.editingScenarioConfig {
+		return content + "\n" + m.renderScenarioConfigEditBar()
+	}
+
 	return content
 }
 
@@ -2310,6 +2491,134 @@ func (m *Model) renderDisablePatternBar() string {
 		promptStyle.Render("Enter pattern: ") +
 		m.disablePatternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+// getMissingRequiredConfigs returns human-readable entries for every enabled scenario
+// that has at least one required config key with no value set.
+func (m *Model) getMissingRequiredConfigs() []string {
+	if m.config == nil {
+		return nil
+	}
+	var missing []string
+	for _, item := range m.scenariosPane.GetItems() {
+		if !item.Enabled || !item.Scenario.HasConfig() {
+			continue
+		}
+		for _, cfgKey := range item.Scenario.Config {
+			if !cfgKey.Required {
+				continue
+			}
+			val, _ := m.config.GetScenarioConfig(item.Scenario.Name, cfgKey.Key)
+			if val == "" {
+				missing = append(missing, fmt.Sprintf("%s: %q", item.Scenario.Name, cfgKey.Key))
+			}
+		}
+	}
+	return missing
+}
+
+// startEditScenarioConfig begins inline editing of per-scenario config keys.
+// Called when the user presses 'e' while the details pane is focused and the
+// selected scenario declares at least one config key.
+func (m *Model) startEditScenarioConfig(s *scenarios.Scenario) (tea.Model, tea.Cmd) {
+	if !s.HasConfig() {
+		return m, nil
+	}
+	m.editingScenarioConfig = true
+	m.editingConfigKeyIndex = 0
+	m.editingConfigScenarioName = s.Name
+
+	// Pre-fill with the current value so the user can see and edit it
+	currentVal := ""
+	if m.config != nil {
+		currentVal, _ = m.config.GetScenarioConfig(s.Name, s.Config[0].Key)
+	}
+	m.scenarioConfigInput.SetValue(currentVal)
+	m.scenarioConfigInput.CursorEnd()
+	m.scenarioConfigInput.Focus()
+	return m, textinput.Blink
+}
+
+// saveScenarioConfigValue persists the current input value, then advances to the
+// next config key.  When all keys have been edited, exits editing mode.
+func (m *Model) saveScenarioConfigValue() (tea.Model, tea.Cmd) {
+	s := m.findScenarioByName(m.editingConfigScenarioName)
+	if s == nil || m.editingConfigKeyIndex >= len(s.Config) {
+		m.editingScenarioConfig = false
+		m.scenarioConfigInput.Blur()
+		return m, nil
+	}
+
+	cfgKey := s.Config[m.editingConfigKeyIndex].Key
+	value := m.scenarioConfigInput.Value()
+
+	if m.config != nil {
+		m.config.SetScenarioConfig(m.editingConfigScenarioName, cfgKey, value)
+		if err := m.config.Save(); err != nil {
+			m.editingScenarioConfig = false
+			m.scenarioConfigInput.Blur()
+			m.overlay.Show(OverlayError, "Config Error", fmt.Sprintf("Failed to save config: %v", err))
+			return m, nil
+		}
+		if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+			m.editingScenarioConfig = false
+			m.scenarioConfigInput.Blur()
+			m.overlay.Show(OverlayError, "Config Error", fmt.Sprintf("Failed to sync tfvars: %v", err))
+			return m, nil
+		}
+	}
+
+	m.editingConfigKeyIndex++
+	if m.editingConfigKeyIndex >= len(s.Config) {
+		// All keys done — exit editing mode and refresh details
+		m.editingScenarioConfig = false
+		m.scenarioConfigInput.Blur()
+		m.editingConfigKeyIndex = 0
+		m.updateDetails()
+		return m, nil
+	}
+
+	// Advance to the next key
+	nextKey := s.Config[m.editingConfigKeyIndex].Key
+	nextVal := ""
+	if m.config != nil {
+		nextVal, _ = m.config.GetScenarioConfig(m.editingConfigScenarioName, nextKey)
+	}
+	m.scenarioConfigInput.SetValue(nextVal)
+	m.scenarioConfigInput.CursorEnd()
+	return m, textinput.Blink
+}
+
+// findScenarioByName returns the scenario with the given name from m.allScenarios.
+func (m *Model) findScenarioByName(name string) *scenarios.Scenario {
+	for _, s := range m.allScenarios {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
+// renderScenarioConfigEditBar renders the bottom-bar prompt for per-scenario config editing.
+func (m *Model) renderScenarioConfigEditBar() string {
+	s := m.findScenarioByName(m.editingConfigScenarioName)
+	if s == nil || m.editingConfigKeyIndex >= len(s.Config) {
+		return ""
+	}
+
+	cfgKey := s.Config[m.editingConfigKeyIndex]
+	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	label := fmt.Sprintf("Config %s / %s: ", m.editingConfigScenarioName, cfgKey.Key)
+	var hint string
+	if len(s.Config) > 1 {
+		hint = dimStyle.Render(fmt.Sprintf("  (%d/%d — Enter to save, Esc to cancel)", m.editingConfigKeyIndex+1, len(s.Config)))
+	} else {
+		hint = dimStyle.Render("  (Enter to save, Esc to cancel)")
+	}
+
+	return labelStyle.Render(label) + m.scenarioConfigInput.View() + hint
 }
 
 // parseCostString extracts the numeric value from a cost string like "$8/mo"

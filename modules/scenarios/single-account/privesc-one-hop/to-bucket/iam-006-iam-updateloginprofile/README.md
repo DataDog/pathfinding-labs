@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:UpdateLoginProfile can reset password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile`
 * **Schema Version:** 4.1.1

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Exploit existing CodeBuild project with buildspec-override to execute privileged commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate buildspec-override injection
 4. Verify successful privilege escalation to administrator
-5. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

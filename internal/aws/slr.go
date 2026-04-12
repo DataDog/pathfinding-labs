@@ -16,6 +16,30 @@ type ServiceLinkedRoleStatus struct {
 	MWAAExists        bool
 }
 
+// slrStateAddresses maps each SLR to its canonical Terraform state resource address.
+// These are the addresses used when Terraform created the SLR via the prod_environment module.
+var slrStateAddresses = map[string]string{
+	"autoscaling": "module.prod_environment[0].aws_iam_service_linked_role.autoscaling[0]",
+	"spot":        "module.prod_environment[0].aws_iam_service_linked_role.spot[0]",
+	"apprunner":   "module.prod_environment[0].aws_iam_service_linked_role.apprunner[0]",
+	"mwaa":        "module.prod_environment[0].aws_iam_service_linked_role.mwaa[0]",
+}
+
+// SLRInState returns which service-linked roles are currently in Terraform state
+// (i.e. created and managed by Terraform). Uses the provided list of state resource addresses.
+func SLRInState(stateResources []string) *ServiceLinkedRoleStatus {
+	inState := make(map[string]bool, len(stateResources))
+	for _, r := range stateResources {
+		inState[r] = true
+	}
+	return &ServiceLinkedRoleStatus{
+		AutoScalingExists: inState[slrStateAddresses["autoscaling"]],
+		SpotExists:        inState[slrStateAddresses["spot"]],
+		AppRunnerExists:   inState[slrStateAddresses["apprunner"]],
+		MWAAExists:        inState[slrStateAddresses["mwaa"]],
+	}
+}
+
 // serviceLinkedRoleChecks maps our internal names to the AWS IAM role names
 var serviceLinkedRoleChecks = map[string]string{
 	"autoscaling": "AWSServiceRoleForAutoScaling",

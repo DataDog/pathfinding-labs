@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $10/mo
+* **Cost Estimate When Demo Executed:** $10/mo
 * **Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances`
 * **Schema Version:** 4.1.1
@@ -86,7 +87,7 @@ The script will:
 3. Demonstrate stopping the instance, modifying userData, and starting it
 4. Show the malicious script execution and credential extraction
 5. Verify successful privilege escalation using the extracted credentials
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

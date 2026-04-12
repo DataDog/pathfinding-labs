@@ -6,6 +6,7 @@ name: "iam-passrole+sagemaker-createprocessingjob"
 title: "SageMaker Processing Job Creation to Admin"
 description: "User with PassRole and CreateProcessingJob can create processing job with malicious script and admin role to execute code with elevated privileges"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "sagemaker-003"
 
 # =============================================================================

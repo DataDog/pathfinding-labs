@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue Interactive Session and run Python code to escalate privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement`
 * **Schema Version:** 4.1.1
@@ -83,7 +84,7 @@ The script will:
 4. Wait for the session to become ready
 5. Execute a Python statement that attaches AdministratorAccess to the starting user
 6. Verify successful privilege escalation by demonstrating admin access
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

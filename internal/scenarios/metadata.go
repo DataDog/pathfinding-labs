@@ -9,6 +9,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ScenarioConfigKey represents a configurable key declared by a scenario
+// that requires a user-supplied value at deploy time.
+type ScenarioConfigKey struct {
+	Key         string `yaml:"key"`
+	Description string `yaml:"description"`
+	Required    bool   `yaml:"required"`
+}
+
 // Scenario represents the metadata from a scenario.yaml file
 type Scenario struct {
 	// Core metadata
@@ -16,8 +24,20 @@ type Scenario struct {
 	Name               string `yaml:"name"`
 	Title              string `yaml:"title"`
 	Description        string `yaml:"description"`
-	CostEstimate       string `yaml:"cost_estimate"`
+	CostEstimate                string `yaml:"cost_estimate"`
+	CostEstimateWhenDemoExecuted string `yaml:"cost_estimate_when_demo_executed"`
 	PathfindingCloudID string `yaml:"pathfinding-cloud-id"`
+
+	// Source metadata (for Attack Simulation scenarios)
+	Source struct {
+		URL    string `yaml:"url"`
+		Title  string `yaml:"title"`
+		Author string `yaml:"author"`
+		Date   string `yaml:"date"`
+	} `yaml:"source"`
+
+	// Modifications from the original attack (for Attack Simulation scenarios)
+	Modifications []string `yaml:"modifications"`
 
 	// Classification
 	Category     string   `yaml:"category"`
@@ -58,6 +78,9 @@ type Scenario struct {
 
 	// Demo configuration
 	InteractiveDemo bool `yaml:"interactive_demo"` // If true, demo script needs terminal input
+
+	// Config declares per-scenario configuration keys requiring user-supplied values at deploy time
+	Config []ScenarioConfigKey `yaml:"config,omitempty"`
 
 	// Internal fields (not from YAML)
 	FilePath string `yaml:"-"` // Path to the scenario.yaml file
@@ -156,6 +179,8 @@ func (s *Scenario) CategoryShort() string {
 		return "tool-testing"
 	case strings.Contains(s.Terraform.ModulePath, "cross-account"):
 		return "cross-account"
+	case strings.Contains(s.Terraform.ModulePath, "attack-simulation"):
+		return "attack-simulation"
 	case strings.Contains(s.Terraform.ModulePath, "/ctf/"):
 		return "ctf"
 	default:
@@ -173,6 +198,11 @@ func (s *Scenario) TargetShort() string {
 	default:
 		return s.Target
 	}
+}
+
+// HasConfig returns true if this scenario declares configurable keys
+func (s *Scenario) HasConfig() bool {
+	return len(s.Config) > 0
 }
 
 // MitreIDs extracts just the technique IDs (e.g., "T1098" from "T1098.001 - Account Manipulation")

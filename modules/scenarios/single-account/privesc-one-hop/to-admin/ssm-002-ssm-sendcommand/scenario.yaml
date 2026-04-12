@@ -6,6 +6,7 @@ name: "ssm-sendcommand"
 title: "SSM Send Command to Admin"
 description: "User with ssm:SendCommand can execute commands on EC2 instances with privileged roles to extract credentials and gain admin access"
 cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "ssm-002"
 
 # =============================================================================

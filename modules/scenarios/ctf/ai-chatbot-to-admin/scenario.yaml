@@ -7,6 +7,7 @@ pathfinding-cloud-id: "ctf-001"
 title: "AcmeBot"
 description: "Acme Corp has deployed an AI-powered customer assistant at a public Lambda endpoint. Escalate to administrative access and retrieve the flag."
 cost_estimate: "$1/mo"
+cost_estimate_when_demo_executed: "$1/mo"
 
 # =============================================================================
 # CLASSIFICATION

@@ -6,6 +6,7 @@ name: "dev-to-prod-simple-role-assumption"
 title: "Dev to Prod via Direct Role Assumption to Admin"
 description: "User in dev account with sts:AssumeRole permission can assume an admin role in prod account that explicitly trusts the dev user"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

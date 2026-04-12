@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint`
 * **Schema Version:** 4.1.1
@@ -86,7 +87,7 @@ The script will:
 5. SSH into the endpoint and execute AWS S3 commands
 6. Verify successful access to the sensitive S3 bucket
 7. Automatically delete the endpoint and clean up resources
-8. Output standardized test results for automation
+
 
 **Note:** Glue development endpoints cost approximately $2.20/hour while running. The script automatically cleans up the endpoint after demonstration. If the script is interrupted, manually delete the endpoint using `aws glue delete-dev-endpoint --endpoint-name pl-prod-gcd-escalation-endpoint`.
 

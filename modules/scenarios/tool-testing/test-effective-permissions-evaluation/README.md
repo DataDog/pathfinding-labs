@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 * **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
 * **Schema Version:** 4.1.1

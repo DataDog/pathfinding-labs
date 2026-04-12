@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy`
 * **Schema Version:** 4.1.1
@@ -77,7 +78,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

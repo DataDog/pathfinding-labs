@@ -8,55 +8,21 @@ The attack does not require any AWS credentials -- the chatbot is publicly acces
 
 ## The Challenge
 
-You've been given credentials for `pl-prod-ctf-001-starting-user`, a low-privilege IAM user, and told that Acme Corp has an internal engineering chatbot deployed somewhere in the account. Your goal is to retrieve the CTF flag stored in AWS Systems Manager Parameter Store at `/ctf/ctf-001/flag` -- a SecureString parameter that requires admin credentials to read.
+You've been given the URL to the new Acme Corp engineering chatbot. As it turns out, this chatbot is actually public. Oops. Your goal is to exploit the chatbot and ultimately retrieve the CTF flag stored in AWS Systems Manager Parameter Store at `/ctf/ctf-001/flag`. 
 
-Start by confirming your identity:
-
-```bash
-export AWS_ACCESS_KEY_ID=<starting_user_access_key_id>
-export AWS_SECRET_ACCESS_KEY=<starting_user_secret_access_key>
-unset AWS_SESSION_TOKEN
-
-aws sts get-caller-identity
-```
-
-You should see yourself as `pl-prod-ctf-001-starting-user`. Now try to read the flag directly:
+Start by retrieving the URL from plabs. 
 
 ```bash
-aws ssm get-parameter --name /ctf/ctf-001/flag --with-decryption
-# AccessDenied
+plabs output ctf-001 | jq -r .chatbot_function_url
 ```
 
-As expected. You need admin credentials. Time to find another way in.
-
-## Reconnaissance
-
-Your starting user has a couple of Lambda permissions that suggest the chatbot is deployed as a Lambda function. Let's enumerate what's running:
-
-```bash
-aws lambda list-functions \
-  --query 'Functions[?starts_with(FunctionName, `pl-prod-ctf-001`)].{Name:FunctionName,Role:Role}' \
-  --output table
-```
-
-You'll see `pl-prod-ctf-001-acmebot` listed, along with its execution role ARN. Notice the role name: `pl-prod-ctf-001-chatbot-role`. That's worth keeping in mind.
-
-Now retrieve the public Function URL:
-
-```bash
-aws lambda get-function-url-config \
-  --function-name pl-prod-ctf-001-acmebot \
-  --query 'FunctionUrl' \
-  --output text
-```
-
-You'll get a URL like `https://<id>.lambda-url.<region>.on.aws/`. This is the chatbot's public endpoint -- no authentication required. Open it in a browser.
+You'll get a URL like `https://<id>.lambda-url.<region>.on.aws/`. This is the chatbot's public endpoint -- no authentication required. Open it in a browser. 
 
 ## Exploitation
 
 The page loads an HTML chat interface. It asks for your OpenAI API key (the chatbot uses bring-your-own-key) -- enter one. You're now looking at AcmeBot, Acme Corp's internal engineering assistant.
 
-Before sending anything, think about what you know: the Lambda has a `run_command` tool for executing shell commands. The system prompt tells the LLM to run any diagnostic command engineers request. AWS Lambda injects execution role credentials into the runtime environment as environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`). If you can get the LLM to run `env | grep AWS`, those credentials will appear in the chat response.
+Before sending anything, think about what you know: The system prompt tells the LLM to run any diagnostic command engineers request. AWS Lambda injects execution role credentials into the runtime environment as environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`). If you can get the LLM to run `env | grep AWS`, those credentials will appear in the chat response.
 
 Send this message:
 

@@ -6,6 +6,7 @@ name: "multiple-paths-combined"
 title: "EC2, Lambda, and CloudFormation Chains to Admin"
 description: "Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

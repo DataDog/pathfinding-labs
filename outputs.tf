@@ -1861,6 +1861,21 @@ output "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   sensitive = true
 }
 
+output "cross_account_ops_to_prod_github_oidc_pivot" {
+  description = "All outputs for the github-oidc-cross-account-pivot cross-account scenario"
+  value = var.enable_cross_account_ops_to_prod_github_oidc_pivot ? {
+    ops_deployer_role_arn    = module.cross_account_ops_to_prod_github_oidc_pivot[0].ops_deployer_role_arn
+    ops_deployer_role_name   = module.cross_account_ops_to_prod_github_oidc_pivot[0].ops_deployer_role_name
+    prod_deployer_role_arn   = module.cross_account_ops_to_prod_github_oidc_pivot[0].prod_deployer_role_arn
+    prod_deployer_role_name  = module.cross_account_ops_to_prod_github_oidc_pivot[0].prod_deployer_role_name
+    flag_bucket_name         = module.cross_account_ops_to_prod_github_oidc_pivot[0].flag_bucket_name
+    flag_bucket_arn          = module.cross_account_ops_to_prod_github_oidc_pivot[0].flag_bucket_arn
+    github_oidc_provider_arn = module.cross_account_ops_to_prod_github_oidc_pivot[0].github_oidc_provider_arn
+    attack_path              = module.cross_account_ops_to_prod_github_oidc_pivot[0].attack_path
+  } : null
+  sensitive = true
+}
+
 ##############################################################################
 # CSPM-MISCONFIG SCENARIO OUTPUTS
 ##############################################################################
@@ -1923,6 +1938,26 @@ output "ctf_ai_chatbot_lambda_pivot" {
     starting_user_access_key_id     = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_access_key_id
     starting_user_secret_access_key = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_secret_access_key
     attack_path                     = module.ctf_ai_chatbot_lambda_pivot[0].attack_path
+  } : null
+  sensitive = true
+}
+
+# =============================================================================
+# ATTACK SIMULATION SCENARIO OUTPUTS
+# =============================================================================
+
+output "attack_simulation_sysdig_8_minutes_to_admin" {
+  description = "All outputs for sysdig-8-minutes-to-admin attack simulation scenario"
+  value = var.enable_attack_simulation_sysdig_8_minutes_to_admin ? {
+    starting_user_name              = module.attack_simulation_sysdig_8_minutes_to_admin[0].starting_user_name
+    starting_user_arn               = module.attack_simulation_sysdig_8_minutes_to_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.attack_simulation_sysdig_8_minutes_to_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.attack_simulation_sysdig_8_minutes_to_admin[0].starting_user_secret_access_key
+    rag_bucket_name                 = module.attack_simulation_sysdig_8_minutes_to_admin[0].rag_bucket_name
+    compromised_user_name           = module.attack_simulation_sysdig_8_minutes_to_admin[0].compromised_user_name
+    ec2_init_function_name          = module.attack_simulation_sysdig_8_minutes_to_admin[0].ec2_init_function_name
+    frick_username                  = module.attack_simulation_sysdig_8_minutes_to_admin[0].frick_username
+    attack_path                     = module.attack_simulation_sysdig_8_minutes_to_admin[0].attack_path
   } : null
   sensitive = true
 }

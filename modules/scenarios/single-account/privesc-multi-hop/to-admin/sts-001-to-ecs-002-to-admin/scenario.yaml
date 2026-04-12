@@ -6,6 +6,7 @@ name: "sts-001-to-ecs-002-to-admin"
 title: "Role Assumption + ECS Service Creation to Admin"
 description: "Multi-hop escalation: assume a role with ECS permissions, then use PassRole + ECS to run a task with an admin role"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

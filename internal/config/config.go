@@ -35,6 +35,10 @@ type Config struct {
 	// Budget contains AWS Budget alert configuration
 	Budget BudgetConfig `yaml:"budget,omitempty"`
 
+	// ScenarioConfigs stores per-scenario user-supplied configuration values.
+	// Outer key is the scenario name; inner key is the config key.
+	ScenarioConfigs map[string]map[string]string `yaml:"scenario_configs,omitempty"`
+
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
 
@@ -410,6 +414,31 @@ func (c *Config) GenerateTFVars() string {
 	}
 	lines = append(lines, "")
 
+	// Scenario-specific configurations
+	if len(c.ScenarioConfigs) > 0 {
+		lines = append(lines, "# Scenario specific configurations")
+		scenarioNames := make([]string, 0, len(c.ScenarioConfigs))
+		for name := range c.ScenarioConfigs {
+			scenarioNames = append(scenarioNames, name)
+		}
+		sort.Strings(scenarioNames)
+		for _, scenarioName := range scenarioNames {
+			vals := c.ScenarioConfigs[scenarioName]
+			keys := make([]string, 0, len(vals))
+			for k := range vals {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				// Terraform variable names cannot contain hyphens in var.NAME expressions,
+				// so we convert hyphens in the scenario name to underscores.
+				varName := strings.ReplaceAll(scenarioName, "-", "_") + "_" + k
+				lines = append(lines, fmt.Sprintf("%s = %q", varName, vals[k]))
+			}
+		}
+		lines = append(lines, "")
+	}
+
 	// Add budget configuration
 	if c.Budget.Enabled && c.Budget.Email != "" {
 		lines = append(lines, "# Budget Alerts")
@@ -462,4 +491,39 @@ func (c *Config) OpsProfile() string {
 // ProdRegion returns the prod region for backwards compatibility
 func (c *Config) ProdRegion() string {
 	return c.AWS.Prod.Region
+}
+
+// GetScenarioConfig returns the value for a per-scenario config key.
+// Returns the value and true if found, empty string and false if not set.
+func (c *Config) GetScenarioConfig(scenarioName, key string) (string, bool) {
+	if c.ScenarioConfigs == nil {
+		return "", false
+	}
+	vals, ok := c.ScenarioConfigs[scenarioName]
+	if !ok {
+		return "", false
+	}
+	v, ok := vals[key]
+	return v, ok
+}
+
+// SetScenarioConfig stores a per-scenario config value and writes it into
+// terraform.tfvars using the naming convention {scenario-name}-{key} = "value".
+func (c *Config) SetScenarioConfig(scenarioName, key, value string) {
+	if c.ScenarioConfigs == nil {
+		c.ScenarioConfigs = make(map[string]map[string]string)
+	}
+	if c.ScenarioConfigs[scenarioName] == nil {
+		c.ScenarioConfigs[scenarioName] = make(map[string]string)
+	}
+	c.ScenarioConfigs[scenarioName][key] = value
+}
+
+// GetAllScenarioConfigs returns all config values for a given scenario.
+// Returns nil if no values have been set.
+func (c *Config) GetAllScenarioConfigs(scenarioName string) map[string]string {
+	if c.ScenarioConfigs == nil {
+		return nil
+	}
+	return c.ScenarioConfigs[scenarioName]
 }

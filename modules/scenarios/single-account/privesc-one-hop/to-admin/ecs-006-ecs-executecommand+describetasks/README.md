@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $9/mo
+* **Cost Estimate When Demo Executed:** $9/mo
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
 * **Schema Version:** 4.1.1
@@ -81,7 +82,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

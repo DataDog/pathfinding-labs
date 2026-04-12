@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $37/mo
+* **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** User with CreatePresignedNotebookInstanceUrl can generate presigned URL to access existing notebook with admin role and execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 4. Provide instructions for manual browser-based access to the Jupyter interface
 5. Demonstrate AWS CLI commands that can be executed from the terminal
 6. Verify successful privilege escalation
-7. Output standardized test results for automation
+
 
 **Note**: Due to the browser-based nature of this attack, the demo script will generate the presigned URL and provide instructions, but the actual Jupyter terminal access must be performed manually in a web browser.
 

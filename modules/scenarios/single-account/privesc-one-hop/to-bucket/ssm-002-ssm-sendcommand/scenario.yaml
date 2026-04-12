@@ -3,6 +3,7 @@ name: "ssm-sendcommand"
 title: "SSM Send Command to Bucket"
 description: "User with ssm:SendCommand executes commands on EC2 with S3 access to extract credentials and access sensitive bucket"
 cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "ssm-002"
 
 category: "Privilege Escalation"

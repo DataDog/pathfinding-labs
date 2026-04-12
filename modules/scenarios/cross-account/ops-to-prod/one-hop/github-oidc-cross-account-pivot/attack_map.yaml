@@ -1,0 +1,152 @@
+attackMap:
+  nodes:
+    - id: github-actions-identity
+      label: "GitHub Actions OIDC"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{operations_account_id}:oidc-provider/token.actions.githubusercontent.com"
+      access:
+        type: public-network
+        url: "https://github.com/{github_repo}/actions"
+      description: >
+        This resource is publicly accessible without AWS credentials. Any attacker on the
+        internet can reach it directly -- no IAM credentials, no AWS signature, no prior
+        access required. This is your entry point.
+
+        Any GitHub Actions workflow that runs in the repository configured for this scenario
+        can request an OIDC token from GitHub's token endpoint and exchange it for temporary
+        AWS credentials by calling sts:AssumeRoleWithWebIdentity. The operations account has
+        a registered OIDC provider for token.actions.githubusercontent.com, and the
+        pl-ops-goidc-pivot-deployer-role trust policy accepts any token whose sub claim
+        matches repo:{github_repo}:* -- meaning any branch, tag, or pull request trigger in
+        the repo qualifies. No specific branch protection or environment approval is required.
+
+        Write access to the repository is sufficient to trigger a workflow and obtain a valid
+        OIDC token. This is your starting position: control of a GitHub Actions workflow.
+
+    - id: ops-deployer-role
+      label: "Ops Deployer Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{operations_account_id}:role/pl-ops-goidc-pivot-deployer-role"
+      description: >
+        You have assumed this role in the operations account using a GitHub Actions OIDC token.
+        This role was designed to allow the repository's CI/CD pipeline to perform deployment
+        operations in the ops environment.
+
+        In addition to its ops-scoped permissions, this role has sts:AssumeRole permission
+        targeting pl-prod-goidc-pivot-deployer-role in the prod account. This cross-account
+        permission was added to allow the pipeline to deploy to prod as well, but it means
+        anyone who can assume this ops role -- including any workflow in the configured GitHub
+        repository -- can pivot directly into the production account.
+
+        Helpful permissions on this role include sts:GetCallerIdentity (to confirm your
+        identity after the OIDC exchange) and iam:ListRoles (to enumerate assumable roles
+        in the prod account).
+
+    - id: prod-deployer-role
+      label: "Prod Deployer Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role"
+      description: >
+        You have pivoted into the production account by assuming this role from the ops
+        deployer role. The prod deployer role was created to give the deployment pipeline
+        read access to a sensitive S3 bucket containing deployment configuration and secrets.
+
+        This role has s3:GetObject on all objects in pl-prod-goidc-pivot-flag-{account_id}-{suffix}
+        and s3:ListBucket on the bucket itself. These permissions are sufficient to enumerate
+        and exfiltrate the bucket's contents, including the flag stored at sensitive-data.txt.
+
+    - id: flag-bucket
+      label: "Flag Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}"
+      description: >
+        This S3 bucket in the prod account contains sensitive-data.txt, which holds the flag
+        for this scenario. The prod deployer role has s3:ListBucket and s3:GetObject on this
+        bucket, making the contents readable once you hold credentials for that role.
+
+        The bucket itself is not publicly accessible -- the misconfiguration is entirely in the
+        IAM trust chain that allows a GitHub Actions identity to reach it across two AWS accounts.
+
+  edges:
+    - from: github-actions-identity
+      to: ops-deployer-role
+      label: "sts:AssumeRoleWithWebIdentity"
+      description: >
+        A GitHub Actions workflow requests an OIDC token from GitHub's token endpoint and
+        exchanges it for temporary AWS credentials by calling sts:AssumeRoleWithWebIdentity
+        against pl-ops-goidc-pivot-deployer-role. The operations account OIDC provider
+        validates the token's issuer (token.actions.githubusercontent.com) and audience, then
+        checks the sub claim against the trust policy's condition. Because the condition uses
+        a wildcard (repo:{github_repo}:*), any workflow triggered in the repository -- on any
+        branch or by any event -- satisfies the condition and receives credentials.
+      hints:
+        - "GitHub Actions can request short-lived AWS credentials without storing any static access keys. Look into how OIDC federation works between GitHub and AWS."
+        - "The operations account has an OIDC identity provider registered for token.actions.githubusercontent.com. Check the trust policy on the ops deployer role to understand what conditions it requires."
+        - "The trust policy's sub claim condition is a wildcard. Consider what that means for which workflow triggers -- branches, tags, pull requests -- can satisfy it."
+        - "A GitHub Actions workflow that runs in the repository can call the AWS credential action (aws-actions/configure-aws-credentials) with the role ARN to exchange an OIDC token for temporary credentials. No secrets need to be stored in the repository."
+        - "Once you have a workflow YAML that requests credentials for the ops role, trigger it on any branch. The OIDC exchange happens automatically during the workflow run."
+      commands:
+        - description: "Example GitHub Actions workflow step that performs the OIDC exchange (add to .github/workflows/exploit.yml in the repository)"
+          command: |
+            # .github/workflows/exploit.yml
+            # permissions:
+            #   id-token: write
+            #   contents: read
+            # steps:
+            #   - name: Configure AWS credentials via OIDC
+            #     uses: aws-actions/configure-aws-credentials@v4
+            #     with:
+            #       role-to-assume: arn:aws:iam::{operations_account_id}:role/pl-ops-goidc-pivot-deployer-role
+            #       aws-region: us-east-1
+        - description: "Verify ops role identity after OIDC exchange"
+          command: "aws sts get-caller-identity"
+
+    - from: ops-deployer-role
+      to: prod-deployer-role
+      label: "sts:AssumeRole (cross-account)"
+      description: >
+        Using credentials for pl-ops-goidc-pivot-deployer-role in the operations account,
+        call sts:AssumeRole against pl-prod-goidc-pivot-deployer-role in the prod account.
+        The prod role's trust policy explicitly lists the ops deployer role ARN as a trusted
+        principal, so no additional conditions need to be satisfied. This single API call
+        crosses the account boundary from operations to prod.
+      hints:
+        - "You are now operating as a role in the operations account. Check what cross-account permissions this role has -- specifically whether it can assume roles in other accounts."
+        - "Use iam:ListRoles or inspect the role's inline/attached policies to discover what sts:AssumeRole permissions are granted and which account they target."
+        - "The sts:AssumeRole call takes a --role-arn argument. The target role ARN is in the prod account. The role session name can be anything you choose."
+        - "After assuming the prod role, export the returned AccessKeyId, SecretAccessKey, and SessionToken as environment variables to operate as the new identity."
+        - "Run sts:GetCallerIdentity after the assumption to confirm you are now operating in the prod account under the prod deployer role."
+      commands:
+        - description: "Assume the prod deployer role from the ops account"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role --role-session-name goidc-pivot-session --query 'Credentials' --output json"
+        - description: "Export prod role credentials"
+          command: |
+            export AWS_ACCESS_KEY_ID="<AccessKeyId>"
+            export AWS_SECRET_ACCESS_KEY="<SecretAccessKey>"
+            export AWS_SESSION_TOKEN="<SessionToken>"
+        - description: "Verify prod account identity"
+          command: "aws sts get-caller-identity"
+
+    - from: prod-deployer-role
+      to: flag-bucket
+      label: "s3:ListBucket + s3:GetObject"
+      description: >
+        With credentials for pl-prod-goidc-pivot-deployer-role, enumerate the flag bucket
+        and retrieve the sensitive-data.txt object. The role has both s3:ListBucket (to
+        discover object keys) and s3:GetObject (to read object contents) on the target bucket.
+      hints:
+        - "You are now in the prod account. Check what S3 permissions the prod deployer role has -- use s3:ListAllMyBuckets to find accessible buckets, then s3:ListBucket to see what objects are inside."
+        - "Once you have identified the bucket name, list its contents to find the object key for the flag file."
+        - "Use the AWS CLI s3api get-object command (or aws s3 cp) to download the object and read its contents."
+      commands:
+        - description: "List accessible buckets in prod"
+          command: "aws s3 ls"
+        - description: "List objects in the flag bucket"
+          command: "aws s3 ls s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/"
+        - description: "Read the flag"
+          command: "aws s3 cp s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/sensitive-data.txt -"

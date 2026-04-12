@@ -128,7 +128,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #     values = ["amzn2-ami-hvm-*-x86_64-ebs"]
 #   }
 
-#   owners = ["amazon"] 
+#   owners = ["amazon"]
 # }
 
 
@@ -197,7 +197,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #   role       = aws_iam_role.bastion.name
 #   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
-# }  
+# }
 
 
 # resource "aws_iam_instance_profile" "bastion" {
@@ -248,7 +248,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #   role       = aws_iam_role.jump.name
 #   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
-# }  
+# }
 
 # resource "aws_iam_policy" "jump" {
 #   name        = "jump"
@@ -418,7 +418,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #           "ssm:TerminateSession",
 #           "ssm:DescribeInstanceProperties",
 #         ],
-#         Resource = "${aws_instance.jump.arn}"     
+#         Resource = "${aws_instance.jump.arn}"
 #         }
 #     ]
 #   })
@@ -449,14 +449,14 @@ resource "aws_iam_access_key" "readonly_user" {
 #         Effect = "Allow",
 #         Action = [
 #             "ssm:StartSession",
-#         ],  
+#         ],
 #         Resource = "${aws_instance.jump.arn}"
 #       },
 #       {
 #           Effect = "Allow",
 #           Action = [
 #               "sts:AssumeRole",
-#           ],  
+#           ],
 #           Resource = aws_iam_role.prod_simple_privesc_role.arn
 #       }
 #     ]
@@ -550,7 +550,7 @@ resource "aws_iam_access_key" "readonly_user" {
 
 # ##############################################
 # # Users with direct AdministratorAccess policy
-# ##############################################      
+# ##############################################
 
 
 # resource "aws_iam_user" "Jim-Admin" {
@@ -635,7 +635,7 @@ resource "aws_iam_access_key" "readonly_user" {
 # resource "aws_iam_role_policy_attachment" "EC2admin" {
 #   role = aws_iam_role.EC2Admin.name
 #   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-# } 
+# }
 
 # resource "aws_iam_instance_profile" "EC2Admin" {
 #   name = "pl-EC2Admin"
@@ -643,30 +643,6 @@ resource "aws_iam_access_key" "readonly_user" {
 # }
 
 
-
-# # Deployment role - only created when GitHub integration is enabled
-# resource "aws_iam_role" "Deployement" {
-#   count = var.github_repo != null ? 1 : 0
-#   name = "pl-Deployement"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect = "Allow",
-#         Principal = {
-#          AWS = "arn:aws:iam::${var.operations_account_id}:role/pl-ops-infra-deployer"
-#         },
-#         Action = [ "sts:AssumeRole", "sts:TagSession" ]
-#       }
-#     ]
-#   })
-# }
-
-# resource "aws_iam_role_policy_attachment" "Deployementadmin" {
-#   count = var.github_repo != null ? 1 : 0
-#   role = aws_iam_role.Deployement[0].name
-#   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-# }
 
 # ##############################################
 # # Roles with a custom administrator policy
@@ -699,7 +675,6 @@ resource "aws_iam_access_key" "readonly_user" {
 
 
 
-
 # ##############################################
 # # Principals that can privesc to admin
 # ##############################################
@@ -718,7 +693,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #       }
 #     ]
 #   })
-# } 
+# }
 
 # resource "aws_iam_policy" "EC2-ssm-access" {
 #   name = "pl-EC2-ssm-access"
@@ -741,7 +716,7 @@ resource "aws_iam_access_key" "readonly_user" {
 # }
 
 # resource aws_iam_user "lambda-publisher" {
-#   name = "pl-lambda-publisher"  
+#   name = "pl-lambda-publisher"
 # }
 
 # resource aws_iam_user_policy_attachment "lambda-publisher" {
@@ -752,7 +727,7 @@ resource "aws_iam_access_key" "readonly_user" {
 
 
 # resource aws_iam_user "Pam-Helpdesk" {
-#   name = "pl-Pam-Helpdesk"  
+#   name = "pl-Pam-Helpdesk"
 # }
 
 # resource aws_iam_policy "helpdesk-createaccesskeys" {
@@ -762,7 +737,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #     Statement = [
 #       {
 #         Effect = "Allow",
-#         Action = "iam:CreateAccessKey", 
+#         Action = "iam:CreateAccessKey",
 #         Resource = "*"
 #       }
 #     ]
@@ -877,7 +852,7 @@ resource "aws_iam_access_key" "readonly_user" {
 #     values = ["amzn2-ami-hvm-*-x86_64-ebs"]
 #   }
 
-#   owners = ["amazon"] 
+#   owners = ["amazon"]
 # }
 
 

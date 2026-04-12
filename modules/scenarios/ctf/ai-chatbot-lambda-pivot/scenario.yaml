@@ -7,6 +7,7 @@ pathfinding-cloud-id: "ctf-002"
 title: "AcmeBot: The Backend"
 description: "Acme Corp's AI assistant fronts a suite of internal Lambda services. Chain your way from the public chatbot to administrative access and retrieve the flag."
 cost_estimate: "$1/mo"
+cost_estimate_when_demo_executed: "$1/mo"
 
 # =============================================================================
 # CLASSIFICATION

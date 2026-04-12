@@ -6,6 +6,7 @@ name: "role-chain-to-s3"
 title: "Three-Hop Role Chain to Bucket"
 description: "Three-hop role assumption chain to reach S3 bucket access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

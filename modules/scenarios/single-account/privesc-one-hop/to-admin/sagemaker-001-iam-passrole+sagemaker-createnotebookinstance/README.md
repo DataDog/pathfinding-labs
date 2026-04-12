@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance`
 * **Schema Version:** 4.1.1
@@ -86,7 +87,7 @@ The script will:
 5. Generate a presigned URL for accessing the notebook
 6. Display instructions for accessing the Jupyter terminal and executing commands
 7. Verify successful privilege escalation
-8. Output standardized test results for automation
+
 
 **Note**: The notebook instance will incur costs (~$0.05/hour for ml.t3.medium instance type). The cleanup script should be run promptly after testing.
 

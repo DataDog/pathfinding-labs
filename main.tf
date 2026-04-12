@@ -1369,6 +1369,21 @@ module "cross_account_ops_to_prod_one_hop_simple_role_assumption" {
   resource_suffix       = random_string.resource_suffix.result
 }
 
+module "cross_account_ops_to_prod_github_oidc_pivot" {
+  count  = var.enable_cross_account_ops_to_prod_github_oidc_pivot ? 1 : 0
+  source = "./modules/scenarios/cross-account/ops-to-prod/one-hop/github-oidc-cross-account-pivot"
+
+  providers = {
+    aws.operations = aws.operations
+    aws.prod       = aws.prod
+  }
+
+  operations_account_id = local.operations_account_id
+  prod_account_id       = local.prod_account_id
+  resource_suffix       = random_string.resource_suffix.result
+  github_repo           = var.github_oidc_cross_account_pivot_github_repo
+}
+
 ##############################################################################
 # CTF SCENARIOS
 ##############################################################################
@@ -1387,6 +1402,21 @@ module "ctf_ai_chatbot_to_admin" {
 module "ctf_ai_chatbot_lambda_pivot" {
   count  = var.enable_ctf_ai_chatbot_lambda_pivot ? 1 : 0
   source = "./modules/scenarios/ctf/ai-chatbot-lambda-pivot"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+##############################################################################
+# ATTACK SIMULATION SCENARIOS
+##############################################################################
+
+module "attack_simulation_sysdig_8_minutes_to_admin" {
+  count  = var.enable_attack_simulation_sysdig_8_minutes_to_admin ? 1 : 0
+  source = "./modules/scenarios/attack-simulation/sysdig-8-minutes-to-admin"
   providers = {
     aws.prod = aws.prod
   }

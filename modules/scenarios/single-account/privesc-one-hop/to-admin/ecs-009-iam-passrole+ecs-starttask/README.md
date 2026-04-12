@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $8/mo
+* **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Overriding existing ECS task definition commands and task role via ecs:StartTask --overrides to escalate to admin on an already-registered container instance
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask`
 * **Schema Version:** 4.1.1

@@ -6,6 +6,7 @@ name: "ec2-createlaunchtemplateversion+ec2-modifylaunchtemplate"
 title: "EC2 Launch Template Modification to Admin"
 description: "User with CreateLaunchTemplateVersion and ModifyLaunchTemplate can update existing template to launch instances with admin role"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "ec2-005"
 
 # =============================================================================

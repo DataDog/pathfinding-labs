@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $5/mo
+* **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** EC2 instance with a highly privileged IAM role attached - validates CSPM detection
 * **Terraform Variable:** `enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role`
 * **Schema Version:** 4.1.1

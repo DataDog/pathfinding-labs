@@ -6,6 +6,7 @@ name: "lambda-invoke-update"
 title: "Dev to Prod via Lambda Code Injection to Admin"
 description: "Cross-account Lambda function code injection to extract admin credentials"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

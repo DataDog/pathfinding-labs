@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Role with iam:PutRolePolicy on itself can add inline policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy`
 * **Schema Version:** 4.1.1

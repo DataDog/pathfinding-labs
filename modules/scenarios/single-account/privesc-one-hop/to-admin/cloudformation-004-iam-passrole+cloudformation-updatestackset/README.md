@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing CloudFormation StackSet to create admin role using StackSet's elevated execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset`
 * **Schema Version:** 4.1.1

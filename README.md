@@ -352,6 +352,18 @@ Capture-the-flag challenges that blend real-world attack techniques with a hidde
 
 ---
 
+### Attack Simulation Scenarios
+
+Recreations of documented real-world cloud breaches, sourced from public blog posts and incident reports.
+
+#### Attack Simulation (1 scenario)
+
+| Scenario | Source | Description |
+|----------|--------|-------------|
+| [`sysdig-8-minutes-to-admin`](modules/scenarios/attack-simulation/sysdig-8-minutes-to-admin/README.md) | Sysdig TRT (2026-02-03) | Recreation of the Nov 2025 Sysdig TRT breach: IAM credentials in a private S3 RAG bucket, Lambda code injection, and admin access in under 8 minutes |
+
+---
+
 ### Cross-Account Scenarios
 
 Privilege escalation paths that span multiple AWS accounts. These scenarios require at least two AWS accounts (dev/ops and prod).
@@ -366,11 +378,12 @@ Privilege escalation paths that span multiple AWS accounts. These scenarios requ
 | [`root-trust-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption/README.md) | 1 | Cross-account role assumption exploiting :root trust (any dev principal can assume) |
 | [`simple-role-assumption`](modules/scenarios/cross-account/dev-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from dev to prod |
 
-#### Cross-Account Ops-to-Prod (1 scenario)
+#### Cross-Account Ops-to-Prod (2 scenarios)
 
 | Scenario | Hops | Description |
 |----------|------|-------------|
 | [`simple-role-assumption`](modules/scenarios/cross-account/ops-to-prod/one-hop/simple-role-assumption/README.md) | 1 | Direct cross-account role assumption from ops to prod |
+| [`github-oidc-cross-account-pivot`](modules/scenarios/cross-account/ops-to-prod/one-hop/github-oidc-cross-account-pivot/README.md) | 1 | GitHub repo write access enables OIDC assumption of an ops role that pivots cross-account to a prod role with S3 read access |
 
 ---
 
@@ -784,7 +797,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
   - 1 CSPM: Misconfig
   - 1 CSPM: Toxic Combo
   - 5 Tool Testing
-  - 6 Cross-Account (5 dev-to-prod, 1 ops-to-prod)
+  - 7 Cross-Account (5 dev-to-prod, 2 ops-to-prod)
 - ✅ **Single-account support** (works with just one AWS account)
 - ✅ **Multi-account support** (optional cross-account scenarios)
 - ✅ **Modular architecture** (enable/disable any scenario)

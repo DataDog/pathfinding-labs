@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption`
 * **Schema Version:** 4.1.1
@@ -76,7 +77,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate how the :root trust allows the assumption
 4. Verify successful cross-account privilege escalation to admin
-5. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $634/mo
+* **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
 * **Schema Version:** 4.1.1
@@ -83,7 +84,7 @@ The script will:
 5. Retrieve the endpoint SSH address
 6. Connect via SSH and execute AWS CLI commands with administrative privileges
 7. Verify successful privilege escalation
-8. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

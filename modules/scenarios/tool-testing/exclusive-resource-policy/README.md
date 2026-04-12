@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Access S3 bucket with exclusive resource policy that denies all except specific role
 * **Terraform Variable:** `enable_tool_testing_exclusive_resource_policy`
 * **Schema Version:** 4.1.1

@@ -6,6 +6,7 @@ name: "airflow-updateenvironment"
 title: "MWAA Environment Update to Admin"
 description: "User with airflow:UpdateEnvironment can escalate to admin by updating an existing MWAA environment's DAG source to an attacker-controlled bucket containing a malicious DAG that executes with admin credentials"
 cost_estimate: "$37/mo"
+cost_estimate_when_demo_executed: "$37/mo"
 pathfinding-cloud-id: "mwaa-002"
 
 # =============================================================================

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating ECS cluster and deploying service with privileged role to gain administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_createservice`
 * **Schema Version:** 4.1.1
@@ -92,7 +93,7 @@ The script will:
 3. Create an ECS cluster and deploy a malicious service
 4. Wait for the task to execute and grant administrative access
 5. Verify successful privilege escalation
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

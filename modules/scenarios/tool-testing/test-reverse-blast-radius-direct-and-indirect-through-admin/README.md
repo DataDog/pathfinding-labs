@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Validating security tool detection of both direct and indirect S3 bucket access via administrative permissions
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin`
 * **Schema Version:** 4.1.1
@@ -88,7 +89,7 @@ The script will:
 3. Demonstrate Path 2: Indirect access via admin role using user2 credentials
 4. Show the commands being executed and their results
 5. Verify that both paths successfully access the same S3 bucket
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

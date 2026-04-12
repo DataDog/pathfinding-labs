@@ -219,7 +219,7 @@ resource "aws_iam_user_policy" "pathfinding_starting_user_basic" {
 #           AWS = [
 #             "arn:aws:iam::${var.prod_account_id}:root",
 #             "arn:aws:iam::${var.dev_account_id}:root"
-#           ]          
+#           ]
 #         },
 #         Action = "sts:AssumeRole"
 #       }
@@ -280,7 +280,7 @@ resource "aws_iam_user_policy" "pathfinding_starting_user_basic" {
 #             "ecr:BatchGetImage",
 #             "ecr:BatchCheckLayerAvailability",
 #             "ecr:GetAuthorizationToken",
-#           ],      
+#           ],
 #           }
 #     ]
 #   })
@@ -314,93 +314,7 @@ resource "aws_iam_user_policy" "pathfinding_starting_user_basic" {
 # }
 
 
-
-
-// =============================================================================
-// GitHub OIDC Integration (Conditional Resources)
-// =============================================================================
-// The following resources are only created when github_repo is provided in terraform.tfvars
-// If github_repo is null or not provided, these resources will not be created
-// This allows for flexible deployment where GitHub integration is optional
-
-// iam role that trusts a github repo to assume it as part of an OIDC flow
-// Only create this role if a GitHub repository is provided
-resource "aws_iam_role" "ops-infra-deployer" {
-  count              = var.github_repo != null ? 1 : 0
-  name               = "pl-ops-infra-deployer"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Principal": {
-        "Federated": "arn:aws:iam::${var.operations_account_id}:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Condition": {
-        "StringLike": {
-                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                    "token.actions.githubusercontent.com:sub": "repo:${var.github_repo}:*"
-                }
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
-
-// policy that allows the ops-infra-deployer role in this account to assume the Deployement role in the prod, dev, and operations accounts
-// Only create this policy if a GitHub repository is provided
-resource "aws_iam_policy" "ops-infra-deployer-policy" {
-  count       = var.github_repo != null ? 1 : 0
-  name        = "pl-ops-infra-deployer-policy"
-  description = "Allows ops-infra-deployer to assume the deployment role in the prod, dev, and operations accounts"
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = "sts:AssumeRole",
-        Resource = "*"
-        #Resource = [
-        #  "arn:aws:iam::${var.prod_account_id}:role/Deployment",
-        #  "arn:aws:iam::${var.dev_account_id}:role/Deployment",
-        #  "arn:aws:iam::${var.operations_account_id}:role/Deployment"
-        #]
-      },
-      {
-        Effect   = "Allow",
-        Action   = "sts:TagSession",
-        Resource = "*"
-      }
-
-    ]
-  })
-}
-
-// attach the policy to the ops-infra-deployer role
-// Only create this attachment if a GitHub repository is provided
-resource "aws_iam_role_policy_attachment" "ops-infra-deployer-policy" {
-  count      = var.github_repo != null ? 1 : 0
-  role       = aws_iam_role.ops-infra-deployer[0].name
-  policy_arn = aws_iam_policy.ops-infra-deployer-policy[0].arn
-}
-
-
-
-// create an identity provider for the github OIDC flow
-// Only create this provider if a GitHub repository is provided
-resource "aws_iam_openid_connect_provider" "github" {
-  count           = var.github_repo != null ? 1 : 0
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
-  url             = "https://token.actions.githubusercontent.com"
-}
-
-// create a Deployment Role in Ops
+# // create a Deployment Role in Ops
 
 # resource "aws_iam_role" "Deployement" {
 #   name = "Deployement"

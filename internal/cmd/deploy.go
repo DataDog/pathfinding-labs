@@ -12,6 +12,7 @@ import (
 
 	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -44,30 +45,45 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Validate AWS credentials before running terraform
-	if err := validateAWSCredentials(cfg); err != nil {
-		return err
-	}
-
-	// Detect which service-linked roles already exist in the prod account
-	// so Terraform doesn't try to create duplicates
-	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
-	if err != nil {
-		// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
-		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
-		fmt.Println("Terraform will attempt to create all service-linked roles.")
-	} else {
-		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
-			CreateAutoScaling: !slrStatus.AutoScalingExists,
-			CreateSpot:        !slrStatus.SpotExists,
-			CreateAppRunner:   !slrStatus.AppRunnerExists,
-			CreateMWAA:        !slrStatus.MWAAExists,
+	// Check for enabled scenarios with missing required config before doing any AWS calls
+	{
+		discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+		allScenarios, discoverErr := discovery.DiscoverAll()
+		if discoverErr == nil {
+			enabledVars := cfg.GetEnabledScenarioVars()
+			var configErrors []string
+			for _, s := range allScenarios {
+				if !enabledVars[s.Terraform.VariableName] {
+					continue
+				}
+				for _, cfgKey := range s.Config {
+					if cfgKey.Required {
+						val, _ := cfg.GetScenarioConfig(s.Name, cfgKey.Key)
+						if val == "" {
+							configErrors = append(configErrors, fmt.Sprintf(
+								"  %s: key %q is required\n    Set with: plabs config %s set %s <value>",
+								s.Name, cfgKey.Key, s.Name, cfgKey.Key))
+						}
+					}
+				}
+			}
+			if len(configErrors) > 0 {
+				red := color.New(color.FgRed).SprintFunc()
+				fmt.Println()
+				fmt.Println(red("Cannot deploy: some enabled scenarios have missing required configuration:"))
+				fmt.Println()
+				for _, e := range configErrors {
+					fmt.Println(e)
+				}
+				fmt.Println()
+				return fmt.Errorf("missing required scenario configuration")
+			}
 		}
 	}
 
-	// Sync tfvars from config before running terraform
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
-		return fmt.Errorf("failed to sync tfvars: %w", err)
+	// Validate AWS credentials before running terraform
+	if err := validateAWSCredentials(cfg); err != nil {
+		return err
 	}
 
 	cyan := color.New(color.FgCyan).SprintFunc()
@@ -75,8 +91,42 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	dim := color.New(color.Faint).SprintFunc()
 
-	// Create runner early so bootstrap can use it
+	// Create runner early — needed for state inspection and bootstrap.
+	// Inject attacker IAM credentials as TF_VAR_* env vars so they are never
+	// written to terraform.tfvars on disk (mirrors TUI behavior).
 	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
+
+	// Detect which service-linked roles already exist in the prod account
+	// so Terraform doesn't try to create duplicates.
+	//
+	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
+	// If Terraform already owns the SLR in state, keep create=true — flipping it to
+	// false would make count=0 and cause Terraform to destroy the SLR.
+	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
+	if err != nil {
+		// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
+		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
+		fmt.Println("Terraform will attempt to create all service-linked roles.")
+	} else {
+		inState := &plabsaws.ServiceLinkedRoleStatus{}
+		if runner.IsInitialized() {
+			if stateResources, stateErr := runner.StateList(); stateErr == nil {
+				inState = plabsaws.SLRInState(stateResources)
+			}
+		}
+		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
+			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
+			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+			CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
+		}
+	}
+
+	// Sync tfvars from config before running terraform
+	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync tfvars: %w", err)
+	}
 
 	// Bootstrap attacker IAM user if needed
 	if cfg.HasAttackerAccount() && cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.IAMAccessKeyID == "" {
@@ -92,6 +142,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
 			return fmt.Errorf("failed to sync tfvars after bootstrap: %w", err)
 		}
+
+		// Re-inject credentials into runner now that they exist
+		runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
 
 		fmt.Println(green("Attacker IAM admin user bootstrapped successfully."))
 		fmt.Println()

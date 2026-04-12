@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Passing administrative execution role to CloudFormation StackSet to create escalated IAM resources
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances`
 * **Schema Version:** 4.1.1
@@ -88,7 +89,7 @@ The script will:
 4. Create a StackSet and deploy a stack instance with the execution role
 5. Wait for the StackSet operation to complete
 6. Assume the escalated role and verify administrative access
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

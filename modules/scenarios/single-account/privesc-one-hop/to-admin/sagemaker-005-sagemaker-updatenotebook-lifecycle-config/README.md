@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $37/mo
+* **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config`
 * **Schema Version:** 4.1.1
@@ -85,7 +86,7 @@ The script will:
 5. Update the notebook to use the malicious lifecycle configuration
 6. Start the notebook and wait for the lifecycle script to execute
 7. Verify successful privilege escalation to administrator access
-8. Output standardized test results for automation
+
 
 **Note**: The demo includes wait times for the notebook to stop (~5 minutes) and start (~5-7 minutes), as SageMaker notebook state transitions take several minutes to complete.
 

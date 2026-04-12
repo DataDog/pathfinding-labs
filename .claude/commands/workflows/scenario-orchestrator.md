@@ -30,15 +30,18 @@ What kind of scenario should we build?
 6. **CSPM: Toxic Combination** - Multiple compounding misconfigurations
 7. **Tool Testing** - Edge cases for testing detection engines
 8. **CTF** - Capture-the-flag challenge deploying real application infrastructure (chatbot, web app, etc.) with an intentional vulnerability; participants must discover and exploit it to retrieve a flag
+9. **Attack Simulation** - Real-world breach recreation from a blog post or incident report; demo script includes failed attempts and recon steps mirroring the original attack
 ```
 
-### Step 2: Target Selection (for categories 1-6)
+### Step 2: Target Selection (for categories 1-6, and 9)
 
 For Privilege Escalation and CSPM categories, ask about the target:
 - **to-admin** - Full administrative access
 - **to-bucket** - S3 bucket access
 
 For Tool Testing and CTF, this step may be skipped or asked contextually.
+
+For Attack Simulation, determine the target based on blog post analysis (usually to-admin since most breaches achieve admin access before causing impact).
 
 ### Step 3: Cross-Account Path (only for category 4)
 
@@ -80,6 +83,36 @@ Ask for:
 - Does the attack start from anonymous public access (no AWS credentials needed), or does the attacker begin with some IAM credentials?
 
 Note: CTF scenarios do NOT include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
+
+**Attack Simulation:**
+This category has a unique multi-step wizard flow:
+
+1. **Get Blog Post URL**: Ask the user for the URL of the blog post or incident report. If the user already provided a URL in their initial message, use that.
+2. **Analyze the Blog Post**: Use WebFetch to retrieve and read the blog post. Extract the complete attack chain -- every step the attacker took, including failures, recon, and enumeration.
+3. **Present Understanding**: Show the user a numbered list of every step from the blog post, organized chronologically. For each step, note:
+   - What the attacker did (AWS API calls if mentioned)
+   - Whether it succeeded or failed
+   - What information was gathered
+   - The identity/principal used
+4. **Ask User About Modifications**: Present specific questions about each area where modification may be needed:
+   - Which steps are too expensive to simulate? (e.g., GPU instances -- suggest using t3.micro or skipping entirely)
+   - Does the attack include cross-account movement? If so, should it be simplified to single-account, or preserved as cross-account? (Always ask -- no default assumption)
+   - Should initial access start with credentials directly (like privesc scenarios) or include the discovery mechanism (e.g., public S3 bucket)?
+   - What is the target/objective for the lab? (to-admin or to-bucket, based on the attack's primary escalation achievement)
+   - Any steps to omit entirely? (e.g., crypto mining payload, data exfiltration to external accounts)
+   - Any limitations of pathfinding-labs that would require modification? (e.g., no org management account access)
+5. **User Approves/Modifies**: Wait for user confirmation before proceeding.
+6. **Create scenario.yaml**: Include the `source` block with blog metadata. The `source` block is required for Attack Simulation scenarios:
+   ```yaml
+   source:
+     url: "https://..."
+     title: "Blog Post Title"
+     author: "Author or Organization"
+     date: "YYYY-MM-DD"
+   ```
+7. **Delegate to sub-agents**: When delegating to the demo-creator, include detailed context about which steps from the blog post should be included, which are expected to succeed, and which are expected to fail. The demo script should follow the chronological order of the original attack.
+
+Note: Attack Simulation scenarios include `demo_attack.sh` (which recreates the attack including failed attempts) and `cleanup_attack.sh` (standard cleanup of demo artifacts). The demo script uses `[EXPLOIT]` and `[OBSERVATION]` labels as normal -- the yellow description text before each command indicates whether the step is expected to succeed or fail per the source blog.
 
 ---
 
@@ -260,6 +293,7 @@ environments:
 | `"CSPM: Toxic Combination"` | Multiple compounding misconfigurations | Public Lambda + Admin Role, etc. |
 | `"Tool Testing"` | Detection engine edge cases and testing scenarios | Test CSPM/detection tools for false positives/negatives, edge cases in policy parsing |
 | `"CTF"` | Capture-the-flag challenge with real application infrastructure | AI chatbot with prompt injection, web API with SSRF, etc. |
+| `"Attack Simulation"` | Real-world breach recreation as a lab environment | Sysdig "8 Minutes to Admin", Unit42 reports, etc. |
 
 ##### `sub_category`
 
@@ -375,6 +409,9 @@ Examples with path IDs:
 - Cross-account: `modules/scenarios/cross-account/{source}-to-{dest}/{scenario-name}/`
 - CTF: `modules/scenarios/ctf/{scenario-name}/`
 
+**For Attack Simulation scenarios:**
+- Attack Simulation: `modules/scenarios/attack-simulation/{scenario-name}/`
+
 ### 2. Resource Naming Convention
 
 **For self-escalation and one-hop scenarios (use pathfinding.cloud IDs):**
@@ -413,6 +450,7 @@ Examples:
 - Tool testing: `enable_tool_testing_resource_policy_bypass`
 - Cross-account: `enable_cross_account_{src}_to_{dest}_{scenario_name}`
 - CTF: `enable_ctf_{scenario_name}` (e.g., `enable_ctf_ai_chatbot_to_admin`)
+- Attack Simulation: `enable_attack_simulation_{scenario_name}` (e.g., `enable_attack_simulation_sysdig_8_minutes_to_admin`)
 
 ### 4. Module Naming
 
@@ -431,6 +469,7 @@ Examples:
 - Tool testing: `tool_testing_resource_policy_bypass`
 - Cross-account: `cross_account_{src}_to_{dest}_{scenario_name}`
 - CTF: `ctf_{scenario_name}` (e.g., `ctf_ai_chatbot_to_admin`)
+- Attack Simulation: `attack_simulation_{scenario_name}` (e.g., `attack_simulation_sysdig_8_minutes_to_admin`)
 
 ### 5. Attack Path Design Rules
 
@@ -671,3 +710,4 @@ When reading `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`, 
 - Wizard option 6 (CSPM: Toxic Combination) → `category: "CSPM: Toxic Combination"`, `path_type: "toxic-combination"`
 - Wizard option 7 (Tool Testing) → `category: "Tool Testing"`
 - Wizard option 8 (CTF) → `category: "CTF"`, `path_type: "ctf"` (no sub_category)
+- Wizard option 9 (Attack Simulation) → `category: "Attack Simulation"`, `path_type: "attack-simulation"` (no sub_category)

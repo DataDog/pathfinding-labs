@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:CreateLoginProfile can set password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile`
 * **Schema Version:** 4.1.1
@@ -83,7 +84,7 @@ The script will:
 3. Create a console password for the target user
 4. Display console login URL and credentials
 5. Verify successful privilege escalation to bucket access
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

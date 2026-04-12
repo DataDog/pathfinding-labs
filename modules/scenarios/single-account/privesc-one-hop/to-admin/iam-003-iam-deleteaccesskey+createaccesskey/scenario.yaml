@@ -6,6 +6,7 @@ name: "iam-deleteaccesskey+createaccesskey"
 title: "IAM Access Key Rotation to Admin"
 description: "User with iam:DeleteAccessKey and iam:CreateAccessKey can delete an existing access key and create a new one for an admin user (bypassing the 2-key limit) to gain admin access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "iam-003"
 
 # =============================================================================

@@ -17,17 +17,18 @@ func hyperlink(url, text string) string {
 
 // DetailsPane displays detailed information about the selected scenario
 type DetailsPane struct {
-	styles     *Styles
-	scenario   *scenarios.Scenario
-	enabled    bool
-	deployed   bool
-	demoActive bool
-	creds      *terraform.Credentials
-	resources  []string // ARNs of deployed resources
-	focused    bool
-	width      int
-	height     int
-	scroll     int
+	styles       *Styles
+	scenario     *scenarios.Scenario
+	enabled      bool
+	deployed     bool
+	demoActive   bool
+	creds        *terraform.Credentials
+	resources    []string          // ARNs of deployed resources
+	configValues map[string]string // Per-scenario config values (key -> value)
+	focused      bool
+	width        int
+	height       int
+	scroll       int
 }
 
 // NewDetailsPane creates a new details pane
@@ -44,6 +45,11 @@ func (d *DetailsPane) SetScenario(s *scenarios.Scenario, enabled, deployed, demo
 	d.deployed = deployed
 	d.demoActive = demoActive
 	d.scroll = 0
+}
+
+// SetConfigValues sets the per-scenario config values to display
+func (d *DetailsPane) SetConfigValues(vals map[string]string) {
+	d.configValues = vals
 }
 
 // SetCredentials sets the credentials for the displayed scenario
@@ -256,6 +262,40 @@ func (d *DetailsPane) buildContent() []string {
 				permText = permText[:contentWidth-5] + "..."
 			}
 			lines = append(lines, d.styles.DetailValue.Render("  "+permText))
+		}
+	}
+
+	// Per-scenario configuration (if declared in scenario.yaml)
+	if d.scenario.HasConfig() {
+		lines = append(lines, "")
+		lines = append(lines, sectionStyle.Render("Configuration"))
+		for _, cfgKey := range d.scenario.Config {
+			currentVal := ""
+			if d.configValues != nil {
+				currentVal = d.configValues[cfgKey.Key]
+			}
+
+			keyLabel := d.styles.DetailLabel.Render("  " + cfgKey.Key + ": ")
+			var valuePart string
+			if currentVal != "" {
+				valuePart = d.styles.CredentialValue.Render(currentVal)
+			} else if cfgKey.Required {
+				valuePart = d.styles.ScenarioDisabled.Render("(not set)") + " " + d.styles.DemoActiveLabel.Render("[required]")
+			} else {
+				valuePart = d.styles.ScenarioDisabled.Render("(not set)")
+			}
+			lines = append(lines, keyLabel+valuePart)
+
+			if cfgKey.Description != "" {
+				wrapped := d.wordWrap(cfgKey.Description, contentWidth-4)
+				for _, wl := range strings.Split(wrapped, "\n") {
+					lines = append(lines, d.styles.ScenarioDisabled.Render("    "+wl))
+				}
+			}
+		}
+		if d.focused {
+			lines = append(lines, "")
+			lines = append(lines, d.styles.ScenarioDisabled.Render("  [e] edit config"))
 		}
 	}
 

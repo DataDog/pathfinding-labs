@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket`
 * **Schema Version:** 4.1.1

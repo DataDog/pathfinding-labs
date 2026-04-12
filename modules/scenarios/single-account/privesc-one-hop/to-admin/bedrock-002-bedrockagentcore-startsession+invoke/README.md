@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke`
 * **Schema Version:** 4.1.1
@@ -81,7 +82,7 @@ The script will:
 3. Start a session on the existing code interpreter (no creation needed)
 4. Extract credentials from the MicroVM Metadata Service
 5. Verify successful privilege escalation with admin operations
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

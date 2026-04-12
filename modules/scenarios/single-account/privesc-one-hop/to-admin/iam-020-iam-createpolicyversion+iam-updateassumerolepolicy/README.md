@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modify customer-managed policy permissions and role trust policy to gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy`
 * **Schema Version:** 4.1.1
@@ -85,7 +86,7 @@ The script will:
 4. Show trust policy modification to add the starting user
 5. Assume the role without needing explicit sts:AssumeRole permissions
 6. Verify successful privilege escalation with admin-level API calls
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

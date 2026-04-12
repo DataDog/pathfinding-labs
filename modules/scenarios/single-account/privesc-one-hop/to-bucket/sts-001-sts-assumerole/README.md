@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with sts:AssumeRole can directly assume role with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 4. List the contents of the target sensitive S3 bucket
 5. Download `sensitive-data.txt` from the bucket
 6. Upload a test file to the bucket to confirm write access
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

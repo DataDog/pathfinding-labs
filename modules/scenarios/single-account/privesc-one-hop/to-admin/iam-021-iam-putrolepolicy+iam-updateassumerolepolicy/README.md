@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying a role's inline policy to grant admin permissions and updating its trust policy to allow assumption
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 3. Demonstrate adding an admin inline policy to the target role
 4. Demonstrate updating the trust policy to allow assumption
 5. Verify successful privilege escalation by assuming the role and testing admin permissions
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

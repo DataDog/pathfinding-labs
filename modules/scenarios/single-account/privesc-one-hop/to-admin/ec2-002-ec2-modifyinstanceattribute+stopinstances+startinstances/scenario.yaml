@@ -6,6 +6,7 @@ name: "ec2-modifyinstanceattribute+stopinstances+startinstances"
 title: "EC2 Instance Profile Swap to Admin"
 description: "Principal with ec2:ModifyInstanceAttribute, ec2:StopInstances, and ec2:StartInstances can inject malicious code into an EC2 instance's userData to extract credentials from the attached IAM role via IMDS"
 cost_estimate: "$10/mo"
+cost_estimate_when_demo_executed: "$10/mo"
 pathfinding-cloud-id: "ec2-002"
 
 # =============================================================================

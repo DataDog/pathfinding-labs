@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $5/mo
+* **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession`
 * **Schema Version:** 4.1.1

@@ -4,6 +4,162 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.4.0 — 2026-04-10
+
+Minor version bump: added `Cost Estimate (Demo)` required metadata field.
+
+**Changes:**
+- **Metadata block** -- added `* **Cost Estimate When Demo Executed:** {value}` immediately after `* **Cost Estimate:** {value}`. Value comes from `cost_estimate_when_demo_executed` in `scenario.yaml`.
+
+**Motivation:**
+- Labs have two distinct cost states: idle (lab deployed, no attack running) and active (demo script executing, which may provision temporary resources like EC2 instances or Lambda functions). Surfacing both values in the TUI and website gives users accurate cost visibility before running a demo.
+
+**Migration rules:**
+- Add `* **Cost Estimate (Demo):** {cost_estimate_when_demo_executed}` after the existing `* **Cost Estimate:**` line
+- Value comes from `cost_estimate_when_demo_executed` in `scenario.yaml` (always present in schema v1.5.0+)
+- Stamp `Schema Version: 4.4.0`
+
+```yaml
+migration:
+  tier: script
+  scope: all
+  requires_scenario_yaml_fields: [cost_estimate_when_demo_executed]
+  affected_sections: [metadata_block]
+  operations:
+    - find: "* **Cost Estimate:** {value}"
+      replace: "* **Cost Estimate:** {value}\n* **Cost Estimate When Demo Executed:** {cost_estimate_when_demo_executed}"
+    - find: "Schema Version: 4.3.2"
+      replace: "Schema Version: 4.4.0"
+```
+
+---
+
+## 4.3.2 — 2026-04-09
+
+Patch: restored `Lab Modifications` as a single-line reference in Attack Simulation metadata, pointing to the canonical `### Modifications from Original Attack` section instead of duplicating content.
+
+**Changes:**
+- **Metadata block** -- `**Lab Modifications:**` is back as a single fixed-text line: "This lab was modified from the original attack. See [Modifications from Original Attack](#modifications-from-original-attack) for details." Omitted if `modifications` is absent or empty in `scenario.yaml`.
+- **Section Content Rules** -- clarified that `### Modifications from Original Attack` is the canonical location for the full list; the metadata line is a surface-level notice only.
+
+**Motivation:**
+- The 4.3.1 removal went too far — readers scanning the metadata have no indication that lab differences exist. A short reference line surfaces this without duplicating the full bullet list.
+
+**Migration rules:**
+- If `**Lab Modifications:**` was removed by the 4.3.1 migration and `modifications` is non-empty in `scenario.yaml`, add back the single-line form: `* **Lab Modifications:** This lab was modified from the original attack. See [Modifications from Original Attack](#modifications-from-original-attack) for details.`
+- If `modifications` is absent or empty, leave the field omitted.
+- Stamp `Schema Version: 4.3.2`
+
+```yaml
+migration:
+  tier: script
+  scope:
+    field: "category"
+    equals: "Attack Simulation"
+  affected_sections: [metadata_block]
+  operations:
+    - if: "scenario.yaml has modifications list (non-empty) AND Lab Modifications field is absent"
+      action: "add Lab Modifications single-line reference after Source Date"
+      value: "* **Lab Modifications:** This lab was modified from the original attack. See [Modifications from Original Attack](#modifications-from-original-attack) for details."
+    - find: "Schema Version: 4.3.1"
+      replace: "Schema Version: 4.3.2"
+```
+
+---
+
+## 4.3.1 — 2026-04-09
+
+Patch: removed `Lab Modifications` metadata field for Attack Simulation scenarios; `### Modifications from Original Attack` section is the canonical location.
+
+**Changes:**
+- **Metadata block** -- removed `**Lab Modifications:**` nested bullet list. Source Date is now immediately followed by Technique with no Lab Modifications field between them.
+- **Section Content Rules** -- clarified that the `modifications` list in `scenario.yaml` is the source data for `### Modifications from Original Attack`, not a metadata field.
+
+**Motivation:**
+- The `### Modifications from Original Attack` section under `## Attack` already documents this content in full prose. The metadata bullet list was redundant and lower quality.
+- The frontend will read modifications from the `### Modifications from Original Attack` section going forward.
+
+**Migration rules:**
+- Remove `**Lab Modifications:**` and all its sub-bullets from the README metadata block if present
+- Stamp `Schema Version: 4.3.1`
+
+```yaml
+migration:
+  tier: script
+  scope:
+    field: "category"
+    equals: "Attack Simulation"
+  affected_sections: [metadata_block]
+  operations:
+    - find: "**Lab Modifications:**\n  * ..."
+      action: "remove entire Lab Modifications field and sub-bullets"
+    - find: "Schema Version: 4.3.0"
+      replace: "Schema Version: 4.3.1"
+```
+
+---
+
+## 4.3.0 — 2026-04-09
+
+Minor version bump: added `Lab Modifications` conditional metadata field for Attack Simulation scenarios.
+
+**Changes:**
+- **Conditional metadata fields** -- added `**Lab Modifications:**` nested bullet list for Attack Simulation scenarios, displayed after `Source Date` and before `Technique`. Each sub-bullet maps to one entry in the `modifications` list in `scenario.yaml`. Omitted if `modifications` is absent or empty.
+
+**Motivation:**
+- Learners need to understand what was changed from the real-world attack before reading the objective. The website displays this between the source attribution block and the "Your objective is..." sentence, so it must be present in the README metadata.
+
+**Migration rules:**
+- No migration needed for existing scenarios -- `Lab Modifications` is conditional and only applies to Attack Simulation scenarios
+- New Attack Simulation scenarios should include `Lab Modifications` if `modifications` is set in `scenario.yaml`
+- Stamp `Schema Version: 4.3.0` for new or updated Attack Simulation READMEs
+
+```yaml
+migration:
+  tier: none
+  scope:
+    field: "category"
+    equals: "Attack Simulation"
+  affected_sections: [metadata_block]
+  operations:
+    - if: "scenario.yaml has modifications list (non-empty)"
+      action: "add Lab Modifications nested bullets after Source Date, before Technique"
+```
+
+---
+
+## 4.2.0 — 2026-04-08
+
+Minor version bump: added Attack Simulation category support.
+
+**Changes:**
+- **Metadata block** -- added `Attack Simulation` to Category enum, `attack-simulation` to Path Type enum
+- **Conditional metadata fields** -- added Source URL, Source Title, Source Author, Source Date for Attack Simulation scenarios
+- **Canonical section structure** -- added `### Modifications from Original Attack` (Attack Simulation only, between `### Scenario Specific Resources Created` and `### Solution`)
+- **Section Content Rules** -- added Attack Simulation subsection documenting `## Objective` phrasing, `### Modifications from Original Attack` content, `## References` requirement, and demo script behavior
+
+**Motivation:**
+- New scenario category converts real-world breach blog posts into lab environments
+- Requires source attribution metadata and documentation of modifications made for lab safety/cost
+- Demo scripts follow chronological order of the original attack, including recon and failed attempts
+
+**Migration rules:**
+- No migration needed -- new category only, no structural changes to existing READMEs
+- Stamp `Schema Version: 4.2.0` for new Attack Simulation scenarios only
+
+```yaml
+migration:
+  tier: none
+  scope:
+    field: "category"
+    equals: "Attack Simulation"
+  requires_scenario_yaml_fields: [source]
+  affected_sections: []
+  operations: []
+```
+
+---
+
 ## 4.1.1 — 2026-04-07
 
 Patch: fixed `plabs enable`/`plabs disable` commands and TUI navigation instructions in deploy and teardown boilerplate.

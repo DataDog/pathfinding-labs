@@ -78,13 +78,20 @@ resource "aws_iam_role_policy" "chatbot_role_policy" {
         Effect = "Allow"
         Action = [
           "lambda:GetFunction",
-          "sts:GetCallerIdentity",
-          "iam:GetRole"
+          "sts:GetCallerIdentity"
         ]
         Resource = "*"
       }
     ]
   })
+}
+
+# IAM read-only - lets the player enumerate roles, policies, and use
+# iam:SimulatePrincipalPolicy to figure out which Lambda role is worth targeting
+resource "aws_iam_role_policy_attachment" "chatbot_iam_readonly" {
+  provider   = aws.prod
+  role       = aws_iam_role.chatbot_role.name
+  policy_arn = "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
 }
 
 # Basic execution for CloudWatch logging

@@ -37,16 +37,30 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Detect existing service-linked roles to avoid creation conflicts
+	cyan := color.New(color.FgCyan).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	// Create runner early so we can check state for SLR detection.
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
+
+	// Detect existing service-linked roles to avoid creation conflicts.
+	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
 	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
 	if err != nil {
 		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
 	} else {
+		inState := &plabsaws.ServiceLinkedRoleStatus{}
+		if runner.IsInitialized() {
+			if stateResources, stateErr := runner.StateList(); stateErr == nil {
+				inState = plabsaws.SLRInState(stateResources)
+			}
+		}
 		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
-			CreateAutoScaling: !slrStatus.AutoScalingExists,
-			CreateSpot:        !slrStatus.SpotExists,
-			CreateAppRunner:   !slrStatus.AppRunnerExists,
-			CreateMWAA:        !slrStatus.MWAAExists,
+			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
+			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+			CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
 		}
 	}
 
@@ -54,9 +68,6 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync tfvars: %w", err)
 	}
-
-	cyan := color.New(color.FgCyan).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
 
 	fmt.Println()
 	fmt.Println(cyan("Planning Pathfinding Labs deployment..."))
@@ -67,9 +78,6 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
 	}
 	fmt.Println()
-
-	// Create runner with the correct terraform directory
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 
 	// Ensure terraform is initialized
 	if !runner.IsInitialized() {
