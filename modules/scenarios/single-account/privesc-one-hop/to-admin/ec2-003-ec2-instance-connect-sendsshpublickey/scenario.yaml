@@ -6,6 +6,7 @@ name: "ec2-instance-connect-sendsshpublickey"
 title: "EC2 Instance Connect SSH to Admin"
 description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 instance and extract admin role credentials via IMDS"
 cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "ec2-003"
 
 # =============================================================================

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating Lambda function with admin role and granting self-invocation permission to execute malicious code
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

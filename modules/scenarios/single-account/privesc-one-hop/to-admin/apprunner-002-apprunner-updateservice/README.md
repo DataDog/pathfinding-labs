@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $10/mo
+* **Cost Estimate When Demo Executed:** $10/mo
 * **Technique:** Update existing App Runner service to execute privilege escalation commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice`
 * **Schema Version:** 4.1.1
@@ -81,7 +82,7 @@ The script will:
 4. Update the App Runner service with malicious configuration
 5. Wait for the service to execute the privilege escalation command
 6. Verify successful privilege escalation to administrator
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

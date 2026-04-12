@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** CloudFormation stack creation with privileged service role to create escalated IAM roles
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 5. Create a new escalated IAM role via CloudFormation
 6. Assume the newly created role
 7. Verify successful privilege escalation
-8. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

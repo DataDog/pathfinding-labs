@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter`
 * **Schema Version:** 4.1.1
@@ -83,7 +84,7 @@ The script will:
 3. Create a code interpreter with the privileged role
 4. Extract credentials from the MicroVM Metadata Service
 5. Verify successful privilege escalation with admin operations
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

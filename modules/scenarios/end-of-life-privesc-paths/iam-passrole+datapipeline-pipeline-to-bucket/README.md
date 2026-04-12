@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Create Data Pipeline with passed role to exfiltrate S3 data, bypassing IAM restrictions via overly permissive bucket resource policy
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline`
 * **Schema Version:** 4.1.1
@@ -87,7 +88,7 @@ The script will:
 3. Create the Data Pipeline with shell command activity
 4. Activate the pipeline and wait for EC2 instance launch
 5. Verify successful data exfiltration from the sensitive bucket
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

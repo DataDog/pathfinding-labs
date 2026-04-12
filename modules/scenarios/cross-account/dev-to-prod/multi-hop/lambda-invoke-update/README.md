@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account Lambda function code injection to extract admin credentials
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update`
 * **Schema Version:** 4.1.1

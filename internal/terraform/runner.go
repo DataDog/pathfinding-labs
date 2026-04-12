@@ -15,6 +15,7 @@ type Runner struct {
 	tfPath    string
 	workDir   string
 	installer *Installer
+	extraEnv  []string // additional env vars injected into every terraform subprocess
 }
 
 // NewRunner creates a new terraform runner
@@ -23,6 +24,18 @@ func NewRunner(binDir, workDir string) *Runner {
 		workDir:   workDir,
 		installer: NewInstaller(binDir),
 	}
+}
+
+// SetExtraEnv sets additional environment variables to inject into every
+// terraform subprocess (e.g. TF_VAR_* credential variables that must not be
+// written to terraform.tfvars on disk).
+func (r *Runner) SetExtraEnv(env []string) {
+	r.extraEnv = env
+}
+
+// buildEnv returns a clean environment with any extra vars appended.
+func (r *Runner) buildEnv() []string {
+	return append(CleanEnv(), r.extraEnv...)
 }
 
 // ensureTerraform makes sure terraform is available and sets tfPath
@@ -48,6 +61,7 @@ func (r *Runner) Init() error {
 
 	cmd := exec.Command(r.tfPath, "init")
 	cmd.Dir = r.workDir
+	cmd.Env = r.buildEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -63,6 +77,7 @@ func (r *Runner) Plan() error {
 
 	cmd := exec.Command(r.tfPath, "plan")
 	cmd.Dir = r.workDir
+	cmd.Env = r.buildEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -83,6 +98,7 @@ func (r *Runner) Apply(autoApprove bool) error {
 
 	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
+	cmd.Env = r.buildEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -103,6 +119,7 @@ func (r *Runner) ApplyTarget(target string, autoApprove bool) error {
 
 	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
+	cmd.Env = r.buildEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

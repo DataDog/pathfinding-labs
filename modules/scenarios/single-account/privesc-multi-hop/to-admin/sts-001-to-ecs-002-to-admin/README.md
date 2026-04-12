@@ -5,6 +5,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
 * **Schema Version:** 4.1.1
@@ -91,7 +92,7 @@ The script will:
 5. Run the task on Fargate and wait for completion
 6. Extract the admin role credentials from the task output
 7. Verify successful privilege escalation to administrator
-8. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

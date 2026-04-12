@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin`
 * **Schema Version:** 4.1.1

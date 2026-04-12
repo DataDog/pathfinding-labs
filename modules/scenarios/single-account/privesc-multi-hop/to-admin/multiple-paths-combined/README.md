@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined`
 * **Schema Version:** 4.1.1

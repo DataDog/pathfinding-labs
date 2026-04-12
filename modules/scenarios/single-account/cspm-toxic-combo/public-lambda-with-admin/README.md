@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Publicly accessible Lambda function with administrative IAM role
 * **Terraform Variable:** `enable_single_account_cspm_toxic_combo_public_lambda_with_admin`
 * **Schema Version:** 4.1.1

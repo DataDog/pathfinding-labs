@@ -224,7 +224,7 @@ Attack Simulation scenarios recreate real-world breaches as lab environments. Ke
 
 **README specifics:**
 - **Title**: Use a descriptive title derived from the blog post (e.g., "AI-Assisted Cloud Intrusion: 8 Minutes to Admin")
-- **Metadata block**: Includes Source URL, Source Title, Source Author, Source Date fields after Cost Estimate
+- **Metadata block**: Includes Source URL, Source Title, Source Author, Source Date fields after Cost Estimate. No `Lab Modifications` field in metadata — the `modifications` list from `scenario.yaml` is rendered in the `### Modifications from Original Attack` section under `## Attack`, not in the metadata block.
 - **`## Objective`**: References the real-world incident. Opening sentence pattern: "Your objective is to recreate the attack chain from [{source_title}]({source_url}), where an attacker moved from {starting point} to {target} by {brief technique summary}."
 - **`### Modifications from Original Attack`**: Required section under `## Attack`, placed after `### Scenario Specific Resources Created` and before `### Solution`. Documents:
   - Steps that were simplified (e.g., "Cross-account movement simplified to single-account role assumption")

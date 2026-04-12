@@ -6,6 +6,7 @@ name: "iam-passrole+ec2-requestspotinstances"
 title: "EC2 Spot Instance Request to Admin"
 description: "User with iam:PassRole and ec2:RequestSpotInstances can escalate by launching spot instance with admin instance profile"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "ec2-004"
 
 # =============================================================================

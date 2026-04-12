@@ -5,6 +5,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $1/mo
+* **Cost Estimate When Demo Executed:** $1/mo
 * **Technique:** Acme Corp has deployed an AI-powered customer assistant at a public Lambda endpoint. Escalate to administrative access and retrieve the flag.
 * **Difficulty:** beginner
 * **Flag Location:** SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)

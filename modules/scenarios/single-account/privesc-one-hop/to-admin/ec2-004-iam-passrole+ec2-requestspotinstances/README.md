@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances`
 * **Schema Version:** 4.1.1
@@ -80,7 +81,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

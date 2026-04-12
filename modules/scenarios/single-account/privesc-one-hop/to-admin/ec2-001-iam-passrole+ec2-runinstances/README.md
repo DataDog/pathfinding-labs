@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** EC2 instance launch with privileged role and user-data backdoor
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances`
 * **Schema Version:** 4.1.1

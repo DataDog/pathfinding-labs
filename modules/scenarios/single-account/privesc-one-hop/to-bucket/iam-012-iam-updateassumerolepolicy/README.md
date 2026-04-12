@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy`
 * **Schema Version:** 4.1.1

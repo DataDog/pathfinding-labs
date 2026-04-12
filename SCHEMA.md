@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.3.0`
+### Current Version: `1.5.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,8 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.5.0 | 2026-04-10 | Added `cost_estimate_when_demo_executed` required field: estimated monthly cost while a demo script is actively running (e.g., EC2/Lambda instances provisioned by the attack). Initialized to same value as `cost_estimate` for existing scenarios. |
+| 1.4.0 | 2026-04-09 | Added `modifications` optional list field for Attack Simulation scenarios, documenting changes made from the original real-world attack. |
 | 1.3.0 | 2026-04-08 | Added `"CTF"` and `"Attack Simulation"` categories, `"ctf"` and `"attack-simulation"` path_types, `title` and `interactive_demo` core fields, `ctf` optional block, `source` optional block. Fixed `sub_category` requiredness (conditional, not always required). |
 | 1.2.1 | 2026-02-05 | Standardized `cost_estimate` format to `"$X/mo"` (e.g., `"$0/mo"`, `"$9/mo"`). Replaced `"free"` and other formats. |
 | 1.2.0 | 2025-11-03 | Added `pathfinding-cloud-id` to help map scenarios with Pathfinding.cloud paths when applicable. |
@@ -73,11 +75,12 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.3.0"
+schema_version: "1.5.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: IAM-005
 interactive_demo: false
 ```
@@ -90,11 +93,14 @@ interactive_demo: false
 | `name` | string | ✅ Yes | Unique identifier for the scenario. Should match directory name. Use kebab-case. |
 | `title` | string | No | Human-readable scenario title. Used as the README H1 heading. If omitted, agents derive a title from the name and technique. |
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
-| `cost_estimate` | string | ✅ Yes | Estimated AWS cost to run this scenario. Always use `"$X/mo"` format rounded to nearest dollar (e.g., `"$0/mo"`, `"$9/mo"`, `"$321/mo"`) |
+| `cost_estimate` | string | ✅ Yes | Estimated monthly AWS cost while the lab is enabled and idle (no demo running). Always use `"$X/mo"` format rounded to nearest dollar (e.g., `"$0/mo"`, `"$9/mo"`, `"$321/mo"`) |
+| `cost_estimate_when_demo_executed` | string | ✅ Yes | Estimated monthly AWS cost while a demo script is actively running (e.g., EC2/Lambda/GPU instances provisioned during the attack). Same format as `cost_estimate`. If the demo creates no additional resources, set equal to `cost_estimate`. |
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
 | `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
 
 #### Cost Estimate Examples
+
+`cost_estimate` represents the idle cost (lab enabled, no demo running). `cost_estimate_when_demo_executed` represents the cost while a demo script is actively running. For labs where the demo creates temporary resources (EC2 instances, Lambda functions, GPU instances), `cost_estimate_when_demo_executed` will be higher. For IAM-only labs, both values are identical.
 
 Always use `"$X/mo"` format with rounding to the nearest dollar:
 
@@ -695,6 +701,30 @@ source:
 
 ---
 
+### Lab Modifications
+
+Optional list field for Attack Simulation scenarios. Documents changes made from the original real-world attack, such as replacing expensive resources, simplifying entry points, or removing destructive actions. This list is the source data for the `### Modifications from Original Attack` section in the README — it is not rendered in the README metadata block.
+
+```yaml
+modifications:
+  - "In the original attack, the entry point was a publicly accessible S3 bucket containing embedded IAM credentials. In this lab, the bucket is private — a starting IAM user is pre-provisioned with read access to avoid publicly exposing real credentials."
+  - "In the original attack, the attacker launched GPU instances for unauthorized cryptomining. The lab demo replicates this step using the same p3.2xlarge instance type, but the instance auto-terminates after 2 hours as a cost safeguard."
+```
+
+#### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `modifications` | list of strings | No | Each string describes one change from the original attack in natural language. Use the pattern: "In the original attack, {what happened}. In this lab, {what we changed and why}." |
+
+**Rules:**
+- Only used for `category: "Attack Simulation"` scenarios
+- Each item should describe exactly one change, using plain language
+- Explain both what the original attack did AND what the lab does instead, with brief rationale (cost, safety, or practicality)
+- Omit if the lab faithfully replicates the original attack with no meaningful changes
+
+---
+
 ## Complete Examples
 
 ### Example 1: Simple One-Hop User-Based Escalation
@@ -1093,7 +1123,7 @@ terraform:
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.3.0"
+schema_version: "1.4.0"
 name: "sysdig-8-minutes-to-admin"
 title: "AI-Assisted Cloud Intrusion: 8 Minutes to Admin"
 description: "Recreation of a real-world attack where compromised IAM credentials led to admin access via Lambda code injection in under 8 minutes"
@@ -1107,6 +1137,13 @@ source:
   title: "AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes"
   author: "Sysdig Threat Research Team"
   date: "2025-06-12"
+
+# =============================================================================
+# LAB MODIFICATIONS
+# =============================================================================
+modifications:
+  - "In the original attack, the entry point was a publicly accessible S3 bucket containing embedded IAM credentials. In this lab, the RAG data bucket is private — a starting IAM user is pre-provisioned with read access to avoid publicly exposing real credentials."
+  - "In the original attack, the attacker launched GPU instances for unauthorized AI model training. The lab demo replicates this step using the same p3.2xlarge instance type, but the instance auto-terminates after 2 hours as a cost safeguard."
 
 # =============================================================================
 # CLASSIFICATION
@@ -1202,7 +1239,7 @@ terraform:
 
 ### 2. Cost Estimates
 
-Always use the `"$X/mo"` format with rounding to the nearest dollar:
+Both `cost_estimate` (idle) and `cost_estimate_when_demo_executed` (demo running) must be present. Always use the `"$X/mo"` format with rounding to the nearest dollar.
 
 **Good:**
 - `"$0/mo"` - No AWS charges (IAM-only scenarios)
@@ -1216,6 +1253,8 @@ Always use the `"$X/mo"` format with rounding to the nearest dollar:
 - `"$0.01/hour"` - Convert to monthly and round
 - `"low"` - Too vague
 - `"minimal"` - Not specific enough
+
+**When the two values differ:** Set `cost_estimate_when_demo_executed` higher when the demo script provisions resources not in the base Terraform (e.g., EC2 instances, Lambda functions, GPU instances launched during the attack demo). If the demo creates no additional infrastructure, both values should be identical.
 
 ### 3. Attack Path Summary
 
@@ -1301,6 +1340,7 @@ Before submitting a scenario, verify all required fields are present:
 - [ ] `name`
 - [ ] `description`
 - [ ] `cost_estimate`
+- [ ] `cost_estimate_when_demo_executed`
 - [ ] `category`
 - [ ] `sub_category`
 - [ ] `path_type`
@@ -1415,5 +1455,5 @@ For questions about the schema or suggestions for improvements:
 2. Reference this SCHEMA.md file in your question
 3. Provide examples when possible
 
-**Last Updated:** 2026-04-08
-**Schema Version:** 1.3.0
+**Last Updated:** 2026-04-10
+**Schema Version:** 1.5.0

@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Bypass S3 bucket resource policy restrictions by assuming role with bucket access
 * **Terraform Variable:** `enable_tool_testing_resource_policy_bypass`
 * **Schema Version:** 4.1.1

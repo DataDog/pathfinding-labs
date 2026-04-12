@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Direct cross-account role assumption from dev user to prod admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
 * **Schema Version:** 4.1.1

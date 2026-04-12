@@ -6,6 +6,7 @@ name: "iam-createloginprofile"
 title: "IAM Console Password Creation to Bucket"
 description: "User with iam:CreateLoginProfile can set password for user with S3 bucket access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "iam-004"
 
 # =============================================================================

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset`
 * **Schema Version:** 4.1.1
@@ -82,7 +83,7 @@ The script will:
 3. Demonstrate creating a change set that adds a new admin IAM role
 4. Execute the change set using the stack's privileged service role
 5. Verify successful privilege escalation by assuming the new role
-6. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

@@ -6,6 +6,7 @@ name: "resource-policy-bypass"
 title: "Resource Policy Bypass via Role Assumption to Bucket"
 description: "Bypass S3 bucket resource policy restrictions by assuming role with bucket access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

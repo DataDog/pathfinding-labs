@@ -156,6 +156,31 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Block if any scenario to enable is missing required config
+	var configErrors []string
+	for _, s := range toEnable {
+		for _, cfgKey := range s.Config {
+			if cfgKey.Required {
+				val, _ := cfg.GetScenarioConfig(s.Name, cfgKey.Key)
+				if val == "" {
+					configErrors = append(configErrors, fmt.Sprintf(
+						"  %s: key %q is required\n    Set with: plabs config %s set %s <value>",
+						s.Name, cfgKey.Key, s.Name, cfgKey.Key))
+				}
+			}
+		}
+	}
+	if len(configErrors) > 0 {
+		fmt.Println()
+		fmt.Println(red("Cannot enable: some scenarios have missing required configuration:"))
+		fmt.Println()
+		for _, e := range configErrors {
+			fmt.Println(e)
+		}
+		fmt.Println()
+		return nil
+	}
+
 	// Update config with enabled scenarios
 	for _, s := range toEnable {
 		cfg.EnableScenario(s.Terraform.VariableName)

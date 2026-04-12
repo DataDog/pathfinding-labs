@@ -86,6 +86,7 @@ Check that the classification makes sense:
 - CTF scenarios may have a `ctf:` block with `difficulty`, `flag_location`, and `variant` fields
 - If `category` is "Attack Simulation", `path_type` should be "attack-simulation"; `sub_category` should NOT be present
 - If `category` is "Attack Simulation", a `source` block should be present with `url`, `title`, `author`, and `date` fields
+- If `category` is "Attack Simulation" and `modifications` is a non-empty list, the README must have a `### Modifications from Original Attack` section under `## Attack`. The metadata block must NOT contain a `**Lab Modifications:**` field — that was removed in schema 4.3.1.
 - CSPM, Tool Testing, CTF, and Attack Simulation categories do not require sub_category
 
 ### 1. Terraform Validation

@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate`
 * **Schema Version:** 4.1.1
@@ -86,7 +87,7 @@ The script will:
 4. Modify the template to use the new malicious version as default
 5. Launch an EC2 instance to demonstrate the privilege escalation
 6. Verify successful privilege escalation
-7. Output standardized test results for automation
+
 
 **Cost Warning:** This demo launches a t3.micro spot instance which will incur small charges (~$0.01-0.05/hour). The cleanup script terminates all instances to minimize costs.
 

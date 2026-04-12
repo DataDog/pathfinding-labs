@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $634/mo
+* **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and access S3 buckets with the endpoint's attached role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint`
 * **Schema Version:** 4.1.1
@@ -101,7 +102,7 @@ The script will:
 6. Extract IAM credentials from the instance metadata service
 7. Access the sensitive S3 bucket using the extracted credentials
 8. Verify successful privilege escalation
-9. Output standardized test results for automation
+
 
 **Note**: The demo script requires SSH client and AWS CLI to be installed. The endpoint takes approximately 2-5 minutes to update after adding the SSH key.
 

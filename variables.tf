@@ -71,12 +71,6 @@ variable "attacker_iam_user_secret_key" {
   sensitive   = true
 }
 
-variable "github_repo" {
-  description = "The github repo for the OIDC-GitHub challenge"
-  type        = string
-  default     = null
-}
-
 ##############################################################################
 # ENVIRONMENT ENABLEMENT
 ##############################################################################
@@ -769,6 +763,22 @@ variable "enable_cross_account_ops_to_prod_one_hop_simple_role_assumption" {
   default     = false
 }
 
+variable "enable_cross_account_ops_to_prod_github_oidc_pivot" {
+  description = "Enable: cross-account → ops-to-prod → github-oidc-cross-account-pivot"
+  type        = bool
+  default     = false
+}
+
+# GitHub repository to trust via OIDC for the github-oidc-cross-account-pivot scenario.
+# Name convention: plabs GenerateTFVars converts scenario name hyphens to underscores and
+# appends the config key, so "github-oidc-cross-account-pivot" + "github_repo" becomes
+# "github_oidc_cross_account_pivot_github_repo" in terraform.tfvars.
+variable "github_oidc_cross_account_pivot_github_repo" {
+  description = "GitHub repository for the github-oidc-cross-account-pivot scenario (format: org/repo). Set via: plabs config github-oidc-cross-account-pivot set github_repo org/repo"
+  type        = string
+  default     = ""
+}
+
 ##############################################################################
 # BUDGET ALERT CONFIGURATION
 ##############################################################################
@@ -833,6 +843,16 @@ variable "enable_ctf_ai_chatbot_to_admin" {
 
 variable "enable_ctf_ai_chatbot_lambda_pivot" {
   description = "Enable: ctf → ai-chatbot-lambda-pivot (prompt injection → limited creds → Lambda code update → admin)"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# ATTACK SIMULATION SCENARIOS
+##############################################################################
+
+variable "enable_attack_simulation_sysdig_8_minutes_to_admin" {
+  description = "Enable: attack-simulation → sysdig-8-minutes-to-admin"
   type        = bool
   default     = false
 }

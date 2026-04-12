@@ -7,6 +7,7 @@ title: "Glue Job Update + Run to Admin"
 pathfinding-cloud-id: "glue-005"
 description: "User with iam:PassRole, glue:UpdateJob, and glue:StartJobRun can update existing Glue Job to use privileged role and malicious script, then execute it to grant admin access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION

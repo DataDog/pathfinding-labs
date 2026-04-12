@@ -68,7 +68,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get deployment status
-	runner := terraform.NewRunner(paths.BinPath, paths.RepoPath)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 	var outputs terraform.Outputs
 	var deployedModules map[string]bool
 
@@ -142,7 +142,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	fmt.Println(dim("─────────────────────────────────────────────────────────────"))
 	fmt.Println()
 
-	demoRunner := demo.NewRunner(paths.RepoPath)
+	demoRunner := demo.NewRunner(paths.TerraformDir)
 	if err := demoRunner.RunDemo(scenario.DirPath); err != nil {
 		return err
 	}

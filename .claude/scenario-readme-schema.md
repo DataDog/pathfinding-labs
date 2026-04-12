@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.2.0`**
+**Current schema version: `4.4.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -75,6 +75,7 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **Target:** {to-admin|to-bucket}
 * **Environments:** {prod|dev|operations|prod, dev}
 * **Cost Estimate:** {value, e.g., "$0/mo"}
+* **Cost Estimate When Demo Executed:** {value, e.g., "$0/mo"}
 * **Technique:** {one-line description of the exploit}
 * **Terraform Variable:** `{variable_name}`
 * **Schema Version:** {current version from this file, e.g., 3.0.0}
@@ -111,9 +112,12 @@ CTF scenarios omit the `### Automated Demo` section entirely (participants must 
 * **Source Title:** {title}
 * **Source Author:** {author/organization}
 * **Source Date:** {YYYY-MM-DD}
+* **Lab Modifications:** This lab was modified from the original attack. See [Modifications from Original Attack](#modifications-from-original-attack) for details.
 ```
 
-Attack Simulation scenarios omit `Sub-Category`. They include all standard sections (including `### Automated Demo`). They add a `### Modifications from Original Attack` section under `## Attack` (see Section Content Rules below).
+Omit the `Lab Modifications` line entirely if the `modifications` list is absent or empty in `scenario.yaml`.
+
+Attack Simulation scenarios omit `Sub-Category`. They include all standard sections (including `### Automated Demo`). They add a `### Modifications from Original Attack` section under `## Attack` (see Section Content Rules below) — that section is the canonical location for the full list of modifications.
 
 **CSPM scenario additional fields** (after MITRE Techniques):
 ```
@@ -494,7 +498,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.2.0`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.4.0`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

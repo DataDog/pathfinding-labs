@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $37/mo
+* **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** Update existing MWAA environment's DAG source bucket to attacker-controlled bucket containing malicious DAG that executes with admin credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment`
 * **Schema Version:** 4.1.1
@@ -97,7 +98,7 @@ The script will:
 5. Wait for DAG synchronization (60 seconds)
 6. Obtain a CLI token and trigger the malicious DAG
 7. Verify successful privilege escalation by demonstrating admin access
-8. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

@@ -5,6 +5,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002`
 * **Schema Version:** 4.1.1
@@ -87,7 +88,7 @@ The script will:
 4. Invoke the function and capture the Lambda role credentials
 5. Use those credentials to create access keys for the admin user
 6. Verify successful privilege escalation to administrator
-7. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

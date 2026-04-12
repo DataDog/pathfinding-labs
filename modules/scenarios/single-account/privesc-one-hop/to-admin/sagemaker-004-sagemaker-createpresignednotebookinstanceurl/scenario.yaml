@@ -6,6 +6,7 @@ name: "sagemaker-createpresignednotebookinstanceurl"
 title: "SageMaker Notebook Presigned URL to Admin"
 description: "User with CreatePresignedNotebookInstanceUrl can generate presigned URL to access existing notebook with admin role and execute commands with elevated privileges"
 cost_estimate: "$37/mo"
+cost_estimate_when_demo_executed: "$37/mo"
 pathfinding-cloud-id: "sagemaker-004"
 
 # =============================================================================

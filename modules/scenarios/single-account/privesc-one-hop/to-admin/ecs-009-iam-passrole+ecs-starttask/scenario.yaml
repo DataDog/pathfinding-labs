@@ -6,6 +6,7 @@ name: "iam-passrole+ecs-starttask"
 title: "ECS Start Task to Admin"
 description: "User with iam:PassRole and ecs:StartTask can override existing task definition commands to escalate to admin via EC2 container instance"
 cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "ecs-009"
 
 # =============================================================================

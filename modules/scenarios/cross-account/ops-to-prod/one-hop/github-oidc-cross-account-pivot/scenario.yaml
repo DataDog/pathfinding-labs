@@ -1,0 +1,90 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.5.0"
+name: "github-oidc-cross-account-pivot"
+title: "GitHub Actions OIDC to Cross-Account S3 via Ops-to-Prod Pivot"
+description: "GitHub repo write access enables OIDC assumption of an ops role that pivots cross-account to a prod role with S3 read access on a sensitive bucket."
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+path_type: "cross-account"
+target: "to-bucket"
+environments:
+  - "operations"
+  - "prod"
+
+# =============================================================================
+# PER-SCENARIO CONFIGURATION
+# =============================================================================
+config:
+  - key: "github_repo"
+    description: "GitHub repository trusted to assume the ops deployer role (format: org/repo)"
+    required: true
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "GitHub Actions (repo: {github_repo})"
+    - "arn:aws:iam::{operations_account_id}:role/pl-ops-goidc-pivot-deployer-role"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role"
+
+  summary: "GitHub Actions (OIDC) → ops:pl-ops-goidc-pivot-deployer-role → (sts:AssumeRole cross-account) → prod:pl-prod-goidc-pivot-deployer-role → s3:GetObject on pl-prod-goidc-pivot-flag-{account_id}-{suffix}"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "GitHub Actions (repo: {github_repo})"
+      principal_type: "public"
+      permissions:
+        - permission: "sts:AssumeRoleWithWebIdentity"
+          resource: "arn:aws:iam::{operations_account_id}:role/pl-ops-goidc-pivot-deployer-role"
+    - principal: "pl-ops-goidc-pivot-deployer-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role"
+    - principal: "pl-prod-goidc-pivot-deployer-role"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}"
+
+  helpful:
+    - principal: "pl-ops-goidc-pivot-deployer-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify OIDC assumption succeeded before pivoting"
+        - permission: "iam:ListRoles"
+          purpose: "Discover assumable roles in the prod account"
+        - permission: "s3:ListAllMyBuckets"
+          purpose: "Enumerate buckets accessible after cross-account pivot"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1550.001 - Use Alternate Authentication Material: Application Access Token"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_ops_to_prod_github_oidc_pivot"
+  module_path: "modules/scenarios/cross-account/ops-to-prod/one-hop/github-oidc-cross-account-pivot"

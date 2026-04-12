@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $8/mo
+* **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** ECS EC2 task execution with admin role using ecs:StartTask to grant starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask`
 * **Schema Version:** 4.1.1
@@ -87,7 +88,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

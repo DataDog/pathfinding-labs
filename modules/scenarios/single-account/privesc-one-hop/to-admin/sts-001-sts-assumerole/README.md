@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Direct role assumption via sts:AssumeRole
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole`
 * **Schema Version:** 4.1.1

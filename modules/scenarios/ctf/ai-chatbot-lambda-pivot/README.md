@@ -5,6 +5,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $1/mo
+* **Cost Estimate When Demo Executed:** $1/mo
 * **Difficulty:** intermediate
 * **Flag Location:** SSM Parameter Store at /ctf/ctf-002/flag (requires admin credentials)
 * **Technique:** Acme Corp's AI assistant fronts a suite of internal Lambda services. Chain your way from the public chatbot to administrative access and retrieve the flag.

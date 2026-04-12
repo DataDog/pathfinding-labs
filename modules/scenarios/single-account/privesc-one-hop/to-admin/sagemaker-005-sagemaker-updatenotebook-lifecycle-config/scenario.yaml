@@ -6,6 +6,7 @@ name: "sagemaker-updatenotebook-lifecycle-config"
 title: "SageMaker Notebook Lifecycle Config Update to Admin"
 description: "User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role"
 cost_estimate: "$37/mo"
+cost_estimate_when_demo_executed: "$37/mo"
 pathfinding-cloud-id: "sagemaker-005"
 
 # =============================================================================

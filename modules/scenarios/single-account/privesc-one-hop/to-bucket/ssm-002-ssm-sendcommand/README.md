@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $8/mo
+* **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand`
 * **Schema Version:** 4.1.1
@@ -83,7 +84,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation to S3 bucket access
-4. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

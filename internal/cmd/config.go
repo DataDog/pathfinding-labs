@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/fatih/color"
@@ -16,7 +17,14 @@ import (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "View or modify plabs configuration",
-	Long:  `View or modify the plabs configuration, including AWS account settings.`,
+	Long: `View or modify the plabs configuration, including AWS account settings.
+
+Per-scenario configuration:
+  plabs config <scenario-name> list               Show all config values for a scenario
+  plabs config <scenario-name> get <key>          Read one config value
+  plabs config <scenario-name> set <key> <value>  Write a config value`,
+	Args: cobra.ArbitraryArgs,
+	RunE: runConfigScenarioOrHelp,
 }
 
 var configShowCmd = &cobra.Command{
@@ -104,6 +112,29 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	// Show enabled scenarios count
 	fmt.Printf("Enabled scenarios: %d\n", len(cfg.Scenarios.Enabled))
 	fmt.Println()
+
+	// Show per-scenario config values if any exist
+	if len(cfg.ScenarioConfigs) > 0 {
+		fmt.Println("Per-scenario config:")
+		scenarioNames := make([]string, 0, len(cfg.ScenarioConfigs))
+		for name := range cfg.ScenarioConfigs {
+			scenarioNames = append(scenarioNames, name)
+		}
+		sort.Strings(scenarioNames)
+		for _, name := range scenarioNames {
+			vals := cfg.ScenarioConfigs[name]
+			keys := make([]string, 0, len(vals))
+			for k := range vals {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			fmt.Printf("  %s:\n", cyan(name))
+			for _, k := range keys {
+				fmt.Printf("    %s = %q\n", k, vals[k])
+			}
+		}
+		fmt.Println()
+	}
 
 	fmt.Println(dim("Use 'plabs config set <key> <value>' to change settings"))
 	fmt.Println()
@@ -224,4 +255,98 @@ func valueOrNotSet(v string) string {
 		return color.New(color.Faint).Sprint("(not set)")
 	}
 	return v
+}
+
+// runConfigScenarioOrHelp handles "plabs config <scenario-name> [set|get|list] ..."
+// It is called by configCmd when no registered subcommand (show/set/sync) matches.
+func runConfigScenarioOrHelp(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+
+	scenarioName := args[0]
+	subCmd := "list"
+	if len(args) >= 2 {
+		subCmd = args[1]
+	}
+
+	switch subCmd {
+	case "list":
+		return runScenarioConfigList(scenarioName)
+	case "get":
+		if len(args) < 3 {
+			return fmt.Errorf("usage: plabs config <scenario> get <key>")
+		}
+		return runScenarioConfigGet(scenarioName, args[2])
+	case "set":
+		if len(args) < 4 {
+			return fmt.Errorf("usage: plabs config <scenario> set <key> <value>")
+		}
+		return runScenarioConfigSet(scenarioName, args[2], args[3])
+	default:
+		return fmt.Errorf("unknown subcommand %q\n\nValid subcommands: list, get, set", subCmd)
+	}
+}
+
+func runScenarioConfigList(scenarioName string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	cyan := color.New(color.FgCyan).SprintFunc()
+	dim := color.New(color.Faint).SprintFunc()
+
+	vals := cfg.GetAllScenarioConfigs(scenarioName)
+	fmt.Println()
+	fmt.Println(cyan(fmt.Sprintf("Config for scenario: %s", scenarioName)))
+	fmt.Println()
+
+	if len(vals) == 0 {
+		fmt.Println(dim("  (no values set)"))
+	} else {
+		for k, v := range vals {
+			fmt.Printf("  %s = %q\n", k, v)
+		}
+	}
+	fmt.Println()
+	return nil
+}
+
+func runScenarioConfigGet(scenarioName, key string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	val, ok := cfg.GetScenarioConfig(scenarioName, key)
+	if !ok {
+		return fmt.Errorf("no value set for %s / %s", scenarioName, key)
+	}
+	fmt.Println(val)
+	return nil
+}
+
+func runScenarioConfigSet(scenarioName, key, value string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = &config.Config{}
+	}
+
+	cfg.SetScenarioConfig(scenarioName, key, value)
+
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Sync tfvars (best-effort: dir may not exist yet)
+	if paths, pathErr := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath); pathErr == nil {
+		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
+			_ = cfg.SyncTFVars(paths.TerraformDir)
+		}
+	}
+
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Printf("%s Set %s / %s = %s\n", green("OK"), scenarioName, key, value)
+	return nil
 }

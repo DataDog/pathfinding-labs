@@ -6,6 +6,7 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Bypassing AWS's 2-access-key limit by deleting an existing key before creating a new one for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey`
 * **Schema Version:** 4.1.1
@@ -80,7 +81,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate bypassing the 2-key limit by deleting an existing key
 4. Verify successful privilege escalation
-5. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

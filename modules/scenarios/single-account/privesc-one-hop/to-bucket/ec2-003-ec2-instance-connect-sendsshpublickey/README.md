@@ -6,6 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $8/mo
+* **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey`
 * **Schema Version:** 4.1.1
@@ -86,7 +87,7 @@ The script will:
 5. Extract IAM role credentials from IMDSv2
 6. Use the extracted credentials to access the S3 bucket
 7. Verify successful data exfiltration
-8. Output standardized test results for automation
+
 
 #### Resources Created by Attack Script
 

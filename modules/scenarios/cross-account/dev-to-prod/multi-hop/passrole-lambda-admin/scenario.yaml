@@ -6,6 +6,7 @@ name: "passrole-lambda-admin"
 title: "Dev to Prod via Lambda PassRole to Admin"
 description: "Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 
 # =============================================================================
 # CLASSIFICATION
