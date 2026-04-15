@@ -78,7 +78,8 @@ resource "aws_iam_role_policy" "chatbot_role_policy" {
         Effect = "Allow"
         Action = [
           "lambda:GetFunction",
-          "sts:GetCallerIdentity"
+          "sts:GetCallerIdentity",
+          "ec2:DescribeRegions"
         ]
         Resource = "*"
       }
@@ -257,7 +258,8 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "lambda:GetFunction",
           "lambda:GetFunctionUrlConfig",
           "sts:GetCallerIdentity",
-          "iam:GetUser"
+          "iam:GetUser",
+          "ec2:DescribeRegions"
         ]
         Resource = "*"
       }
