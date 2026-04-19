@@ -353,7 +353,7 @@ echo "  - /tmp/sensitive-user1.txt (downloaded by user1)"
 echo "  - /tmp/sensitive-role3.txt (downloaded by role3)"
 echo ""
 echo -e "${YELLOW}To clean up artifacts:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Clean up credentials from environment

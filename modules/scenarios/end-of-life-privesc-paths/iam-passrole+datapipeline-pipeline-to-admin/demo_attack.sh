@@ -338,7 +338,7 @@ echo -e "\n${RED}⚠ Warning: The Data Pipeline and policy attachment remain${NC
 echo -e "${RED}⚠ Data Pipeline may incur charges if not cleaned up${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

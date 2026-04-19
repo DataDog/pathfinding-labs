@@ -4,6 +4,45 @@ Version history for `.claude/scenario-attackmap-schema.md`. When bumping the sch
 
 ---
 
+## 1.3.0 — 2026-04-18
+
+Minor: added optional `isAttackerControlled` boolean field to distinguish attacker-owned infrastructure nodes from victim resources.
+
+**Changes:**
+- New `isAttackerControlled` field on nodes (default `false`)
+- Use on nodes representing infrastructure the attacker owns or controls — e.g., an exfil S3 bucket deployed in the attacker's own AWS account
+- Mutually exclusive with `isTarget: true` — the attack destination is always on the victim side
+- Compliance checklist updated: no node may have both `isTarget` and `isAttackerControlled`
+- Added "Attacker-Controlled Infrastructure" section to schema explaining when and how to use the field
+
+**Why:** Scenarios that involve data exfiltration to an attacker-owned account previously had no way to distinguish the exfil destination (attacker infrastructure) from the target data (victim resource). Without this distinction, the exfil bucket was incorrectly represented as the `isTarget` node, implying it was the victim's misconfiguration rather than the attacker's own staging area. The `isAttackerControlled` flag makes this distinction explicit in the attack map.
+
+**Migration rules:**
+- Only scenarios with exfil-to-attacker-account patterns are affected
+- For any node that represents a bucket or resource deployed in an attacker account: add `isAttackerControlled: true`
+- Ensure `isTarget: true` points to the victim-side resource (the sensitive data the attacker reads), not the exfil destination
+- Remove `isTarget: true` from exfil/attacker-side nodes; move it to the sensitive data node
+
+```yaml
+migration:
+  tier: agent
+  scope:
+    field: "category"
+    custom: "scenarios with attacker-controlled exfil infrastructure"
+  requires_scenario_yaml_fields: []
+  requires_companion_files: true
+  affected_sections:
+    - "attack_map.yaml:nodes[].isAttackerControlled"
+    - "attack_map.yaml:nodes[].isTarget"
+  operations: []
+  agent_instructions: |
+    Review the attack map for nodes representing attacker-owned infrastructure (exfil buckets in attacker account).
+    Add isAttackerControlled: true to those nodes.
+    Move isTarget: true to the victim-side sensitive data node if it is currently on an attacker-controlled node.
+```
+
+---
+
 ## 1.2.0 — 2026-04-06
 
 Minor: added CTF Scenario Pattern section with content rules for challenge-appropriate node descriptions, edge labels, hints, and commands that preserve discovery without giving away the attack path.

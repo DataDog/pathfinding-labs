@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Cleanup script for Data Pipeline resource policy bypass privilege escalation demo
-# This script removes the Data Pipeline, EC2 instances, and exfiltrated data
+# Cleanup script for Data Pipeline data exfiltration demo
+# This script removes the Data Pipeline, EC2 instances, and exfiltrated data from the attacker-controlled exfil bucket
 
 
 # Disable AWS CLI paging

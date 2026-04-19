@@ -384,7 +384,7 @@ echo -e "\n${RED}⚠ Warning: The Glue dev endpoint is still running and costing
 echo -e "${RED}⚠ The endpoint must be deleted to stop charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and stop costs:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

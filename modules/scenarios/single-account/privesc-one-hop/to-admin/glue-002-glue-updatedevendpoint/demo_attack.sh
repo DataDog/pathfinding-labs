@@ -350,7 +350,7 @@ echo -e "${BLUE}ℹ The endpoint was created by Terraform and remains as infrast
 echo -e "${BLUE}ℹ Only your SSH key is an attack artifact (will be removed by cleanup)${NC}"
 echo ""
 echo -e "${YELLOW}To clean up the attack artifacts:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

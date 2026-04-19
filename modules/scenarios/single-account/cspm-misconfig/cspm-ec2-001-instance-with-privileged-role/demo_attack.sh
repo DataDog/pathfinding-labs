@@ -273,7 +273,7 @@ echo -e "${BLUE}MITRE ATT&CK Techniques:${NC}"
 echo "  - T1552.005: Unsecured Credentials: Cloud Instance Metadata API"
 echo "  - T1078.004: Valid Accounts: Cloud Accounts"
 echo ""
-echo -e "${YELLOW}To clean up demo artifacts:${NC} ./cleanup_attack.sh"
+echo -e "${YELLOW}To clean up demo artifacts:${NC} ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Restore helpful permissions for manual exploration

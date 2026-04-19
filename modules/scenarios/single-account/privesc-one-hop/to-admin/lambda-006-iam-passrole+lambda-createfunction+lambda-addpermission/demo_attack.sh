@@ -364,7 +364,7 @@ echo -e "${RED}⚠ AdministratorAccess is still attached to the starting user${N
 echo -e "${RED}⚠ Lambda functions incur charges when invoked${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

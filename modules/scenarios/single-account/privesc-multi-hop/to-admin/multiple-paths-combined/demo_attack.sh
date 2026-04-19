@@ -431,7 +431,7 @@ fi
 
 echo ""
 echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
-echo "./cleanup_attack.sh"
+echo "./cleanup_attack.sh or use the plabs TUI/CLI"
 
 # Standardized test results output
 echo "TEST_RESULT:prod_role_with_multiple_privesc_paths:SUCCESS"

@@ -7,11 +7,13 @@ terraform {
   }
 }
 
-# Data Pipeline privilege escalation scenario (to-bucket with resource policy bypass)
+# Data Pipeline data exfiltration scenario (to-bucket)
 #
 # This scenario demonstrates how a user with datapipeline permissions and iam:PassRole
-# can create a pipeline that exfiltrates S3 data by leveraging an overly permissive
-# bucket resource policy that allows any principal to write objects.
+# on a role that has read access to a sensitive S3 bucket can exfiltrate that data by
+# creating a pipeline that runs arbitrary shell commands on EC2 instances. The exfil
+# bucket is attacker-controlled infrastructure (deployed in the attacker account), not
+# a victim misconfiguration.
 
 # Resource naming convention: pl-prod-datapipeline-001-to-bucket-{resource-type}
 # All resources use provider = aws.prod
@@ -131,60 +133,62 @@ resource "aws_s3_object" "sensitive_data" {
   content  = "CONFIDENTIAL: Database credentials and API keys for production systems."
 }
 
-# Exfiltration bucket with overly permissive resource policy
+# Exfiltration bucket — attacker-controlled infrastructure deployed in the attacker account.
+# This bucket receives stolen data from the pipeline EC2 instance. It is NOT a victim
+# misconfiguration; it is something the attacker brings to the attack. When no separate
+# attacker account is configured, aws.attacker falls back to the prod account, which is
+# acceptable as a demo convenience but does not change the attack's narrative.
 resource "aws_s3_bucket" "exfil_bucket" {
-  provider = aws.prod
-  bucket   = "pl-exfil-bucket-datapipeline-001-${var.account_id}-${var.resource_suffix}"
+  provider = aws.attacker
+  bucket   = "pl-exfil-bucket-datapipeline-001-${var.attacker_account_id}-${var.resource_suffix}"
 
   tags = {
     Name        = "pl-exfil-bucket-datapipeline-001"
     Environment = var.environment
     Scenario    = "iam-passrole+datapipeline-pipeline"
-    Purpose     = "exfil-bucket"
+    Purpose     = "attacker-controlled-exfil-bucket"
   }
 }
 
-# Block public access on exfil bucket (but resource policy still allows access)
+# Block public access on exfil bucket — the bucket policy uses an explicit principal,
+# not a wildcard, so public access blocks can stay fully enabled.
 resource "aws_s3_bucket_public_access_block" "exfil_bucket" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.exfil_bucket.id
 
   block_public_acls       = true
-  block_public_policy     = false # Must be false to allow resource policy
+  block_public_policy     = true
   ignore_public_acls      = true
-  restrict_public_buckets = false # Must be false to allow resource policy
+  restrict_public_buckets = true
 }
 
-# CRITICAL: Overly permissive bucket policy allowing any principal to write
+# Attacker-controlled bucket policy: grants the prod account root s3:PutObject so the
+# pipeline EC2 instance (running in prod) can write exfiltrated data cross-account.
+# This mirrors how glue-003/004/005/006 grant the prod account access to attacker buckets.
 resource "aws_s3_bucket_policy" "exfil_bucket_policy" {
-  provider = aws.prod
+  provider = aws.attacker
   bucket   = aws_s3_bucket.exfil_bucket.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowDataPipelineWrite"
+        Sid    = "AllowProdAccountWrite"
         Effect = "Allow"
         Principal = {
-          AWS = "*"
+          AWS = "arn:aws:iam::${var.account_id}:root"
         }
         Action = [
           "s3:PutObject",
           "s3:PutObjectAcl"
         ]
         Resource = "${aws_s3_bucket.exfil_bucket.arn}/*"
-        Condition = {
-          StringEquals = {
-            "aws:PrincipalAccount" = var.account_id
-          }
-        }
       }
     ]
   })
 }
 
-# Starting user policy - datapipeline permissions, PassRole, and read access to exfil bucket
+# Starting user policy - datapipeline permissions and PassRole on the pipeline role
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
   name     = "pl-prod-datapipeline-001-to-bucket-starting-user-policy"
@@ -210,18 +214,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:PassRole"
         ]
         Resource = aws_iam_role.pipeline_role.arn
-      },
-      {
-        Sid    = "RequiredForExploitationReadExfilBucket"
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.exfil_bucket.arn,
-          "${aws_s3_bucket.exfil_bucket.arn}/*"
-        ]
       }
     ]
   })

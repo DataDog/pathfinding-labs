@@ -433,7 +433,7 @@ echo "- This attack demonstrates credential theft, not persistent access modific
 echo "- S3 access is achieved using stolen temporary credentials, not by changing policies"
 
 echo -e "\n${YELLOW}To clean up temporary files and environment:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

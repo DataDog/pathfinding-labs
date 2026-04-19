@@ -409,7 +409,7 @@ echo -e "\n${RED}⚠ Warning: The code interpreter is still deployed${NC}"
 echo -e "${RED}⚠ Bedrock code interpreters may incur charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking
