@@ -59,6 +59,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file. This YAM
 | `remediation.recommendations` | `* **Remediation:** {item1}; {item2}; {item3}` *(semicolon-separated; CSPM scenarios only)* |
 | `ctf.difficulty` | `* **Difficulty:** {beginner\|intermediate\|advanced}` *(CTF scenarios only)* |
 | `ctf.flag_location` | `* **Flag Location:** {value}` *(CTF scenarios only)* |
+| `supports_online_mode: true` | `* **Supports Online Mode:** Yes` *(omit line if false/absent)* |
 
 Additionally, the orchestrator will provide:
 - **Resource names**: All resources created for the scenario

@@ -4,6 +4,33 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.5.0 — 2026-04-18
+
+Minor version bump: added `Supports Online Mode` conditional metadata field.
+
+**Changes:**
+- **Conditional metadata fields** -- added `* **Supports Online Mode:** Yes` as the last conditional field in the metadata block. Emitted only when `supports_online_mode: true` in `scenario.yaml`. Omitted entirely when false or absent (false is the default for all existing scenarios).
+
+**Motivation:**
+- The pathfinding.cloud frontend reads `state.lab?.supportsOnlineMode` to determine whether to render the "Play Online" button for a lab. The field must flow from `scenario.yaml` → README metadata → `generate-labs-json.py` → `labs.json` → frontend. Adding it to the README metadata section is the necessary step to wire it into the existing generator pipeline.
+- Labs will have this set to `false` by default. The Pathfinding team manually sets `supports_online_mode: true` in `scenario.yaml` (and the corresponding README line is updated) as individual labs are validated and provisioned for online play.
+
+**Migration rules:**
+- No migration needed for existing scenarios — the field is conditional and defaults to absent (false)
+- No existing README needs a new line added (only add when `supports_online_mode: true`)
+- New scenarios: omit the field entirely unless the lab is online-ready
+- Stamp `Schema Version: 4.5.0` only on READMEs that are otherwise being updated
+
+```yaml
+migration:
+  tier: none
+  scope: none
+  affected_sections: [metadata_block]
+  operations: []
+```
+
+---
+
 ## 4.4.0 — 2026-04-10
 
 Minor version bump: added `Cost Estimate (Demo)` required metadata field.
