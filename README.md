@@ -177,7 +177,11 @@ chmod +x /usr/local/bin/plabs
 ```bash
 # 1. Initialize: downloads terraform, clones repo, runs AWS profile setup wizard
 plabs init
+```
 
+> Contributing or testing local Terraform changes? Enable [Dev Mode](#dev-mode).
+
+```bash
 # 2. Open the TUI dashboard
 plabs
 
@@ -193,7 +197,11 @@ plabs
 # 1. Configure your AWS profile
 plabs config set prod-profile my-playground-account
 plabs config set prod-region us-east-1
+```
 
+> Contributing or testing local Terraform changes? Enable [Dev Mode](#dev-mode).
+
+```bash
 # 2. Enable scenarios
 plabs enable iam-002-iam-createaccesskey
 
@@ -277,6 +285,20 @@ plabs config set prod-region    us-east-1
 
 **You only need ONE AWS account to use most of Pathfinding Labs.** All single-account scenarios deploy to `prod`. Dev and ops are only required for cross-account scenarios.
 
+
+### Dev Mode
+
+By default, `plabs` uses the repository it cloned into `~/.plabs/pathfinding-labs/`. If you are contributing and want to test local Terraform changes, enable dev mode from inside the repo:
+
+```bash
+# Run from inside your cloned pathfinding-labs directory
+plabs config set dev-mode true
+# plabs now uses local modules instead of ~/.plabs/pathfinding-labs/
+
+plabs config set dev-mode false  # revert to the managed copy
+```
+
+
 ### Enabling and Disabling Scenarios
 
 **Interactive (TUI):**
@@ -307,17 +329,7 @@ plabs apply -y     # skip confirmation
 plabs plan         # preview changes without deploying
 ```
 
-### Dev Mode
 
-By default, `plabs` uses the repository it cloned into `~/.plabs/pathfinding-labs/`. If you are contributing and want to test local Terraform changes, enable dev mode from inside the repo:
-
-```bash
-# Run from inside your cloned pathfinding-labs directory
-plabs config set dev-mode true
-# plabs now uses local modules instead of ~/.plabs/pathfinding-labs/
-
-plabs config set dev-mode false  # revert to the managed copy
-```
 
 ---
 
