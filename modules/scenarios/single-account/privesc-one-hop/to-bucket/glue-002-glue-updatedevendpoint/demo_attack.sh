@@ -399,7 +399,7 @@ echo -e "\n${YELLOW}Note: The Glue dev endpoint continues to run (created by Ter
 echo -e "${YELLOW}Cleanup will remove only the attacker's SSH key, not the endpoint itself${NC}"
 echo ""
 echo -e "${YELLOW}To clean up attack artifacts:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

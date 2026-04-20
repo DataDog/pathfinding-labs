@@ -43,19 +43,19 @@ output "sensitive_bucket_arn" {
   value       = aws_s3_bucket.sensitive_bucket.arn
 }
 
-# Exfiltration bucket outputs
+# Exfiltration bucket outputs (attacker-controlled — deployed in attacker account)
 output "exfil_bucket_name" {
-  description = "Name of the exfiltration bucket"
+  description = "Name of the attacker-controlled exfiltration bucket"
   value       = aws_s3_bucket.exfil_bucket.id
 }
 
 output "exfil_bucket_arn" {
-  description = "ARN of the exfiltration bucket"
+  description = "ARN of the attacker-controlled exfiltration bucket"
   value       = aws_s3_bucket.exfil_bucket.arn
 }
 
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-datapipeline-001-to-bucket-starting-user) → datapipeline:CreatePipeline with PassRole → EC2 instance with pipeline role (read-only S3 access) → copies sensitive bucket data to exfil bucket (resource policy allows Principal '*' write) → user reads exfiltrated data → bucket access achieved"
+  value       = "User (pl-prod-datapipeline-001-to-bucket-starting-user) → datapipeline:CreatePipeline with iam:PassRole → EC2 instance running as pipeline role (s3:GetObject on sensitive bucket) → reads sensitive bucket data → writes to attacker-controlled exfil bucket → sensitive data exfiltrated"
 }

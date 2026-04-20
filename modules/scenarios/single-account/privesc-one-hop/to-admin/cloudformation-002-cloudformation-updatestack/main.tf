@@ -103,6 +103,9 @@ resource "aws_cloudformation_stack" "vulnerable_stack" {
   # Use the administrative service role
   iam_role_arn = aws_iam_role.stack_role.arn
 
+  # Required because the stack (or its current state after demo runs) contains IAM named resources
+  capabilities = ["CAPABILITY_NAMED_IAM"]
+
   # Wait for policy attachment to propagate
   depends_on = [aws_iam_role_policy_attachment.stack_role_admin_access]
 

@@ -133,6 +133,7 @@ def main():
     parser.add_argument("--skip-json", action="store_true", help="Skip regenerating pathfinding.cloud labs JSON")
     parser.add_argument("--workers",    type=int, default=4, metavar="N", help="Concurrent demo workers (default: 4)")
     parser.add_argument("--no-cleanup", action="store_true", help="Skip cleanup_attack.sh after each demo")
+    parser.add_argument("--force", action="store_true", help="Re-run demos even if a redacted transcript already exists in pathfinding.cloud")
     parser.add_argument(
         "--labs-source-dir", metavar="PATH", default=str(LABS_REPO),
         help=f"Path to pathfinding-labs repo (default: {LABS_REPO})",
@@ -157,6 +158,29 @@ def main():
     print(f"  Found {len(unique_ids)} enabled scenario(s):")
     for uid, slug in zip(unique_ids, slugs):
         print(f"    {uid:<45} → slug: {slug}")
+
+    # ------------------------------------------------------------------
+    # Filter: skip slugs that already have a redacted transcript
+    # ------------------------------------------------------------------
+    if not args.force and not args.skip_run:
+        pending_pairs = []
+        for uid, slug in zip(unique_ids, slugs):
+            dest = DEMOS_DIR / f"{slug}.txt"
+            if dest.exists():
+                print(f"  Skipping {slug} — transcript already exists at {dest}")
+            else:
+                pending_pairs.append((uid, slug))
+
+        if not pending_pairs:
+            print("\nAll transcripts already captured. Use --force to re-run them.")
+            sys.exit(0)
+
+        skipped = len(unique_ids) - len(pending_pairs)
+        if skipped:
+            print(f"  {skipped} skipped, {len(pending_pairs)} to run.")
+
+        unique_ids = [uid for uid, _ in pending_pairs]
+        slugs = [slug for _, slug in pending_pairs]
 
     # ------------------------------------------------------------------
     # Step 2: Run demo scripts

@@ -224,7 +224,7 @@ Note: Provider configuration depends on the `environments` field in scenario.yam
 
 #### Module Format for Scenarios with Attacker-Controlled Resources
 
-When a scenario has attacker-controlled S3 buckets (exploit scripts, payloads), the module needs the `aws.attacker` provider and `attacker_account_id`:
+When a scenario has attacker-controlled resources (script-hosting buckets, exfil destinations, C2 endpoints, etc.), the module needs the `aws.attacker` provider and `attacker_account_id`:
 
 ```hcl
 module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {

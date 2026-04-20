@@ -332,6 +332,10 @@ restore_helpful_permissions() {
 # ============================================================================
 # Public: Set up a trap to restore permissions on script exit/failure
 # ============================================================================
+
+# Tracks whether the script was interrupted (INT/TERM) vs exited normally
+_DP_INTERRUPTED=0
+
 setup_demo_restriction_trap() {
     local scenario_yaml="$1"
     _DP_SCENARIO_YAML_PATH="$scenario_yaml"
@@ -341,19 +345,31 @@ setup_demo_restriction_trap() {
         return 0
     fi
 
-    trap '_dp_trap_handler' EXIT INT TERM
+    trap '_dp_interrupt_handler' INT TERM
+    trap '_dp_exit_handler'      EXIT
 }
 
-_dp_trap_handler() {
-    # Prevent re-entry: clear traps before doing anything
-    trap - EXIT INT TERM
+# Called only on INT/TERM (Ctrl+C, kill): mark interrupted and let EXIT handler fire
+_dp_interrupt_handler() {
+    _DP_INTERRUPTED=1
+    trap - INT TERM  # prevent re-entry
+    exit 130
+}
+
+# Called on every exit (normal or after _dp_interrupt_handler's exit 130)
+_dp_exit_handler() {
+    local exit_code=$?
+    trap - EXIT INT TERM  # prevent re-entry
 
     if [ ${#_DP_RESTRICTED_PRINCIPALS[@]} -gt 0 ]; then
-        echo ""
-        echo -e "${_DP_YELLOW}[demo_permissions] Script interrupted, restoring permissions...${_DP_NC}"
+        if [ "$_DP_INTERRUPTED" = "1" ]; then
+            echo ""
+            echo -e "${_DP_YELLOW}[demo_permissions] Script interrupted, restoring permissions...${_DP_NC}"
+        else
+            echo -e "${_DP_YELLOW}[demo_permissions] Restoring permissions on exit...${_DP_NC}"
+        fi
         restore_helpful_permissions "$_DP_SCENARIO_YAML_PATH" 2>/dev/null || true
     fi
 
-    # Exit explicitly so the script doesn't resume after Ctrl+C
-    exit 130
+    exit $exit_code
 }

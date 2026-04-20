@@ -238,7 +238,7 @@ echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the created access key
 echo -e "${RED}Access Key ID to delete: $NEW_ACCESS_KEY_ID${NC}"
 echo ""
 echo -e "${YELLOW}To clean up:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Restore helpful permissions for manual exploration

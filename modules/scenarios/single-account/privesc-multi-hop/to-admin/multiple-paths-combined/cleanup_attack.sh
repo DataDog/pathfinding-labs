@@ -134,18 +134,21 @@ for role in "${ROLES_TO_DELETE[@]}"; do
         ATTACHED_POLICIES=$(aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[].PolicyArn' --output text --profile "$PROFILE")
         for policy in $ATTACHED_POLICIES; do
             if [ -n "$policy" ] && [ "$policy" != "None" ]; then
-                aws iam detach-role-policy --role-name "$role" --policy-arn "$policy"             fi
+                aws iam detach-role-policy --role-name "$role" --policy-arn "$policy"
+            fi
         done
-        
+
         # Delete inline policies
         INLINE_POLICIES=$(aws iam list-role-policies --role-name "$role" --query 'PolicyNames' --output text --profile "$PROFILE")
         for policy in $INLINE_POLICIES; do
             if [ -n "$policy" ] && [ "$policy" != "None" ]; then
-                aws iam delete-role-policy --role-name "$role" --policy-name "$policy"             fi
+                aws iam delete-role-policy --role-name "$role" --policy-name "$policy"
+            fi
         done
-        
+
         # Delete the role
-        aws iam delete-role --role-name "$role"         echo -e "${GREEN}✓ Deleted role: $role${NC}"
+        aws iam delete-role --role-name "$role"
+        echo -e "${GREEN}✓ Deleted role: $role${NC}"
     else
         echo -e "${GREEN}✓ Role $role not found (already deleted)${NC}"
     fi

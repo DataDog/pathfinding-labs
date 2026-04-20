@@ -428,7 +428,7 @@ echo -e "${RED}⚠ The launch template has been modified (new default version)${
 echo -e "${RED}⚠ An instance is running and incurring charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

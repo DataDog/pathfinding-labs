@@ -48,6 +48,8 @@ For Attack Simulation, determine the target based on blog post analysis (usually
 For cross-account scenarios, ask:
 - **dev-to-prod** - Attack path from dev account to prod account
 - **ops-to-prod** - Attack path from ops account to prod account
+- **dev-to-ops** - Attack path from dev account to ops account
+- These can also be multi hop (dev to ops to prod)
 
 ### Step 4: Scenario Details
 
@@ -79,10 +81,9 @@ Ask for:
 - Difficulty level: beginner, intermediate, or advanced
 - The flag value and where it will be stored (typically SSM SecureString)
 - Whether a pivot step is involved (e.g., Lambda code update to privileged function)
-- BYOK or embedded credentials for any third-party API (e.g., OpenAI)
 - Does the attack start from anonymous public access (no AWS credentials needed), or does the attacker begin with some IAM credentials?
 
-Note: CTF scenarios do NOT include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
+Note: CTF scenarios do still include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
 
 **Attack Simulation:**
 This category has a unique multi-step wizard flow:
@@ -153,9 +154,11 @@ The user may provide hints in their initial message in these forms:
 
 When the input matches the pattern `SERVICE-###` (e.g., `iam-005`, `lambda-001`, `apprunner-002`):
 
-1. **Read the paths.json file**:
+1. **Read the paths.json file (but just the id in question)**:
+
+example:
    ```
-   Read: /Users/seth.art/Documents/projects/pathfinding.cloud/paths.json
+  curl -s https://pathfinding.cloud/paths.json | jq '.[] | select(.id == "iam-001")'
    ```
 
 2. **Extract the path data** by matching the `id` field:
@@ -201,7 +204,7 @@ User: /workflows:scenario-orchestrator iam-005 to-admin
 
 Orchestrator:
 1. Recognizes "iam-005" as a Pathfinding.cloud ID
-2. Reads /Users/seth.art/Documents/projects/pathfinding.cloud/paths.json
+2. Reads paths.json `curl -s https://pathfinding.cloud/paths.json | jq '.[] | select(.id == "iam-005")'`
 3. Finds path with id "iam-005"
 4. Extracts:
    - name: "iam:PutRolePolicy"
@@ -454,22 +457,7 @@ Examples:
 
 ### 4. Module Naming
 
-Same pattern as variables, just remove the `enable_` prefix.
-
-**For self-escalation and one-hop scenarios (include path ID):**
-Examples:
-- Self-escalation: `single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy`
-- One-hop: `single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
-- One-hop: `single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction`
-
-**For other scenarios (no path IDs):**
-- Multi-hop: `single_account_privesc_multi_hop_to_admin_putrolepolicy_on_other`
-- CSPM Misconfig: `single_account_cspm_misconfig_{id}_{scenario_name}`
-- CSPM Toxic Combo: `single_account_cspm_toxic_combo_{scenario_name}`
-- Tool testing: `tool_testing_resource_policy_bypass`
-- Cross-account: `cross_account_{src}_to_{dest}_{scenario_name}`
-- CTF: `ctf_{scenario_name}` (e.g., `ctf_ai_chatbot_to_admin`)
-- Attack Simulation: `attack_simulation_{scenario_name}` (e.g., `attack_simulation_sysdig_8_minutes_to_admin`)
+Same pattern as variables, just remove the `enable_` prefix. Example: `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey` → `single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
 
 ### 5. Attack Path Design Rules
 
@@ -543,6 +531,22 @@ pl-prod-{scenario-shorthand}-starting-user
 - Single account (prod only): `provider = aws.prod`
 - Cross-account: Specify which providers (aws.dev, aws.prod, aws.operations)
 
+**Attacker-Controlled Infrastructure Pattern:**
+
+Some scenarios include resources the attacker owns — not victim misconfigurations. Examples: an S3 bucket that receives exfiltrated data, a bucket hosting a malicious script, a C2 endpoint. These resources belong to the attacker and are part of their tooling, not the victim environment.
+
+1. **Deploy in `aws.attacker`**, not `aws.prod`. Name resources with `${var.attacker_account_id}` where a globally unique name is needed. Add `attacker_account_id` as a module variable.
+
+2. **Grant access explicitly** — use specific principal ARNs in resource policies (e.g., `arn:aws:iam::${var.account_id}:root`). Never use `Principal: "*"` for attacker-controlled resources.
+
+3. **Tag as `isAttackerControlled: true` in `attack_map.yaml`** — any node representing attacker-owned infrastructure gets this flag. These nodes are NOT victim misconfigurations and must NOT have `isTarget: true`.
+
+4. **Frame correctly in all docs and scripts** — attacker-controlled resources are attacker tradecraft, not vulnerabilities. Never describe their configuration (e.g., a permissive bucket policy) as a finding.
+
+5. **Use attacker credentials in demo scripts** when the script interacts with attacker-controlled resources — use `attacker_admin_user_access_key_id` / `attacker_admin_user_secret_access_key` Terraform outputs, falling back to prod admin if no attacker account is configured.
+
+When no separate attacker account is configured, `aws.attacker` falls back to prod. This is acceptable as a demo convenience — the narrative still applies.
+
 ### 8. Validate with user
 
 When you have what you need to delegate to the other agents, describe the attack path you have created to the user and ask for validation. Once he user approves, you can delegate to the other agents. 
@@ -553,19 +557,97 @@ When you have what you need to delegate to the other agents, describe the attack
 
 Once you have all required information, you must delegate to these agents **concurrently**. Do not try to do all of this yourself.  Your job was to gather the requirements and plan the strategy, but it is the sub-agents that will create the files that need to be created. 
 
-### Agents to Launch in Parallel
+### Step 1: Compute the Type Brief
 
-For each sub-agent, you should pass the full contents of the scenario.yaml file that you have created.
+Before launching agents, derive a short `type_brief` from the scenario.yaml. Include this block verbatim in every agent's delegation prompt — it tells the agent what decisions have already been made so it doesn't need to re-derive them.
+
+**Compute the type_brief as follows (pick the matching case):**
+
+**`path_type: "self-escalation"` or `path_type: "one-hop"`:**
+```
+TYPE BRIEF:
+- Resource naming uses path ID: pl-{env}-{path-id}-to-{target}-{purpose}
+- Variable/module names include path ID with underscores (e.g., iam_002)
+- sub_category is set and applies
+- Starting principal is an IAM user (or user + role if attack must start from a role)
+```
+
+**`path_type: "multi-hop"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID): pl-{env}-{scenario-shorthand}-{purpose}
+- Variable/module names do NOT include a path ID
+- No sub_category
+- Starting principal is an IAM user
+```
+
+**`path_type: "cross-account"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID)
+- No sub_category
+- Providers required: [list the specific aliases from the environments field, e.g., aws.dev + aws.prod]
+- Each resource must specify the correct provider alias for its target account
+- Trust policies must reference the correct cross-account principal ARNs
+```
+
+**`category: "CSPM: Misconfig"` or `category: "CSPM: Toxic Combination"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID)
+- No sub_category (or optional CSPM sub_category if set)
+- [If principal_type is "public"]: Do NOT create a starting IAM user. Attacker is anonymous — starts from a publicly accessible resource (URL, public S3, etc.). Demo script starts with curl or HTTP calls, not AWS CLI with credentials.
+- [If principal_type is "user"]: Starting IAM user exists and has credentials
+```
+
+**`category: "Tool Testing"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID)
+- No sub_category (or optional Tool Testing sub_category if set)
+- Focus is on detection edge cases, not a clean attack path — the scenario may include resources that exist specifically to test false positives or parsing edge cases
+```
+
+**`category: "CTF"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID): pl-{env}-{scenario-shorthand}-{purpose}
+- path_type: "ctf", no sub_category
+- [If principal_type is "public"]: Do NOT create a starting IAM user. Attacker is anonymous — starts from a public URL or publicly accessible resource. Demo script starts with curl/HTTP, not AWS CLI with credentials.
+- [If principal_type is "user"]: Starting IAM user exists with credentials
+- README must NOT include an Automated Demo section — the exploit IS the challenge
+- solution.md IS required as a post-competition writeup
+- cleanup_attack.sh only needed if the attack modifies infrastructure state (e.g., Lambda code replacement)
+```
+
+**`category: "Attack Simulation"`:**
+```
+TYPE BRIEF:
+- Resource naming uses scenario shorthand (no path ID)
+- path_type: "attack-simulation", no sub_category
+- Source blog: [title] ([url])
+- Attack steps in chronological order from blog (include both successes AND failures):
+  [list the steps you extracted, numbered, with success/fail labeled]
+- Cost-conscious: avoid GPU instances and expensive resources — use t3.micro or skip entirely
+- Include dummy "failure target" resources that the attacker tries but cannot access
+- Demo script uses [EXPLOIT] / [OBSERVATION] labels as normal; yellow description text notes whether each step succeeds or fails per the source blog
+- README must include a "Modifications from Original Attack" section
+- References section must include the source blog as the first entry
+```
+
+### Step 2: Agents to Launch in Parallel
+
+For each sub-agent, pass the full contents of the scenario.yaml AND the computed type_brief.
 
 1. **scenario-terraform-builder** - Creates all Terraform files
-   - Pass: scenario.yaml with scenario type, resource names, attack path, directory path, provider config and full schema details.
+   - Pass: scenario.yaml, type_brief, directory path, provider config.
    - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf.
 
-2. **scenario-readme-creator** - Creates README.md
-   - Pass: scenario.yaml with attack path, principals, MITRE mapping, detection guidance, scenario description and full schema details.
+2. **scenario-readme-creator** - Creates README.md, attack_map.yaml, solution.md
+   - Pass: scenario.yaml, type_brief, attack path, principals, MITRE mapping, detection guidance.
 
 3. **scenario-demo-creator** - Creates demo_attack.sh and cleanup_attack.sh
-   - Pass: scenario.yaml with attack path, resource names, AWS CLI commands needed, and full schema details.
+   - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI commands needed.
    - **CRITICAL Standards**:
      - Demo scripts MUST retrieve credentials from grouped Terraform outputs using: `terraform output -json | jq`
      - All IAM policy propagation waits MUST be 15 seconds (not 5)
@@ -573,7 +655,7 @@ For each sub-agent, you should pass the full contents of the scenario.yaml file 
      - Cleanup scripts MUST NOT use AWS_PROFILE_FLAG variable
 
 4. **project-updator** - Updates project-level integration files
-   - Pass: scenario.yaml with variable names, module names, scenario description, directory path and full schema details.
+   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path.
    - **CRITICAL**: The project-updator MUST create a grouped output in root outputs.tf that bundles all the scenario module's individual outputs together.
 
 5. **scenario-cost-estimator** - Calculates accurate AWS cost estimates
@@ -585,7 +667,7 @@ For each sub-agent, you should pass the full contents of the scenario.yaml file 
 
 ### Delegation Format
 
-When delegating, provide a comprehensive prompt to each agent with ALL the information they need, most importantly, the scenario.yaml file that adheres to the schema defined in the SCHEMA.md file in the product root. 
+When delegating, provide a comprehensive prompt to each agent with ALL the information they need: the scenario.yaml contents, the computed type_brief, and any agent-specific context noted above.
 
 
 ## After Delegation
@@ -672,7 +754,7 @@ A successful orchestration results in:
 
 ## Quick Reference: Paths.json Structure
 
-When reading `/Users/seth.art/Documents/projects/pathfinding.cloud/paths.json`, each path object contains:
+When reading `curl -s https://pathfinding.cloud/paths.json | jq '.[] | select(.id == "[ID]")'`, each path object contains:
 
 ```json
 {

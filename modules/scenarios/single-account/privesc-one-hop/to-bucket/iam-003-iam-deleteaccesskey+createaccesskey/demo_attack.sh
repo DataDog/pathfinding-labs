@@ -308,7 +308,7 @@ echo "if the deleted key was inactive or a backup key."
 
 echo -e "\n${RED}⚠ Warning: The original access key has been deleted and cannot be restored${NC}"
 echo -e "${YELLOW}To clean up and restore the environment:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

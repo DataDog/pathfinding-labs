@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.4.0`**
+**Current schema version: `4.5.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -96,6 +96,9 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 
 * **MITRE Tactics:** {TA#### - Name}, {TA#### - Name}
 * **MITRE Techniques:** {T####.### - Name}, {T####.### - Name}
+
+* **Supports Online Mode:** Yes
+  <- only if supports_online_mode: true in scenario.yaml
 ```
 
 **CTF scenario additional fields** (in place of Sub-Category, after Cost Estimate):
@@ -498,7 +501,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.4.0`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.5.0`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

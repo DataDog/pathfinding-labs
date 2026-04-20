@@ -566,7 +566,7 @@ echo -e "\n${RED}Warning: The Lambda function code has been modified${NC}"
 echo -e "${RED}Warning: A new access key exists for $ADMIN_USER${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

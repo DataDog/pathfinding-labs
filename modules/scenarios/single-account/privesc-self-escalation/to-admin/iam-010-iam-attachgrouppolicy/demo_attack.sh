@@ -216,7 +216,7 @@ echo ""
 
 # Cleanup instructions
 echo -e "${YELLOW}To clean up:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Restore helpful permissions for manual exploration

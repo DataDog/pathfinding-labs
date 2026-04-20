@@ -1,6 +1,6 @@
 # Pathfinding Labs Attack Map Schema
 
-**Current schema version: `1.2.0`**
+**Current schema version: `1.3.0`**
 
 See `.claude/scenario-attackmap-changelog.md` for version history and migration rules.
 
@@ -41,7 +41,8 @@ attackMap:
 | `label` | Yes | Short display label (2-4 words) |
 | `type` | Yes | `principal` or `resource` |
 | `subType` | Yes | `iam-user`, `iam-role`, `iam-group`, `apprunner-service`, `lambda-function`, `ec2-instance`, `ecs-task`, `s3-bucket`, `glue-job`, `codebuild-project`, `cloudformation-stack`, `sagemaker-notebook`, `ssm-document`, `bedrock-agent`, etc. |
-| `isTarget` | No (default `false`) | Boolean. Exactly one node per map must have `isTarget: true` -- the final destination of the attack path. |
+| `isTarget` | No (default `false`) | Boolean. Exactly one node per map must have `isTarget: true` -- the final destination of the attack path. Mutually exclusive with `isAttackerControlled`. |
+| `isAttackerControlled` | No (default `false`) | Boolean. Set to `true` on nodes representing infrastructure the attacker owns or controls (e.g., a script-hosting bucket, an exfil destination, a C2 endpoint). These nodes are NOT victim misconfigurations. A node cannot be both `isTarget` and `isAttackerControlled`. |
 | `arn` | Yes | Full ARN with `{account_id}` and `{region}` placeholders |
 | `access` | No (required on entry-point nodes) | Structured entry point for frontend display. Present only on nodes that represent a reachable starting point (public or internal network, or pre-given credentials). See Access Object below. |
 | `description` | Yes | Second-person narrative. Starting node MUST begin with the standard prologue paragraph (see below). |
@@ -54,6 +55,8 @@ attackMap:
 | `resource` | AWS resource used as a stepping stone (Lambda, App Runner, EC2, etc.) | Small island |
 
 The `isTarget` flag marks the final destination node (admin role/user, S3 bucket, etc.) and controls distinct color/style rendering. Exactly one node per map must have `isTarget: true`.
+
+The `isAttackerControlled` flag marks nodes that represent infrastructure the attacker owns — resources deployed in an attacker-controlled AWS account or otherwise part of the attacker's tooling rather than the victim environment. Examples: an S3 bucket hosting a malicious script, an exfil destination bucket, a C2 endpoint. These nodes participate in the attack path but are NOT victim misconfigurations. `isTarget` and `isAttackerControlled` are mutually exclusive.
 
 ### Access Object
 
@@ -222,6 +225,16 @@ CTF scenarios use the same YAML structure as privesc scenarios but apply differe
 **Contrast with privesc scenarios:**
 Privesc scenarios are educational and guided -- they name permissions explicitly, show exact commands, and walk the player step by step. CTF scenarios are challenges -- they point in the right direction without spelling out the path. Apply these rules only to scenarios in the `ctf/` directory.
 
+### Attacker-Controlled Infrastructure Pattern
+
+Some scenarios include nodes representing infrastructure the attacker owns — a bucket hosting a malicious script, an exfil destination, a C2 endpoint. These are attacker tooling, not victim misconfigurations.
+
+Rules for these nodes:
+- Set `isAttackerControlled: true` on the node. Do NOT set `isTarget: true`.
+- The node's description must make clear this is attacker-owned infrastructure, not a victim misconfiguration.
+- `isTarget: true` always stays on the victim side — the data or access the attacker is trying to reach.
+- Edge hints involving attacker-controlled nodes should frame them as attacker tradecraft, not as a vulnerability in the victim environment.
+
 ### Target Node Identity
 
 The target node must represent the real infrastructure resource that grants the escalated access -- NOT the starting principal relabeled after exploitation. For PassRole + compute scenarios, the target is the admin role passed to the service. For direct assumption, the target is the admin role. For to-bucket scenarios, the target is the S3 bucket.
@@ -299,6 +312,8 @@ An `attack_map.yaml` is compliant if all of the following are true:
 - [ ] All nodes have required fields: `id`, `label`, `type`, `subType`, `arn`, `description`
 - [ ] Node `type` is `principal` or `resource` only
 - [ ] Exactly one node has `isTarget: true`
+- [ ] No node has both `isTarget: true` and `isAttackerControlled: true`
+- [ ] `isAttackerControlled: true` is set on any node representing attacker-owned infrastructure (e.g., script-hosting bucket, exfil destination, C2 endpoint); these nodes describe attacker tooling, not victim misconfigurations
 - [ ] Starting node description begins with the standard IAM credentials prologue (for IAM principal starting nodes) OR the standard public access prologue (for publicly accessible resource starting nodes -- `principal_type: "public"` in scenario.yaml)
 - [ ] Nodes using the public access prologue have an `access` field with `type: public-network` and exactly one of `url`, `ip`, or `domain`
 - [ ] All edges have required fields: `from`, `to`, `label`, `description`, `commands`, `hints`

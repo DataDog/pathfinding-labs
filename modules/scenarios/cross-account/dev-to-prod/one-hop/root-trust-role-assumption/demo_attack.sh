@@ -285,7 +285,7 @@ echo "3. Use aws:PrincipalOrgID to limit trust to specific AWS Organizations"
 echo "4. Implement least privilege - only grant trust to principals that need it"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

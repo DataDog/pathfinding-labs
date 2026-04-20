@@ -284,7 +284,7 @@ echo "- Temporary policy file: $POLICY_FILE"
 
 echo -e "\n${RED}⚠ Warning: Target user now has administrative permissions${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

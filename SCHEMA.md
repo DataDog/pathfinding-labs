@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.5.0`
+### Current Version: `1.6.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.6.0 | 2026-04-18 | Added `supports_online_mode` optional boolean field: indicates whether this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false` (absent = false). Only set to `true` for labs that have been validated and provisioned for online play. |
 | 1.5.0 | 2026-04-10 | Added `cost_estimate_when_demo_executed` required field: estimated monthly cost while a demo script is actively running (e.g., EC2/Lambda instances provisioned by the attack). Initialized to same value as `cost_estimate` for existing scenarios. |
 | 1.4.0 | 2026-04-09 | Added `modifications` optional list field for Attack Simulation scenarios, documenting changes made from the original real-world attack. |
 | 1.3.0 | 2026-04-08 | Added `"CTF"` and `"Attack Simulation"` categories, `"ctf"` and `"attack-simulation"` path_types, `title` and `interactive_demo` core fields, `ctf` optional block, `source` optional block. Fixed `sub_category` requiredness (conditional, not always required). |
@@ -75,7 +76,7 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.5.0"
+schema_version: "1.6.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
@@ -83,6 +84,7 @@ cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: IAM-005
 interactive_demo: false
+supports_online_mode: false
 ```
 
 #### Fields
@@ -97,6 +99,7 @@ interactive_demo: false
 | `cost_estimate_when_demo_executed` | string | ✅ Yes | Estimated monthly AWS cost while a demo script is actively running (e.g., EC2/Lambda/GPU instances provisioned during the attack). Same format as `cost_estimate`. If the demo creates no additional resources, set equal to `cost_estimate`. |
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
 | `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
+| `supports_online_mode` | bool | No | If `true`, this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false`. Only set to `true` after the lab has been validated and provisioned for online play by the Pathfinding team. |
 
 #### Cost Estimate Examples
 
@@ -1455,5 +1458,5 @@ For questions about the schema or suggestions for improvements:
 2. Reference this SCHEMA.md file in your question
 3. Provide examples when possible
 
-**Last Updated:** 2026-04-10
-**Schema Version:** 1.5.0
+**Last Updated:** 2026-04-18
+**Schema Version:** 1.6.0
