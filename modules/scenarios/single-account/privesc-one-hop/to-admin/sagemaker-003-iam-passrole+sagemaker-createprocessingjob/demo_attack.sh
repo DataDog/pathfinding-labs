@@ -115,7 +115,28 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 
 # Restrict helpful permissions during validation run
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# Custom exit trap — replaces setup_demo_restriction_trap. Best-effort stops the processing job
+# if the demo did not complete cleanly (Ctrl+C, SIGTERM, exit 1). Processing jobs bill only while
+# InProgress, so stop-processing-job halts the bleed immediately. Cannot catch SIGKILL from a
+# harness timeout; demo_timeout_seconds in scenario.yaml must be large enough to prevent that.
+DEMO_RESOURCE_CREATED=0
+DEMO_COMPLETED=0
+
+_demo_exit_handler() {
+    local exit_code=$?
+    trap - EXIT INT TERM
+
+    if [ "$DEMO_RESOURCE_CREATED" = "1" ] && [ "$DEMO_COMPLETED" != "1" ]; then
+        echo ""
+        echo -e "\033[0;31m[trap] Demo did not complete cleanly — best-effort stop of processing job $PROCESSING_JOB_NAME to halt billing\033[0m"
+        aws sagemaker stop-processing-job --processing-job-name "$PROCESSING_JOB_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || true
+    fi
+
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+    exit $exit_code
+}
+trap _demo_exit_handler EXIT INT TERM
 
 # [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
@@ -253,6 +274,9 @@ esac
 echo "Using container image: $CONTAINER_IMAGE"
 
 show_attack_cmd "Attacker" "aws sagemaker create-processing-job --region $AWS_REGION --processing-job-name $PROCESSING_JOB_NAME --role-arn $PASSABLE_ROLE_ARN --processing-inputs "[{\"InputName\":\"code\",\"S3Input\":{\"S3Uri\":\"s3://$BUCKET_NAME/scripts/\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\"}}]" --processing-output-config "{\"Outputs\":[{\"OutputName\":\"output\",\"S3Output\":{\"S3Uri\":\"s3://$BUCKET_NAME/output/\",\"LocalPath\":\"/opt/ml/processing/output\",\"S3UploadMode\":\"EndOfJob\"}}]}" --processing-resources "{\"ClusterConfig\":{\"InstanceCount\":1,\"InstanceType\":\"ml.t3.medium\",\"VolumeSizeInGB\":10}}" --app-specification "{\"ImageUri\":\"$CONTAINER_IMAGE\",\"ContainerEntrypoint\":[\"python3\"],\"ContainerArguments\":[\"/opt/ml/processing/input/code/exploit.py\"]}""
+# Arm the trap before issuing create — if create partially succeeds and the script dies before
+# the polling loop completes, the exit handler will issue stop-processing-job.
+DEMO_RESOURCE_CREATED=1
 aws sagemaker create-processing-job \
     --region $AWS_REGION \
     --processing-job-name $PROCESSING_JOB_NAME \
@@ -387,6 +411,9 @@ echo ""
 
 # Cleanup temp files
 rm -f /tmp/exploit.py
+
+# Demo completed successfully — disarm the best-effort-stop trap.
+DEMO_COMPLETED=1
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

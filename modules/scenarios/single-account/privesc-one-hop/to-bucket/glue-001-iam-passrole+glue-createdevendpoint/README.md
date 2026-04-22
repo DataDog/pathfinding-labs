@@ -6,7 +6,7 @@
 * **Target:** to-bucket
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Cost Estimate When Demo Executed:** $0/mo
+* **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint`
 * **Schema Version:** 4.1.1

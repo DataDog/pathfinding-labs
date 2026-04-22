@@ -94,6 +94,32 @@ def derive_slug(scenario_dir: Path) -> str:
     return scenario_dir.name
 
 
+# Default per-demo and per-cleanup timeouts (seconds). Override per scenario by setting
+# demo_timeout_seconds / cleanup_timeout_seconds in scenario.yaml — needed for slow scenarios
+# like glue-001 where the dev endpoint alone takes 10–15 min to provision.
+DEFAULT_DEMO_TIMEOUT = 300
+DEFAULT_CLEANUP_TIMEOUT = 120
+
+
+def read_scenario_timeouts(scenario_dir: Path) -> tuple[int, int]:
+    """Return (demo_timeout, cleanup_timeout) for a scenario, falling back to defaults.
+
+    Reads optional demo_timeout_seconds / cleanup_timeout_seconds from scenario.yaml.
+    Non-integer values are ignored with a silent fallback to the default.
+    """
+    demo_timeout = DEFAULT_DEMO_TIMEOUT
+    cleanup_timeout = DEFAULT_CLEANUP_TIMEOUT
+    scenario_yaml = scenario_dir / "scenario.yaml"
+    if scenario_yaml.exists() and yaml is not None:
+        try:
+            data = yaml.safe_load(scenario_yaml.read_text(encoding="utf-8")) or {}
+            demo_timeout = int(data.get("demo_timeout_seconds", DEFAULT_DEMO_TIMEOUT))
+            cleanup_timeout = int(data.get("cleanup_timeout_seconds", DEFAULT_CLEANUP_TIMEOUT))
+        except Exception:
+            pass
+    return demo_timeout, cleanup_timeout
+
+
 def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: bool = True) -> tuple[bool, str]:
     """Run demo_attack.sh for a single scenario, save the transcript, then run cleanup.
 
@@ -109,6 +135,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
     slug = entry["slug"]
     output_file = output_dir / f"{slug}.txt"
     cleanup_path = scenario_dir / "cleanup_attack.sh"
+    demo_timeout, cleanup_timeout = read_scenario_timeouts(scenario_dir)
 
     lines = [f"  [{slug}] starting..."]
 
@@ -124,7 +151,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
             cwd=str(scenario_dir),
             capture_output=True,
             # Do not set text=True — preserve raw bytes for ANSI codes
-            timeout=300,  # 5 minute timeout per demo
+            timeout=demo_timeout,
         )
         combined = result.stdout + result.stderr
         output_file.write_bytes(combined)
@@ -136,7 +163,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
         demo_ok = result.returncode == 0
 
     except subprocess.TimeoutExpired:
-        lines.append(f"  [{slug}] ERROR: demo timed out after 5 minutes")
+        lines.append(f"  [{slug}] ERROR: demo timed out after {demo_timeout}s")
     except Exception as e:
         lines.append(f"  [{slug}] ERROR: {e}")
 
@@ -147,14 +174,14 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
                 ["bash", str(cleanup_path)],
                 cwd=str(scenario_dir),
                 capture_output=True,
-                timeout=120,  # 2 minute timeout for cleanup
+                timeout=cleanup_timeout,
             )
             if cleanup_result.returncode != 0:
                 lines.append(f"  [{slug}] WARNING: cleanup exited with code {cleanup_result.returncode}")
             else:
                 lines.append(f"  [{slug}] cleanup done")
         except subprocess.TimeoutExpired:
-            lines.append(f"  [{slug}] WARNING: cleanup timed out after 2 minutes")
+            lines.append(f"  [{slug}] WARNING: cleanup timed out after {cleanup_timeout}s")
         except Exception as e:
             lines.append(f"  [{slug}] WARNING: cleanup error: {e}")
     elif cleanup and not cleanup_path.exists():

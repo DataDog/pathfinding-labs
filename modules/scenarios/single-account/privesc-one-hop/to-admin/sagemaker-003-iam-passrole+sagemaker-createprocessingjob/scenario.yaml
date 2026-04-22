@@ -1,13 +1,19 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.0"
+schema_version: "1.7.0"
 name: "iam-passrole+sagemaker-createprocessingjob"
 title: "SageMaker Processing Job Creation to Admin"
 description: "User with PassRole and CreateProcessingJob can create processing job with malicious script and admin role to execute code with elevated privileges"
 cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "sagemaker-003"
+
+# Demo creates a SageMaker processing job that typically runs 3-5 min (container pull + script).
+# The demo polls for completion up to 10 min. Override the default run_demos.py timeouts so the
+# harness does not SIGKILL the demo mid-run, leaving a billable processing job running.
+demo_timeout_seconds: 900
+cleanup_timeout_seconds: 180
 
 # =============================================================================
 # CLASSIFICATION

@@ -190,6 +190,7 @@ example:
 5. **Ask clarifying questions only for**:
    - Target: to-admin or to-bucket? (since paths.json doesn't specify this)
    - Cost estimate: Does this require paid resources?
+   - **Slow-provisioning resources**: Does the demo create any resource that takes > 2 min to reach a usable state (Glue Dev Endpoint, SageMaker Notebook, SageMaker Processing Job, CodeBuild build, EC2 instance)? If yes, look up the recommended `demo_timeout_seconds` / `cleanup_timeout_seconds` from the "When to Set Timeout Overrides" reference table in `SCHEMA.md` and include them in scenario.yaml. Skipping this causes orphaned resources that silently bill for hours/days — the harness force-kills via SIGKILL on timeout, which bash cannot trap.
    - Any scenario-specific customizations
 
 6. **Automatically set**:
@@ -648,6 +649,7 @@ For each sub-agent, pass the full contents of the scenario.yaml AND the computed
 
 3. **scenario-demo-creator** - Creates demo_attack.sh and cleanup_attack.sh
    - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI commands needed.
+   - **Slow-provisioning resources**: If `scenario.yaml` has `demo_timeout_seconds` set (> default 300), explicitly tell the demo-creator to include the EXIT/INT/TERM trap pattern that best-effort deletes the provisioned resource on abnormal exit. Canonical reference: `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh` (search for `_glue_demo_exit_handler`). The cleanup script must initiate deletion and verify the API accepted the request, but MUST NOT block waiting for full async deletion.
    - **CRITICAL Standards**:
      - Demo scripts MUST retrieve credentials from grouped Terraform outputs using: `terraform output -json | jq`
      - All IAM policy propagation waits MUST be 15 seconds (not 5)

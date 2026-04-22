@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.6.0`
+### Current Version: `1.7.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.7.0 | 2026-04-21 | Added `demo_timeout_seconds` and `cleanup_timeout_seconds` optional integer fields: per-scenario overrides of the default harness timeouts in `scripts/run_demos.py` (300s demo, 120s cleanup). Required for any scenario whose demo creates a resource that takes > 2 min to provision (Glue dev endpoints, SageMaker notebooks/processing jobs, CodeBuild projects, EC2 instances, etc.), because the harness uses SIGKILL on timeout — which bash traps cannot catch — leaving the resource orphaned. See "When to Set Timeout Overrides" in Core Metadata for the reference table. Motivated by the glue-001 orphan incident (2026-04-17 to 2026-04-21) that bled ~$55 on an abandoned dev endpoint. |
 | 1.6.0 | 2026-04-18 | Added `supports_online_mode` optional boolean field: indicates whether this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false` (absent = false). Only set to `true` for labs that have been validated and provisioned for online play. |
 | 1.5.0 | 2026-04-10 | Added `cost_estimate_when_demo_executed` required field: estimated monthly cost while a demo script is actively running (e.g., EC2/Lambda instances provisioned by the attack). Initialized to same value as `cost_estimate` for existing scenarios. |
 | 1.4.0 | 2026-04-09 | Added `modifications` optional list field for Attack Simulation scenarios, documenting changes made from the original real-world attack. |
@@ -76,7 +77,7 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.6.0"
+schema_version: "1.7.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
@@ -85,6 +86,8 @@ cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: IAM-005
 interactive_demo: false
 supports_online_mode: false
+# demo_timeout_seconds: 1200      # uncomment + set for slow-provisioning demos
+# cleanup_timeout_seconds: 180    # uncomment + set for slow-provisioning demos
 ```
 
 #### Fields
@@ -100,6 +103,8 @@ supports_online_mode: false
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
 | `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
 | `supports_online_mode` | bool | No | If `true`, this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false`. Only set to `true` after the lab has been validated and provisioned for online play by the Pathfinding team. |
+| `demo_timeout_seconds` | int | No | Override the default 300s demo timeout in `scripts/run_demos.py`. Set when the demo creates a resource that takes > 2 min to provision. See "When to Set Timeout Overrides" below. |
+| `cleanup_timeout_seconds` | int | No | Override the default 120s cleanup timeout in `scripts/run_demos.py`. Set when cleanup needs to verify deletion of a resource that takes noticeable time to tear down. See "When to Set Timeout Overrides" below. |
 
 #### Cost Estimate Examples
 
@@ -120,6 +125,30 @@ Always use `"$X/mo"` format with rounding to the nearest dollar:
 - Round to nearest whole dollar (standard rounding: 0.5 rounds up)
 - No cents, no hourly/daily rates
 - No vague terms ("low", "minimal", "cheap")
+
+#### When to Set Timeout Overrides
+
+`scripts/run_demos.py` runs every demo with a default 300s timeout and every cleanup with a default 120s timeout. On timeout, Python sends **SIGKILL** — which bash cannot trap — so the demo dies mid-run and any resource it created (Glue dev endpoint, SageMaker notebook, EC2 instance, etc.) is left orphaned and continues billing. This is exactly what bled ~$55 on `pl-glue-001-demo-endpoint` between 2026-04-17 and 2026-04-21.
+
+**Rule of thumb: if the demo creates any AWS resource that takes longer than 2 minutes to reach a usable state, set `demo_timeout_seconds` explicitly.**
+
+Reference table — pick the row that matches the slowest resource your demo creates, then add headroom:
+
+| Resource created by demo                    | Typical provision time | Recommended `demo_timeout_seconds` | Recommended `cleanup_timeout_seconds` |
+|---------------------------------------------|------------------------|------------------------------------|---------------------------------------|
+| IAM only, STS assume-role, S3 object ops    | < 30s                  | default (omit field)               | default (omit field)                  |
+| Lambda invoke, Step Functions start         | < 1 min                | default (omit field)               | default (omit field)                  |
+| Glue Python shell / Spark ETL job run       | 1–3 min                | default (omit field)               | default (omit field)                  |
+| CodeBuild project build                     | 2–6 min                | `600`                              | `180`                                 |
+| SageMaker Processing Job                    | 5–10 min               | `900`                              | `180`                                 |
+| SageMaker Notebook Instance                 | 5–10 min               | `900`                              | `300`                                 |
+| Glue Dev Endpoint                           | 10–15 min              | `1200`                             | `180`                                 |
+| EC2 instance + userdata bootstrap           | 2–5 min                | `600`                              | `180`                                 |
+| ECS task on Fargate                         | 1–3 min                | default (omit field)               | default (omit field)                  |
+
+When a scenario uses multiple resources, pick the override for the slowest one.
+
+**Companion requirement for slow-provisioning demos:** the `demo_attack.sh` must register an `EXIT`/`INT`/`TERM` trap that best-effort deletes the provisioned resource on abnormal exit — this catches every failure mode except SIGKILL. See `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh` for the canonical implementation (search for `_glue_demo_exit_handler`). The `cleanup_attack.sh` must initiate deletion and verify the API accepted the request, but MUST NOT block waiting for full deletion (AWS finishes asynchronously and billing stops at accept time).
 
 ---
 

@@ -98,37 +98,23 @@ else
         --output json > /dev/null
 
     echo -e "${GREEN}✓ Endpoint deletion initiated${NC}"
-    echo ""
+    echo -e "${BLUE}Note: Endpoint deletion continues in the background (~5-10 min) and stops billing immediately.${NC}"
 
-    # Wait for deletion to complete
-    echo "Waiting for endpoint to be fully deleted..."
-    echo "This may take a few minutes..."
+    # Verify the delete request was accepted (status is DELETING or the endpoint is gone).
+    # We do NOT block for full deletion — AWS continues asynchronously and charges stop as soon as
+    # the delete is accepted. A long internal wait risks being killed by the test harness's cleanup
+    # timeout, which previously caused orphan endpoints to bleed ~$21/day.
+    STATUS_AFTER_DELETE=$(aws glue get-dev-endpoint \
+        --endpoint-name $ENDPOINT_NAME \
+        --region $CURRENT_REGION \
+        --query 'DevEndpoint.Status' \
+        --output text 2>/dev/null || echo "DELETED")
 
-    MAX_WAIT=300  # 5 minutes
-    WAIT_TIME=0
-
-    while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-        # Check if endpoint still exists
-        STILL_EXISTS=$(aws glue get-dev-endpoint \
-            --endpoint-name $ENDPOINT_NAME \
-            --region $CURRENT_REGION \
-            --query 'DevEndpoint.EndpointName' \
-            --output text 2>/dev/null || echo "")
-
-        if [ -z "$STILL_EXISTS" ] || [ "$STILL_EXISTS" = "None" ]; then
-            echo -e "\n${GREEN}✓ Endpoint fully deleted${NC}"
-            break
-        fi
-
-        echo -n "."
-        sleep 10
-        WAIT_TIME=$((WAIT_TIME + 10))
-    done
-
-    if [ $WAIT_TIME -ge $MAX_WAIT ]; then
-        echo -e "\n${YELLOW}Warning: Endpoint deletion is taking longer than expected${NC}"
-        echo "The endpoint may still be deleting in the background"
-        echo "Check AWS Console or run: aws glue get-dev-endpoint --endpoint-name $ENDPOINT_NAME --region $CURRENT_REGION"
+    if [ "$STATUS_AFTER_DELETE" = "DELETED" ] || [ "$STATUS_AFTER_DELETE" = "DELETING" ]; then
+        echo -e "${GREEN}✓ Delete accepted (status: $STATUS_AFTER_DELETE)${NC}"
+    else
+        echo -e "${YELLOW}⚠ Unexpected status after delete: $STATUS_AFTER_DELETE${NC}"
+        echo "If the endpoint remains, re-run cleanup or delete manually via the AWS console."
     fi
 fi
 echo ""

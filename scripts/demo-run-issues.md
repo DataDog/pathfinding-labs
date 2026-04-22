@@ -102,28 +102,32 @@ terraform output -json | jq '.[output_name]'
 ## 3. Timeouts — Glue and SageMaker jobs exceed 5-minute limit
 
 These demos start a long-running AWS job (Glue dev endpoint or SageMaker notebook/
-processing job) and poll until it completes. The 5-minute timeout in `run_demos.py`
-is too short; the job is still running when the process is killed and no transcript
-is written.
+processing job) and poll until it completes. The default 5-minute timeout in
+`run_demos.py` is too short; the job is still running when the harness force-kills
+the process (via SIGKILL, which bash traps cannot catch), leaving the provisioned
+resource orphaned. For Glue dev endpoints this has bled ~$21/day at list price.
 
-**Affected demos:**
-- `glue-001` — `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/`
-- `glue-001-to-bucket` — `modules/scenarios/single-account/privesc-one-hop/to-bucket/glue-001-iam-passrole+glue-createdevendpoint/`
-- `sagemaker-001` — `modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-001-iam-passrole+sagemaker-createnotebookinstance/`
-- `sagemaker-003` — `modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-003-iam-passrole+sagemaker-createprocessingjob/`
-- `sagemaker-004` — `modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-004-sagemaker-createpresignednotebookinstanceurl/`
-- `sagemaker-005` — `modules/scenarios/single-account/privesc-one-hop/to-admin/sagemaker-005-sagemaker-updatenotebook-lifecycle-config/`
+**Fixed on 2026-04-21:**
 
-**Fix options (pick one or combine):**
+`run_demos.py` now reads optional `demo_timeout_seconds` / `cleanup_timeout_seconds`
+from each scenario's `scenario.yaml`, with fallbacks of 300 / 120. Schema bumped to
+`1.7.0` (see `SCHEMA.md` for the "When to Set Timeout Overrides" reference table).
 
-- **Increase the per-demo timeout** in `run_demos.py`. Glue dev endpoints can take
-  10–15 minutes; SageMaker notebook instances 5–10 minutes. A 20-minute timeout
-  (`timeout=1200`) is more appropriate for these.
-- **Add a per-scenario timeout override** in `scenario.yaml` (e.g. `demo_timeout: 1200`)
-  and read it in `run_demos.py` so only the slow demos get the longer limit.
-- **Rewrite the slow demos** to not block on job completion — record the job ID and
-  check status asynchronously, or reduce polling wait times if the jobs are finishing
-  close to the limit.
+Per-scenario overrides and trap behavior:
+
+| Scenario | `demo_timeout_seconds` | `cleanup_timeout_seconds` | Trap action on abnormal exit |
+|----------|------------------------|---------------------------|------------------------------|
+| `glue-001` (to-admin + to-bucket) | 1200 | 180 | `delete-dev-endpoint` |
+| `sagemaker-001` | 900 | 600 | `stop-notebook-instance` |
+| `sagemaker-003` | 900 | 180 | `stop-processing-job` |
+| `sagemaker-004` | 900 | default | none (notebook is Terraform-managed) |
+| `sagemaker-005` | 1800 | 180 | `stop-notebook-instance` (halts in-progress lifecycle script) |
+
+All cleanup scripts updated to initiate deletion and verify API accepted, without
+blocking on full async deletion. Canonical reference for the pattern:
+`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh`
+(search for `_glue_demo_exit_handler`) and `scenario-demo-creator` agent docs
+(section "Slow-Provisioning Resources (EXIT Trap Pattern)").
 
 ---
 

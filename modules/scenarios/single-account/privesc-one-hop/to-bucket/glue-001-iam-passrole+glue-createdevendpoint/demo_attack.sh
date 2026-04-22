@@ -116,7 +116,29 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 
 # Restrict helpful permissions during validation run
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# Custom exit trap — replaces setup_demo_restriction_trap. Best-effort deletes the Glue Dev Endpoint
+# if the demo did not complete cleanly (e.g. exit 1 from a failed step, Ctrl+C, SIGTERM). This catches
+# every failure mode EXCEPT SIGKILL, which bash cannot trap — the harness's per-scenario demo timeout
+# in run_demos.py must be large enough to let the demo finish normally, otherwise the SIGKILL path can
+# still orphan. Dev endpoints bill by the hour (~$21/day at list price) so avoiding orphans matters.
+DEMO_ENDPOINT_CREATED=0
+DEMO_COMPLETED=0
+
+_glue_demo_exit_handler() {
+    local exit_code=$?
+    trap - EXIT INT TERM
+
+    if [ "$DEMO_ENDPOINT_CREATED" = "1" ] && [ "$DEMO_COMPLETED" != "1" ]; then
+        echo ""
+        echo -e "\033[0;31m[trap] Demo did not complete cleanly — best-effort delete of $ENDPOINT_NAME to avoid orphan charges\033[0m"
+        aws glue delete-dev-endpoint --endpoint-name "$ENDPOINT_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || true
+    fi
+
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+    exit $exit_code
+}
+trap _glue_demo_exit_handler EXIT INT TERM
 
 # [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
@@ -197,6 +219,9 @@ echo -e "${YELLOW}Creating endpoint (this may take 5-10 minutes)...${NC}"
 
 # Create the dev endpoint
 show_attack_cmd "Attacker" "aws glue create-dev-endpoint --endpoint-name $ENDPOINT_NAME --role-arn $ROLE_ARN --public-key "$SSH_PUBLIC_KEY" --glue-version "1.0" --number-of-nodes 2 --region $AWS_REGION --output json"
+# Arm the trap before issuing create — if create partially succeeds and the script dies before
+# the wait-for-READY polling completes, the exit handler will still attempt delete.
+DEMO_ENDPOINT_CREATED=1
 aws glue create-dev-endpoint \
     --endpoint-name $ENDPOINT_NAME \
     --role-arn $ROLE_ARN \
@@ -386,6 +411,9 @@ echo ""
 echo -e "${YELLOW}To clean up and stop costs:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
+
+# Demo completed successfully — disarm the best-effort-delete trap.
+DEMO_COMPLETED=1
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

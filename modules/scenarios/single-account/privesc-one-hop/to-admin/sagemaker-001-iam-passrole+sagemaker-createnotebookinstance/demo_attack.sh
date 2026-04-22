@@ -111,7 +111,29 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 
 # Restrict helpful permissions during validation run
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# Custom exit trap — replaces setup_demo_restriction_trap. Best-effort stops the notebook instance
+# if the demo did not complete cleanly (Ctrl+C, SIGTERM, exit 1). A stopped notebook incurs only
+# EBS storage charges (~$0.50/mo), not compute — so stop is sufficient to halt the bleed even if
+# final delete happens later via cleanup_attack.sh. Cannot catch SIGKILL from a harness timeout;
+# demo_timeout_seconds in scenario.yaml must be large enough to prevent that.
+DEMO_RESOURCE_CREATED=0
+DEMO_COMPLETED=0
+
+_demo_exit_handler() {
+    local exit_code=$?
+    trap - EXIT INT TERM
+
+    if [ "$DEMO_RESOURCE_CREATED" = "1" ] && [ "$DEMO_COMPLETED" != "1" ]; then
+        echo ""
+        echo -e "\033[0;31m[trap] Demo did not complete cleanly — best-effort stop of $NOTEBOOK_NAME to halt compute billing\033[0m"
+        aws sagemaker stop-notebook-instance --notebook-instance-name "$NOTEBOOK_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || true
+    fi
+
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+    exit $exit_code
+}
+trap _demo_exit_handler EXIT INT TERM
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
@@ -164,6 +186,9 @@ echo "Role: $PASSABLE_ROLE"
 echo ""
 
 show_attack_cmd "Attacker" "aws sagemaker create-notebook-instance --region $AWS_REGION --notebook-instance-name $NOTEBOOK_NAME --instance-type ml.t3.medium --role-arn $ROLE_ARN"
+# Arm the trap before issuing create — if create partially succeeds and the script dies before
+# reaching the end, the exit handler will issue stop-notebook-instance to halt compute billing.
+DEMO_RESOURCE_CREATED=1
 aws sagemaker create-notebook-instance \
     --region $AWS_REGION \
     --notebook-instance-name $NOTEBOOK_NAME \
@@ -329,6 +354,9 @@ echo -e "\n${RED}⚠ Warning: The notebook instance is still running and will in
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
+
+# Demo completed successfully — disarm the best-effort-stop trap.
+DEMO_COMPLETED=1
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

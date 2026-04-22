@@ -1,13 +1,20 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.0"
+schema_version: "1.7.0"
 name: "sagemaker-updatenotebook-lifecycle-config"
 title: "SageMaker Notebook Lifecycle Config Update to Admin"
 description: "User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role"
 cost_estimate: "$37/mo"
 cost_estimate_when_demo_executed: "$37/mo"
 pathfinding-cloud-id: "sagemaker-005"
+
+# Demo performs three sequential long-running operations on a Terraform-managed notebook:
+# stop (up to 5 min) → update lifecycle config → start (up to 10 min). Override the default
+# run_demos.py timeouts so the harness does not SIGKILL the demo mid-operation, leaving the
+# malicious lifecycle config attached and possibly executing on the next notebook start.
+demo_timeout_seconds: 1800
+cleanup_timeout_seconds: 180
 
 # =============================================================================
 # CLASSIFICATION

@@ -119,6 +119,40 @@ Demo scripts source a shared library (`scripts/lib/demo_permissions.sh`) that te
 
 The existing credential switching pattern (`use_starting_creds`, `use_readonly_creds`) stays the same.
 
+### Slow-Provisioning Resources (EXIT Trap Pattern)
+
+**When to use:** The demo creates any AWS resource that takes > 2 minutes to reach a usable state — Glue Dev Endpoints, SageMaker Notebooks, SageMaker Processing Jobs, CodeBuild projects, EC2 instances. You'll know this applies if the scenario.yaml has `demo_timeout_seconds` set above the default 300s.
+
+**Why it matters:** `scripts/run_demos.py` enforces a per-scenario timeout and sends SIGKILL on expiry. SIGKILL cannot be trapped by bash, so a demo that creates a slow-provisioning resource can die before reaching its delete call, orphaning the resource. A running Glue Dev Endpoint bills ~$21/day at list price; `pl-glue-001-demo-endpoint` silently bled ~$55 over 4 days in April 2026 before this pattern existed.
+
+**Defense layers (all required together):**
+
+1. **Set `demo_timeout_seconds` / `cleanup_timeout_seconds` in scenario.yaml** per the reference table in `SCHEMA.md` under "When to Set Timeout Overrides". This prevents SIGKILL from happening in the first place.
+
+2. **Replace `setup_demo_restriction_trap` with a custom exit handler** that both restores permissions AND best-effort deletes the provisioned resource on any non-SIGKILL abnormal exit (Ctrl+C, SIGTERM, `exit 1` from any step). Canonical reference: `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh` — search for `_glue_demo_exit_handler`. Adapt the shape to each resource type:
+
+   ```bash
+   # Track demo state for trap
+   DEMO_RESOURCE_CREATED=0
+   DEMO_COMPLETED=0
+
+   _demo_exit_handler() {
+       local exit_code=$?
+       trap - EXIT INT TERM
+       if [ "$DEMO_RESOURCE_CREATED" = "1" ] && [ "$DEMO_COMPLETED" != "1" ]; then
+           echo -e "\033[0;31m[trap] Demo did not complete cleanly — best-effort delete of $RESOURCE_NAME to avoid orphan charges\033[0m"
+           aws <service> delete-<resource> --<name-flag> "$RESOURCE_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || true
+       fi
+       restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+       exit $exit_code
+   }
+   trap _demo_exit_handler EXIT INT TERM
+   ```
+
+   Set `DEMO_RESOURCE_CREATED=1` immediately before the create API call (not after success check — the script may die before the check runs). Set `DEMO_COMPLETED=1` at the very end, right before the `touch .demo_active` line.
+
+3. **Tighten `cleanup_attack.sh` — never block on async deletion.** Issue the delete call, confirm the API accepted it (status is `DELETING` or the resource is gone), then exit. Do NOT poll for full deletion — AWS continues the delete asynchronously and billing stops as soon as the delete is accepted. Blocking inside the 120–300s cleanup budget risks being killed mid-wait, which previously orphaned resources.
+
 ### Credential Context Rules (CRITICAL)
 
 Every step in the demo script must be categorized as either **EXPLOIT** or **OBSERVATION**:

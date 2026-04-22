@@ -113,7 +113,30 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 
 # Restrict helpful permissions during validation run
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# Custom exit trap — replaces setup_demo_restriction_trap. If the demo did not complete cleanly
+# after the malicious lifecycle config was attached, best-effort stop the notebook to halt any
+# in-progress lifecycle script execution (which attaches AdministratorAccess). cleanup_attack.sh
+# handles the full restoration (disassociate lifecycle, delete config, detach admin policy).
+# Cannot catch SIGKILL from a harness timeout; demo_timeout_seconds in scenario.yaml must cover
+# the full 25+ min demo runtime.
+DEMO_LIFECYCLE_ATTACHED=0
+DEMO_COMPLETED=0
+
+_demo_exit_handler() {
+    local exit_code=$?
+    trap - EXIT INT TERM
+
+    if [ "$DEMO_LIFECYCLE_ATTACHED" = "1" ] && [ "$DEMO_COMPLETED" != "1" ]; then
+        echo ""
+        echo -e "\033[0;31m[trap] Demo did not complete cleanly — best-effort stop of $NOTEBOOK_NAME to halt any in-progress lifecycle script execution\033[0m"
+        aws sagemaker stop-notebook-instance --notebook-instance-name "$NOTEBOOK_NAME" --region "$AWS_REGION" >/dev/null 2>&1 || true
+    fi
+
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+    exit $exit_code
+}
+trap _demo_exit_handler EXIT INT TERM
 
 # [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
@@ -304,6 +327,9 @@ use_starting_creds
 echo "Attaching lifecycle config to notebook: $NOTEBOOK_NAME"
 
 show_attack_cmd "Attacker" "aws sagemaker update-notebook-instance --notebook-instance-name $NOTEBOOK_NAME --lifecycle-config-name $LIFECYCLE_CONFIG_NAME --region $AWS_REGION --output json"
+# Arm the trap before attaching the malicious lifecycle — from this point, if the demo dies
+# before completion, the trap will best-effort stop the notebook to halt lifecycle execution.
+DEMO_LIFECYCLE_ATTACHED=1
 aws sagemaker update-notebook-instance \
     --notebook-instance-name $NOTEBOOK_NAME \
     --lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
@@ -466,6 +492,9 @@ echo -e "\n${RED}⚠ Warning: Multiple changes made to the environment${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
+
+# Demo completed successfully — disarm the best-effort-stop trap.
+DEMO_COMPLETED=1
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

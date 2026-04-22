@@ -1,13 +1,19 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.0"
+schema_version: "1.7.0"
 name: "iam-passrole+glue-createdevendpoint"
 title: "Glue Dev Endpoint Creation to Bucket"
 description: "User with iam:PassRole and glue:CreateDevEndpoint can create a Glue dev endpoint with an S3 role and access sensitive buckets via SSH"
 cost_estimate: "$0/mo"
-cost_estimate_when_demo_executed: "$0/mo"
+cost_estimate_when_demo_executed: "$634/mo"
 pathfinding-cloud-id: "glue-001"
+
+# Demo provisions a Glue Dev Endpoint, which takes 10-15 min to become READY. Override the
+# default 300s/120s timeouts in scripts/run_demos.py so the harness does not SIGKILL the demo
+# mid-provision (the original cause of orphaned endpoints that bled ~$21/day at list price).
+demo_timeout_seconds: 1200
+cleanup_timeout_seconds: 180
 
 # =============================================================================
 # CLASSIFICATION

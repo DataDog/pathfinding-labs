@@ -76,3 +76,4 @@ Thumbs.db
 **/.demo_active
 .test-results/
 .claude/settings.local.json
+/local/

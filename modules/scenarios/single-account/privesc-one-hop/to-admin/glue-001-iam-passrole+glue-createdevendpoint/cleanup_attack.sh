@@ -93,32 +93,22 @@ if [ -n "$ENDPOINT_EXISTS" ] && [ "$ENDPOINT_EXISTS" != "None" ]; then
         --endpoint-name "$DEV_ENDPOINT_NAME"
 
     echo -e "${GREEN}✓ Deletion initiated for Dev Endpoint: $DEV_ENDPOINT_NAME${NC}"
-    echo -e "${BLUE}Note: Endpoint deletion may take a few minutes to complete${NC}"
+    echo -e "${BLUE}Note: Endpoint deletion continues in the background (~5-10 min) and stops billing immediately.${NC}"
 
-    # Wait for deletion to complete
-    echo "Waiting for endpoint deletion to complete..."
-    MAX_WAIT=20  # 20 checks * 15 seconds = 5 minutes max wait
-    WAIT_COUNT=0
+    # Verify the delete request was accepted (status moves to DELETING or the endpoint is already gone).
+    # We do NOT block for full deletion — AWS continues the delete asynchronously and charges stop
+    # as soon as the delete is accepted. A long internal wait here risks being killed by the test
+    # harness's cleanup timeout, which previously caused orphan endpoints.
+    ENDPOINT_CHECK=$(aws glue get-dev-endpoint \
+        --endpoint-name "$DEV_ENDPOINT_NAME" \
+        --query 'DevEndpoint.Status' \
+        --output text 2>/dev/null || echo "DELETED")
 
-    while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-        ENDPOINT_CHECK=$(aws glue get-dev-endpoint \
-            --endpoint-name "$DEV_ENDPOINT_NAME" \
-            --query 'DevEndpoint.Status' \
-            --output text 2>/dev/null || echo "DELETED")
-
-        if [ "$ENDPOINT_CHECK" = "DELETED" ]; then
-            echo -e "${GREEN}✓ Dev Endpoint successfully deleted${NC}"
-            break
-        fi
-
-        echo "Status: $ENDPOINT_CHECK (waiting...)"
-        sleep 15
-        WAIT_COUNT=$((WAIT_COUNT + 1))
-    done
-
-    if [ "$ENDPOINT_CHECK" != "DELETED" ]; then
-        echo -e "${YELLOW}⚠ Endpoint deletion still in progress${NC}"
-        echo "The endpoint will continue deleting in the background"
+    if [ "$ENDPOINT_CHECK" = "DELETED" ] || [ "$ENDPOINT_CHECK" = "DELETING" ]; then
+        echo -e "${GREEN}✓ Delete accepted (status: $ENDPOINT_CHECK)${NC}"
+    else
+        echo -e "${YELLOW}⚠ Unexpected status after delete: $ENDPOINT_CHECK${NC}"
+        echo "If the endpoint remains, re-run cleanup or delete manually via the AWS console."
     fi
 else
     echo -e "${YELLOW}Glue Dev Endpoint $DEV_ENDPOINT_NAME not found (may already be deleted)${NC}"

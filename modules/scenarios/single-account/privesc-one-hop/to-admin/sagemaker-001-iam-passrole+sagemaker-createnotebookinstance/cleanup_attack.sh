@@ -137,32 +137,26 @@ else
             done
         fi
 
-        # Delete the notebook
+        # Delete the notebook — initiate and verify accepted, do NOT block on full deletion.
+        # Delete is async; billing stops when the instance enters Deleting state. Blocking here
+        # risked being killed by the harness cleanup timeout, which previously caused orphans.
         if [ "$STATUS" == "Stopped" ]; then
             echo "  Deleting notebook..."
             aws sagemaker delete-notebook-instance \
                 --region $CURRENT_REGION \
                 --notebook-instance-name $NOTEBOOK
 
-            # Wait for deletion to complete
-            echo "  Waiting for deletion to complete..."
-            MAX_ATTEMPTS=20  # 20 attempts * 15 seconds = 5 minutes
-            ATTEMPT=0
+            POST_DELETE_STATUS=$(aws sagemaker describe-notebook-instance \
+                --region $CURRENT_REGION \
+                --notebook-instance-name $NOTEBOOK \
+                --query 'NotebookInstanceStatus' \
+                --output text 2>/dev/null || echo "Deleted")
 
-            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-                if ! aws sagemaker describe-notebook-instance \
-                    --region $CURRENT_REGION \
-                    --notebook-instance-name $NOTEBOOK \
-                    --query 'NotebookInstanceStatus' \
-                    --output text &>/dev/null; then
-                    echo -e "${GREEN}  ✓ Notebook deleted${NC}"
-                    break
-                fi
-
-                ATTEMPT=$((ATTEMPT + 1))
-                echo "  Deleting... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
-                sleep 15
-            done
+            if [ "$POST_DELETE_STATUS" == "Deleting" ] || [ "$POST_DELETE_STATUS" == "Deleted" ]; then
+                echo -e "${GREEN}  ✓ Delete accepted (status: $POST_DELETE_STATUS)${NC}"
+            else
+                echo -e "${YELLOW}  ⚠ Unexpected status after delete: $POST_DELETE_STATUS${NC}"
+            fi
         fi
 
         echo ""

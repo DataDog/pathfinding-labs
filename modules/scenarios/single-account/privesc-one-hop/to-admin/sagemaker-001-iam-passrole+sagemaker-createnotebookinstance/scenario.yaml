@@ -1,13 +1,19 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.0"
+schema_version: "1.7.0"
 name: "iam-passrole+sagemaker-createnotebookinstance"
 title: "SageMaker Notebook Instance Creation to Admin"
 description: "User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges"
 cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "sagemaker-001"
+
+# Demo provisions a SageMaker notebook instance (5-10 min to reach InService) and deleting one
+# requires Stop → wait for Stopped → Delete. Override the default run_demos.py timeouts so the
+# harness does not SIGKILL the demo or cleanup mid-operation, orphaning a billable notebook.
+demo_timeout_seconds: 900
+cleanup_timeout_seconds: 600
 
 # =============================================================================
 # CLASSIFICATION
