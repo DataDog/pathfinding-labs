@@ -54,8 +54,6 @@ permissions:
           purpose: "List existing CodeBuild projects"
         - permission: "codebuild:BatchGetBuilds"
           purpose: "Monitor build execution status"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

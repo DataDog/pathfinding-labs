@@ -136,6 +136,22 @@ aws iam list-users --max-items 3
 
 If `iam:ListUsers` succeeds, you have full administrative access to the AWS account.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy you just gained provides implicitly.
+
+Using the credentials you now hold (which include `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/iam-020-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario — only the scenario ID in the path changes.
+
 ## What Happened
 
 This attack exploited two IAM permissions that, individually, appear limited in scope. `iam:CreatePolicyVersion` allows creating new versions of a customer-managed policy — a permission that looks reasonable for a policy administrator. `iam:UpdateAssumeRolePolicy` allows changing who can assume a role — also a permission that might be granted to someone managing role access. Together, however, they form a complete privilege escalation path: modify the policy to grant admin permissions, modify the trust policy to grant yourself access, then assume the role.

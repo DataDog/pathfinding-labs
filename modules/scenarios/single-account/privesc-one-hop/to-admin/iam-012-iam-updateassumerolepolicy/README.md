@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying admin role trust policy to grant self-access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** iam-012
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1078.004 - Valid Accounts: Cloud Accounts
@@ -64,6 +65,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-012-to-admin-starting-user` | Scenario-specific starting user with access keys and UpdateAssumeRolePolicy permission |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-admin-target-role` | Admin role with AdministratorAccess policy, initially trusts only EC2 service |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-012-to-admin-starting-user-policy` | User policy granting UpdateAssumeRolePolicy and AssumeRole permissions on target role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-012-to-admin` | CTF flag stored in SSM Parameter Store, readable only with admin access |
 
 ### Solution
 

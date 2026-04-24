@@ -146,3 +146,16 @@ resource "aws_dynamodb_table" "trigger_table" {
     Purpose     = "lambda-trigger"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-002-to-admin-flag"
+    Scenario = "lambda-002-iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+    Purpose  = "ctf-flag"
+  }
+}

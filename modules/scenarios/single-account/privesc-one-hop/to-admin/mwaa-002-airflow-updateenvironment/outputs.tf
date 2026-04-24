@@ -131,3 +131,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-mwaa-002-to-admin-starting-user) -> airflow:UpdateEnvironment -> changes source bucket to ${aws_s3_bucket.attacker_bucket.id} -> airflow:CreateCliToken -> triggers privesc_dag -> DAG executes with ${aws_iam_role.admin_role.name} credentials -> attaches AdministratorAccess to starting user -> admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -43,8 +43,19 @@ output "codebuild_project_arn" {
   value       = aws_codebuild_project.existing_project.arn
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-codebuild-002-to-admin-starting-user) → codebuild:StartBuild with buildspec-override → ${aws_codebuild_project.existing_project.name} → Buildspec grants admin to starting user → Admin Access"
+  value       = "User (pl-prod-codebuild-002-to-admin-starting-user) → codebuild:StartBuild with buildspec-override → ${aws_codebuild_project.existing_project.name} → Buildspec grants admin to starting user → Admin Access → ssm:GetParameter → CTF flag"
 }

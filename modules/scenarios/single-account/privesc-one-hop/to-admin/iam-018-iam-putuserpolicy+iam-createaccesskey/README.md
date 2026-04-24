@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User-to-user lateral movement via policy modification and credential creation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-018
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -66,6 +67,7 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-018-to-admin-starting-user` | Scenario-specific starting user with access keys and inline policy for lateral movement permissions |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-018-to-admin-target-user` | Target user that will be granted admin permissions and have credentials created (initially has minimal permissions) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-018-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -81,6 +83,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

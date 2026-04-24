@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ssm-002
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ssm-002-to-admin-ec2-admin-role` | Administrative role attached to the EC2 instance (target for credential extraction) |
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ssm-002-to-admin-ec2-admin-profile` | Instance profile associating the admin role with the EC2 instance |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and admin role attached |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ssm-002-to-admin` | CTF flag parameter (readable with AdministratorAccess) |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 5. Poll until the command completes, then retrieve the JSON credentials from the command output
 6. Export the extracted access key, secret key, and session token as environment variables
 7. Verify administrator access by listing IAM users
+8. Capture the CTF flag from SSM Parameter Store using the extracted admin credentials
 
 #### Resources Created by Attack Script
 

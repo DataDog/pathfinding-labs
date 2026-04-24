@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Three-hop role assumption chain to reach S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -65,6 +66,7 @@ plabs apply
 | `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-intermediate-role` | Second-hop role; trusted by the initial role and the chain user |
 | `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-s3-access-role` | Third-hop role; holds full S3 access to the destination bucket |
 | `arn:aws:s3:::pl-prod-role-chain-destination-{PROD_ACCOUNT}` | Destination S3 bucket with sensitive data; accessible only via the full role chain |
+| `s3://pl-prod-role-chain-destination-{PROD_ACCOUNT}/flag.txt` | CTF flag file inside the target bucket; reading it confirms successful traversal of the role chain |
 
 ### Solution
 

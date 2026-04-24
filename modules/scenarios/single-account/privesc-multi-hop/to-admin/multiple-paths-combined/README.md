@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1648 - Serverless Execution
 
@@ -70,6 +71,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-admin-role` | EC2 service admin role (trusts ec2.amazonaws.com, has AdministratorAccess) |
 | `arn:aws:iam::{account_id}:role/pl-prod-lambda-admin-role` | Lambda service admin role (trusts lambda.amazonaws.com, has AdministratorAccess) |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-admin-role` | CloudFormation service admin role (trusts cloudformation.amazonaws.com, has AdministratorAccess) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/multiple-paths-combined-to-admin` | CTF flag (retrieved using admin access gained via the attack) |
 
 ### Solution
 
@@ -87,7 +89,8 @@ The script will:
 3. Create a Lambda function with the admin role and payload
 4. Create a CloudFormation stack with the admin role and payload
 5. Verify that new admin roles were created by each service
-6. Clean up all created resources
+6. Capture the CTF flag from SSM Parameter Store using the gained admin access
+7. Clean up all created resources
 
 #### Resources Created by Attack Script
 

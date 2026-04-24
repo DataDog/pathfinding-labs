@@ -59,3 +59,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-ssm-002-to-bucket-starting-user) → ssm:SendCommand → EC2 Instance (${aws_instance.target.id}) → Extract Instance Role Credentials → S3 Bucket Access (${aws_s3_bucket.target_bucket.id})"
 }
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/flag.txt"
+}

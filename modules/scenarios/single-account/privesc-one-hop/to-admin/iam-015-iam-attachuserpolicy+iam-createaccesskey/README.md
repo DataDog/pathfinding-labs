@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with AttachUserPolicy and CreateAccessKey on another user can attach AWS-managed AdministratorAccess policy, create access keys, and gain admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-015
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -67,6 +68,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions to attach policies and create keys for target user |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-015-to-admin-target-user` | Target user that will be granted admin access via policy attachment |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-015-to-admin-starting-user-policy` | IAM policy granting AttachUserPolicy and CreateAccessKey on target user |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-015-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 4. Create new access keys for the target user
 5. Authenticate as the target user using the new credentials
 6. Verify successful privilege escalation by listing IAM users
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 #### Resources Created by Attack Script
 

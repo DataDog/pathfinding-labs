@@ -103,3 +103,16 @@ resource "aws_iam_role_policy_attachment" "lambda_admin" {
   role       = aws_iam_role.lambda_admin.name
   policy_arn = aws_iam_policy.lambda_admin_policy.arn
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/passrole-lambda-admin-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-passrole-lambda-admin-to-admin-flag"
+    Scenario = "passrole-lambda-admin"
+    Purpose  = "ctf-flag"
+  }
+}

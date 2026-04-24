@@ -59,3 +59,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-ssm-001-to-admin-starting-user) → ssm:StartSession → EC2 Instance (${aws_instance.target.id}) → Extract Instance Role Credentials via IMDS → Admin Access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

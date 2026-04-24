@@ -113,3 +113,10 @@ resource "aws_s3_object" "sensitive_file" {
   etag     = md5("🎉 SUCCESS! Simple sts:AssumeRole to bucket access\nFlag: PATHFINDER-ASSUMEROLE-TO-BUCKET-2024")
 }
 
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+

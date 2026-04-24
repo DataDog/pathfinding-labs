@@ -99,6 +99,16 @@ resource "aws_s3_object" "sensitive_data" {
   content  = "CONGRATULATIONS! You have successfully extracted IMDS credentials from the EC2 instance and accessed the sensitive S3 bucket. This demonstrates the risk of ec2-instance-connect:SendSSHPublicKey on instances with privileged roles."
 }
 
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully SSHing into the EC2 instance, extracting IMDS credentials, and using those
+# credentials to read from the target bucket. Readable by any principal with s3:GetObject on this bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+
 # =============================================================================
 # IAM ROLE FOR EC2 (WITH S3 BUCKET ACCESS)
 # =============================================================================

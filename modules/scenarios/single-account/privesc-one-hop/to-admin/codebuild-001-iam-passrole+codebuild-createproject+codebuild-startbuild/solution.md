@@ -112,6 +112,22 @@ aws iam list-attached-user-policies --user-name pl-prod-codebuild-001-to-admin-s
 
 You'll see `AdministratorAccess` (ARN: `arn:aws:iam::aws:policy/AdministratorAccess`) in the list, confirming the escalation succeeded.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now attached to your starting user provides implicitly.
+
+Using your starting user credentials (which, thanks to the previous step, now hold `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/codebuild-001-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited a "pass role to service" privilege escalation pattern. Your user was never granted IAM write permissions directly — but it had `iam:PassRole` to a privileged role trusted by CodeBuild, combined with the ability to create and run CodeBuild projects. By delegating work to the CodeBuild service (which ran as the privileged role), you caused that role to perform an IAM action on your behalf that you could not perform yourself.

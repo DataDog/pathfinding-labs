@@ -54,8 +54,6 @@ permissions:
           purpose: "Get details about a specific job run"
         - permission: "glue:GetJobRuns"
           purpose: "List job runs to monitor execution status"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after privilege escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

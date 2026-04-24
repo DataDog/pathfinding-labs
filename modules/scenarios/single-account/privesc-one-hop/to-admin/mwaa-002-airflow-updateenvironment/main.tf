@@ -681,3 +681,16 @@ resource "aws_mwaa_environment" "mwaa_env" {
     aws_route_table_association.private_subnet_2_assoc
   ]
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/mwaa-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-mwaa-002-to-admin-flag"
+    Scenario = "mwaa-002-airflow-updateenvironment"
+    Purpose  = "ctf-flag"
+  }
+}

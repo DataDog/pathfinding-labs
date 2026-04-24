@@ -84,6 +84,16 @@ cat /tmp/sensitive-data.txt
 
 If the download succeeds you have completed the attack path. You have moved from `pl-prod-iam-005-to-bucket-starting-user` to reading data from the sensitive S3 bucket in three steps: assume role, add inline policy, access bucket.
 
+## Capture the Flag
+
+The target bucket also contains `flag.txt`, which holds the CTF flag for this scenario. Read it with the same credentials you used to access `sensitive-data.txt`:
+
+```bash
+aws s3 cp s3://pl-prod-iam-005-to-bucket-{account_id}/flag.txt -
+```
+
+The flag value will be printed to stdout. Capturing it confirms you have successfully completed the privilege escalation and gained read access to the target bucket.
+
 ## What Happened
 
 The root misconfiguration is that `pl-prod-iam-005-to-bucket-starting-role` was granted `iam:PutRolePolicy` on itself. This is logically equivalent to granting the role any permission in IAM — because it can always write a new inline policy to obtain whatever access it needs. No separate target principal was required; the role escalated its own permissions within the same session.

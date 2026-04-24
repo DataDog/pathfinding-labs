@@ -55,12 +55,21 @@ type Scenario struct {
 	// Permissions
 	Permissions struct {
 		Required []struct {
-			Permission string `yaml:"permission"`
-			Resource   string `yaml:"resource"`
+			Principal     string `yaml:"principal"`
+			PrincipalType string `yaml:"principal_type"`
+			Permissions   []struct {
+				Permission string `yaml:"permission"`
+				Resource   string `yaml:"resource"`
+			} `yaml:"permissions"`
 		} `yaml:"required"`
 		Helpful []struct {
-			Permission string `yaml:"permission"`
-			Purpose    string `yaml:"purpose"`
+			Principal     string `yaml:"principal"`
+			PrincipalType string `yaml:"principal_type"`
+			Permissions   []struct {
+				Permission string `yaml:"permission"`
+				Resource   string `yaml:"resource"`
+				Purpose    string `yaml:"purpose"`
+			} `yaml:"permissions"`
 		} `yaml:"helpful"`
 	} `yaml:"permissions"`
 

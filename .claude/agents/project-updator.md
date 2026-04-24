@@ -169,8 +169,11 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
+
+**`flag_value` line**: Required for every non-tool-testing scenario. Substitute `{scenario-unique-id}` with the scenario's plabs CLI unique ID (`{pathfinding-cloud-id}-{target}` when a `pathfinding-cloud-id` is present in scenario.yaml, else `{scenario-directory-name}-{target}`). Omit this line entirely for tool-testing scenarios (they don't have a `flag_value` variable).
 
 **When the scenario declares `vpc_id` and `subnet_id` variables** (i.e., it deploys compute resources like EC2, ECS, SSM on EC2), also pass the environment VPC:
 
@@ -188,6 +191,7 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
 
@@ -217,6 +221,7 @@ module "cross_account_dev_to_prod_{path_type}_{scenario_name}" {
   prod_account_id = var.prod_account_id
   environment     = "cross-account"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
 
@@ -240,6 +245,7 @@ module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_creat
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "glue-003-to-admin", "flag{MISSING}")
 }
 ```
 
@@ -367,6 +373,40 @@ enable_single_account_privesc_{path_type}_to_{target}_{scenario_name} = true
 - Add in the same order as variables.tf
 - Typically set to `true` for testing new scenarios
 - Match the spacing/alignment of other variables
+
+### 4b. flags.default.yaml
+
+Location: `/flags.default.yaml` (repo root)
+
+**For every non-tool-testing scenario**, add an entry to the default flag set so users who run `plabs init` get a working flag out of the box. Tool-testing scenarios do NOT appear in this file.
+
+#### Format
+
+```yaml
+flags:
+  # ... existing entries, alphabetically sorted
+  {scenario-unique-id}: "flag{<readable_per_scenario_default>}"
+```
+
+Where `{scenario-unique-id}` matches the ID used by the module's `lookup(var.scenario_flags, "<id>", ...)` call and by the Terraform flag resource.
+
+#### Example
+
+```yaml
+flags:
+  glue-003-to-admin: "flag{glue_003_admin_captured}"
+  iam-002-to-admin: "flag{iam_002_admin_key_created}"
+  # new entry:
+  iam-007-iam-putuserpolicy-to-admin: "flag{iam_007_self_escalated}"
+```
+
+#### Default flag value convention
+
+Use a snake_case identifier derived from the scenario's pathfinding.cloud ID (or directory name) plus a short verb phrase describing the capture condition. Keep it human-readable so operators can recognize it in logs: `flag{glue_003_admin_captured}`, not `flag{a8f72c}`.
+
+#### Placement
+- Entries must be alphabetically sorted by scenario unique ID.
+- Do NOT modify the file's header comment block; it's the schema guide for vendors.
 
 ### 5. README.md
 
@@ -613,6 +653,8 @@ Before completing, verify:
 13. ✅ README scenario count is incremented
 14. ✅ README table entry is in the correct section
 15. ✅ All file edits maintain consistent formatting
+16. ✅ **Non-tool-testing scenarios only**: module block in root main.tf includes `flag_value = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")`; `flags.default.yaml` in the repo root has a new entry for this scenario; entries remain alphabetically sorted
+17. ✅ **Tool-testing scenarios only**: module block does NOT include `flag_value`; `flags.default.yaml` does NOT have an entry for this scenario
 
 ## Special Considerations
 

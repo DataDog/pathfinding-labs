@@ -51,8 +51,6 @@ permissions:
           purpose: "View project details including attached service role"
         - permission: "codebuild:BatchGetBuildBatches"
           purpose: "Monitor build batch execution status"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

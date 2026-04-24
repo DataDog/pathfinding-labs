@@ -45,6 +45,26 @@ resource "aws_iam_access_key" "privesc_user_key" {
   user     = aws_iam_user.privesc_user.name
 }
 
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# an inline policy granting Action:* on Resource:* provides the required permission.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/iam-011-to-admin"
+  description = "CTF flag for the iam-011 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-iam-011-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-putgrouppolicy"
+    Purpose     = "ctf-flag"
+  }
+}
+
 # Policy that allows the user to put group policies (the vulnerability)
 resource "aws_iam_user_policy" "privesc_policy" {
   provider = aws.prod

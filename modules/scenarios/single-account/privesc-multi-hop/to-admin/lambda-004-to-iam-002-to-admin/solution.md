@@ -118,6 +118,22 @@ aws iam list-users
 
 `list-users` requires `iam:ListUsers`, which is included under `AdministratorAccess`. If it returns the list of IAM users in the account, you have successfully escalated to full admin.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy attached to the admin user provides implicitly.
+
+Using the admin user's permanent access keys you created in the previous step, read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name "/pathfinding-labs/flags/lambda-004 + iam-002-to-admin" \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You started with the ability to modify and invoke a Lambda function — permissions that, in isolation, seem like a developer convenience feature rather than a security risk. But Lambda functions run as IAM roles, and those roles have credentials. By injecting code that reads the execution environment's credential variables and returning them in the function response, you pivoted from your starting user into the Lambda execution role.

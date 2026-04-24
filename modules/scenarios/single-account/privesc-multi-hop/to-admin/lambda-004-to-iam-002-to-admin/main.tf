@@ -198,3 +198,16 @@ resource "aws_iam_user_policy_attachment" "admin_user_admin_access" {
   user       = aws_iam_user.admin_user.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-004-plus-iam-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-004-iam-002-to-admin-flag"
+    Scenario = "lambda-004-to-iam-002-to-admin"
+    Purpose  = "ctf-flag"
+  }
+}

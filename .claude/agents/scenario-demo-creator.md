@@ -687,6 +687,61 @@ fi
 echo ""
 ```
 
+#### Capture the Flag (required as the final step on every scenario EXCEPT tool-testing)
+
+Every non-tool-testing scenario's demo script ends with a flag-capture step that proves the attack succeeded. This happens AFTER the "admin access confirmed" / "bucket access confirmed" verification above and BEFORE the `restore_helpful_permissions` call and the summary block.
+
+**Credential choice**: reuse whatever credentials the attack just produced. For to-admin scenarios where `iam:AttachUserPolicy` was used to attach `AdministratorAccess` to the starting user, call `use_starting_creds` — those creds now hold admin. For to-admin scenarios that produced new access keys for an admin user, export those new keys (as the existing attack step already does). For to-bucket scenarios, use whatever principal now has `s3:GetObject` on the target bucket. Never invent a fresh `aws sts assume-role` or `aws iam create-access-key` just for the flag read.
+
+**For to-admin scenarios**:
+
+```bash
+# [EXPLOIT]
+# Step N: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds  # or whichever helper matches the creds the attack just produced
+echo -e "${YELLOW}Step N: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/{scenario-unique-id}"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+```
+
+**For to-bucket scenarios**:
+
+```bash
+# [EXPLOIT]
+# Step N: Capture the CTF flag
+# The principal that just gained bucket access reads the flag object from the
+# target bucket. No extra permissions are needed — s3:GetObject on the bucket
+# already grants access to every object in it.
+echo -e "${YELLOW}Step N: Capturing CTF flag from target bucket${NC}"
+show_attack_cmd "Attacker" "aws s3 cp s3://$TARGET_BUCKET/flag.txt -"
+FLAG_VALUE=$(aws s3 cp "s3://$TARGET_BUCKET/flag.txt" - 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from s3://$TARGET_BUCKET/flag.txt${NC}"
+    exit 1
+fi
+echo ""
+```
+
+**Substitute `{scenario-unique-id}`** with the scenario's plabs CLI unique ID — for scenarios with a `pathfinding-cloud-id`, this is `{pathfinding-cloud-id}-{target}` (e.g., `glue-003-to-admin`, `iam-002-to-admin`). Otherwise use `{scenario-directory-name}-{target}`. This must match the ID used by the Terraform flag resource and by `flags.default.yaml`.
+
+**Summary block**: the final summary should include a line for the flag capture and an attack-path ending that references the flag (e.g., `→ (ssm:GetParameter) → CTF Flag` for to-admin, or `→ (s3:GetObject flag.txt) → CTF Flag` for to-bucket). The script's top-of-summary banner should read `CTF FLAG CAPTURED!` instead of `PRIVILEGE ESCALATION SUCCESSFUL!`.
+
+**Tool-testing scenarios**: exempt. Do not add this step.
+
 ## cleanup_attack.sh Template
 
 ### Standard Structure with Region Handling
@@ -1090,6 +1145,7 @@ Before completing, verify:
 29. ✅ Clear step numbering and descriptions
 30. ✅ Final summary is accurate
 31. ✅ Scripts will be made executable (chmod +x)
+32. ✅ **Non-tool-testing scenarios only**: demo_attack.sh has a `[EXPLOIT]` flag-capture step as its final attack action (before `restore_helpful_permissions`), using `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id>` for to-admin or `aws s3 cp s3://<bucket>/flag.txt -` for to-bucket; the script fails (`exit 1`) if the flag read returns empty; the final summary reads `CTF FLAG CAPTURED!` rather than `PRIVILEGE ESCALATION SUCCESSFUL!`; credentials are whatever the attack just produced (never a brand-new assume-role or access-key solely for the flag read)
 
 ## File Permissions
 

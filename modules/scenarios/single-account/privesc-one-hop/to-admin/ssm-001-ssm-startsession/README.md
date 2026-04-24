@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ssm-001
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-admin-ec2-role` | Administrative role attached to the EC2 instance (target for credential extraction) |
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ssm-001-to-admin-ec2-profile` | Instance profile associating the admin role with the EC2 instance |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and admin role attached |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ssm-001-to-admin` | CTF flag stored in SSM Parameter Store (readable with admin credentials) |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 5. Guide you through querying the IMDS endpoint inside the session to retrieve temporary admin role credentials
 6. Accept the pasted credential JSON and configure them in the local shell
 7. Verify administrator access by listing IAM users with the extracted credentials
+8. Read the CTF flag from SSM Parameter Store using the admin role credentials
 
 #### Resources Created by Attack Script
 

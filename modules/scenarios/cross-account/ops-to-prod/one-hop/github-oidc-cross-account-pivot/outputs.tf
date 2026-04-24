@@ -37,3 +37,8 @@ output "attack_path" {
   description = "Description of the attack path for this scenario"
   value       = "GitHub Actions (${var.github_repo}) → ops:pl-ops-goidc-pivot-deployer-role → prod:pl-prod-goidc-pivot-deployer-role → s3 bucket"
 }
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.flag_bucket.id}/flag.txt"
+}

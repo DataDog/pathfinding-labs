@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account role assumption from operations to prod
 * **Terraform Variable:** `enable_cross_account_ops_to_prod_one_hop_simple_role_assumption`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -62,6 +63,7 @@ plabs apply
 | `arn:aws:iam::{operations_account_id}:user/pl-pathfinding-starting-user-operations` | Starting user in the operations account |
 | `arn:aws:iam::{operations_account_id}:role/pl-x-account-ops-role-with-assume-role-star` | Operations role with unrestricted sts:AssumeRole |
 | `arn:aws:iam::{prod_account_id}:role/pl-x-account-prod-target-role` | Target prod role that trusts the operations account |
+| `arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal in the prod account |
 
 ### Solution
 
@@ -80,6 +82,7 @@ The script will:
 3. Enumerate roles in the prod account
 4. Assume multiple privileged prod roles using the operations role credentials
 5. Verify elevated access in the prod account
+6. Capture the CTF flag from SSM Parameter Store using admin credentials on the prod target role
 
 #### Resources Created by Attack Script
 

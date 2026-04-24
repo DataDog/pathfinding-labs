@@ -48,7 +48,18 @@ output "dev_endpoint_address" {
   value       = aws_glue_dev_endpoint.target_endpoint.public_address
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-glue-002-to-admin-starting-user) → glue:UpdateDevEndpoint → Add SSH key to existing dev endpoint → SSH access → Execute commands with admin role (pl-prod-glue-002-to-admin-target-role)"
+  value       = "User (pl-prod-glue-002-to-admin-starting-user) → glue:UpdateDevEndpoint → Add SSH key to existing dev endpoint → SSH access → Execute commands with admin role (pl-prod-glue-002-to-admin-target-role) → ssm:GetParameter → CTF flag"
 }

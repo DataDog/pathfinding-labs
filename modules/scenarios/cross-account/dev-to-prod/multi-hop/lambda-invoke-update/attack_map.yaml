@@ -45,12 +45,25 @@ attackMap:
       label: "Prod Lambda Execution Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-lambda-execution-role"
       description: >
         This Lambda execution role in the prod account has AdministratorAccess attached.
         By extracting its temporary credentials from the Lambda runtime environment, you
-        gain full administrative access to the prod AWS account.
+        gain full administrative access to the prod AWS account. Use those credentials
+        to read the scenario's CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/lambda-invoke-update-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the prod account.
+        Retrieving it requires administrative permissions (ssm:GetParameter is granted
+        by AdministratorAccess on the Lambda execution role). Your goal is to read this
+        parameter using the admin credentials extracted from the Lambda runtime.
 
   edges:
     - from: starting-principal
@@ -152,3 +165,19 @@ attackMap:
         - description: "Confirm full administrative access"
           command: |
             aws iam list-users --max-items 5
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the prod Lambda execution role's temporary credentials in hand, retrieve
+        the scenario's CTF flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin credentials extracted from the Lambda runtime.
+      hints:
+        - "You now hold admin credentials for the prod account. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store -- consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/lambda-invoke-update-to-admin --query 'Parameter.Value' --output text"

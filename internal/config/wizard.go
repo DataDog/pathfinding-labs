@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +13,37 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/ini.v1"
 )
+
+// emailRegexp matches a basic valid email address: local@domain.tld
+var emailRegexp = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+
+func validateEmail(s string) error {
+	if s == "" {
+		return fmt.Errorf("email address is required")
+	}
+	if !emailRegexp.MatchString(s) {
+		return fmt.Errorf("please enter a valid email address (e.g. you@example.com)")
+	}
+	return nil
+}
+
+func validateBudgetLimit(s string) error {
+	if s == "" {
+		return fmt.Errorf("budget limit is required")
+	}
+	// Reject decimal input with a specific message so users understand why
+	if strings.Contains(s, ".") {
+		return fmt.Errorf("enter a round dollar amount with no cents (e.g. 50)")
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return fmt.Errorf("enter a whole dollar amount (e.g. 50)")
+	}
+	if n <= 0 {
+		return fmt.Errorf("budget limit must be greater than $0")
+	}
+	return nil
+}
 
 // Wizard runs the interactive setup wizard
 type Wizard struct{}
@@ -305,17 +337,13 @@ func (w *Wizard) Run() (*Config, error) {
 					Title("Email for budget alerts").
 					Description("AWS will send notifications to this address").
 					Value(&budgetEmail).
-					Validate(func(s string) error {
-						if !strings.Contains(s, "@") {
-							return fmt.Errorf("please enter a valid email address")
-						}
-						return nil
-					}),
+					Validate(validateEmail),
 				huh.NewInput().
 					Title("Monthly budget limit (USD)").
 					Description("Alerts at 50%, 80%, 100% actual and 100% forecasted").
 					Placeholder("50").
-					Value(&budgetLimit),
+					Value(&budgetLimit).
+					Validate(validateBudgetLimit),
 			),
 		).WithTheme(huh.ThemeCatppuccin())
 
@@ -325,11 +353,8 @@ func (w *Wizard) Run() (*Config, error) {
 
 		cfg.Budget.Enabled = true
 		cfg.Budget.Email = budgetEmail
-		if limit, err := strconv.Atoi(budgetLimit); err == nil && limit > 0 {
-			cfg.Budget.LimitUSD = limit
-		} else {
-			cfg.Budget.LimitUSD = 50 // default
-		}
+		// validateBudgetLimit ensures Atoi succeeds and limit > 0
+		cfg.Budget.LimitUSD, _ = strconv.Atoi(strings.TrimSpace(budgetLimit))
 	}
 
 	cfg.Initialized = true
@@ -526,20 +551,13 @@ func (w *Wizard) RunForBudget(current BudgetConfig) (*BudgetResult, error) {
 				Title("Email for budget alerts").
 				Description("AWS will send notifications to this address").
 				Value(&budgetEmail).
-				Validate(func(s string) error {
-					if s == "" {
-						return fmt.Errorf("email is required when budget alerts are enabled")
-					}
-					if !strings.Contains(s, "@") {
-						return fmt.Errorf("please enter a valid email address")
-					}
-					return nil
-				}),
+				Validate(validateEmail),
 			huh.NewInput().
 				Title("Monthly budget limit (USD)").
 				Description("Alerts at 50%, 80%, 100% actual and 100% forecasted").
 				Placeholder("50").
-				Value(&budgetLimit),
+				Value(&budgetLimit).
+				Validate(validateBudgetLimit),
 		),
 	).WithTheme(huh.ThemeCatppuccin())
 
@@ -548,10 +566,11 @@ func (w *Wizard) RunForBudget(current BudgetConfig) (*BudgetResult, error) {
 	}
 
 	result.Email = budgetEmail
-	if limit, err := strconv.Atoi(budgetLimit); err == nil && limit > 0 {
+	// validateBudgetLimit ensures Atoi succeeds and limit > 0
+	if limit, err := strconv.Atoi(strings.TrimSpace(budgetLimit)); err == nil {
 		result.LimitUSD = limit
 	} else {
-		result.LimitUSD = 50 // default
+		result.LimitUSD = 50 // fallback (should not be reached after validation
 	}
 
 	return result, nil

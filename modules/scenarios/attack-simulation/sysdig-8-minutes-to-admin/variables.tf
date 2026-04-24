@@ -13,3 +13,9 @@ variable "environment" {
   type        = string
   default     = "prod"
 }
+
+variable "flag_value" {
+  description = "CTF flag value stored in SSM Parameter Store; read by participants after achieving admin access"
+  type        = string
+  default     = "flag{MISSING}"
+}

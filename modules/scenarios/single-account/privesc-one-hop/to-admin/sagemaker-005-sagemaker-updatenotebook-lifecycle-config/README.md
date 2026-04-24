@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sagemaker-005
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1525 - Implant Internal Image
 
@@ -67,6 +68,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-005-to-admin-starting-user` | Scenario-specific starting user with access keys and SageMaker management permissions |
 | `arn:aws:sagemaker:{region}:{account_id}:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook` | SageMaker notebook instance running ml.t3.medium with admin execution role |
 | `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-005-to-admin-notebook-role` | Notebook execution role with AdministratorAccess policy attached |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sagemaker-005-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 5. Update the notebook to use the malicious lifecycle configuration
 6. Start the notebook and wait for the lifecycle script to execute
 7. Verify successful privilege escalation to administrator access
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 **Note**: The demo includes wait times for the notebook to stop (~5 minutes) and start (~5-7 minutes), as SageMaker notebook state transitions take several minutes to complete.

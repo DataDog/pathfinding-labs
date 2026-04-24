@@ -40,7 +40,18 @@ output "target_role_arn" {
   value       = aws_iam_role.target_role.arn
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-apprunner-002-to-admin-starting-user) → UpdateService → App Runner Service (pl-prod-apprunner-002-to-admin-target-service) → Updates Image + StartCommand → Executes with Admin Role (pl-prod-apprunner-002-to-admin-target-role) → Admin Access"
+  value       = "User (pl-prod-apprunner-002-to-admin-starting-user) → UpdateService → App Runner Service (pl-prod-apprunner-002-to-admin-target-service) → Updates Image + StartCommand → Executes with Admin Role (pl-prod-apprunner-002-to-admin-target-role) → Admin Access → ssm:GetParameter → CTF flag"
 }

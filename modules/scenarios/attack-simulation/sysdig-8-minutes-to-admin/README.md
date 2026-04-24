@@ -12,7 +12,8 @@
 * **Source Date:** 2026-02-03
 * **Technique:** Recreation of the Nov 2025 Sysdig TRT breach: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes
 * **Terraform Variable:** `enable_attack_simulation_sysdig_8_minutes_to_admin`
-* **Schema Version:** 4.3.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0001 - Initial Access, TA0007 - Discovery, TA0004 - Privilege Escalation, TA0003 - Persistence, TA0005 - Defense Evasion, TA0009 - Collection, TA0011 - Impact
 * **MITRE Techniques:** T1552.001 - Credentials In Files, T1087.004 - Cloud Accounts, T1613 - Container and Resource Discovery, T1648 - Serverless Execution, T1098.001 - Additional Cloud Credentials, T1078.004 - Cloud Accounts, T1530 - Data from Cloud Storage Object, T1496 - Resource Hijacking
 
@@ -106,6 +107,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-8min-ci-runner` | Identity spreading target — CI/CD runner service account |
 | `arn:aws:secretsmanager:{region}:{account_id}:secret:pl-prod-8min-db-credentials` | Data collection target — simulates database credentials |
 | `arn:aws:ssm:{region}:{account_id}:parameter/pl/8min/api-key` | Data collection target — simulates API key in SSM |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin` | CTF flag — readable only with admin credentials (pl-prod-8min-frick or equivalent) |
 
 ### Modifications from Original Attack
 

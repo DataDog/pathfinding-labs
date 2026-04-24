@@ -22,19 +22,30 @@ attackMap:
       label: "Chatbot Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role"
       description: >
-        This is the Lambda execution role for AcmeBot. 
+        This is the Lambda execution role for AcmeBot.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ctf-001-to-admin"
+      description: >
+        The CTF flag stored in SSM Parameter Store. Readable with the admin credentials
+        obtained from the chatbot role. Requires ssm:GetParameter permission, which is
+        granted via AdministratorAccess on the chatbot role.
 
   edges:
     - from: acmebot-lambda
       to: chatbot-role
       label: "Prompt coercion"
       description: >
-        Enter your own OpenAI API key to get started, then start interacting with the 
-        agent. Try to get the agent to give you information that might lead to lateral 
-        movement within the cloud control plane. 
+        Enter your own OpenAI API key to get started, then start interacting with the
+        agent. Try to get the agent to give you information that might lead to lateral
+        movement within the cloud control plane.
       commands:
         - description: "Open the chatbot URL in a browser and enter your OpenAI API key"
           command: "open <function-url>"
@@ -44,8 +55,6 @@ attackMap:
           command: "export AWS_ACCESS_KEY_ID=<value-from-chat-response>\nexport AWS_SECRET_ACCESS_KEY=<value-from-chat-response>\nexport AWS_SESSION_TOKEN=<value-from-chat-response>"
         - description: "Verify you are now operating as the chatbot role"
           command: "aws sts get-caller-identity"
-        - description: "Read the CTF flag from SSM Parameter Store"
-          command: "aws ssm get-parameter --name /ctf/ctf-001/flag --with-decryption --query 'Parameter.Value' --output text"
       hints:
         - "The chatbot has a tool that can run shell commands. Think about how you might convince an LLM to use a tool in an unintended way."
         - "LLMs follow their system prompt instructions, but user input can sometimes override or extend those instructions, or guide the LLM to call tools in unintended ways"
@@ -54,3 +63,13 @@ attackMap:
         - "Think about what shell commands let you inspect the environment a process is running in."
         - "Once you have credentials, export them locally and use the AWS CLI to verify your new identity."
         - "Once you have credentials, consider what AWS service is commonly used to securely store secrets and configuration values -- the flag is waiting there."
+
+    - from: chatbot-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        Use the leaked admin credentials to read the CTF flag from SSM Parameter Store.
+        AdministratorAccess grants ssm:GetParameter on all resources.
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ctf-001-to-admin --query 'Parameter.Value' --output text"

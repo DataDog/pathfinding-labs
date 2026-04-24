@@ -66,6 +66,22 @@ aws iam list-users --max-items 3
 
 If this succeeds, you have full administrative access to the production account.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy attached to the assumed prod admin role provides implicitly.
+
+Using the temporary credentials from the assumed prod admin role (still active in your environment), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/root-trust-role-assumption-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited an overly permissive cross-account trust policy. The prod admin role's trust policy contained `"Principal": {"AWS": "arn:aws:iam::{DEV_ACCOUNT}:root"}`, which is semantically equivalent to "any principal in the dev account." Because your starting user had `sts:AssumeRole` permission, one API call was all it took to gain production admin access.

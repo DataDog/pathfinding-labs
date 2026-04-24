@@ -132,3 +132,13 @@ Successful output from `s3 ls` confirms you have traversed the full role chain a
 You exploited a three-hop transitive role trust chain. Each individual trust relationship was innocuous in isolation — `pl-prod-initial-role` simply trusted account users, the intermediate role trusted only one specific role, and the S3 access role trusted only the intermediate role. No single role appeared overly permissive on its own.
 
 However, when composed together, these trust relationships formed a complete privilege escalation path from a low-privilege starting user to full read/write access on a sensitive S3 bucket. This is a common pattern in real environments where IAM roles accumulate over time across teams and services, and the transitive effects of chained trust policies are never reviewed holistically. CSPM tools that analyze roles in isolation rather than performing graph traversal will miss this class of vulnerability entirely.
+
+## Capture the Flag
+
+With `pl-prod-s3-access-role` credentials active, read the flag directly from the target bucket:
+
+```bash
+aws s3 cp s3://pl-prod-role-chain-destination-{account_id}/flag.txt -
+```
+
+The flag is stored as `flag.txt` at the root of the `pl-prod-role-chain-destination-{account_id}` S3 bucket. Successfully reading it confirms you have fully traversed the three-hop role chain and achieved data access on the target resource.

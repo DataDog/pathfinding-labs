@@ -50,3 +50,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-mpc-to-admin-starting-user) → AssumeRole → pl-prod-role-with-multiple-privesc-paths → [PassRole+EC2/Lambda/CloudFormation] → Admin Access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

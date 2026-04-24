@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Execute commands on EC2 instances with S3 access roles to extract credentials and access sensitive buckets via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ssm-002
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0006 - Credential Access
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 
@@ -69,6 +70,7 @@ plabs apply
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and S3 access role attached |
 | `arn:aws:s3:::pl-sensitive-data-ssm-002-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-sensitive-data-ssm-002-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-sensitive-data-ssm-002-{account_id}-{suffix}/flag.txt` | CTF flag file in the target bucket |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation to S3 bucket access
+4. Read `flag.txt` from the target bucket and display the CTF flag
 
 
 #### Resources Created by Attack Script

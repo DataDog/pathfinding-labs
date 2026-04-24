@@ -23,9 +23,14 @@ output "chatbot_role_name" {
   value       = aws_iam_role.chatbot_role.name
 }
 
-output "flag_parameter_name" {
+output "flag_ssm_parameter_name" {
   description = "SSM Parameter Store path of the CTF flag (admin-only read)"
   value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM Parameter Store parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }
 
 output "starting_user_name" {

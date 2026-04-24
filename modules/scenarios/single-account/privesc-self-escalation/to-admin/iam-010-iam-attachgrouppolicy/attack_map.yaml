@@ -25,12 +25,20 @@ attackMap:
       label: "Escalation Group"
       type: resource
       subType: iam-group
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:group/pl-prod-iam-010-to-admin-group"
       description: >
         This IAM group is the vehicle for privilege escalation. The starting user is
         already a member of this group. By attaching the AdministratorAccess managed
         policy to it, the user gains administrator access through their existing
         group membership — no direct user policy changes are required.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-010-to-admin"
 
   edges:
     - from: starting-user
@@ -62,3 +70,17 @@ attackMap:
       commands:
         - description: "Verify administrator access via group membership"
           command: "aws iam list-users"
+    - from: target-group
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator access now granted via group membership, use the starting
+        user credentials to read the CTF flag from SSM Parameter Store. This proves
+        end-to-end exploitation of the privilege escalation path.
+      hints:
+        - "The flag is stored in SSM Parameter Store under /pathfinding-labs/flags/."
+        - "Your new admin permissions include ssm:GetParameter — use it."
+        - "The parameter name follows the pattern /pathfinding-labs/flags/{scenario-id}-to-admin."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text"

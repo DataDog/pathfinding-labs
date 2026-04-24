@@ -167,6 +167,15 @@ resource "aws_iam_role_policy" "starting_role_policy" {
   })
 }
 
+# CTF flag file in the target bucket
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+  etag     = md5(var.flag_value)
+}
+
 # Sample sensitive file in the bucket
 resource "aws_s3_object" "sensitive_file" {
   provider = aws.prod

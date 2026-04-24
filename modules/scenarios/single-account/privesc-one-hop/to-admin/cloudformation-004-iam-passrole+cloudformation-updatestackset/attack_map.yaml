@@ -33,12 +33,24 @@ attackMap:
       label: "Escalated Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role"
       description: >
         This IAM role is created by the StackSet execution role when the modified template
         is deployed. It has AdministratorAccess and a trust policy allowing the starting user
         to assume it, granting full administrative access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/cloudformation-004-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained by assuming the escalated role.
 
   edges:
     - from: starting-principal
@@ -94,3 +106,19 @@ attackMap:
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role --role-session-name escalated-session --query 'Credentials' --output json"
         - description: "Verify administrator access"
           command: "aws iam list-users --max-items 3 --output table"
+
+    - from: escalated-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the escalated role's AdministratorAccess credentials, read the scenario flag
+        from SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all
+        parameters, so no additional permissions are needed beyond the admin access
+        obtained in the previous step.
+      hints:
+        - "You now hold admin credentials via the assumed escalated role. The scenario flag is stored in a well-known AWS service used for configuration and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — the path follows the pattern /pathfinding-labs/flags/{scenario-id}."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/cloudformation-004-to-admin --query 'Parameter.Value' --output text"

@@ -70,3 +70,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user (${aws_iam_user.starting_user.name}) → (ecs:RegisterTaskDefinition with admin role) → (ecs:StartTask) → ECS task attaches admin policy to starting user → admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "SSM parameter name containing the CTF flag (readable after reaching admin)"
+  value       = aws_ssm_parameter.flag.name
+}

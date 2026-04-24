@@ -72,3 +72,16 @@ resource "aws_lambda_permission" "allow_dev_account_update" {
   function_name = aws_lambda_function.prod_hello_world.function_name
   principal     = "arn:aws:iam::${var.dev_account_id}:root"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-invoke-update-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-invoke-update-to-admin-flag"
+    Scenario = "lambda-invoke-update"
+    Purpose  = "ctf-flag"
+  }
+}

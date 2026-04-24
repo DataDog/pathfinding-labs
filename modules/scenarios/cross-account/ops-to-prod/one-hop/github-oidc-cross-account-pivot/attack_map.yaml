@@ -65,9 +65,10 @@ attackMap:
       isTarget: true
       arn: "arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}"
       description: >
-        This S3 bucket in the prod account contains sensitive-data.txt, which holds the flag
-        for this scenario. The prod deployer role has s3:ListBucket and s3:GetObject on this
-        bucket, making the contents readable once you hold credentials for that role.
+        This S3 bucket in the prod account contains sensitive-data.txt and flag.txt. The
+        flag.txt object holds the CTF flag for this scenario. The prod deployer role has
+        s3:ListBucket and s3:GetObject on this bucket, making the contents readable once you
+        hold credentials for that role.
 
         The bucket itself is not publicly accessible -- the misconfiguration is entirely in the
         IAM trust chain that allows a GitHub Actions identity to reach it across two AWS accounts.
@@ -148,5 +149,7 @@ attackMap:
           command: "aws s3 ls"
         - description: "List objects in the flag bucket"
           command: "aws s3 ls s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/"
-        - description: "Read the flag"
+        - description: "Read the sensitive data"
           command: "aws s3 cp s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/sensitive-data.txt -"
+        - description: "Capture the CTF flag"
+          command: "aws s3 cp s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/flag.txt -"

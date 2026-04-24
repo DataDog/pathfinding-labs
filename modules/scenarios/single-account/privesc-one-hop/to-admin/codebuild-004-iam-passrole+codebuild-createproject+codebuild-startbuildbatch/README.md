@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass a privileged role to CodeBuild and execute buildspec to grant self admin access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** codebuild-004
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1651 - Cloud Administration Command
 
@@ -67,6 +68,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-codebuild-004-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-codebuild-004-to-admin-target-role` | Privileged role with iam:AttachUserPolicy permission, trusted by CodeBuild service |
 | `arn:aws:iam::{account_id}:policy/pl-prod-codebuild-004-to-admin-user-policy` | Policy granting codebuild:CreateProject, codebuild:StartBuildBatch, and iam:PassRole to starting user |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/codebuild-004-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 4. Start a build batch execution that runs the buildspec with the target role's permissions
 5. Wait for the build batch to complete and for IAM policy propagation
 6. Verify administrator access has been granted to the starting user
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 #### Resources Created by Attack Script
 

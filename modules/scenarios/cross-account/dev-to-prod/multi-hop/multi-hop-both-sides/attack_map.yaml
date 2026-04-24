@@ -58,12 +58,24 @@ attackMap:
       label: "Jeremy (Prod Admin)"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{prod_account_id}:user/pl-Jeremy"
       description: >
         pl-Jeremy is an admin user in the prod account. The pl-trustsdev role
         updated this user's login profile with a known password, granting the
         attacker full administrative access to the production AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{prod_region}:{prod_account_id}:parameter/pathfinding-labs/flags/multi-hop-both-sides-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the prod account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by the full admin policy attached to pl-Jeremy), confirming
+        that the attacker has fully compromised the prod account.
 
   edges:
     - from: starting-principal
@@ -144,3 +156,17 @@ attackMap:
           command: "aws iam update-login-profile --user-name pl-Jeremy --password 'Pathfinding@Labs1!' --no-password-reset-required"
         - description: "Verify admin access in the prod account"
           command: "aws iam list-users"
+
+    - from: jeremy-user
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        As pl-Jeremy, who holds full admin permissions in the prod account, retrieve the
+        CTF flag from SSM Parameter Store to prove end-to-end compromise of the prod account.
+      hints:
+        - "You now hold admin-equivalent credentials in the prod account as pl-Jeremy. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store -- consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/multi-hop-both-sides-to-admin --query 'Parameter.Value' --output text"

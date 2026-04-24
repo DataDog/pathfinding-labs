@@ -93,6 +93,19 @@ aws iam list-users --max-items 3 --output table
 # Success -- full IAM enumeration now works
 ```
 
+## Capture the Flag
+
+With `AdministratorAccess` now attached to the starting user, you have `ssm:GetParameter` on all parameters in the account. The scenario flag is stored in SSM Parameter Store under the path `/pathfinding-labs/flags/sagemaker-001-to-admin`. Retrieve it using your newly-elevated starting user credentials:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/sagemaker-001-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
+A successful response returns the flag value, confirming you have completed the scenario.
+
 ## What Happened
 
 You exploited a classic `iam:PassRole` privilege escalation path. The starting user had two permissions that together form a complete escalation: the ability to pass a privileged role to a service (`iam:PassRole`), and the ability to create a resource that accepts that service's execution role (`sagemaker:CreateNotebookInstance`). Neither permission alone is sufficient, but together they let you spin up an environment that runs with admin credentials — and SageMaker's Jupyter terminal gave you direct interactive access to those credentials.

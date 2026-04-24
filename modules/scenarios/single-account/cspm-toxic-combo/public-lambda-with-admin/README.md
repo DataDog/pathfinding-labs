@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Publicly accessible Lambda function with administrative IAM role
 * **Terraform Variable:** `enable_single_account_cspm_toxic_combo_public_lambda_with_admin`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0001 - Initial Access, TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Cloud Instance Metadata API, T1648 - Serverless Execution
 
@@ -62,6 +63,7 @@ plabs apply
 | `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` | Lambda function with a public function URL (AuthType: NONE) |
 | `arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role` | Lambda execution role with AdministratorAccess attached |
 | `arn:aws:lambda:{region}:{account_id}:function:pl-public-admin-lambda` (URL) | Public HTTPS endpoint — no auth required to invoke |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/public-lambda-with-admin-to-admin` | CTF flag stored in SSM Parameter Store — readable with the extracted admin role credentials |
 
 ### Solution
 

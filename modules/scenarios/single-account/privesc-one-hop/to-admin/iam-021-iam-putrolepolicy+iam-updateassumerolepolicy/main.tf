@@ -106,3 +106,16 @@ resource "aws_iam_role" "target_role" {
 # Note: In a real attack scenario, this role might have some benign initial permissions
 # or be intended for some other purpose. The attacker discovers they can modify it
 # and uses that to escalate privileges.
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/iam-021-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-iam-021-to-admin-flag"
+    Scenario = "iam-021-iam-putrolepolicy+iam-updateassumerolepolicy"
+    Purpose  = "ctf-flag"
+  }
+}

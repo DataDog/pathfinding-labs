@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Self-escalation via iam:AddUserToGroup to admin group
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-013
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
@@ -64,6 +65,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-013-to-admin-user` | Starting principal with AddUserToGroup permission |
 | `arn:aws:iam::{account_id}:group/pl-prod-iam-013-to-admin-group` | Admin group with AdministratorAccess policy |
 | Inline policy on `pl-prod-iam-013-to-admin-user` | Allows iam:AddUserToGroup on the admin group |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-013-to-admin` | CTF flag stored in SSM Parameter Store |
 
 ### Solution
 
@@ -81,6 +83,7 @@ The script will:
 3. Confirm the user currently lacks admin permissions (cannot list IAM users)
 4. Execute `iam:AddUserToGroup` to add the user to `pl-prod-iam-013-to-admin-group`
 5. Wait for IAM policy propagation and verify administrator access is granted
+6. Capture the CTF flag from SSM Parameter Store using the newly gained admin access
 
 #### Resources Created by Attack Script
 

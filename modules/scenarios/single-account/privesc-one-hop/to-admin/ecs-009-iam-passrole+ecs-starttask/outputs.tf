@@ -78,3 +78,12 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ecs:StartTask with command override on existing task definition, passing admin role) -> ECS task attaches admin policy to starting user -> admin access"
 }
+
+# =============================================================================
+# CTF FLAG OUTPUT
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "SSM Parameter Store path where the CTF flag is stored"
+  value       = aws_ssm_parameter.flag.name
+}

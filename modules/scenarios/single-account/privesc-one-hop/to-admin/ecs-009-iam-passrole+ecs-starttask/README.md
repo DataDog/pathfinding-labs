@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Overriding existing ECS task definition commands and task role via ecs:StartTask --overrides to escalate to admin on an already-registered container instance
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ecs-009
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
 
@@ -75,6 +76,7 @@ plabs apply
 | `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-009-cluster` | ECS cluster for running tasks on EC2 instances |
 | `arn:aws:ecs:{region}:{account_id}:task-definition/pl-prod-ecs-009-existing-task` | Pre-existing benign task definition that gets overridden at runtime |
 | `arn:aws:ec2:{region}:{account_id}:instance/{instance_id}` | ECS-optimized EC2 container instance pre-registered with the cluster |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ecs-009-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -94,6 +96,7 @@ The script will:
 5. Wait for the ECS task to reach `STOPPED` status and confirm a zero exit code
 6. Wait for IAM policy changes to propagate, then verify `AdministratorAccess` is attached to the starting user
 7. Confirm admin access by successfully calling `aws iam list-users`
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 #### Resources Created by Attack Script
 

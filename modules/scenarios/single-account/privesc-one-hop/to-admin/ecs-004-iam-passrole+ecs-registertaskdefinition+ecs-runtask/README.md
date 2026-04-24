@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** ECS Fargate task execution with admin role to grant starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ecs-004
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1610 - Deploy Container
 
@@ -70,6 +71,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-ecs-004-to-admin-starting-user` | Scenario-specific starting user with access keys and ECS permissions |
 | `arn:aws:iam::{account_id}:role/pl-prod-ecs-004-to-admin-target-role` | Admin role that can be passed to ECS tasks (trusts ecs-tasks.amazonaws.com) |
 | `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-004-cluster` | ECS cluster for running Fargate tasks |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ecs-004-to-admin` | SSM parameter containing the CTF flag (readable with AdministratorAccess) |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly gained admin credentials
 
 
 #### Resources Created by Attack Script

@@ -105,6 +105,16 @@ echo "attacker was here" | aws s3 cp - s3://pl-prod-sts-001-to-bucket-{account_i
 
 You have read and write access to the sensitive bucket.
 
+## Capture the Flag
+
+The target bucket contains a `flag.txt` object placed there by Terraform. Read it using the assumed role credentials to capture the CTF flag:
+
+```bash
+aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/flag.txt -
+```
+
+The flag value will be printed directly to stdout. Record it as proof of successful exploitation.
+
 ## What Happened
 
 The starting user had `sts:AssumeRole` permission explicitly granting access to `pl-prod-sts-001-to-bucket-access-role`. That role was configured with S3 access policies scoped to the sensitive bucket. Because IAM evaluates the trust relationship (who can assume the role) separately from the permission policies (what the role can do), the starting user effectively inherited all of the role's S3 permissions through a single API call.

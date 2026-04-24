@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying a role's inline policy to grant admin permissions and updating its trust policy to allow assumption
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-021
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-021-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions to modify target role |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-021-to-admin-target-role` | Target role with minimal initial permissions that can be escalated |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-021-to-admin-starting-user-policy` | Inline policy granting iam:PutRolePolicy and iam:UpdateAssumeRolePolicy on target role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-021-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -83,6 +85,7 @@ The script will:
 3. Demonstrate adding an admin inline policy to the target role
 4. Demonstrate updating the trust policy to allow assumption
 5. Verify successful privilege escalation by assuming the role and testing admin permissions
+6. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

@@ -80,3 +80,16 @@ resource "aws_iam_role_policy_attachment" "admin_policy_attachment" {
   role       = aws_iam_role.admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/sts-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-sts-001-to-admin-flag"
+    Scenario = "sts-001-sts-assumerole"
+    Purpose  = "ctf-flag"
+  }
+}

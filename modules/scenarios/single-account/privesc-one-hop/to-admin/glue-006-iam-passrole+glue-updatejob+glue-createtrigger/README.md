@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Update existing Glue job to use privileged role and malicious script, then create trigger for automated execution with persistence
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-006
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1053 - Scheduled Task/Job, T1565.001 - Data Manipulation: Stored Data Manipulation
 
@@ -72,6 +73,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-glue-006-to-admin-passrole-policy` | Policy allowing PassRole on target role, glue:UpdateJob, and glue:CreateTrigger |
 | `arn:aws:glue:{region}:{account_id}:job/pl-glue-006-to-admin-job` | Pre-existing Glue job that will be modified during attack |
 | `arn:aws:s3:::pl-glue-scripts-glue-006-{account_id}-{suffix}` | S3 bucket containing benign and malicious scripts |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-006-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -92,6 +94,7 @@ The script will:
 6. Create a SCHEDULED trigger with `--start-on-creation` for automatic execution
 7. Wait for the trigger to activate and execute the job (typically 1-2 minutes)
 8. Verify successful privilege escalation by testing admin permissions
+9. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 **Note on Costs**: AWS Glue Python shell jobs cost approximately $0.44 per DPU-hour. This demo runs briefly (~30 seconds) and costs less than $0.01 per execution. The trigger is scheduled but will be cleaned up immediately after the demo. Total estimated cost: **~$0.10/month** for occasional testing.

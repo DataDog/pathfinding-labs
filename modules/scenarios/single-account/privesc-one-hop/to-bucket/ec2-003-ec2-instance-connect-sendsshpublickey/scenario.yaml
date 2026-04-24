@@ -68,6 +68,16 @@ mitre_attack:
     - "T1530 - Data from Cloud Storage Object"
 
 # =============================================================================
+# CTF FLAG
+# =============================================================================
+ctf_flag:
+  unique_id: "ec2-003-to-bucket"
+  location: "s3-object"
+  resource: "aws_s3_object.flag"
+  s3_key: "flag.txt"
+  retrieval_command: "aws s3 cp s3://<target-bucket>/flag.txt -"
+
+# =============================================================================
 # TERRAFORM
 # =============================================================================
 terraform:

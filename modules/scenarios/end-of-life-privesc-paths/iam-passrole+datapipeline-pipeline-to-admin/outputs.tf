@@ -36,3 +36,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-datapipeline-001-to-admin-starting-user) → [iam:PassRole + datapipeline:CreatePipeline + datapipeline:PutPipelineDefinition + datapipeline:ActivatePipeline] → Data Pipeline spawns EC2 with admin role → [Execute: aws iam attach-user-policy AdministratorAccess] → Admin access"
 }
+
+output "flag_parameter_name" {
+  description = "SSM Parameter Store name containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}

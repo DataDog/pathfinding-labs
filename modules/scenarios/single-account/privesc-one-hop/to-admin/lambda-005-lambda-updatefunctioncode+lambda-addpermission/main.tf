@@ -126,3 +126,16 @@ resource "aws_lambda_function" "target_lambda" {
     Purpose     = "target-lambda"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-005-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-005-to-admin-flag"
+    Scenario = "lambda-005-lambda-updatefunctioncode+lambda-addpermission"
+    Purpose  = "ctf-flag"
+  }
+}

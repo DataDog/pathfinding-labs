@@ -34,12 +34,24 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-target-role"
       description: >
         This IAM role has AdministratorAccess and is attached to the Glue development endpoint.
         Once connected via SSH, AWS CLI commands execute with the full permissions of this role,
         granting unrestricted access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-002-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions. Once you have SSH access
+        to the Glue dev endpoint running as the admin role, you can use the endpoint's
+        AWS CLI environment to call ssm:GetParameter and read the flag directly.
 
   edges:
     - from: starting-principal
@@ -83,3 +95,19 @@ attackMap:
           command: "ssh -i /tmp/glue_attack_key livy@<endpoint-public-address>"
         - description: "Verify administrative access from within the endpoint"
           command: "aws iam list-users"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the Glue dev endpoint running as the admin role, execute ssm:GetParameter
+        from within the SSH session to read the CTF flag. The AdministratorAccess policy
+        on the attached role grants ssm:GetParameter on all parameters, so no additional
+        permissions are required.
+      hints:
+        - "You are now running commands as the admin role via the Glue endpoint's IMDS credentials. Any AWS CLI command you run from inside the SSH session uses those credentials."
+        - "Scenario flags are stored in SSM Parameter Store under a predictable prefix. Think about what path a lab framework would use for its flags."
+        - "Use ssm:GetParameter with the full parameter path to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store (run from within the SSH session on the Glue endpoint)"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/glue-002-to-admin --query 'Parameter.Value' --output text"

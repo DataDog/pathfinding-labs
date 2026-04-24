@@ -47,3 +47,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-lambda-002-to-admin-starting-user) → PassRole + CreateFunction → Lambda with admin role → CreateEventSourceMapping → DynamoDB stream trigger → Lambda executes with admin privileges → AttachUserPolicy → Admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

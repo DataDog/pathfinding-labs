@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Self-modification via iam:CreatePolicyVersion
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** iam-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
@@ -63,6 +64,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-001-to-admin-starting-user` | Scenario-specific starting user with AssumeRole permission |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-001-to-admin-starting-role` | Starting role with policy versioning capability |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-001-to-admin-policy` | Allows `iam:CreatePolicyVersion` and `iam:ListPolicyVersions` on itself |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 

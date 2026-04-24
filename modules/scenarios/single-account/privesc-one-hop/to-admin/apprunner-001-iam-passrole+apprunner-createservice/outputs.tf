@@ -36,3 +36,14 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-apprunner-001-to-admin-starting-user) → [iam:PassRole + apprunner:CreateService] → App Runner service with target_role → StartCommand override executes with admin role → grants admin to starting_user → Admin access"
 }
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

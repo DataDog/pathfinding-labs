@@ -122,6 +122,20 @@ aws iam list-users
 # Should succeed and list all IAM users in the account
 ```
 
+## Capture the Flag
+
+With the escalated role's session credentials active, you now hold `AdministratorAccess`. This implicitly grants `ssm:GetParameter` on all parameters in the account. Read the scenario flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/cloudformation-001-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited a well-known privilege escalation pattern: using `iam:PassRole` to delegate admin permissions to an AWS service, then using that service to create resources you could not create directly. CloudFormation is a particularly powerful target for this technique because infrastructure-as-code workflows are common, and passing roles to CloudFormation is standard operational practice — making the combination easy to overlook during IAM reviews.

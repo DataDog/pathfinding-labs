@@ -65,8 +65,19 @@ output "malicious_script_s3_path" {
   value       = "s3://${aws_s3_bucket.script_bucket.id}/${aws_s3_object.malicious_script.key}"
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-glue-005-to-admin-starting-user) → glue:UpdateJob → Update existing job to use admin role and malicious script → glue:StartJobRun → Job executes Python script to attach AdministratorAccess policy to starting user → admin access"
+  value       = "User (pl-prod-glue-005-to-admin-starting-user) → glue:UpdateJob → Update existing job to use admin role and malicious script → glue:StartJobRun → Job executes Python script to attach AdministratorAccess policy to starting user → admin access → ssm:GetParameter → CTF flag"
 }

@@ -46,8 +46,18 @@ resource "aws_s3_object" "sensitive_data" {
   provider = aws.prod
   bucket   = aws_s3_bucket.target_bucket.id
   key      = "sensitive-data.txt"
-  content  = "SUCCESS! You've accessed the S3 bucket via iam:UpdateLoginProfile privilege escalation.\n\nFlag: PATHFINDER-UPDATELOGINPROFILE-TO-BUCKET-2025\n\nThis demonstrates how updating login profiles can lead to sensitive data access."
-  etag     = md5("SUCCESS! You've accessed the S3 bucket via iam:UpdateLoginProfile privilege escalation.\n\nFlag: PATHFINDER-UPDATELOGINPROFILE-TO-BUCKET-2025\n\nThis demonstrates how updating login profiles can lead to sensitive data access.")
+  content  = "SUCCESS! You've accessed the S3 bucket via iam:UpdateLoginProfile privilege escalation.\n\nThis demonstrates how updating login profiles can lead to sensitive data access."
+  etag     = md5("SUCCESS! You've accessed the S3 bucket via iam:UpdateLoginProfile privilege escalation.\n\nThis demonstrates how updating login profiles can lead to sensitive data access.")
+}
+
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully updating the target user's login profile and using those console credentials
+# to read from the target bucket. Readable by any principal with s3:GetObject on this bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
 }
 
 # Target user with S3 bucket access and an existing login profile

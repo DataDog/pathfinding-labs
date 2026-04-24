@@ -110,3 +110,5 @@ attackMap:
       commands:
         - description: "List and download sensitive data from the target bucket"
           command: "aws s3 ls s3://pl-prod-iam-005-to-bucket-{account_id}/ && aws s3 cp s3://pl-prod-iam-005-to-bucket-{account_id}/sensitive-data.txt -"
+        - description: "Read the CTF flag from the target bucket"
+          command: "aws s3 cp s3://pl-prod-iam-005-to-bucket-{account_id}/flag.txt -"

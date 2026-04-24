@@ -77,3 +77,16 @@ You crossed from the dev account to the prod account in a single `sts:AssumeRole
 In a real environment, this attack path means that anyone who compromises a developer's AWS credentials gains immediate, unrestricted access to production. Dev accounts are typically less secured — developers have broader access, secrets management may be looser, and workstations are more exposed to phishing. The security boundary between dev and prod that organizations rely on to protect production data becomes meaningless the moment a trust relationship like this exists.
 
 IAM Access Analyzer is specifically designed to detect this kind of cross-account access and will flag the prod role as having external access when it trusts a principal from another account in the same organization.
+
+## Capture the Flag
+
+With the prod admin role credentials still active, read the CTF flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
+The flag is stored in the production account and is only accessible with the `ssm:GetParameter` permission, which is granted to the prod admin role via `AdministratorAccess`. Successfully reading it proves you have achieved administrative access in the production account.

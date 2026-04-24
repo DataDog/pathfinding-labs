@@ -43,3 +43,13 @@ output "scenario_notes" {
   description = "Important notes about this scenario"
   value       = "CRITICAL: The starting user does NOT have sts:AssumeRole permission. When the trust policy is updated to explicitly name the user ARN, that user can assume the role WITHOUT needing sts:AssumeRole in their IAM policy."
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

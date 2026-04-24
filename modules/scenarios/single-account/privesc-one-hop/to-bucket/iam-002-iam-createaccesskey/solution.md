@@ -98,6 +98,16 @@ cat sensitive-data.txt
 
 You now have the contents of the sensitive data file. The escalation is complete.
 
+## Capture the Flag
+
+With bucket access established as the bucket access user, retrieve the CTF flag directly from the target bucket:
+
+```bash
+aws s3 cp s3://pl-prod-iam-002-to-bucket-{account_id}/flag.txt -
+```
+
+The flag is stored as a plain-text S3 object. The `aws s3 cp ... -` syntax streams the object contents to stdout rather than writing to a file. Any principal with `s3:GetObject` on the bucket can retrieve it — the same permission used to exfiltrate the sensitive data file.
+
 ## What Happened
 
 Starting from a user with no direct data access, you used `iam:CreateAccessKey` to mint a second set of long-lived credentials for a user that did have S3 access. This is a one-hop escalation: one IAM action, one new identity, one target compromised.

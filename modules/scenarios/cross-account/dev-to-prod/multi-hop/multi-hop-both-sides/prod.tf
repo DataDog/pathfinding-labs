@@ -83,3 +83,16 @@ resource "aws_iam_role_policy_attachment" "trustsdev" {
   role       = aws_iam_role.trustsdev.name
   policy_arn = aws_iam_policy.trustsdev.arn
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/multi-hop-both-sides-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-multi-hop-both-sides-to-admin-flag"
+    Scenario = "multi-hop-both-sides"
+    Purpose  = "ctf-flag"
+  }
+}

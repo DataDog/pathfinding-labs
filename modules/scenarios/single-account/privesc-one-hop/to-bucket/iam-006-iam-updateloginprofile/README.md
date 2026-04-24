@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:UpdateLoginProfile can reset password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-006
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
 
@@ -64,8 +65,9 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-bucket-starting-user` | Scenario-specific starting user with access keys and UpdateLoginProfile permission |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-006-to-bucket-user` | Target user with S3 bucket access and console login enabled |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-006-to-bucket-policy` | Allows `iam:UpdateLoginProfile` on `pl-prod-iam-006-to-bucket-user` only |
-| `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag (`flag.txt`) |
 | `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-prod-iam-006-to-bucket-sensitive-data-{account_id}-{suffix}/flag.txt` | CTF flag stored as an S3 object; retrieved after gaining bucket access as the target user |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 4. Verify that the starting user cannot access the target S3 bucket
 5. Reset the console password for `pl-prod-iam-006-to-bucket-user` using `iam:UpdateLoginProfile`
 6. Display the console login URL and new credentials for verification
+7. Read `flag.txt` from the target bucket to capture the CTF flag
 
 #### Resources Created by Attack Script
 

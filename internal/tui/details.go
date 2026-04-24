@@ -62,6 +62,16 @@ func (d *DetailsPane) ClearCredentials() {
 	d.creds = nil
 }
 
+// HasCreds returns true when the scenario is deployed and credentials are available.
+func (d *DetailsPane) HasCreds() bool {
+	return d.deployed && d.creds != nil && d.creds.AccessKeyID != ""
+}
+
+// Creds returns the current credentials (may be nil).
+func (d *DetailsPane) Creds() *terraform.Credentials {
+	return d.creds
+}
+
 // SetResources sets the deployed resource ARNs for the displayed scenario
 func (d *DetailsPane) SetResources(resources []string) {
 	d.resources = resources
@@ -256,12 +266,14 @@ func (d *DetailsPane) buildContent() []string {
 	if len(d.scenario.Permissions.Required) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, sectionStyle.Render("Required Permissions"))
-		for _, perm := range d.scenario.Permissions.Required {
-			permText := perm.Permission
-			if len(permText) > contentWidth-2 {
-				permText = permText[:contentWidth-5] + "..."
+		for _, entry := range d.scenario.Permissions.Required {
+			for _, perm := range entry.Permissions {
+				permText := perm.Permission
+				if len(permText) > contentWidth-2 {
+					permText = permText[:contentWidth-5] + "..."
+				}
+				lines = append(lines, d.styles.DetailValue.Render("  "+permText))
 			}
-			lines = append(lines, d.styles.DetailValue.Render("  "+permText))
 		}
 	}
 
@@ -293,29 +305,43 @@ func (d *DetailsPane) buildContent() []string {
 				}
 			}
 		}
-		if d.focused {
-			lines = append(lines, "")
-			lines = append(lines, d.styles.ScenarioDisabled.Render("  [e] edit config"))
-		}
 	}
 
-	// Credentials (only if deployed)
+	// Start Learning — always shown, content depends on deployment state
+	lines = append(lines, "")
+	lines = append(lines, sectionStyle.Render("Start Learning"))
+
+	key := d.styles.CredentialKey // orange, same as cost indicators
+	desc := d.styles.HelpDesc
+
 	if d.deployed && d.creds != nil && d.creds.AccessKeyID != "" {
+		lines = append(lines, "  "+key.Render("[x]")+"  "+desc.Render("spawn shell with starting credentials"))
+		lines = append(lines, "       "+d.styles.ScenarioDisabled.Render("(type exit to return to TUI)"))
+		lines = append(lines, "  "+key.Render("[y]")+"  "+desc.Render("copy credentials as environment variables"))
+		lines = append(lines, "  "+key.Render("[Y]")+"  "+desc.Render("copy credentials as ~/.aws/credentials block"))
+		if d.scenario.HasDemo() {
+			lines = append(lines, "  "+key.Render("[r]")+"  "+desc.Render("run automated attack demo end to end"))
+		}
+		if d.scenario.HasCleanup() {
+			lines = append(lines, "  "+key.Render("[c]")+"  "+desc.Render("clean up demo artifacts"))
+		}
+		if d.scenario.HasConfig() {
+			lines = append(lines, "  "+key.Render("[e]")+"  "+desc.Render("edit scenario configuration"))
+		}
 		lines = append(lines, "")
-		lines = append(lines, d.styles.CredentialKey.Render("Starting Credentials")+sectionStyle.Render("  via Environment Variables"))
-		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_ACCESS_KEY_ID=%s", d.creds.AccessKeyID)))
-		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_SECRET_ACCESS_KEY=%s", d.creds.SecretAccessKey)))
-		if d.creds.SessionToken != "" {
-			lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("export AWS_SESSION_TOKEN=%s", d.creds.SessionToken)))
+		lines = append(lines, "  "+key.Render("[space]")+"  "+desc.Render("disable this scenario"))
+		lines = append(lines, "  "+key.Render("[a]    ")+"  "+desc.Render("apply changes"))
+	} else if d.enabled {
+		lines = append(lines, "  "+d.styles.ScenarioDisabled.Render("Not yet deployed — apply to start learning"))
+		lines = append(lines, "  "+key.Render("[a]    ")+"  "+desc.Render("deploy this scenario"))
+		lines = append(lines, "  "+key.Render("[space]")+"  "+desc.Render("disable this scenario"))
+		if d.scenario.HasConfig() {
+			lines = append(lines, "  "+key.Render("[e]")+"  "+desc.Render("edit scenario configuration"))
 		}
-		lines = append(lines, sectionStyle.Render("  via AWS Profile"))
-		profileName := d.scenario.UniqueID()
-		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("[%s]", profileName)))
-		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_access_key_id = %s", d.creds.AccessKeyID)))
-		lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_secret_access_key = %s", d.creds.SecretAccessKey)))
-		if d.creds.SessionToken != "" {
-			lines = append(lines, "      "+d.styles.CredentialValue.Render(fmt.Sprintf("aws_session_token = %s", d.creds.SessionToken)))
-		}
+	} else {
+		lines = append(lines, "  "+d.styles.ScenarioDisabled.Render("Not enabled — enable and deploy to start learning"))
+		lines = append(lines, "  "+key.Render("[space]")+"  "+desc.Render("enable this scenario"))
+		lines = append(lines, "  "+key.Render("[a]    ")+"  "+desc.Render("deploy once enabled"))
 	}
 
 	// Deployed Resources (only if deployed)

@@ -107,3 +107,16 @@ resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-006-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-006-to-admin-flag"
+    Scenario = "lambda-006-iam-passrole+lambda-createfunction+lambda-addpermission"
+    Purpose  = "ctf-flag"
+  }
+}

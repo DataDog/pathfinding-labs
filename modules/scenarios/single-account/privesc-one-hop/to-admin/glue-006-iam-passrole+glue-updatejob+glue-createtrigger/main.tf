@@ -234,6 +234,26 @@ resource "aws_glue_job" "pre_created_job" {
   ]
 }
 
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/glue-006-to-admin"
+  description = "CTF flag for the glue-006 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-glue-006-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+glue-updatejob+glue-createtrigger"
+    Purpose     = "ctf-flag"
+  }
+}
+
 # Policy granting the starting user permissions to exploit this vulnerability
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod

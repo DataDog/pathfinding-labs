@@ -24,7 +24,7 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-admin-target-role"
       description: >
         This IAM role has AdministratorAccess. Its trust policy initially only allows
@@ -32,6 +32,18 @@ attackMap:
         to add themselves as a trusted principal. Once the trust policy is updated and
         IAM changes propagate (~15 seconds), the starting user can assume this role
         and gain full administrative access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-012-to-admin"
+      description: >
+        The CTF flag is stored in this SSM Parameter Store parameter. It can only be
+        read by a principal with ssm:GetParameter permission — which the admin role
+        provides. Successfully reading this flag proves you have achieved full
+        administrative access to the account.
 
   edges:
     - from: starting-principal
@@ -58,3 +70,13 @@ attackMap:
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-admin-target-role --role-session-name admin-escalation-session --output json"
         - description: "Verify administrative access by listing IAM users"
           command: "aws iam list-users --max-items 3 --output table"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With full administrative access via the assumed admin role, read the CTF flag
+        from SSM Parameter Store to complete the challenge.
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-012-to-admin --query 'Parameter.Value' --output text"

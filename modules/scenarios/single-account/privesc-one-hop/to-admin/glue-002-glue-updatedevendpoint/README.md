@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-002
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1021.004 - Remote Services: SSH
 
@@ -65,6 +66,7 @@ plabs apply
 | `arn:aws:glue:{region}:{account_id}:devEndpoint/pl-prod-glue-002-to-admin-endpoint` | Pre-existing Glue development endpoint with administrative role |
 | `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-target-role` | Administrative role attached to the Glue dev endpoint |
 | `arn:aws:iam::{account_id}:role/pl-prod-glue-002-to-admin-endpoint-service-role` | Service role allowing Glue to assume the target role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-002-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 5. Retrieve the endpoint SSH address
 6. Connect via SSH and execute AWS CLI commands with administrative privileges
 7. Verify successful privilege escalation
+8. Capture the CTF flag from SSM Parameter Store using the admin role credentials available on the endpoint
 
 
 #### Resources Created by Attack Script

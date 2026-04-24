@@ -167,6 +167,19 @@ aws iam list-users --max-items 3 --output table
 # Returns a table of IAM users — you now have full admin access
 ```
 
+## Capture the Flag
+
+With admin credentials active, read the CTF flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter \
+  --name "/pathfinding-labs/flags/bedrock-001-to-admin" \
+  --query 'Parameter.Value' \
+  --output text
+```
+
+The flag value confirms you have successfully escalated from the starting user to full `AdministratorAccess` and can read sensitive resources in the account.
+
 ## What Happened
 
 You started as an IAM user with no meaningful AWS access beyond a narrow set of Bedrock and PassRole permissions. By passing the admin role to a Bedrock AgentCore code interpreter, you caused AWS to provision a Firecracker MicroVM that holds temporary credentials for that role. Those credentials are vended via the MicroVM Metadata Service at 169.254.169.254 — a service accessible from any code running inside the interpreter. With a few lines of Python, you reached into the MicroVM, grabbed the credentials, and stepped out with full `AdministratorAccess`.

@@ -23,3 +23,9 @@ variable "subnet_id" {
   description = "Subnet ID to deploy resources into"
   type        = string
 }
+
+variable "flag_value" {
+  description = "CTF flag value for the ec2-002 to-admin scenario"
+  type        = string
+  default     = "flag{MISSING}"
+}

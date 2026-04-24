@@ -8,7 +8,7 @@ This attack chain demonstrates a class of privilege escalation that is easy to m
 
 ## The Challenge
 
-You start as `pl-prod-ctf-002-starting-user` -- a low-privilege IAM user provided as a CLI starting point. (The chatbot itself is also publicly accessible via browser, even without these credentials.) Your goal is to retrieve the flag stored at `/ctf/ctf-002/flag` in AWS Systems Manager Parameter Store. Reading that parameter requires administrator credentials.
+You start as `pl-prod-ctf-002-starting-user` -- a low-privilege IAM user provided as a CLI starting point. (The chatbot itself is also publicly accessible via browser, even without these credentials.) Your goal is to retrieve the flag stored at `/pathfinding-labs/flags/ctf-002-to-admin` in AWS Systems Manager Parameter Store. Reading that parameter requires administrator credentials.
 
 Configure your starting credentials:
 
@@ -23,7 +23,7 @@ aws sts get-caller-identity
 You should see yourself as `pl-prod-ctf-002-starting-user`. Now try the flag directly -- this will fail, but it confirms you're starting from zero:
 
 ```bash
-aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption
+aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --with-decryption
 # AccessDeniedException
 ```
 
@@ -91,7 +91,7 @@ aws sts get-caller-identity
 Now try the flag again:
 
 ```bash
-aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption
+aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --with-decryption
 # AccessDeniedException
 ```
 
@@ -194,7 +194,7 @@ It works. Now read the flag:
 
 ```bash
 aws ssm get-parameter \
-  --name /ctf/ctf-002/flag \
+  --name /pathfinding-labs/flags/ctf-002-to-admin \
   --with-decryption \
   --query 'Parameter.Value' \
   --output text

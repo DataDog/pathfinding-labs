@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue Job with inline Python script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-003
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -67,6 +68,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-glue-003-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-glue-003-to-admin-target-role` | Administrative role passed to Glue job |
 | `arn:aws:iam::{account_id}:policy/pl-prod-glue-003-to-admin-passrole-policy` | Policy allowing PassRole on target role, glue:CreateJob, and glue:StartJobRun |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 5. Start the job execution manually
 6. Wait for the job to complete (typically 1-2 minutes)
 7. Verify successful privilege escalation by demonstrating admin access
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

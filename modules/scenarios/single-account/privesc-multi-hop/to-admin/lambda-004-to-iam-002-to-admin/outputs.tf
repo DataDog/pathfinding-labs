@@ -74,3 +74,13 @@ output "attack_path" {
   description = "Description of the multi-hop attack path"
   value       = "User (pl-prod-lambda-004-to-iam-002-starting-user) -> UpdateFunctionCode + InvokeFunction -> Lambda Function (pl-prod-lambda-004-to-iam-002-target-function) -> Exfiltrate Lambda Role credentials (pl-prod-lambda-004-to-iam-002-lambda-role) -> CreateAccessKey -> Admin User (pl-prod-lambda-004-to-iam-002-admin-user) -> Admin Access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

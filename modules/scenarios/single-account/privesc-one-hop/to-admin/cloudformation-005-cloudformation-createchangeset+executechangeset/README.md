@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with cloudformation:CreateChangeSet and ExecuteChangeSet can inherit admin permissions from existing CloudFormation stack's service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** cloudformation-005
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.003 - Account Manipulation: Additional Cloud Roles
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:cloudformation:{region}:{account_id}:stack/pl-prod-cloudformation-005-to-admin-target-stack/*` | Existing CloudFormation stack with privileged service role (target for exploitation) |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-stack-role` | CloudFormation service role with AdministratorAccess attached to target stack |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role` | Admin role created by demo attack script via change set execution |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/cloudformation-005-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -83,6 +85,7 @@ The script will:
 3. Demonstrate creating a change set that adds a new admin IAM role
 4. Execute the change set using the stack's privileged service role
 5. Verify successful privilege escalation by assuming the new role
+6. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

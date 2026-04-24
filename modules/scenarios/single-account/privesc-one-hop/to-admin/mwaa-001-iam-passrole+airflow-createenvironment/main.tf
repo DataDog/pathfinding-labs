@@ -512,3 +512,16 @@ resource "aws_security_group" "mwaa_sg" {
     Purpose     = "mwaa-security-group"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/mwaa-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-mwaa-001-to-admin-flag"
+    Scenario = "mwaa-001-iam-passrole+airflow-createenvironment"
+    Purpose  = "ctf-flag"
+  }
+}

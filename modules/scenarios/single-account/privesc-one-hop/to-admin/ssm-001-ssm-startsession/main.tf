@@ -239,3 +239,16 @@ resource "aws_iam_role_policy_attachment" "target_admin_access" {
   role       = aws_iam_role.target_admin.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/ssm-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-ssm-001-to-admin-flag"
+    Scenario = "ssm-001-ssm-startsession"
+    Purpose  = "ctf-flag"
+  }
+}

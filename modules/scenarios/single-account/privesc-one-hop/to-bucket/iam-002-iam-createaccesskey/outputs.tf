@@ -30,3 +30,14 @@ output "attack_path" {
   value       = "User (privesc-user) → CreateAccessKey (bucket-access-user) → Use new credentials → S3 Bucket Access"
 }
 
+# CTF flag outputs
+output "flag_s3_key" {
+  description = "S3 object key for the CTF flag file in the target bucket"
+  value       = aws_s3_object.flag.key
+}
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/${aws_s3_object.flag.key}"
+}
+

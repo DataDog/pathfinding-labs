@@ -37,5 +37,16 @@ output "target_group_arn" {
 
 output "attack_path" {
   description = "Description of the privilege escalation path"
-  value       = "pl-prod-iam-011-to-admin-paul (member of pl-prod-iam-011-to-admin-escalation-group) uses iam:PutGroupPolicy to add admin policy to their own group, escalating themselves to admin"
+  value       = "pl-prod-iam-011-to-admin-paul (member of pl-prod-iam-011-to-admin-escalation-group) uses iam:PutGroupPolicy to add admin policy to their own group, escalating themselves to admin → ssm:GetParameter → CTF flag"
+}
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }

@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing CloudFormation stack to create admin role using stack's elevated service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** cloudformation-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Account Manipulation: Additional Cloud Credentials

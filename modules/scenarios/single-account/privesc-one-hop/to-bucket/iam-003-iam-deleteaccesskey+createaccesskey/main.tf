@@ -152,3 +152,13 @@ resource "aws_s3_object" "sensitive_data" {
   key      = "sensitive-data.txt"
   content  = "This is sensitive data that should only be accessible to authorized principals. Scenario: iam-deleteaccesskey+createaccesskey"
 }
+
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully deleting an existing access key and creating a new one for the target user,
+# then using those credentials to read from the target bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}

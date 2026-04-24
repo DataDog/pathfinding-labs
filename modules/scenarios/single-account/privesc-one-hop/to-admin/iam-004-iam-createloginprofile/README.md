@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating console password for admin user to gain console access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-004
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -64,6 +65,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-004-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-004-to-admin-starting-role` | Vulnerable role with CreateLoginProfile permission on admin user |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-004-to-admin-target-user` | Target admin user with AdministratorAccess policy but no initial login profile |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-004-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -79,6 +81,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

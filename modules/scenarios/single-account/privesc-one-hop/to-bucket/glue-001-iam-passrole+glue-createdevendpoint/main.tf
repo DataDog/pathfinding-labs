@@ -158,3 +158,13 @@ resource "aws_s3_object" "sensitive_data" {
   key      = "sensitive-data.txt"
   content  = "This is sensitive data that should only be accessible to authorized principals."
 }
+
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully creating a Glue dev endpoint with the target role and using SSH access to
+# run AWS CLI commands as that role. Readable by any principal with s3:GetObject on this bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.sensitive_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}

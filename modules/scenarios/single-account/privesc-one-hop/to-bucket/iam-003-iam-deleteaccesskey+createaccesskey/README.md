@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Bypassing AWS 2-key limit by deleting an existing access key before creating a new one for a user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_createaccesskey`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-003
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -66,7 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-bucket-starting-user` | Scenario-specific starting user with iam:DeleteAccessKey and iam:CreateAccessKey permissions |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-bucket-target-user` | Target user with 2 pre-existing access keys and S3 bucket read permissions |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-003-to-bucket-starting-policy` | Policy granting DeleteAccessKey and CreateAccessKey permissions on target user |
-| `arn:aws:s3:::pl-sensitive-data-iam-003-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-sensitive-data-iam-003-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and `flag.txt` (CTF flag) |
 
 ### Solution
 
@@ -83,6 +84,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate the 2-key limit and bypass technique
 4. Verify successful privilege escalation to bucket access
+5. Read `flag.txt` from the target S3 bucket and display the CTF flag
 
 
 #### Resources Created by Attack Script

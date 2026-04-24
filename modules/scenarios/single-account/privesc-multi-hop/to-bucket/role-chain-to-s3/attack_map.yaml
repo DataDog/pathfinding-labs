@@ -151,5 +151,5 @@ attackMap:
       commands:
         - description: "List bucket contents"
           command: "aws s3 ls s3://pl-prod-role-chain-destination-{account_id}/"
-        - description: "Download the flag file"
-          command: "aws s3 cp s3://pl-prod-role-chain-destination-{account_id}/flag.txt /tmp/flag.txt && cat /tmp/flag.txt"
+        - description: "Read the flag"
+          command: "aws s3 cp s3://pl-prod-role-chain-destination-{account_id}/flag.txt -"

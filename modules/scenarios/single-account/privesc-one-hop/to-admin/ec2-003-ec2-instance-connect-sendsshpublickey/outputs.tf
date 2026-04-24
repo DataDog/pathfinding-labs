@@ -57,5 +57,16 @@ output "allowed_ssh_ip" {
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-ec2-003-to-admin-starting-user) → ec2-instance-connect:SendSSHPublicKey → EC2 Instance (${aws_instance.target.id}) → IMDS Credential Extraction → Admin Access"
+  value       = "User (pl-prod-ec2-003-to-admin-starting-user) → ec2-instance-connect:SendSSHPublicKey → EC2 Instance (${aws_instance.target.id}) → IMDS Credential Extraction → Admin Access → ssm:GetParameter → CTF flag"
+}
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }

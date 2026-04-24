@@ -22,13 +22,25 @@ attackMap:
       label: "Admin Pipeline Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-admin-pipeline-role"
       description: >
         This IAM role has administrative permissions and can be passed to AWS Data Pipeline
         EC2 resources via iam:PassRole. When an EC2 instance is launched by the pipeline
         with this role attached, commands executed on that instance run with the role's
         elevated permissions, completing the privilege escalation.
+
+    - id: flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/datapipeline-001-to-admin"
+      description: >
+        The CTF flag stored in SSM Parameter Store. This parameter is readable by any
+        principal with ssm:GetParameter on this ARN. After attaching AdministratorAccess
+        to the starting user via the pipeline, you have the permissions required to
+        retrieve this flag.
 
   edges:
     - from: starting-user
@@ -56,3 +68,13 @@ attackMap:
           command: "aws iam attach-user-policy --user-name pl-prod-datapipeline-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
         - description: "Verify administrator access after pipeline completes"
           command: "aws iam list-attached-user-policies --user-name pl-prod-datapipeline-001-to-admin-starting-user"
+
+    - from: pipeline-role
+      to: flag
+      label: "ssm:GetParameter"
+      description: >
+        With AdministratorAccess now attached to the starting user (granted via the pipeline
+        role), use those credentials to read the CTF flag from SSM Parameter Store.
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/datapipeline-001-to-admin --query 'Parameter.Value' --output text"

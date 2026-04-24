@@ -32,7 +32,18 @@ output "target_role_name" {
   value       = aws_iam_role.target_role.name
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-codebuild-001-to-admin-starting-user) → [iam:PassRole + codebuild:CreateProject] → CodeBuild project with target_role → [codebuild:StartBuild] → buildspec grants AdministratorAccess to starting_user → Admin access"
+  value       = "User (pl-prod-codebuild-001-to-admin-starting-user) → [iam:PassRole + codebuild:CreateProject] → CodeBuild project with target_role → [codebuild:StartBuild] → buildspec grants AdministratorAccess to starting_user → admin access → ssm:GetParameter → CTF flag"
 }

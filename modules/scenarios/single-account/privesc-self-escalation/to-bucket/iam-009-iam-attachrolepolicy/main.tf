@@ -149,3 +149,12 @@ resource "aws_s3_object" "sensitive_file" {
   etag     = md5("🎉 SUCCESS! You've accessed the S3 bucket via iam:AttachRolePolicy privilege escalation.\n\nAttack Path:\n1. User: pl-prod-iam-009-to-bucket-starting-user\n2. Assumed role: pl-prod-iam-009-to-bucket-starting-role\n3. Used iam:AttachRolePolicy to attach S3 policy to self\n4. Accessed this S3 bucket\n\nFlag: PATHFINDER-ATTACHROLEPOLICY-TO-BUCKET-2024")
 }
 
+# CTF flag file in the target bucket
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+  etag     = md5(var.flag_value)
+}
+

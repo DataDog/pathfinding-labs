@@ -150,3 +150,16 @@ data "archive_file" "lambda_zip" {
     filename = "lambda_function.py"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/lambda-004-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-lambda-004-to-admin-flag"
+    Scenario = "lambda-004-lambda-updatefunctioncode+lambda-invokefunction"
+    Purpose  = "ctf-flag"
+  }
+}

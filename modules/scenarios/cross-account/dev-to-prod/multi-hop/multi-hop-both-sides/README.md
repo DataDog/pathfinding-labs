@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -71,6 +72,7 @@ plabs apply
 | `arn:aws:iam::{dev_account_id}:user/pl-Josh` | Admin user in dev; target of login profile creation |
 | `arn:aws:iam::{prod_account_id}:role/pl-trustsdev` | Prod role that trusts Josh user from dev account |
 | `arn:aws:iam::{prod_account_id}:user/pl-Jeremy` | Admin user in prod; target of login profile update |
+| `arn:aws:ssm:{prod_region}:{prod_account_id}:parameter/pathfinding-labs/flags/multi-hop-both-sides-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal in prod |
 
 ### Solution
 
@@ -90,7 +92,8 @@ The script will:
 4. Assume the `pl-trustsdev` role in the prod account as Josh
 5. Update the login profile for the `pl-Jeremy` user in prod
 6. Confirm admin access in both accounts
-7. Reset login profiles to their original state
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
+8. Reset login profiles to their original state
 
 #### Resources Created by Attack Script
 

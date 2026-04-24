@@ -32,6 +32,20 @@ output "target_user_name" {
   value       = aws_iam_user.target_user.name
 }
 
+# =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"

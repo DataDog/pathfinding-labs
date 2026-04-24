@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating SageMaker training job with malicious script and admin role to execute code with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sagemaker-002
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -69,6 +70,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-002-to-admin-passable-role` | Admin role that trusts SageMaker service and can be passed to training jobs |
 | `arn:aws:s3:::pl-prod-sagemaker-002-to-admin-bucket-{account_id}-{suffix}` | S3 bucket for storing training scripts and outputs |
 | Policy attached to starting user | Grants `iam:PassRole` on admin role, `sagemaker:CreateTrainingJob`, and S3 upload/download permissions |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sagemaker-002-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -88,6 +90,7 @@ The script will:
 5. Create a SageMaker training job passing the admin role and referencing the uploaded script
 6. Poll the training job status until it completes (typically 3-5 minutes)
 7. Wait for IAM policy propagation and verify administrator access was granted
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 #### Resources Created by Attack Script
 

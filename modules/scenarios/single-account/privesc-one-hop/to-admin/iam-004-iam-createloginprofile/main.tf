@@ -128,3 +128,18 @@ resource "aws_iam_access_key" "admin_access_key" {
   provider = aws.prod
   user     = aws_iam_user.admin_user.name
 }
+
+# CTF flag stored in SSM Parameter Store — readable only after gaining admin access
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/iam-004-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-iam-004-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-createloginprofile"
+    Purpose     = "ctf-flag"
+  }
+}

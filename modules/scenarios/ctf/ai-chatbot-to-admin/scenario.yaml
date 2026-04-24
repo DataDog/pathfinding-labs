@@ -21,7 +21,7 @@ environments:
 # CTF-specific metadata
 ctf:
   difficulty: "beginner"
-  flag_location: "SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)"
+  flag_location: "ssm-parameter at /pathfinding-labs/flags/ctf-001-to-admin"
   variant: "ctf-001"
 
 # =============================================================================

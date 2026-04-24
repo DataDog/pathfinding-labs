@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modify existing Glue Job to use privileged role and malicious script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-005
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1565.001 - Data Manipulation: Stored Data Manipulation
 
@@ -72,6 +73,7 @@ plabs apply
 | `arn:aws:s3:::pl-glue-scripts-glue-005-{account_id}-{suffix}/benign_script.py` | Original benign Python script that the job starts with |
 | `arn:aws:s3:::pl-glue-scripts-glue-005-{account_id}-{suffix}/escalation_script.py` | Malicious Python script that performs privilege escalation |
 | `arn:aws:glue:{region}:{account_id}:job/pl-glue-005-to-admin-job` | Pre-existing Glue Python shell job that will be updated during the attack |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-005-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -91,6 +93,7 @@ The script will:
 5. Start the job execution manually
 6. Wait for the job to complete (typically 1-2 minutes)
 7. Verify successful privilege escalation by demonstrating admin access
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Direct cross-account role assumption from dev user to prod admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_simple_role_assumption`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -61,6 +62,7 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{dev_account_id}:user/pl-dev-xsare-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
 | `arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role` | Prod account role with AdministratorAccess that trusts the dev user |
+| `arn:aws:ssm:{prod_region}:{prod_account_id}:parameter/pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin` | CTF flag stored in prod SSM Parameter Store; readable only with prod admin access |
 
 ### Solution
 

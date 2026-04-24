@@ -98,3 +98,16 @@ resource "aws_iam_role_policy_attachment" "target_role_admin" {
   role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/root-trust-role-assumption-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-root-trust-role-assumption-to-admin-flag"
+    Scenario = "root-trust-role-assumption"
+    Purpose  = "ctf-flag"
+  }
+}

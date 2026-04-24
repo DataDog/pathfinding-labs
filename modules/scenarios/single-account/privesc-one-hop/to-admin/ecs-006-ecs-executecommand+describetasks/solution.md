@@ -75,6 +75,22 @@ aws iam list-users
 
 If you see a list of IAM users in the account, the privilege escalation was successful. You are now operating as `pl-prod-ecs-006-to-admin-target-role` with `AdministratorAccess`.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` attached to the task role provides implicitly.
+
+Using the temporary credentials extracted from the ECS container metadata service (the `AccessKeyId`, `SecretAccessKey`, and `Token` for `pl-prod-ecs-006-to-admin-target-role`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/ecs-006-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You started with a low-privileged IAM user that had two ECS permissions: `ecs:ExecuteCommand` and `ecs:DescribeTasks`. By using these to shell into an already-running container that had an admin task role attached, you were able to retrieve the role's temporary credentials from the container metadata service at `169.254.170.2` — an endpoint accessible only from within the container.

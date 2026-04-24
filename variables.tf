@@ -100,6 +100,22 @@ variable "enable_attacker_environment" {
 }
 
 ##############################################################################
+# CTF SCENARIO FLAGS
+##############################################################################
+
+# Per-scenario CTF flag values, keyed by scenario unique ID (e.g.,
+# "glue-003-to-admin"). Populated by plabs from flags.default.yaml in the repo
+# root (default) or from a vendor-supplied file via `plabs init --flag-file`
+# or `plabs flags import`. Each non-tool-testing scenario module pulls its flag
+# with `lookup(var.scenario_flags, "<id>", "flag{MISSING}")` — so missing keys
+# deploy a placeholder rather than failing terraform.
+variable "scenario_flags" {
+  description = "Map of scenario unique IDs to CTF flag values. Managed by plabs; do not edit terraform.tfvars directly."
+  type        = map(string)
+  default     = {}
+}
+
+##############################################################################
 # SINGLE-ACCOUNT SELF-ESCALATION TO-ADMIN SCENARIOS
 ##############################################################################
 
@@ -853,6 +869,22 @@ variable "enable_ctf_ai_chatbot_lambda_pivot" {
 
 variable "enable_attack_simulation_sysdig_8_minutes_to_admin" {
   description = "Enable: attack-simulation → sysdig-8-minutes-to-admin"
+  type        = bool
+  default     = false
+}
+
+##############################################################################
+# END-OF-LIFE PRIVESC PATH SCENARIOS
+##############################################################################
+
+variable "enable_end_of_life_privesc_iam_passrole_datapipeline_to_admin" {
+  description = "Enable: end-of-life-privesc-paths → iam-passrole+datapipeline-pipeline → to-admin (datapipeline-001)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_end_of_life_privesc_iam_passrole_datapipeline_to_bucket" {
+  description = "Enable: end-of-life-privesc-paths → iam-passrole+datapipeline-pipeline → to-bucket (datapipeline-001)"
   type        = bool
   default     = false
 }

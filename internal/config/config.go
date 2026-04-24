@@ -39,6 +39,13 @@ type Config struct {
 	// Outer key is the scenario name; inner key is the config key.
 	ScenarioConfigs map[string]map[string]string `yaml:"scenario_configs,omitempty"`
 
+	// Flags maps scenario unique IDs (e.g., "glue-003-to-admin") to CTF flag
+	// values. Loaded from flags.default.yaml in the repo root at init time, or
+	// from a vendor-supplied file via `plabs init --flag-file` or
+	// `plabs flags import`. Emitted to terraform.tfvars as a single
+	// `scenario_flags = { ... }` map variable.
+	Flags map[string]string `yaml:"flags,omitempty"`
+
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
 
@@ -439,6 +446,24 @@ func (c *Config) GenerateTFVars() string {
 		lines = append(lines, "")
 	}
 
+	// CTF scenario flags. Emitted as a single map(string) so root main.tf can
+	// lookup(var.scenario_flags, "<scenario-id>", "flag{MISSING}") per module.
+	// Keys are scenario unique IDs (e.g., "glue-003-to-admin").
+	if len(c.Flags) > 0 {
+		lines = append(lines, "# CTF scenario flags (loaded from flags.default.yaml or a vendor override file)")
+		lines = append(lines, "scenario_flags = {")
+		flagIDs := make([]string, 0, len(c.Flags))
+		for id := range c.Flags {
+			flagIDs = append(flagIDs, id)
+		}
+		sort.Strings(flagIDs)
+		for _, id := range flagIDs {
+			lines = append(lines, fmt.Sprintf("  %q = %q", id, c.Flags[id]))
+		}
+		lines = append(lines, "}")
+		lines = append(lines, "")
+	}
+
 	// Add budget configuration
 	if c.Budget.Enabled && c.Budget.Email != "" {
 		lines = append(lines, "# Budget Alerts")
@@ -526,4 +551,52 @@ func (c *Config) GetAllScenarioConfigs(scenarioName string) map[string]string {
 		return nil
 	}
 	return c.ScenarioConfigs[scenarioName]
+}
+
+// FlagSetFile is the on-disk schema for flags.default.yaml and vendor override
+// files. Keys of `Flags` are scenario unique IDs (e.g., "glue-003-to-admin");
+// values are the flag strings (e.g., "flag{glue_003_admin_captured}").
+type FlagSetFile struct {
+	Flags map[string]string `yaml:"flags"`
+}
+
+// LoadFlagsFromFile reads a YAML flag-set file and replaces c.Flags with its
+// contents. Used by `plabs init --flag-file`, `plabs flags import`, and the
+// default-flag loader that reads flags.default.yaml from the repo root during
+// init. Returns an error if the file is missing, unreadable, or has a shape
+// other than `{flags: {id: value, ...}}`.
+func (c *Config) LoadFlagsFromFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read flag file %s: %w", path, err)
+	}
+	var file FlagSetFile
+	if err := yaml.Unmarshal(data, &file); err != nil {
+		return fmt.Errorf("failed to parse flag file %s: %w", path, err)
+	}
+	if file.Flags == nil {
+		return fmt.Errorf("flag file %s has no top-level `flags:` key", path)
+	}
+	c.Flags = file.Flags
+	return nil
+}
+
+// GetFlag returns the flag value for a given scenario unique ID. The second
+// return value is true if a flag is set, false if missing. Used by the
+// `plabs enable` flag-presence check.
+func (c *Config) GetFlag(scenarioUniqueID string) (string, bool) {
+	if c.Flags == nil {
+		return "", false
+	}
+	v, ok := c.Flags[scenarioUniqueID]
+	return v, ok
+}
+
+// SetFlag sets a single flag value and ensures the map is initialized. Used by
+// `plabs flags set`.
+func (c *Config) SetFlag(scenarioUniqueID, value string) {
+	if c.Flags == nil {
+		c.Flags = make(map[string]string)
+	}
+	c.Flags[scenarioUniqueID] = value
 }

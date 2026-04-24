@@ -36,12 +36,24 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-002-to-admin-target-role"
       description: >
         This IAM role has AdministratorAccess and is pre-attached as the execution role
         for the code interpreter. By extracting its temporary credentials from the
         MicroVM Metadata Service, you gain full administrative access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-002-to-admin"
+      description: >
+        The CTF flag is stored in this SSM Parameter Store parameter. It can only be
+        read by a principal with ssm:GetParameter permission — which the admin role
+        provides. Successfully reading this flag proves you have achieved full
+        administrative access to the account.
 
   edges:
     - from: starting-principal
@@ -82,3 +94,13 @@ attackMap:
           command: "aws bedrock-agentcore invoke-code-interpreter --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter --session-id <SESSION_ID> --name executeCode --arguments '{\"code\": \"<extraction_script>\", \"language\": \"python\"}'"
         - description: "Verify admin access with extracted credentials"
           command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws iam list-users"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With full administrative access via the extracted admin role credentials, read
+        the CTF flag from SSM Parameter Store to complete the challenge.
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-002-to-admin --query 'Parameter.Value' --output text"

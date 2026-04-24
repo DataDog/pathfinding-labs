@@ -120,3 +120,20 @@ resource "aws_iam_role_policy_attachment" "privesc_policy_attachment" {
   role       = aws_iam_role.starting_role.name
   policy_arn = aws_iam_policy.privesc_policy.arn
 }
+
+# CTF flag stored in SSM Parameter Store. Readable by any principal with ssm:GetParameter on
+# this parameter — in practice this means any admin-equivalent principal, since the new policy
+# version granting Action:* on Resource:* provides the required permission.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/iam-001-to-admin"
+  description = "CTF flag for the iam-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-iam-001-to-admin-flag"
+    Scenario = "iam-createpolicyversion"
+    Purpose  = "ctf-flag"
+  }
+}

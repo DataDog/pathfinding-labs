@@ -101,6 +101,21 @@ resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# CTF flag stored in SSM Parameter Store — readable only after gaining admin access
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/bedrock-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-bedrock-002-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "bedrockagentcore-startsession+invoke"
+    Purpose     = "ctf-flag"
+  }
+}
+
 # Pre-deployed code interpreter with the privileged execution role
 # This is the EXISTING resource that the attacker will target
 # Note: Using underscores in name per AWS Bedrock API requirements

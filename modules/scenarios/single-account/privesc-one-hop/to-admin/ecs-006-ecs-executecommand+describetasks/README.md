@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $9/mo
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ecs-006
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
 
@@ -67,6 +68,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ecs-006-to-admin-execution-role` | ECS execution role for pulling images and CloudWatch logging |
 | `arn:aws:ecs:{region}:{account_id}:cluster/pl-prod-ecs-006-to-admin-cluster` | ECS cluster hosting the vulnerable task |
 | `arn:aws:ecs:{region}:{account_id}:service/pl-prod-ecs-006-to-admin-cluster/pl-prod-ecs-006-to-admin-service` | ECS service that maintains the running task with ECS Exec enabled |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ecs-006-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -82,6 +84,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the stolen admin credentials
 
 
 #### Resources Created by Attack Script

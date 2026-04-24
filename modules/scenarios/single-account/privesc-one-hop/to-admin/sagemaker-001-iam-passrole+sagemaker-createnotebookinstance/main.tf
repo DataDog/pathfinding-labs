@@ -97,3 +97,16 @@ resource "aws_iam_role_policy_attachment" "passable_role_admin_access" {
   role       = aws_iam_role.passable_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/sagemaker-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-sagemaker-001-to-admin-flag"
+    Scenario = "sagemaker-001-iam-passrole+sagemaker-createnotebookinstance"
+    Purpose  = "ctf-flag"
+  }
+}

@@ -121,3 +121,19 @@ Starting from a low-privilege IAM user, you assumed a role that held a single da
 This is the canonical self-escalation pattern. It requires no lateral movement, no cross-account access, and no interaction with other services. A CSPM tool performing static policy analysis should flag any role where `iam:CreatePolicyVersion` is permitted on a policy that is itself attached to that same role, because the permission creates a closed loop: the role controls its own permissions boundary.
 
 Clean up the attack artifact by running `plabs cleanup iam-001-iam-createpolicyversion` (or `./cleanup_attack.sh`), which will delete the malicious policy version and restore the original restricted policy.
+
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the new policy version granting `Action: *` on `Resource: *` now provides implicitly via the starting role session.
+
+Using the starting role session credentials (which now hold the admin policy version applied in the previous step), read the flag:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/iam-001-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.

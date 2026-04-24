@@ -155,6 +155,14 @@ resource "aws_s3_object" "sensitive_data" {
   content  = "This is highly sensitive financial data that should only be accessible to authorized principals via proper IAM policies."
 }
 
+# CTF flag object — readable by any principal with s3:GetObject on this bucket
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.sensitive_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+
 # =============================================================================
 # PRE-EXISTING GLUE DEV ENDPOINT
 # =============================================================================

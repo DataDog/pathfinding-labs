@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -13,6 +14,12 @@ import (
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
+// DefaultFlagFileName is the file plabs looks for in the repo root during
+// `plabs init` when no --flag-file override is supplied.
+const DefaultFlagFileName = "flags.default.yaml"
+
+var initFlagFile string
+
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize plabs and configure your AWS accounts",
@@ -20,8 +27,9 @@ var initCmd = &cobra.Command{
   1. Checking for/downloading terraform
   2. Cloning the pathfinding-labs repository
   3. Running the setup wizard to configure AWS accounts
-  4. Creating terraform.tfvars
-  5. Running terraform init`,
+  4. Loading CTF flag values (from --flag-file or flags.default.yaml in the repo)
+  5. Creating terraform.tfvars
+  6. Running terraform init`,
 	RunE: runInit,
 }
 
@@ -94,6 +102,26 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}
 
+	// Load CTF flag values. Explicit --flag-file wins. Otherwise fall back to
+	// flags.default.yaml in the terraform directory if it exists. A missing
+	// default file is not an error — it just means the user is running an
+	// older version of the repo or hasn't created one yet.
+	flagFilePath := initFlagFile
+	if flagFilePath == "" {
+		candidate := filepath.Join(paths.TerraformDir, DefaultFlagFileName)
+		if _, err := os.Stat(candidate); err == nil {
+			flagFilePath = candidate
+		}
+	}
+	if flagFilePath != "" {
+		if err := cfg.LoadFlagsFromFile(flagFilePath); err != nil {
+			return fmt.Errorf("failed to load flag file: %w", err)
+		}
+		fmt.Printf(green("      Loaded %d CTF flag(s) from %s\n"), len(cfg.Flags), flagFilePath)
+	} else {
+		fmt.Println(yellow("      No flag file found; scenarios will deploy with default flag{MISSING}"))
+	}
+
 	// Save config to ~/.plabs/plabs.yaml (single source of truth)
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -142,6 +170,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func init() {
+	initCmd.Flags().StringVar(&initFlagFile, "flag-file", "", "Path to a YAML flag-set file (overrides flags.default.yaml in the repo). See flags.default.yaml for the schema.")
+
 	// Check if already initialized when running non-init commands
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Skip check for init, version, help, and tui commands

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -194,5 +195,89 @@ func TestGenerateTFVars_ScenarioConfigsSortedDeterministically(t *testing.T) {
 	zkeyPos := strings.Index(tfvars, "scenario-b-zkey")
 	if akeyPos > zkeyPos {
 		t.Error("expected akey to appear before zkey within scenario-b (sorted order)")
+	}
+}
+
+func TestGenerateTFVars_ScenarioFlags(t *testing.T) {
+	c := &Config{
+		AWS: AWSConfig{
+			Prod: AccountConfig{Profile: "test-profile"},
+		},
+		Flags: map[string]string{
+			"glue-003-to-admin":              "flag{g3}",
+			"iam-002-iam-createaccesskey-to-admin": "flag{iam2}",
+		},
+	}
+
+	tfvars := c.GenerateTFVars()
+
+	if !strings.Contains(tfvars, "scenario_flags = {") {
+		t.Error("expected scenario_flags block in tfvars")
+	}
+	if !strings.Contains(tfvars, `"glue-003-to-admin" = "flag{g3}"`) {
+		t.Errorf("expected glue-003 flag line; got:\n%s", tfvars)
+	}
+	if !strings.Contains(tfvars, `"iam-002-iam-createaccesskey-to-admin" = "flag{iam2}"`) {
+		t.Errorf("expected iam-002 flag line; got:\n%s", tfvars)
+	}
+
+	// Keys must appear in sorted order so the generated tfvars is stable across runs.
+	gluePos := strings.Index(tfvars, `"glue-003-to-admin"`)
+	iamPos := strings.Index(tfvars, `"iam-002-iam-createaccesskey-to-admin"`)
+	if gluePos > iamPos {
+		t.Errorf("expected alphabetical flag order (g-* before i-*); gluePos=%d iamPos=%d", gluePos, iamPos)
+	}
+}
+
+func TestGenerateTFVars_ScenarioFlags_Empty(t *testing.T) {
+	c := &Config{
+		AWS: AWSConfig{
+			Prod: AccountConfig{Profile: "test-profile"},
+		},
+	}
+	tfvars := c.GenerateTFVars()
+	if strings.Contains(tfvars, "scenario_flags = {") {
+		t.Error("expected no scenario_flags block when Flags is empty")
+	}
+}
+
+func TestLoadFlagsFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/test-flags.yaml"
+	content := "flags:\n  glue-003-to-admin: \"flag{abc}\"\n  iam-002-iam-createaccesskey-to-admin: \"flag{def}\"\n"
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	c := &Config{}
+	if err := c.LoadFlagsFromFile(path); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(c.Flags) != 2 {
+		t.Errorf("expected 2 flags, got %d", len(c.Flags))
+	}
+	if c.Flags["glue-003-to-admin"] != "flag{abc}" {
+		t.Errorf("expected flag{abc}, got %q", c.Flags["glue-003-to-admin"])
+	}
+}
+
+func TestLoadFlagsFromFile_Missing(t *testing.T) {
+	c := &Config{}
+	err := c.LoadFlagsFromFile("/nonexistent/flags.yaml")
+	if err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestLoadFlagsFromFile_NoFlagsKey(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/bad.yaml"
+	if err := os.WriteFile(path, []byte("other_key: foo\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &Config{}
+	err := c.LoadFlagsFromFile(path)
+	if err == nil {
+		t.Fatal("expected error for file without flags: key")
 	}
 }

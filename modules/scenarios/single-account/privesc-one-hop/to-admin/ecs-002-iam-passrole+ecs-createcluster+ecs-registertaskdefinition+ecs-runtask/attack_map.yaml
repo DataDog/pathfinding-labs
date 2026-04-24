@@ -33,7 +33,7 @@ attackMap:
       label: "Admin Target Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-ecs-002-to-admin-target-role"
       description: >
         A privileged IAM role with administrative permissions that is configured to
@@ -42,7 +42,21 @@ attackMap:
         task definition. When the ECS Fargate task executes using this role, the
         container runs iam:AttachUserPolicy to attach the AdministratorAccess managed
         policy to the starting user, granting permanent administrative access to the
-        AWS account using the attacker's original credentials.
+        AWS account using the attacker's original credentials — admin-equivalent
+        permissions that are then used to read the scenario's CTF flag from SSM
+        Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ecs-002-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
 
   edges:
     - from: starting-user
@@ -98,3 +112,19 @@ attackMap:
           command: "aws ecs describe-tasks --cluster pl-prod-ecs-002-attack-cluster --tasks TASK_ARN --query 'tasks[0].lastStatus' --output text"
         - description: "Verify admin policy was attached to the starting user"
           command: "aws iam list-attached-user-policies --user-name pl-prod-ecs-002-to-admin-starting-user"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With administrator-equivalent permissions now attached to the starting user,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin access gained in the previous step.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ecs-002-to-admin --query 'Parameter.Value' --output text"

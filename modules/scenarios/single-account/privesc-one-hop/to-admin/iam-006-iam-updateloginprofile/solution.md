@@ -78,8 +78,24 @@ Alternatively, if you want to verify via the CLI rather than the console, you ca
 aws iam get-login-profile --user-name pl-prod-iam-006-to-admin-target-user
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy attached to the target admin user provides implicitly.
+
+Once logged in to the AWS Console as `pl-prod-iam-006-to-admin-target-user` (using the password you set), navigate to the Systems Manager console and open Parameter Store, or run the following command from any CLI session that has admin-equivalent credentials:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/iam-006-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
-You exploited an overly broad IAM permission grant. The starting user was permitted to call `iam:UpdateLoginProfile` on the admin target user, which meant they could silently replace that user's console password with one they controlled. From there, a standard console login provided unrestricted administrative access to the entire account.
+You exploited an overly broad IAM permission grant. The starting user was permitted to call `iam:UpdateLoginProfile` on the admin target user, which meant they could silently replace that user's console password with one they controlled. From there, a standard console login provided unrestricted administrative access to the entire account — including the ability to read the CTF flag from SSM Parameter Store.
 
 This path is common in real environments wherever help-desk or IT-operations roles are granted broad user-management permissions without restricting them to non-privileged accounts. The fix is straightforward: scope `iam:UpdateLoginProfile` to non-admin users only, enforce SCPs that block password updates on privileged accounts, and require MFA for any credential-modification action.

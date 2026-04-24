@@ -60,6 +60,17 @@ output "escalated_role_name" {
   value       = "pl-prod-cloudformation-004-to-admin-escalated-role"
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
