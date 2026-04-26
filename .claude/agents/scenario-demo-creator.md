@@ -70,7 +70,7 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 cd - > /dev/null
 
 # Credential switching helpers
-use_starting_user_creds() {
+use_starting_creds() {
     export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
@@ -103,7 +103,7 @@ MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_priv
 ```bash
 # [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-use_starting_user_creds
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 echo "Using region: $AWS_REGION"
@@ -116,6 +116,8 @@ Demo scripts source a shared library (`scripts/lib/demo_permissions.sh`) that te
 - **After credential retrieval** (before the attack): call `restrict_helpful_permissions` and `setup_demo_restriction_trap` (the trap ensures permissions are restored even if the script exits early)
 - **Before the success summary**: call `restore_helpful_permissions`
 - **In cleanup scripts**: call `restore_helpful_permissions` as a safety fallback (with error suppression)
+
+**Source path depth varies by scenario category.** Single-account and cross-account scenarios are 6 directory levels deep, so use `../../../../../../scripts/lib/demo_permissions.sh`. CTF and attack-simulation scenarios are 4 levels deep (`modules/scenarios/ctf/name/` and `modules/scenarios/attack-simulation/name/`), so use `../../../../scripts/lib/demo_permissions.sh`. The canonical template above shows the 6-level path; adjust to 4 levels for CTF and attack-simulation.
 
 The existing credential switching pattern (`use_starting_creds`, `use_readonly_creds`) stays the same.
 
@@ -157,7 +159,7 @@ The existing credential switching pattern (`use_starting_creds`, `use_readonly_c
 
 Every step in the demo script must be categorized as either **EXPLOIT** or **OBSERVATION**:
 
-- **`# [EXPLOIT]`** steps use `use_starting_user_creds()` -- these are the actual attack actions (PassRole, CreateFunction, AssumeRole, etc.)
+- **`# [EXPLOIT]`** steps use `use_starting_creds()` -- these are the actual attack actions (PassRole, CreateFunction, AssumeRole, etc.)
 - **`# [OBSERVATION]`** steps use `use_readonly_creds()` -- these are non-exploit actions (polling status, listing resources, VPC/subnet discovery, verifying policy attachments, checking logs)
 
 **Key principle**: The starting user should ONLY have the permissions needed for the exploit. All observation, polling, and verification steps use the readonly user. This ensures the Terraform permissions accurately reflect what's truly needed for the attack.
@@ -181,7 +183,7 @@ export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
 
 # When switching to starting user for exploit steps
-use_starting_user_creds
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 # When switching to readonly for observation steps
@@ -405,7 +407,7 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 cd - > /dev/null
 
 # Credential switching helpers
-use_starting_user_creds() {
+use_starting_creds() {
     export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     unset AWS_SESSION_TOKEN
@@ -426,7 +428,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # [EXPLOIT] Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-use_starting_user_creds
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 echo "Using region: $AWS_REGION"
@@ -1103,7 +1105,7 @@ The demo script includes commands that the original attacker ran but which may f
 ### Credential and Permission Patterns
 
 - The starting user may have broad read access (e.g., ReadOnlyAccess) to enable the recon phase. This is a required permission for exploitation, not a helpful permission.
-- Credential switching works the same as other categories (`use_starting_user_creds`, `use_readonly_creds`).
+- Credential switching works the same as other categories (`use_starting_creds`, `use_readonly_creds`).
 - The permission restriction library is sourced and used as normal.
 
 ### Cleanup Script
@@ -1125,9 +1127,9 @@ Before completing, verify:
 9. ✅ **`touch "$(dirname "$0")/.demo_active"`** at the very end of the script
 10. ✅ Resource names match Terraform outputs
 11. ✅ **Both credential sets retrieved**: starting user from grouped output, readonly from `prod_readonly_user_*`
-12. ✅ **`use_starting_user_creds()` and `use_readonly_creds()` helper functions defined**
+12. ✅ **`use_starting_creds()` and `use_readonly_creds()` helper functions defined**
 13. ✅ **Every step marked with `# [EXPLOIT]` or `# [OBSERVATION]`**
-14. ✅ **Exploit steps use `use_starting_user_creds()`**, observation steps use `use_readonly_creds()`
+14. ✅ **Exploit steps use `use_starting_creds()`**, observation steps use `use_readonly_creds()`
 15. ✅ **Region retrieved from Terraform output**
 16. ✅ **Region re-exported at every credential switch**
 17. ✅ **All EC2 commands have explicit --region flags**

@@ -495,9 +495,10 @@ module "single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolic
     aws.prod = aws.prod
   }
 
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "iam-007-to-admin", "flag{MISSING}")
 }
 ```
 
@@ -519,9 +520,10 @@ module "single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
     aws.prod = aws.prod
   }
 
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "iam-002-to-admin", "flag{MISSING}")
 }
 ```
 
@@ -572,6 +574,7 @@ module "ctf_{scenario_name}" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "{scenario-directory-name}-to-admin", "flag{MISSING}")
 }
 ```
 
@@ -596,6 +599,7 @@ module "attack_simulation_{scenario_name}" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "{scenario-directory-name}-to-admin", "flag{MISSING}")
 }
 ```
 
@@ -617,9 +621,10 @@ module "single_account_cspm_toxic_combo_public_lambda_with_admin" {
     aws.prod = aws.prod
   }
 
-  account_id      = var.prod_account_id
+  account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "public-lambda-with-admin-to-admin", "flag{MISSING}")
 }
 ```
 

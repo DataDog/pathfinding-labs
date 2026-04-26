@@ -130,7 +130,8 @@ Read `main.tf` and verify:
 
 #### Check Variables
 Read `variables.tf` and verify:
-- Contains exactly three variables: `account_id`, `environment`, `resource_suffix`
+- **Non-tool-testing scenarios**: contains four variables: `account_id`, `environment`, `resource_suffix`, and `flag_value` (with `type = string` and `default = "flag{MISSING}"`)
+- **Tool-testing scenarios**: contains exactly three variables: `account_id`, `environment`, `resource_suffix` — no `flag_value` variable
 - Variable types are correct
 - Descriptions are clear
 
@@ -347,6 +348,12 @@ grep "enable_.*_{scenario_name}" terraform.tfvars
 ```
 Should find the variable (usually set to true for testing).
 
+**flags.default.yaml** (non-tool-testing scenarios only):
+```bash
+grep "{scenario-unique-id}" flags.default.yaml
+```
+Should find an entry keyed by the scenario's unique ID (e.g., `iam-002-to-admin`). Verify the key exactly matches the ID used in the root `main.tf` `lookup(var.scenario_flags, ...)` call and in the Terraform flag resource's SSM parameter name or S3 key. Tool-testing scenarios must NOT have an entry in this file.
+
 **README.md**:
 ```bash
 grep "{scenario-name}" README.md
@@ -522,6 +529,7 @@ PROJECT INTEGRATION VALIDATION
   ✓ Entry in terraform.tfvars.example
   ✓ Entry in terraform.tfvars
   ✓ Entry in README.md table
+  ✓ flags.default.yaml entry present (non-tool-testing) / absent (tool-testing)
   ✗ Issue: {description}
     - Fixed: {what was changed}
 

@@ -83,7 +83,7 @@ Ask for:
 - Whether a pivot step is involved (e.g., Lambda code update to privileged function)
 - Does the attack start from anonymous public access (no AWS credentials needed), or does the attacker begin with some IAM credentials?
 
-Note: CTF scenarios do still include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
+Note: CTF scenarios do NOT include `demo_attack.sh` — the exploit IS the challenge, so no demo script is provided. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement). The `### Automated Demo` section is omitted from the README for the same reason.
 
 **Attack Simulation:**
 This category has a unique multi-step wizard flow:
