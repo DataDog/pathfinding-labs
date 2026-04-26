@@ -70,16 +70,20 @@ brews:
   - name: plabs
     repository:
       owner: DataDog
-      name: homebrew-plabs
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      name: pathfinding-labs
+      branch: "homebrew-update-{{ .Version }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: DataDog
+          name: pathfinding-labs
+          branch: main
     directory: Formula
     homepage: "https://github.com/DataDog/pathfinding-labs"
     description: "CLI for managing Pathfinding Labs AWS attack scenarios"
     license: "Apache-2.0"
     install: |
       bin.install "plabs"
+      generate_completions_from_executable(bin/"plabs", "completion")
     test: |
-      system "#{bin}/plabs", "version"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
+      assert_match version.to_s, shell_output("#{bin}/plabs version")
