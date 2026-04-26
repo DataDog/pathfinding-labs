@@ -6,13 +6,21 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
+      - uses: DataDog/dd-octo-sts-action@acaa02eee7e3bb0839e4272dacb37b8f3b58ba80
+        id: octo-sts
+        with:
+          scope: DataDog/pathfinding-labs
+          policy: self.release.create-pr
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -30,4 +38,4 @@ jobs:
           version: '~> v2'
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.octo-sts.outputs.token }}
