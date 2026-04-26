@@ -143,6 +143,24 @@ Flag: PATHFINDER-GITHUB-OIDC-CROSS-ACCOUNT-2024
 
 You started from GitHub repository write access, touched two AWS accounts, and read a sensitive object from a production S3 bucket — all without storing or using a single static AWS credential.
 
+## Capture the Flag
+
+The CTF flag is stored as a separate object in the same target bucket. Once you hold credentials for `pl-prod-goidc-pivot-deployer-role`, read it directly:
+
+```bash
+aws s3 cp s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/flag.txt -
+```
+
+Or inside the exploit workflow, add a step after the prod role pivot:
+
+```yaml
+      - name: Capture the CTF flag
+        run: |
+          aws s3 cp s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/flag.txt -
+```
+
+The flag is a unique value generated at deployment time and stored at `flag.txt` inside the bucket. Reading it confirms full end-to-end exploitation: you obtained credentials for two AWS roles across two accounts starting from only GitHub repository write access, and you can prove it by producing the flag value.
+
 ## What Happened
 
 This attack chain succeeded because of two independent misconfigurations that compounded each other.

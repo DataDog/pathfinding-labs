@@ -8,8 +8,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sts-001 + ecs-002
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
@@ -73,6 +74,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-sts001-ecs002-starting-user` | Scenario-specific starting user with sts:AssumeRole permission on the intermediate role |
 | `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-intermediate-role` | Intermediate role with ECS management permissions and iam:PassRole on the admin role |
 | `arn:aws:iam::{account_id}:role/pl-prod-sts001-ecs002-admin-role` | Target admin role with AdministratorAccess, trusts ecs-tasks.amazonaws.com (also serves as task execution role) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sts-001-to-ecs-002-to-admin-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -92,6 +94,7 @@ The script will:
 5. Run the task on Fargate and wait for completion
 6. Extract the admin role credentials from the task output
 7. Verify successful privilege escalation to administrator
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

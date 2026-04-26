@@ -365,3 +365,23 @@ resource "aws_ecs_service" "service" {
     Purpose     = "Vulnerable ECS service with exec enabled"
   }
 }
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/ecs-006-to-admin"
+  description = "CTF flag for the ecs-006 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-ecs-006-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "ecs-executecommand"
+    Purpose     = "ctf-flag"
+  }
+}

@@ -33,12 +33,27 @@ attackMap:
       label: "Admin Execution Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-mwaa-002-to-admin-admin-role"
       description: >
         The IAM execution role attached to the MWAA environment. It has AdministratorAccess,
         meaning any DAG running in the environment can perform any AWS operation, including
-        attaching AdministratorAccess to the starting user.
+        attaching AdministratorAccess to the starting user. With the malicious DAG executing
+        as this role, the attacker gains the ability to use admin credentials to read the
+        scenario flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/mwaa-002-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). After the malicious DAG attaches
+        AdministratorAccess to the starting user, use those elevated credentials to read
+        this parameter and complete the challenge.
 
   edges:
     - from: starting-principal
@@ -83,3 +98,19 @@ attackMap:
           command: "curl -X POST 'https://{webserver-hostname}/aws_mwaa/cli' -H 'Authorization: Bearer {cli_token}' -H 'Content-Type: text/plain' -d 'dags trigger privesc_dag' | base64 -d"
         - description: "Verify that AdministratorAccess was attached to the starting user"
           command: "aws iam list-attached-user-policies --user-name pl-prod-mwaa-002-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        After the malicious DAG attaches AdministratorAccess to the starting user, switch
+        back to those elevated starting-user credentials and retrieve the scenario flag from
+        SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all parameters
+        in the account, so no additional permissions are needed.
+      hints:
+        - "The malicious DAG attached AdministratorAccess to your starting user. Switch back to your starting-user credentials -- they now have admin access."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store -- consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store using the now-elevated starting user credentials"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/mwaa-002-to-admin --query 'Parameter.Value' --output text"

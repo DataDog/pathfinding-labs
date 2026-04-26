@@ -166,6 +166,8 @@ output "single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpo
     starting_user_access_key_id     = module.single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy[0].starting_user_access_key_id
     starting_user_secret_access_key = module.single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy[0].starting_user_secret_access_key
     attack_path                     = module.single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -251,6 +253,8 @@ output "single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgroupp
     group_name                      = module.single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy[0].group_name
     group_arn                       = module.single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy[0].group_arn
     attack_path                     = module.single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -265,6 +269,8 @@ output "single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppoli
     target_group_name              = module.single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy[0].target_group_name
     target_group_arn               = module.single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy[0].target_group_arn
     attack_path                    = module.single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy[0].attack_path
+    flag_ssm_parameter_name        = module.single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn         = module.single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -293,6 +299,8 @@ output "single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].starting_user_secret_access_key
     target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].target_role_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole[0].attack_path
   } : null
   sensitive = true
@@ -357,6 +365,8 @@ output "single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile" 
     admin_secret_access_key         = module.single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile[0].admin_secret_access_key
     console_login_url               = module.single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile[0].console_login_url
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -373,6 +383,8 @@ output "single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_
     target_policy_name              = module.single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy[0].target_policy_name
     target_policy_arn               = module.single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy[0].target_policy_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -432,6 +444,8 @@ output "single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].starting_user_secret_access_key
     admin_user_name                 = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].admin_user_name
     admin_user_arn                  = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].admin_user_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey[0].attack_path
   } : null
   sensitive = true
@@ -531,6 +545,8 @@ output "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
     default_subnet_id               = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].default_subnet_id
     ami_id                          = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].ami_id
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -569,6 +585,8 @@ output "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createc
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].target_role_arn
     target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].target_role_name
     account_id                      = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].account_id
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask[0].attack_path
   } : null
   sensitive = true
@@ -586,6 +604,7 @@ output "single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registe
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask[0].ecs_cluster_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask[0].flag_ssm_parameter_name
   } : null
   sensitive = true
 }
@@ -619,6 +638,8 @@ output "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registe
     target_role_name                = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].target_role_name
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].ecs_cluster_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice[0].attack_path
   } : null
   sensitive = true
@@ -649,8 +670,10 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_arn
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_arn
-    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
+    ecs_service_name        = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
+    flag_ssm_parameter_name = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn  = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
+    attack_path             = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
   } : null
   sensitive = true
 }
@@ -684,6 +707,7 @@ output "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask
     cluster_arn                     = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].cluster_arn
     existing_task_definition_arn    = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].existing_task_definition_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask[0].flag_ssm_parameter_name
   } : null
   sensitive = true
 }
@@ -702,6 +726,7 @@ output "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_startta
     existing_task_definition_arn    = module.single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask[0].existing_task_definition_arn
     container_instance_id           = module.single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask[0].container_instance_id
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask[0].flag_ssm_parameter_name
   } : null
   sensitive = true
 }
@@ -716,6 +741,7 @@ output "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_creat
     target_role_name                = module.single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint[0].target_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint[0].flag_ssm_parameter_name
   } : null
   sensitive = true
 }
@@ -733,6 +759,8 @@ output "single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint"
     dev_endpoint_arn                = module.single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint[0].dev_endpoint_arn
     dev_endpoint_address            = module.single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint[0].dev_endpoint_address
     attack_path                     = module.single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -784,6 +812,8 @@ output "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updat
     script_bucket_name              = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].script_bucket_name
     benign_script_s3_path           = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].benign_script_s3_path
     malicious_script_s3_path        = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].malicious_script_s3_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun[0].attack_path
   } : null
   sensitive = true
@@ -819,6 +849,8 @@ output "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_creat
     admin_role_name                 = module.single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement[0].admin_role_name
     admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement[0].admin_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -915,6 +947,8 @@ output "single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformatio
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].starting_user_secret_access_key
     stack_name                      = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].stack_name
     stack_role_arn                  = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].stack_role_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset[0].attack_path
   } : null
   sensitive = true
@@ -949,6 +983,8 @@ output "single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_
     administration_role_name        = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].administration_role_name
     administration_role_arn         = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].administration_role_arn
     escalated_role_name             = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].escalated_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset[0].attack_path
   } : null
   sensitive = true
@@ -981,6 +1017,8 @@ output "single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_
     administration_role_arn         = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].administration_role_arn
     administration_role_name        = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].administration_role_name
     escalated_role_name             = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].escalated_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances[0].attack_path
   } : null
   sensitive = true
@@ -995,6 +1033,8 @@ output "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].starting_user_secret_access_key
     target_role_name                = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].target_role_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].attack_path
   } : null
   sensitive = true
@@ -1010,6 +1050,7 @@ output "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
     target_role_name                = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].target_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].flag_ssm_parameter_name
   } : null
   sensitive = true
 }
@@ -1037,6 +1078,8 @@ output "single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_as
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].starting_user_secret_access_key
     target_role_name                = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].target_role_name
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].target_role_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole[0].attack_path
   } : null
   sensitive = true
@@ -1051,6 +1094,8 @@ output "single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_cr
     starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].starting_user_secret_access_key
     target_user_name                = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].target_user_name
     target_user_arn                 = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].target_user_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey[0].attack_path
   } : null
   sensitive = true
@@ -1898,6 +1943,24 @@ output "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
   } : null
   sensitive = true
 }
+
+##############################################################################
+# CSPM-TOXIC-COMBO SCENARIO OUTPUTS
+##############################################################################
+
+output "single_account_cspm_toxic_combo_public_lambda_with_admin" {
+  description = "All outputs for public-lambda-with-admin CSPM toxic combination scenario"
+  value = var.enable_single_account_cspm_toxic_combo_public_lambda_with_admin ? {
+    lambda_function_name    = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].lambda_function_name
+    lambda_function_arn     = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].lambda_function_arn
+    lambda_role_arn         = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].lambda_role_arn
+    lambda_function_url     = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].lambda_function_url
+    flag_ssm_parameter_name = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn  = module.single_account_cspm_toxic_combo_public_lambda_with_admin[0].flag_ssm_parameter_arn
+  } : null
+  sensitive = true
+}
+
 ##############################################################################
 # CTF SCENARIO OUTPUTS
 ##############################################################################
@@ -1910,7 +1973,7 @@ output "ctf_ai_chatbot_to_admin" {
     chatbot_function_arn            = module.ctf_ai_chatbot_to_admin[0].chatbot_function_arn
     chatbot_role_arn                = module.ctf_ai_chatbot_to_admin[0].chatbot_role_arn
     chatbot_role_name               = module.ctf_ai_chatbot_to_admin[0].chatbot_role_name
-    flag_parameter_name             = module.ctf_ai_chatbot_to_admin[0].flag_parameter_name
+    flag_ssm_parameter_name         = module.ctf_ai_chatbot_to_admin[0].flag_ssm_parameter_name
     starting_user_name              = module.ctf_ai_chatbot_to_admin[0].starting_user_name
     starting_user_arn               = module.ctf_ai_chatbot_to_admin[0].starting_user_arn
     starting_user_access_key_id     = module.ctf_ai_chatbot_to_admin[0].starting_user_access_key_id
@@ -1932,7 +1995,8 @@ output "ctf_ai_chatbot_lambda_pivot" {
     target_function_arn             = module.ctf_ai_chatbot_lambda_pivot[0].target_function_arn
     target_role_arn                 = module.ctf_ai_chatbot_lambda_pivot[0].target_role_arn
     target_role_name                = module.ctf_ai_chatbot_lambda_pivot[0].target_role_name
-    flag_parameter_name             = module.ctf_ai_chatbot_lambda_pivot[0].flag_parameter_name
+    flag_ssm_parameter_name         = module.ctf_ai_chatbot_lambda_pivot[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.ctf_ai_chatbot_lambda_pivot[0].flag_ssm_parameter_arn
     starting_user_name              = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_name
     starting_user_arn               = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_arn
     starting_user_access_key_id     = module.ctf_ai_chatbot_lambda_pivot[0].starting_user_access_key_id
@@ -1958,6 +2022,25 @@ output "attack_simulation_sysdig_8_minutes_to_admin" {
     ec2_init_function_name          = module.attack_simulation_sysdig_8_minutes_to_admin[0].ec2_init_function_name
     frick_username                  = module.attack_simulation_sysdig_8_minutes_to_admin[0].frick_username
     attack_path                     = module.attack_simulation_sysdig_8_minutes_to_admin[0].attack_path
+  } : null
+  sensitive = true
+}
+
+# =============================================================================
+# END-OF-LIFE PRIVESC PATH SCENARIO OUTPUTS
+# =============================================================================
+
+output "end_of_life_privesc_iam_passrole_datapipeline_to_admin" {
+  description = "All outputs for datapipeline-001 end-of-life privesc to-admin scenario"
+  value = var.enable_end_of_life_privesc_iam_passrole_datapipeline_to_admin ? {
+    starting_user_name              = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].starting_user_name
+    starting_user_arn               = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].starting_user_secret_access_key
+    pipeline_role_arn               = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].pipeline_role_arn
+    pipeline_role_name              = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].pipeline_role_name
+    flag_parameter_name             = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].flag_parameter_name
+    attack_path                     = module.end_of_life_privesc_iam_passrole_datapipeline_to_admin[0].attack_path
   } : null
   sensitive = true
 }

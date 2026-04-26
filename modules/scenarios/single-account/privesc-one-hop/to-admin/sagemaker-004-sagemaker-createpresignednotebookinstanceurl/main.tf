@@ -102,3 +102,16 @@ resource "aws_sagemaker_notebook_instance" "target_notebook" {
     Purpose     = "target-notebook"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/sagemaker-004-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-sagemaker-004-to-admin-flag"
+    Scenario = "sagemaker-004-sagemaker-createpresignednotebookinstanceurl"
+    Purpose  = "ctf-flag"
+  }
+}

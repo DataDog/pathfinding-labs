@@ -89,6 +89,22 @@ aws sts get-caller-identity
 
 You should see output referencing `pl-x-account-prod-target-role` in the production account. From here you have whatever permissions that role carries — in this scenario, admin-level access to the prod account.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the admin-level policy on the prod target role provides implicitly.
+
+Using the prod target role credentials from the previous step, read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 The attack succeeded because of two compounding misconfigurations: the operations role was granted `sts:AssumeRole` on `*` rather than a scoped list of specific prod role ARNs, and the prod target role's trust policy allowed assumption from the operations account without any additional conditions (no `aws:PrincipalArn` constraint, no `sts:ExternalId`, no MFA requirement).

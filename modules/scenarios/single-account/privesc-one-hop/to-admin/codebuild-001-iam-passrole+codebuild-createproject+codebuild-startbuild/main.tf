@@ -92,6 +92,26 @@ resource "aws_iam_role" "target_role" {
   }
 }
 
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/codebuild-001-to-admin"
+  description = "CTF flag for the codebuild-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-codebuild-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+codebuild-createproject+codebuild-startbuild"
+    Purpose     = "ctf-flag"
+  }
+}
+
 # Policy allowing the target role to grant admin access to the starting user
 resource "aws_iam_role_policy" "target_role_policy" {
   provider = aws.prod

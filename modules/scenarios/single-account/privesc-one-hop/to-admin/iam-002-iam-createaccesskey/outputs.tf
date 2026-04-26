@@ -32,8 +32,19 @@ output "admin_user_name" {
   value       = aws_iam_user.admin_user.name
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (${aws_iam_user.starting_user.name}) → CreateAccessKey → User (${aws_iam_user.admin_user.name}) → Admin Access"
+  value       = "User (${aws_iam_user.starting_user.name}) → iam:CreateAccessKey → User (${aws_iam_user.admin_user.name}) → Admin Access → ssm:GetParameter → CTF flag"
 }

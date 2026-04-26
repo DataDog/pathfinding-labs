@@ -49,8 +49,6 @@ permissions:
           purpose: "View service configuration and role attached"
         - permission: "apprunner:ListServices"
           purpose: "Discover existing App Runner services to exploit"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

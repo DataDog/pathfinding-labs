@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with sts:AssumeRole can directly assume role with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sts-001
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
@@ -63,8 +64,9 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user` | Starting IAM user with sts:AssumeRole permission |
 | `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-bucket-access-role` | Role with S3 bucket access permissions |
-| `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag |
 | `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-prod-sts-001-to-bucket-{account_id}-{suffix}/flag.txt` | CTF flag file in the target bucket |
 
 ### Solution
 
@@ -83,6 +85,7 @@ The script will:
 4. List the contents of the target sensitive S3 bucket
 5. Download `sensitive-data.txt` from the bucket
 6. Upload a test file to the bucket to confirm write access
+7. Read `flag.txt` from the bucket to capture the CTF flag
 
 
 #### Resources Created by Attack Script

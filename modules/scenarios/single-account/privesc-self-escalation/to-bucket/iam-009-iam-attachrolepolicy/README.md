@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Role with iam:AttachRolePolicy on itself can attach policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolepolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-009
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-009-to-bucket-access-policy` | Grants S3 read/write access to target bucket (to be attached during escalation) |
 | `arn:aws:s3:::pl-prod-iam-009-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
 | `arn:aws:s3:::pl-prod-iam-009-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-prod-iam-009-to-bucket-{account_id}-{suffix}/flag.txt` | CTF flag in the target bucket |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 6. Wait 15 seconds for policy propagation
 7. Verify S3 bucket access by listing objects
 8. Download `sensitive-data.txt` from the target bucket
+9. Read `flag.txt` from the target bucket to capture the CTF flag
 
 #### Resources Created by Attack Script
 

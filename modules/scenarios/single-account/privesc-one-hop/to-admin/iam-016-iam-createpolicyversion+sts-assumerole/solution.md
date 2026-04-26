@@ -107,6 +107,22 @@ aws sts get-caller-identity
 # => arn:aws:iam::{account_id}:assumed-role/pl-prod-iam-016-to-admin-target-role/privesc-session
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the assumed target role provides implicitly via its AdministratorAccess policy.
+
+With the assumed role's credentials still active in your environment (the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` you exported in the previous step), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/iam-016-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited a privilege escalation path that many security teams overlook: `iam:CreatePolicyVersion` on a customer-managed policy. Rather than directly attaching a new policy or modifying a role's inline policy -- operations that security controls commonly watch -- you created a new *version* of an existing policy. AWS policy versioning is designed as a rollback mechanism, but it doubles as a privilege escalation vector when granted to non-administrators.

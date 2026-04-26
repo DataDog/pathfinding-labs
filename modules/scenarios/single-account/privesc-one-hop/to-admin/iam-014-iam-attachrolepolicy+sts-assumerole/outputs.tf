@@ -34,3 +34,14 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-iam-014-to-admin-starting-user) → AttachRolePolicy (attach AdministratorAccess) → Target Role (pl-prod-iam-014-to-admin-target-role) → AssumeRole → Administrator Access"
 }
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

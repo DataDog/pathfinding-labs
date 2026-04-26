@@ -89,6 +89,16 @@ cat sensitive-data.txt
 
 The download succeeds. You have read sensitive data from a bucket that was inaccessible when the attack started.
 
+## Capture the Flag
+
+The target bucket also contains a CTF flag. With the bucket access policy now attached to the role, read it directly to stdout:
+
+```bash
+aws s3 cp s3://pl-prod-iam-009-to-bucket-{account_id}/flag.txt -
+```
+
+The flag value will be printed to your terminal. This confirms full read access to the bucket and completes the CTF objective.
+
 ## What Happened
 
 The attack chain was:

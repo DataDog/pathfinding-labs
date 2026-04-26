@@ -122,6 +122,22 @@ aws iam list-users --max-items 3 --output table
 # Returns a list of IAM users -- you now have AdministratorAccess
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which `AdministratorAccess` (carried by the extracted EC2 instance role credentials) provides implicitly.
+
+Using the extracted instance role credentials you already have in your environment, read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/ssm-002-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You used `ssm:SendCommand` to run an arbitrary shell command on an EC2 instance that happened to carry an administrative IAM role. The shell command reached out to the Instance Metadata Service (IMDS) and retrieved the temporary credentials that AWS automatically makes available to the attached role. By exporting those credentials in your local shell, you inherited the full `AdministratorAccess` policy of the EC2 instance role — without ever logging into the instance via SSH, and without possessing any direct IAM privilege escalation permissions.

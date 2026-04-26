@@ -181,6 +181,32 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Warn (do not block) if any enabled scenario is missing a CTF flag. Tool-testing
+	// scenarios are exempt since they don't participate in the CTF flag mechanism.
+	// This will be escalated to a hard block once every non-tool-testing scenario has
+	// been migrated in Phase D and flags.default.yaml is fully populated.
+	var missingFlags []string
+	for _, s := range toEnable {
+		if s.CategoryShort() == "tool-testing" {
+			continue
+		}
+		if _, ok := cfg.GetFlag(s.UniqueID()); !ok {
+			missingFlags = append(missingFlags, s.UniqueID())
+		}
+	}
+	if len(missingFlags) > 0 {
+		fmt.Println()
+		fmt.Printf("%s %d scenario(s) have no CTF flag configured (will deploy with flag{MISSING}):\n", yellow("!"), len(missingFlags))
+		for _, id := range missingFlags {
+			fmt.Printf("  %s %s\n", yellow("o"), id)
+		}
+		fmt.Println()
+		fmt.Println("Import a flag set or set a single flag:")
+		fmt.Println("  plabs flags import <file>")
+		fmt.Println("  plabs flags set <scenario-id> <value>")
+		fmt.Println()
+	}
+
 	// Update config with enabled scenarios
 	for _, s := range toEnable {
 		cfg.EnableScenario(s.Terraform.VariableName)

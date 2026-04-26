@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating a Data Pipeline with an admin role to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_passrole_datapipeline_pipeline`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** datapipeline-001
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
@@ -69,6 +70,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-datapipeline-001-to-admin-pipeline-role` | Administrative role that can be passed to Data Pipeline EC2 instances |
 | `arn:aws:iam::{account_id}:policy/pl-prod-datapipeline-001-to-admin-starting-policy` | Policy granting Data Pipeline permissions and iam:PassRole |
 | `arn:aws:datapipeline:{region}:{account_id}:pipeline/df-*` | Data Pipeline created during attack (ephemeral) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/datapipeline-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 3. Create and activate a Data Pipeline with an admin role
 4. Wait for the pipeline to execute the privilege escalation command
 5. Verify successful privilege escalation to administrator access
+6. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

@@ -79,3 +79,5 @@ attackMap:
           command: "aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/sensitive-data.txt /tmp/sensitive-data.txt"
         - description: "Confirm write access"
           command: "aws s3 cp /tmp/test-write.txt s3://pl-prod-sts-001-to-bucket-{account_id}/demo-test-file.txt"
+        - description: "Read the CTF flag"
+          command: "aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/flag.txt -"

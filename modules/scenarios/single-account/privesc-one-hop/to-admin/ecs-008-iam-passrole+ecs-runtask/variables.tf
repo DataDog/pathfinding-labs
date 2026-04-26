@@ -13,3 +13,9 @@ variable "resource_suffix" {
   description = "Random suffix for globally unique resources"
   type        = string
 }
+
+variable "flag_value" {
+  description = "CTF flag value stored in SSM Parameter Store, retrieved after successful privilege escalation"
+  type        = string
+  default     = "flag{MISSING}"
+}

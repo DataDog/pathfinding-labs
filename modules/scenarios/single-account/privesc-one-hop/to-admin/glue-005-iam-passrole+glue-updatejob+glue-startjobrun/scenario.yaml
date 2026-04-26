@@ -56,8 +56,6 @@ permissions:
           purpose: "List job runs to monitor execution status"
         - permission: "sts:GetCallerIdentity"
           purpose: "Verify current identity and account ID"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after privilege escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

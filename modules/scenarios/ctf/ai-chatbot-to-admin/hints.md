@@ -46,5 +46,5 @@ Then check what you can do:
 
 ```bash
 aws sts get-caller-identity
-aws ssm get-parameter --name /ctf/ctf-001/flag --with-decryption
+aws ssm get-parameter --name /pathfinding-labs/flags/ctf-001-to-admin --query 'Parameter.Value' --output text
 ```

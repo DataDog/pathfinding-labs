@@ -92,6 +92,16 @@ cat /tmp/sensitive-data.txt
 
 If you can read the file contents, the escalation is complete. You've moved from a user with only IAM key management permissions to a user with S3 read access.
 
+## Capture the Flag
+
+The flag is stored directly in the target S3 bucket as `flag.txt`. Once you are operating as `pl-prod-iam-003-to-bucket-target-user` (using the newly created access key), retrieve it with:
+
+```bash
+aws s3 cp s3://<FULL_BUCKET_NAME>/flag.txt -
+```
+
+Replace `<FULL_BUCKET_NAME>` with the bucket name you discovered in the previous step (the one starting with `pl-sensitive-data-iam-003-`). The flag value will be printed directly to your terminal. That value is what you submit to complete the challenge.
+
 ## What Happened
 
 You exploited a subtle but powerful IAM misconfiguration: the starting user had both `iam:DeleteAccessKey` and `iam:CreateAccessKey` on the target user, and the target user had S3 read access. By deleting one of the target's existing keys to free up a slot, then creating a new key, you obtained valid credentials for that user and used them to read sensitive data from S3.

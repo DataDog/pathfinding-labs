@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing Lambda function code and adding resource-based permissions to execute malicious logic under privileged execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** lambda-005
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-lambda-005-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:lambda:{region}:{account_id}:function/pl-prod-lambda-005-to-admin-target-lambda` | Pre-existing Lambda function that runs benign code (victim workload) |
 | `arn:aws:iam::{account_id}:role/pl-prod-lambda-005-to-admin-lambda-exec-role` | Lambda execution role with AdministratorAccess policy attached |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/lambda-005-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -80,7 +82,11 @@ For a narrative, step-by-step walkthrough of this attack (CTF writeup style), se
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Verify successful privilege escalation
+3. Replace the Lambda function code with a malicious payload
+4. Add a resource-based policy statement granting self-invocation
+5. Invoke the modified Lambda function to attach AdministratorAccess to the starting user
+6. Verify successful privilege escalation by demonstrating admin access
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

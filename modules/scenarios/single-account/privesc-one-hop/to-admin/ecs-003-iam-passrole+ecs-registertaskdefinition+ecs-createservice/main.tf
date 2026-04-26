@@ -130,6 +130,30 @@ resource "aws_iam_role_policy_attachment" "target_role_admin" {
 }
 
 # =============================================================================
+# CTF FLAG (Stored in SSM Parameter Store)
+# =============================================================================
+
+# The flag is readable by any principal that has obtained
+# administrator-equivalent permissions in the account. The flag lives in the
+# prod account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/ecs-003-to-admin"
+  description = "CTF flag for the ecs-003 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-ecs-003-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+ecs-registertaskdefinition+ecs-createservice"
+    Purpose     = "ctf-flag"
+  }
+}
+
+# =============================================================================
 # ECS CLUSTER (Task Execution Environment)
 # =============================================================================
 

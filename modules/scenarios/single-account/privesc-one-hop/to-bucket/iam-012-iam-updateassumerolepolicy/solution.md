@@ -106,6 +106,16 @@ aws sts get-caller-identity
 
 Then confirm the file downloaded successfully and read its contents. If you can `cat` the file, the attack chain is complete.
 
+## Capture the Flag
+
+The target bucket contains a `flag.txt` object placed there by Terraform. Read it directly to stdout using the target role's credentials:
+
+```bash
+aws s3 cp s3://$BUCKET_NAME/flag.txt -
+```
+
+Replace `$BUCKET_NAME` with the full bucket name (e.g. `pl-prod-iam-012-to-bucket-{account_id}-{resource_suffix}`). If you have already exported the target role credentials into your shell, this command will print the flag value immediately.
+
 ## What Happened
 
 The full attack chain was:

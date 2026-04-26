@@ -9,10 +9,11 @@
 * **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** EC2 instance with a highly privileged IAM role attached - validates CSPM detection
 * **Terraform Variable:** `enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** cspm-ec2-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
+* **CTF Flag Location:** ssm-parameter
 * **CSPM Rule ID:** aws-ec2-instance-ec2-instance-should-not-have-a-highly-privileged-iam-role-attached-to-it
 * **CSPM Severity:** high
 * **CSPM Expected Finding:** resource_type=aws_ec2_instance; resource_id=pl-cspm-ec2-001-instance; finding=Instance has role with AdministratorAccess policy attached
@@ -69,6 +70,7 @@ plabs apply
 | `arn:aws:ec2:{region}:{account_id}:instance/pl-cspm-ec2-001-instance` | EC2 instance with privileged role attached |
 | `arn:aws:iam::{account_id}:role/pl-cspm-ec2-001-admin-role` | IAM role with AdministratorAccess attached |
 | `arn:aws:iam::{account_id}:instance-profile/pl-cspm-ec2-001-instance-profile` | Instance profile linking the role to the EC2 instance |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/cspm-ec2-001-to-admin` | CTF flag stored in SSM Parameter Store |
 
 ### Solution
 
@@ -84,7 +86,8 @@ The script will:
 1. Authenticate as a user with only SSM access
 2. Start an SSM session to the instance
 3. Guide you through extracting admin credentials from IMDS
-4. Show the full impact of this misconfiguration
+4. Retrieve the CTF flag from SSM Parameter Store using the stolen admin credentials
+5. Show the full impact of this misconfiguration
 
 #### Resources Created by Attack Script
 

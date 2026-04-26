@@ -20,6 +20,7 @@ type ActionsPane struct {
 	focusedPane        Pane // Which pane is currently focused
 	envEnabled         bool // Selected environment enabled state
 	envDeployed        bool // Selected environment deployed state
+	hasCreds           bool // Selected scenario has accessible credentials
 	width              int
 	height             int
 }
@@ -64,6 +65,11 @@ func (a *ActionsPane) SetFocusedPane(pane Pane) {
 func (a *ActionsPane) SetEnvironment(enabled, deployed bool) {
 	a.envEnabled = enabled
 	a.envDeployed = deployed
+}
+
+// SetHasCreds updates whether the selected scenario has accessible credentials
+func (a *ActionsPane) SetHasCreds(hasCreds bool) {
+	a.hasCreds = hasCreds
 }
 
 // SetSize sets the pane dimensions
@@ -141,8 +147,20 @@ func (a *ActionsPane) View() string {
 	case PaneScenarios:
 		a.renderScenarioActions(&sb)
 	case PaneDetails:
-		sb.WriteString(a.styles.ScenarioDisabled.Render(" View only"))
-		sb.WriteString("\n")
+		if a.hasCreds {
+			sb.WriteString(a.styles.HelpKey.Render(" x"))
+			sb.WriteString(a.styles.HelpDesc.Render("   spawn shell with creds"))
+			sb.WriteString("\n")
+			sb.WriteString(a.styles.HelpKey.Render(" y"))
+			sb.WriteString(a.styles.HelpDesc.Render("   copy as env vars"))
+			sb.WriteString("\n")
+			sb.WriteString(a.styles.HelpKey.Render(" Y"))
+			sb.WriteString(a.styles.HelpDesc.Render("   copy as credentials file"))
+			sb.WriteString("\n")
+		} else {
+			sb.WriteString(a.styles.ScenarioDisabled.Render(" View only"))
+			sb.WriteString("\n")
+		}
 	}
 
 	return a.wrapInPanel(sb.String())

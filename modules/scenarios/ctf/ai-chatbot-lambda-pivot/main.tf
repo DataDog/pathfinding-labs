@@ -213,9 +213,9 @@ resource "aws_lambda_function" "target" {
 # The flag - readable only with admin credentials
 resource "aws_ssm_parameter" "flag" {
   provider = aws.prod
-  name     = "/ctf/ctf-002/flag"
-  type     = "SecureString"
-  value    = "FLAG{ch41ned_pr0mpt_1nj3ct10n_l4mbd4_p1v0t_t0_4dm1n}"
+  name     = "/pathfinding-labs/flags/ctf-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
 
   tags = {
     Name        = "ctf-002-flag"

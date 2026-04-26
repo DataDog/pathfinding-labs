@@ -112,3 +112,5 @@ attackMap:
           command: "aws s3 ls s3://pl-sensitive-data-glue-001-{account_id}-{suffix}/"
         - description: "Read sensitive data from the bucket"
           command: "aws s3 cp s3://pl-sensitive-data-glue-001-{account_id}-{suffix}/sensitive-data.txt -"
+        - description: "Capture the CTF flag from the target bucket"
+          command: "aws s3 cp s3://pl-sensitive-data-glue-001-{account_id}-{suffix}/flag.txt -"

@@ -37,3 +37,14 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "dev:User (${aws_iam_user.starting_user.name}) → (AssumeRole) → prod:Role (${aws_iam_role.target_role.name}) → admin access in prod"
 }
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "SSM Parameter Store name for the CTF flag (requires prod admin access to read)"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM Parameter Store entry for the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint for SSH-based command execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-001
+* **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/glue-001-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
@@ -65,6 +66,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-glue-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-admin-target-role` | Administrative role passed to Glue dev endpoint |
 | `arn:aws:iam::{account_id}:policy/pl-prod-glue-001-to-admin-passrole-policy` | Policy allowing PassRole on target role and glue:CreateDevEndpoint |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-001-to-admin` | CTF flag stored in SSM Parameter Store (readable with admin-equivalent permissions) |
 
 ### Solution
 
@@ -87,6 +89,7 @@ The script will:
 6. Retrieve the endpoint's public address
 7. SSH into the endpoint and execute `aws iam list-users` to verify admin access
 8. Extract and display the caller identity from the endpoint to confirm the admin role is in use
+9. Retrieve the CTF flag from SSM Parameter Store via the SSH session on the endpoint
 
 #### Resources Created by Attack Script
 

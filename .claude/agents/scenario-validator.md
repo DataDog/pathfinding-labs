@@ -130,7 +130,8 @@ Read `main.tf` and verify:
 
 #### Check Variables
 Read `variables.tf` and verify:
-- Contains exactly three variables: `account_id`, `environment`, `resource_suffix`
+- **Non-tool-testing scenarios**: contains four variables: `account_id`, `environment`, `resource_suffix`, and `flag_value` (with `type = string` and `default = "flag{MISSING}"`)
+- **Tool-testing scenarios**: contains exactly three variables: `account_id`, `environment`, `resource_suffix` — no `flag_value` variable
 - Variable types are correct
 - Descriptions are clear
 
@@ -347,6 +348,12 @@ grep "enable_.*_{scenario_name}" terraform.tfvars
 ```
 Should find the variable (usually set to true for testing).
 
+**flags.default.yaml** (non-tool-testing scenarios only):
+```bash
+grep "{scenario-unique-id}" flags.default.yaml
+```
+Should find an entry keyed by the scenario's unique ID (e.g., `iam-002-to-admin`). Verify the key exactly matches the ID used in the root `main.tf` `lookup(var.scenario_flags, ...)` call and in the Terraform flag resource's SSM parameter name or S3 key. Tool-testing scenarios must NOT have an entry in this file.
+
 **README.md**:
 ```bash
 grep "{scenario-name}" README.md
@@ -387,6 +394,30 @@ Resource names should be consistent across:
 - README should reference the correct starting user names
 
 **Public-start scenarios (CTF, CSPM with anonymous entry):** If the attack begins from anonymous/public access, there is no starting IAM user. The demo script should use unauthenticated HTTP calls (curl, etc.) rather than AWS CLI with credentials. The cleanup script still uses admin credentials from Terraform outputs.
+
+#### CTF Flag Consistency (non-tool-testing scenarios only)
+
+For every scenario NOT under `tool-testing/`, verify:
+
+1. **Terraform flag resource exists** and uses the correct pattern:
+   - to-admin: `aws_ssm_parameter.flag` with `name = "/pathfinding-labs/flags/<scenario-unique-id>"`, `type = "String"`, `provider = aws.prod`, `value = var.flag_value`
+   - to-bucket: `aws_s3_object.flag` with `key = "flag.txt"` inside the scenario's existing `aws_s3_bucket.target_bucket`, `content = var.flag_value`
+   - Cross-account: the flag resource still uses `provider = aws.prod` (flag always lives in the account the attacker reaches)
+2. **`variables.tf` declares `flag_value`** with `type = string` and a `"flag{MISSING}"` default.
+3. **`outputs.tf` exposes the flag identifiers**:
+   - to-admin: `flag_ssm_parameter_name` and `flag_ssm_parameter_arn`
+   - to-bucket: `flag_s3_key` and `flag_s3_uri`
+4. **`attack_map.yaml` terminal node is the flag resource**:
+   - to-admin: a new node of `type: resource`, `subType: ssm-parameter`, `isTarget: true`, `arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/<scenario-unique-id>"`; the admin principal has `isAdmin: true` (NOT `isTarget: true`); a final edge from the admin principal to the flag node with `ssm:GetParameter` in `commands`.
+   - to-bucket: the existing target bucket still has `isTarget: true`; the final edge's `commands` array includes `aws s3 cp s3://<bucket>/flag.txt -`; any mid-chain principal with admin-equivalent permissions has `isAdmin: true`.
+5. **No node has both `isTarget: true` and `isAdmin: true`** — they are mutually exclusive.
+6. **README metadata contains `* **CTF Flag Location:** {ssm-parameter|s3-object}`** matching the scenario's `target` field.
+7. **`solution.md` has a `## Capture the Flag` section** between `## Verification` and `## What Happened`. The section includes the retrieval CLI command but never the actual flag value.
+8. **`demo_attack.sh` has a `[EXPLOIT]` flag-capture step** as its final attack action (before `restore_helpful_permissions`). The step reads the flag using the credentials the attack already produced, exits 1 on empty/missing flag, and the final summary banner reads `CTF FLAG CAPTURED!`.
+9. **Root `main.tf` module block** passes `flag_value = lookup(var.scenario_flags, "<scenario-unique-id>", "flag{MISSING}")` into the scenario module.
+10. **`flags.default.yaml` in the repo root** has an entry keyed by the scenario's unique ID.
+
+Tool-testing scenarios are exempt from all of the above; they do not participate in the CTF flag mechanism.
 
 ## Common Issues and Fixes
 
@@ -498,6 +529,7 @@ PROJECT INTEGRATION VALIDATION
   ✓ Entry in terraform.tfvars.example
   ✓ Entry in terraform.tfvars
   ✓ Entry in README.md table
+  ✓ flags.default.yaml entry present (non-tool-testing) / absent (tool-testing)
   ✗ Issue: {description}
     - Fixed: {what was changed}
 

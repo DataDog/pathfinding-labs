@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account role assumption exploiting overly permissive :root trust policy
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -61,6 +62,7 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{dev_account_id}:user/pl-dev-xsarrt-to-admin-starting-user` | Dev account starting user with cross-account AssumeRole permission |
 | `arn:aws:iam::{prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role` | Prod account admin role with DANGEROUS :root trust policy |
+| `arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/root-trust-role-assumption-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal in prod |
 
 ### Solution
 
@@ -77,6 +79,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate how the :root trust allows the assumption
 4. Verify successful cross-account privilege escalation to admin
+5. Capture the CTF flag from SSM Parameter Store using the assumed admin role credentials
 
 
 #### Resources Created by Attack Script

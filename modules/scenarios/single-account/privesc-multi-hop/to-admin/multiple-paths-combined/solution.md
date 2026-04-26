@@ -259,6 +259,22 @@ aws iam list-users --max-items 5 --output table
 
 If `iam:ListUsers` returns results, you have administrator access. The escalation is complete.
 
+## Capture the Flag
+
+Admin access isn't the finish line -- the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which `AdministratorAccess` provides implicitly.
+
+Using the admin role you just assumed (whichever path you took -- EC2, Lambda, or CloudFormation), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/multiple-paths-combined-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  -- your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them -- only the scenario ID in the path changes.
+
 ## What Happened
 
 You started with a low-privilege user that could only assume one role. That role held `iam:PassRole` -- the ability to hand a role's permissions to an AWS service -- combined with permissions to create EC2 instances, Lambda functions, and CloudFormation stacks. You used one of those compute services as a proxy: it ran code under `AdministratorAccess` and used those admin credentials to create a new IAM role that trusts your starting identity.

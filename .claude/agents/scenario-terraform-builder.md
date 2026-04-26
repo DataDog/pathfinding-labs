@@ -27,11 +27,13 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 
 ## Core Responsibilities
 
-1. **Create main.tf** with all IAM resources, roles, policies, and target resources
-2. **Create variables.tf** with standard variables
-3. **Create outputs.tf** with ARNs, attack paths, and credentials
+1. **Create main.tf** with all IAM resources, roles, policies, target resources, and — for non-tool-testing scenarios — the CTF flag resource
+2. **Create variables.tf** with standard variables (including `flag_value` for non-tool-testing scenarios)
+3. **Create outputs.tf** with ARNs, attack paths, credentials, and flag resource identifiers
 
-**CRITICAL**: Every scenario MUST create a scenario-specific starting user with access keys. These credentials MUST be exported to outputs so demo scripts can retrieve them from Terraform. 
+**CRITICAL**: Every scenario MUST create a scenario-specific starting user with access keys. These credentials MUST be exported to outputs so demo scripts can retrieve them from Terraform.
+
+**CRITICAL (CTF flag)**: Every scenario EXCEPT those under `tool-testing/` MUST also create a CTF flag resource whose value is driven by a `flag_value` module input. See the "CTF Flag Resource" section below.
 
 ## Required Input from Orchestrator
 
@@ -241,6 +243,60 @@ resource "aws_s3_object" "sensitive_data" {
 }
 ```
 
+### CTF Flag Resource (all scenarios EXCEPT tool-testing)
+
+Every non-tool-testing scenario ends with a CTF flag resource that the attacker retrieves after successfully exploiting the scenario. The flag value is injected via the `flag_value` variable (populated by plabs from `flags.default.yaml` or a vendor-supplied override file) and stored in either SSM Parameter Store (to-admin) or as an object in the target bucket (to-bucket).
+
+**For `to-admin` scenarios** — add an SSM parameter in the victim (prod) account:
+
+```hcl
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/{scenario-unique-id}"
+  description = "CTF flag for the {scenario-unique-id} scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-{environment}-{scenario-shorthand}-flag"
+    Environment = var.environment
+    Scenario    = "{scenario-name}"
+    Purpose     = "ctf-flag"
+  }
+}
+```
+
+Where `{scenario-unique-id}` is the plabs CLI's unique ID — for scenarios with a `pathfinding-cloud-id` this is `{pathfinding-cloud-id}-{target}` (e.g., `glue-003-to-admin`, `iam-002-to-admin`). Confirm by reading `scenario.yaml` → `pathfinding-cloud-id` and `target`; the orchestrator will typically provide the exact ID in your brief. For scenarios without a pathfinding-cloud-id, use `{scenario-directory-name}-{target}`.
+
+**For `to-bucket` scenarios** — add an S3 object inside the target bucket (do NOT create a new bucket; put it in the scenario's existing target bucket):
+
+```hcl
+# CTF flag stored as an object in the target bucket. Retrieved by the attacker
+# once they gain bucket read access — no extra IAM is required since the
+# successful path already grants s3:GetObject on the bucket.
+resource "aws_s3_object" "flag" {
+  provider     = aws.prod
+  bucket       = aws_s3_bucket.target_bucket.id
+  key          = "flag.txt"
+  content      = var.flag_value
+  content_type = "text/plain"
+
+  tags = {
+    Name        = "pl-{environment}-{scenario-shorthand}-flag"
+    Environment = var.environment
+    Scenario    = "{scenario-name}"
+    Purpose     = "ctf-flag"
+  }
+}
+```
+
+**Cross-account scenarios**: the flag always lives in the account the attacker ultimately reaches (usually `aws.prod`). Set the flag resource's `provider = aws.prod` even when earlier attack steps happen in `aws.dev`/`aws.operations`/`aws.attacker`.
+
+**Tool-testing scenarios**: exempt. Do NOT create a flag resource. Do NOT add a `flag_value` variable. These scenarios exist to test detection engines, not as CTFs.
+
 ### 2. variables.tf (Standard for ALL scenarios)
 
 ```hcl
@@ -258,6 +314,16 @@ variable "environment" {
 variable "resource_suffix" {
   description = "Random suffix for globally unique resources"
   type        = string
+}
+```
+
+**For non-tool-testing scenarios**, also add the CTF flag variable:
+
+```hcl
+variable "flag_value" {
+  description = "CTF flag value stored in the scenario's flag resource. Populated by plabs from flags.default.yaml (or a vendor override). Defaults to flag{MISSING} so the module is deployable in isolation."
+  type        = string
+  default     = "flag{MISSING}"
 }
 ```
 
@@ -340,7 +406,33 @@ output "target_bucket_arn" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-{environment}-{scenario-shorthand}-starting-user) → {describe-the-path} → {target}"
+  value       = "User (pl-{environment}-{scenario-shorthand}-starting-user) → {describe-the-path} → {target} → ssm:GetParameter (or s3:GetObject flag.txt) → CTF flag"
+}
+```
+
+**For non-tool-testing scenarios**, also add flag resource outputs:
+
+```hcl
+# For to-admin scenarios
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
+# For to-bucket scenarios
+output "flag_s3_key" {
+  description = "S3 object key for the CTF flag inside the target bucket"
+  value       = aws_s3_object.flag.key
+}
+
+output "flag_s3_uri" {
+  description = "Full s3:// URI for the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/${aws_s3_object.flag.key}"
 }
 ```
 
@@ -659,6 +751,7 @@ Before considering your work done:
     - Adding `attacker_account_id` variable to variables.tf
     - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
 11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements and `HelpfulForExploitation{Purpose}` for helpful permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `HelpfulForExploitationListRoles`).
+12. **CTF flag resource**: For every scenario EXCEPT those under `tool-testing/`, confirm the flag resource is created in `main.tf` (SSM parameter for to-admin, S3 object inside the target bucket for to-bucket), the `flag_value` variable is declared in `variables.tf` with a `"flag{MISSING}"` default, and the corresponding outputs (`flag_ssm_parameter_name`/`_arn` for to-admin, `flag_s3_key`/`_uri` for to-bucket) are in `outputs.tf`. Do NOT add extra IAM permissions for flag retrieval — the existing attack already produces principals with the access needed (admin has `ssm:GetParameter` implicitly; bucket-access principal already has `s3:GetObject`).
 
 ## Output Format
 

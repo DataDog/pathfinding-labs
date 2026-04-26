@@ -43,6 +43,17 @@ output "existing_interpreter_arn" {
   value       = aws_bedrockagentcore_code_interpreter.existing_interpreter.code_interpreter_arn
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the privilege escalation attack path"

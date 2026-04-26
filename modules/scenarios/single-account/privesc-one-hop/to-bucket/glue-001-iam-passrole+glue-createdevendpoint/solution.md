@@ -119,6 +119,16 @@ You now have full read access to the sensitive bucket -- using the target role's
 
 From inside the SSH session, `aws sts get-caller-identity` should confirm you are operating as `pl-prod-glue-001-to-bucket-target-role`, not the starting user. The `aws s3 ls` and `aws s3 cp` commands should succeed and return the bucket's contents.
 
+## Capture the Flag
+
+With bucket access established via the Glue endpoint SSH session, retrieve the CTF flag directly from the target bucket:
+
+```bash
+aws s3 cp s3://pl-sensitive-data-glue-001-{account_id}-{suffix}/flag.txt -
+```
+
+The flag is stored as a plain-text S3 object. The `aws s3 cp ... -` syntax streams the object contents to stdout rather than writing to a file. The target role's `s3:GetObject` permission on the bucket is what grants access -- the same permission used to read the sensitive data file.
+
 ## What Happened
 
 You exploited the combination of `iam:PassRole` and `glue:CreateDevEndpoint` to spin up a persistent compute environment that assumed a privileged IAM role on your behalf. The Glue service accepted the role because AWS trusts the `glue.amazonaws.com` service principal, and your starting user had explicit permission to pass that role to Glue.

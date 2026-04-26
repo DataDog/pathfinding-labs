@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** SSH into EC2 instance with privileged role and extract credentials via IMDS
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ec2-003
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-ec2-admin-role` | Admin role attached to the EC2 instance profile |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with the admin role attached via instance profile |
 | `arn:aws:ec2:{region}:{account_id}:security-group/sg-xxxxxxxxx` | Security group allowing SSH access (port 22) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -85,6 +87,7 @@ The script will:
 5. Establish an SSH connection to the instance
 6. Extract role credentials from IMDSv2
 7. Verify successful privilege escalation to administrator access
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

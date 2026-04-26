@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying EC2 launch templates to change instance profiles and inject malicious user data for next instance launch
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ec2-005
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
@@ -69,6 +70,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-lowpriv-role` | Low-privilege role initially configured in the launch template |
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-005-to-admin-target-role` | Administrative role that will be passed to the modified launch template |
 | `arn:aws:ec2:{region}:{account_id}:launch-template/pl-prod-ec2-005-to-admin-template` | EC2 launch template that can be modified to include admin role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-005-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -87,6 +89,7 @@ The script will:
 4. Modify the template to use the new malicious version as default
 5. Launch an EC2 instance to demonstrate the privilege escalation
 6. Verify successful privilege escalation
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 **Cost Warning:** This demo launches a t3.micro spot instance which will incur small charges (~$0.01-0.05/hour). The cleanup script terminates all instances to minimize costs.

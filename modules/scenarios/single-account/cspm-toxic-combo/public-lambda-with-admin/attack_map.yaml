@@ -28,13 +28,26 @@ attackMap:
       label: "Admin Execution Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-public-lambda-admin-role"
       description: >
         This IAM role is the Lambda execution role with AdministratorAccess attached. By
         invoking the public Lambda function URL and extracting the temporary credentials
         from the response, you can operate as this role and perform any action in the AWS
-        account.
+        account. AdministratorAccess grants ssm:GetParameter on all parameters, so the
+        extracted credentials can be used directly to capture the scenario's CTF flag.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/public-lambda-with-admin-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the account.
+        Retrieving it requires the Lambda execution role's temporary credentials extracted
+        in the previous step. AdministratorAccess on the role grants ssm:GetParameter
+        implicitly — use the extracted credentials to read the parameter value.
 
   edges:
     - from: public-lambda
@@ -58,3 +71,20 @@ attackMap:
           command: "curl -s https://<function-url-id>.lambda-url.<region>.on.aws/"
         - description: "Verify the extracted credentials grant admin access"
           command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws sts get-caller-identity"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the admin execution role's temporary credentials in hand, retrieve the
+        scenario flag from SSM Parameter Store. The credentials were injected into the
+        Lambda environment by the AWS runtime and returned in the function's HTTP response.
+        AdministratorAccess grants ssm:GetParameter on all parameters in the account, so
+        no additional permissions are needed beyond the credentials already extracted.
+      hints:
+        - "You now hold the Lambda execution role's temporary credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Export the extracted credentials and use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store using the extracted Lambda role credentials"
+          command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws ssm get-parameter --name /pathfinding-labs/flags/public-lambda-with-admin-to-admin --query 'Parameter.Value' --output text"

@@ -49,7 +49,18 @@ output "escalated_role_name" {
   value       = "pl-prod-cloudformation-003-to-admin-escalated-role"
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-cloudformation-003-to-admin-starting-user) → PassRole + CreateStackSet → StackSet passes execution role (pl-prod-cloudformation-003-to-admin-execution-role) → CloudFormation creates escalated role (pl-prod-cloudformation-003-to-admin-escalated-role) with admin access → Assume escalated role → Admin access"
+  value       = "User (pl-prod-cloudformation-003-to-admin-starting-user) → PassRole + CreateStackSet → StackSet passes execution role (pl-prod-cloudformation-003-to-admin-execution-role) → CloudFormation creates escalated role (pl-prod-cloudformation-003-to-admin-escalated-role) with admin access → Assume escalated role → ssm:GetParameter → CTF flag"
 }

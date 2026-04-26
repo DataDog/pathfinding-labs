@@ -34,12 +34,25 @@ attackMap:
       label: "Prod Target Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{prod_account_id}:role/pl-x-account-prod-target-role"
       description: >
         This IAM role in the production account trusts the operations account, allowing
         the ops role to assume it via sts:AssumeRole. It carries admin-level permissions,
         giving you full control of the production account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the production account.
+        Retrieving it requires admin-equivalent permissions on the prod account (ssm:GetParameter
+        is granted implicitly by AdministratorAccess or the admin-level policy on the assumed
+        prod target role). Your goal is to read this parameter using the admin access gained
+        from the previous step.
 
   edges:
     - from: starting-user
@@ -85,3 +98,19 @@ attackMap:
           command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-x-account-prod-target-role --role-session-name prod-session"
         - description: "Verify you are now operating in the production account"
           command: "aws sts get-caller-identity"
+
+    - from: prod-target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With admin-level credentials from the assumed prod target role, retrieve the
+        scenario flag from SSM Parameter Store. The admin policy on the prod target role
+        grants ssm:GetParameter on all parameters, so no additional permissions are needed
+        beyond the access you just gained.
+      hints:
+        - "You now hold credentials for an admin-level prod role. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin --query 'Parameter.Value' --output text"

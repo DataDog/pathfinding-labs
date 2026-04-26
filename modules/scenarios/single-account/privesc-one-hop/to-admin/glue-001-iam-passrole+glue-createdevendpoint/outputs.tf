@@ -37,3 +37,9 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user → (iam:PassRole + glue:CreateDevEndpoint) → Glue dev endpoint with admin role → SSH access → (aws iam list-users) → admin access"
 }
+
+# CTF flag SSM parameter name
+output "flag_ssm_parameter_name" {
+  description = "SSM parameter name containing the CTF flag (readable after successful privilege escalation)"
+  value       = aws_ssm_parameter.flag.name
+}

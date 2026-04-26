@@ -161,3 +161,22 @@ resource "aws_cloudformation_stack" "vulnerable_stack" {
     Purpose     = "vulnerable-stack"
   }
 }
+
+# CTF flag stored in SSM Parameter Store.
+# Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+# granted implicitly by AdministratorAccess). The escalated role assumed at the end
+# of the attack path provides the necessary access.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/cloudformation-002-to-admin"
+  description = "CTF flag for the cloudformation-002 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-cloudformation-002-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "cloudformation-updatestack"
+    Purpose     = "ctf-flag"
+  }
+}

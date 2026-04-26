@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged role to AWS Glue Interactive Session and run Python code to escalate privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** glue-007
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
 
@@ -66,6 +67,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-glue-007-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-glue-007-to-admin-admin-role` | Administrative role passed to Glue Interactive Session |
 | Inline policy: `pl-prod-glue-007-to-admin-starting-user-policy` | Policy granting PassRole, CreateSession, RunStatement, GetSession, GetStatement, and DeleteSession permissions |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-007-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 4. Wait for the session to become ready
 5. Execute a Python statement that attaches AdministratorAccess to the starting user
 6. Verify successful privilege escalation by demonstrating admin access
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

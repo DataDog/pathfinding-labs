@@ -90,7 +90,7 @@ attackMap:
       label: "Admin User (frick)"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-8min-frick"
       description: >
         pl-prod-8min-frick is the account's administrative IAM user with AdministratorAccess
@@ -100,6 +100,19 @@ attackMap:
         With frick's credentials the attacker can create backdoor accounts, access all secrets and
         parameters, invoke Bedrock models, and — as happened in the original attack — launch GPU
         instances for ML model training at the account owner's expense.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin"
+      description: >
+        The CTF flag is stored in SSM Parameter Store at
+        /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin. It is readable only
+        by principals with ssm:GetParameter on that path — which requires administrative
+        access. Retrieving this parameter confirms you have successfully escalated to admin
+        via pl-prod-8min-frick and completes the scenario objective.
 
     - id: persistence-identities
       label: "Persistence Identities"
@@ -273,3 +286,16 @@ attackMap:
         - "After gaining admin, the priority is persistence. Spread across as many identities as possible so that revoking one doesn't cut off access."
         - "Assume roles with different session names to distribute CloudTrail entries — this makes incident response harder because the same role appears under multiple session identifiers."
         - "Create access keys for pre-existing service accounts. These are less likely to trigger alerts than newly created users because the accounts already have established usage patterns."
+
+    - from: frick-admin-user
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        Read the CTF flag from SSM Parameter Store using the admin credentials obtained via
+        Lambda injection. This confirms full administrative access has been achieved and
+        completes the scenario objective.
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin --query Parameter.Value --output text"
+      hints:
+        - "You have admin credentials for pl-prod-8min-frick. Use ssm:GetParameter to read the flag stored at /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin."

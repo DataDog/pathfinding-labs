@@ -47,3 +47,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-sagemaker-003-to-admin-starting-user) → Upload malicious script to S3 → CreateProcessingJob with admin role (pl-prod-sagemaker-003-to-admin-passable-role) → Processing job executes script with admin privileges → Script grants admin access to starting user"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -48,3 +48,14 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user → (iam:PassRole + glue:CreateDevEndpoint) → Glue dev endpoint with S3 role → SSH access → (aws s3 cp) → sensitive bucket access"
 }
+
+# CTF flag outputs
+output "flag_s3_key" {
+  description = "S3 object key for the CTF flag file in the target bucket"
+  value       = aws_s3_object.flag.key
+}
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.sensitive_bucket.id}/${aws_s3_object.flag.key}"
+}

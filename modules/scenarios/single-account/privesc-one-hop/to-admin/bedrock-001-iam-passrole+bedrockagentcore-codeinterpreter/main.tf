@@ -107,3 +107,19 @@ resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+# CTF flag stored in SSM Parameter Store
+# The attacker must obtain admin credentials and read this parameter to capture the flag
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/bedrock-001-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-bedrock-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+bedrockagentcore-codeinterpreter"
+    Purpose     = "ctf-flag"
+  }
+}

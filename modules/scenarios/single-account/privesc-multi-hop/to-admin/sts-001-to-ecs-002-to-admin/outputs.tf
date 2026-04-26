@@ -60,3 +60,13 @@ output "attack_path" {
   description = "Description of the multi-hop attack path"
   value       = "User (pl-prod-sts001-ecs002-starting-user) -> AssumeRole -> Intermediate Role (pl-prod-sts001-ecs002-intermediate-role) -> PassRole + ECS CreateCluster + RegisterTaskDefinition + RunTask -> Admin Role (pl-prod-sts001-ecs002-admin-role) via ECS task -> Admin Access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

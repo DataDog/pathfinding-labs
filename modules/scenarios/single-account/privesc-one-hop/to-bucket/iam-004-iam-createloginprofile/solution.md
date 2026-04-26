@@ -78,6 +78,22 @@ aws s3 ls s3://pl-sensitive-data-iam-004-{account_id}/
 aws s3 cp s3://pl-sensitive-data-iam-004-{account_id}/sensitive-data.txt .
 ```
 
+## Capture the Flag
+
+The target bucket contains a `flag.txt` object. After creating the login profile for the hop1 user and authenticating as them, read the flag directly from the bucket:
+
+```bash
+aws s3 cp s3://$BUCKET_NAME/flag.txt -
+```
+
+Replace `$BUCKET_NAME` with the actual bucket name (e.g., `pl-sensitive-data-iam-004-{account_id}-{suffix}`). You can find the exact name from the Terraform output:
+
+```bash
+terraform output -json | jq -r '.single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile.value.sensitive_bucket_name'
+```
+
+The flag value printed to stdout is your proof of successful exploitation.
+
 ## What Happened
 
 You started with a single IAM permission — `iam:CreateLoginProfile` on a specific user — and used it to bootstrap console access for that user. Because the hop1 user already had S3 read permissions, gaining the ability to authenticate as them was sufficient to reach the sensitive data.

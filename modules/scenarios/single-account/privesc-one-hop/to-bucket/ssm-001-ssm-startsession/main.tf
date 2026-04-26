@@ -97,6 +97,13 @@ resource "aws_s3_object" "sensitive_data" {
   content  = "This is sensitive data that should only be accessible to authorized principals. If you can read this, you have successfully extracted EC2 instance credentials via SSM StartSession."
 }
 
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+
 # ==============================================================================
 # SCENARIO-SPECIFIC STARTING USER
 # ==============================================================================

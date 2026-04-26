@@ -155,8 +155,13 @@ func runShow(cmd *cobra.Command, args []string) error {
 	if len(scenario.Permissions.Required) > 0 {
 		fmt.Println()
 		fmt.Printf("  %s\n", cyan("Required Permissions"))
-		for _, perm := range scenario.Permissions.Required {
-			fmt.Printf("    %s %s\n", dim("*"), perm.Permission)
+		for _, entry := range scenario.Permissions.Required {
+			if entry.Principal != "" {
+				fmt.Printf("    %s\n", dim(entry.Principal))
+			}
+			for _, perm := range entry.Permissions {
+				fmt.Printf("      %s %s\n", dim("*"), perm.Permission)
+			}
 		}
 	}
 

@@ -115,6 +115,20 @@ aws iam list-attached-user-policies \
 # AdministratorAccess
 ```
 
+## Capture the Flag
+
+With `AdministratorAccess` now attached to your starting user, retrieve the scenario flag from SSM Parameter Store. `AdministratorAccess` grants `ssm:GetParameter` implicitly — no additional permissions are needed.
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/apprunner-002-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 The attack chain was: `pl-prod-apprunner-002-to-admin-starting-user` used `apprunner:UpdateService` to swap the running container and inject a `StartCommand`. When App Runner redeployed the service, it executed the command as `pl-prod-apprunner-002-to-admin-target-role` — a role with full IAM permissions — which attached `AdministratorAccess` to the starting user.

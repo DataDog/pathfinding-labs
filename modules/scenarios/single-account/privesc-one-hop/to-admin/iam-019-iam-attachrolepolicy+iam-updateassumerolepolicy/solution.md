@@ -128,6 +128,22 @@ aws iam list-users --max-items 3 --output table
 # Successfully lists IAM users -- admin access confirmed
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which `AdministratorAccess` — now held by the assumed role session — provides implicitly.
+
+Using the role session credentials active from the previous step (the assumed `pl-prod-iam-019-to-admin-target-role` session), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/iam-019-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You started with two carefully scoped permissions on a low-privilege IAM user. By using `iam:AttachRolePolicy` you gave a dormant role full administrative power. By using `iam:UpdateAssumeRolePolicy` you opened the door for yourself to walk through. Neither action required admin credentials — both were permitted by the starting user's inline policy. The final `sts:AssumeRole` call didn't require any explicit permission on your user at all, because the trust policy grant came from the role's side.

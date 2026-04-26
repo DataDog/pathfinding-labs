@@ -202,3 +202,16 @@ resource "aws_instance" "target" {
     Purpose     = "target-instance"
   }
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/ssm-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-ssm-002-to-admin-flag"
+    Scenario = "ssm-002-ssm-sendcommand"
+    Purpose  = "ctf-flag"
+  }
+}

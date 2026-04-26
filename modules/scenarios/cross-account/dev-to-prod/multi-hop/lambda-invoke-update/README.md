@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account Lambda function code injection to extract admin credentials
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1552.005 - Cloud Instance Metadata API
 
@@ -63,6 +64,7 @@ plabs apply
 | `arn:aws:iam::{DEV_ACCOUNT}:role/pl-dev-lambda-invoke-role` | Dev role with cross-account Lambda invoke and update permissions |
 | `arn:aws:lambda:{REGION}:{PROD_ACCOUNT}:function:pl-prod-hello-world` | Prod Lambda function vulnerable to code injection |
 | `arn:aws:iam::{PROD_ACCOUNT}:role/pl-prod-lambda-execution-role` | Prod Lambda execution role with AdministratorAccess |
+| `arn:aws:ssm:{REGION}:{PROD_ACCOUNT}:parameter/pathfinding-labs/flags/lambda-invoke-update-to-admin` | CTF flag stored in SSM Parameter Store (requires admin access to read) |
 
 ### Solution
 
@@ -81,7 +83,8 @@ The script will:
 3. Create malicious Python code for credential extraction
 4. Update the prod Lambda function with the malicious code using `lambda:UpdateFunctionCode`
 5. Invoke the malicious function using `lambda:InvokeFunction`
-6. Display the extracted prod Lambda execution role credentials and confirm admin access
+6. Export the extracted prod Lambda execution role credentials (AdministratorAccess)
+7. Capture the CTF flag from SSM Parameter Store using `ssm:GetParameter`
 
 #### Resources Created by Attack Script
 

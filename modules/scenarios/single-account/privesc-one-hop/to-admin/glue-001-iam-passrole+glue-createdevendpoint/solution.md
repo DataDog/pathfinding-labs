@@ -132,6 +132,19 @@ ssh $SSH_OPTIONS -i /tmp/glue-key "glue@${ENDPOINT_ADDRESS}" \
 
 The returned ARN should contain `pl-prod-glue-001-to-admin-target-role`, confirming that the endpoint is operating with the admin role's credentials. You now have full `AdministratorAccess` in this AWS account via the Glue dev endpoint.
 
+## Capture the Flag
+
+With the Glue dev endpoint running as the admin role, you can execute any AWS CLI command from within the SSH session. Retrieve the CTF flag directly from SSM Parameter Store — no additional credential setup is needed because the endpoint already holds the admin role's credentials:
+
+```bash
+SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+
+ssh $SSH_OPTIONS -i /tmp/glue-key "glue@${ENDPOINT_ADDRESS}" \
+  "aws ssm get-parameter --name /pathfinding-labs/flags/glue-001-to-admin --query 'Parameter.Value' --output text"
+```
+
+The `AdministratorAccess` policy attached to the target role implicitly grants `ssm:GetParameter`, so the call succeeds and returns the flag value.
+
 ## What Happened
 
 You exploited the combination of two IAM permissions: `iam:PassRole` allowed you to nominate the admin role when creating a Glue resource, and `glue:CreateDevEndpoint` let you create a compute environment that assumed that role. By SSHing into the endpoint, you accessed an interactive shell running under the admin role's identity — effectively side-stepping any direct IAM restrictions on your own user.

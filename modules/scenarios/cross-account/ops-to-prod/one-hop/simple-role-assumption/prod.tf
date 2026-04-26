@@ -66,3 +66,16 @@ resource "aws_iam_role" "prod_admin_role" {
     ]
   })
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-ops-to-prod-simple-role-assumption-to-admin-flag"
+    Scenario = "ops-to-prod-simple-role-assumption"
+    Purpose  = "ctf-flag"
+  }
+}

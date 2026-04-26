@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** Update existing MWAA environment's DAG source bucket to attacker-controlled bucket containing malicious DAG that executes with admin credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** mwaa-002
+* **CTF Flag Location:** ssm-parameter
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098 - Account Manipulation, T1059 - Command and Scripting Interpreter
@@ -72,6 +73,7 @@ plabs apply
 | `arn:aws:ec2:{region}:{account_id}:vpc/pl-prod-mwaa-002-vpc` | Dedicated VPC with private subnets and NAT Gateway for MWAA |
 | `arn:aws:s3:::pl-mwaa-002-legitimate-bucket-{account_id}-{suffix}` | Original S3 bucket containing DAGs folder for the MWAA environment |
 | `arn:aws:s3:::pl-mwaa-002-attacker-bucket-{account_id}-{suffix}` | Attacker's S3 bucket containing the malicious DAG |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/mwaa-002-to-admin` | CTF flag stored in SSM Parameter Store; readable only with admin-level credentials |
 
 ### Solution
 
@@ -98,6 +100,7 @@ The script will:
 5. Wait for DAG synchronization (60 seconds)
 6. Obtain a CLI token and trigger the malicious DAG
 7. Verify successful privilege escalation by demonstrating admin access
+8. Capture the CTF flag from SSM Parameter Store using the now-elevated starting user credentials
 
 
 #### Resources Created by Attack Script

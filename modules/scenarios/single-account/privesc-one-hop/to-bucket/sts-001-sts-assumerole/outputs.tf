@@ -34,3 +34,8 @@ output "attack_path" {
   value       = "User (pl-prod-sts-001-to-bucket-starting-user) → AssumeRole → pl-prod-sts-001-to-bucket-access-role → S3 Bucket Access"
 }
 
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/flag.txt"
+}
+

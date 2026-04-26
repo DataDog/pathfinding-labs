@@ -33,12 +33,25 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-glue-001-to-admin-target-role"
       description: >
         This IAM role has AdministratorAccess. By passing it to the Glue dev endpoint
         and SSHing into that endpoint, you can execute AWS CLI commands with full
-        administrative permissions in this AWS account.
+        administrative permissions in this AWS account. Admin-equivalent access is then
+        used to read the scenario's CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/glue-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained by SSHing into the Glue dev endpoint.
 
   edges:
     - from: starting-user
@@ -81,3 +94,20 @@ attackMap:
           command: "ssh -o StrictHostKeyChecking=no -i /tmp/glue-key glue@<endpoint-public-address> 'aws iam list-users --max-items 3 --output table'"
         - description: "Confirm the admin role identity on the endpoint"
           command: "ssh -o StrictHostKeyChecking=no -i /tmp/glue-key glue@<endpoint-public-address> 'aws sts get-caller-identity'"
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator-equivalent permissions available via the Glue dev endpoint,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account. Execute the command from
+        within the SSH session on the endpoint, where the admin role's credentials are
+        automatically available.
+      hints:
+        - "You now hold admin-equivalent credentials via the SSH session on the Glue dev endpoint. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store (run inside the SSH session)"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/glue-001-to-admin --query 'Parameter.Value' --output text"

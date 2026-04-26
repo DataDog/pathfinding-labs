@@ -14,3 +14,9 @@ variable "resource_suffix" {
   type        = string
 }
 
+variable "flag_value" {
+  description = "CTF flag value to store in the target S3 bucket"
+  type        = string
+  default     = "flag{MISSING}"
+}
+

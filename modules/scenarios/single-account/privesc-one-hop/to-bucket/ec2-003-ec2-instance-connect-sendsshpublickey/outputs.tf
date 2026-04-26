@@ -88,3 +88,17 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (${aws_iam_user.starting_user.name}) → (ec2-instance-connect:SendSSHPublicKey) → EC2 instance (${aws_instance.target.id}) → (IMDS credential extraction) → S3 bucket access (${aws_s3_bucket.target_bucket.id})"
 }
+
+# =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_s3_key" {
+  description = "S3 object key for the CTF flag file in the target bucket"
+  value       = aws_s3_object.flag.key
+}
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/${aws_s3_object.flag.key}"
+}

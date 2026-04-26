@@ -97,3 +97,13 @@ resource "aws_s3_object" "sensitive_file" {
   etag     = md5("🎉 SUCCESS! You've accessed the S3 bucket via iam:CreateAccessKey privilege escalation.\n\nFlag: PATHFINDER-CREATEACCESSKEY-TO-BUCKET-2024")
 }
 
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully creating access keys for the bucket access user and using those credentials
+# to read from the target bucket. Readable by any principal with s3:GetObject on this bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+

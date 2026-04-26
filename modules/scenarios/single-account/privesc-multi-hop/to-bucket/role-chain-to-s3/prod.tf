@@ -70,8 +70,7 @@ resource "aws_s3_object" "flag_file" {
   provider = aws.prod
   bucket   = aws_s3_bucket.prod_role_chain_destination.id
   key      = "flag.txt"
-  content  = "🎉 CONGRATULATIONS! You have successfully exploited the 3-hop role assumption chain!\n\nThis file demonstrates that an attacker can gain access to sensitive S3 data by exploiting trust relationships between IAM roles.\n\nAttack Path:\n1. Initial Role → Intermediate Role → S3 Access Role → S3 Bucket\n2. IAM User → Intermediate Role → S3 Access Role → S3 Bucket\n\nThis is a common privilege escalation technique in AWS environments.\n\nFlag: PATHFINDER-ROLE-CHAIN-EXPLOIT-2024"
-  etag     = md5("🎉 CONGRATULATIONS! You have successfully exploited the 3-hop role assumption chain!\n\nThis file demonstrates that an attacker can gain access to sensitive S3 data by exploiting trust relationships between IAM roles.\n\nAttack Path:\n1. Initial Role → Intermediate Role → S3 Access Role → S3 Bucket\n2. IAM User → Intermediate Role → S3 Access Role → S3 Bucket\n\nThis is a common privilege escalation technique in AWS environments.\n\nFlag: PATHFINDER-ROLE-CHAIN-EXPLOIT-2024")
+  content  = var.flag_value
 }
 
 # Role 3: Final role with S3 access (can be assumed by Role 2)

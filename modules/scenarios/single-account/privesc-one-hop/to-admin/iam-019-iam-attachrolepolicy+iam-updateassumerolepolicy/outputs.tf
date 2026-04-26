@@ -37,3 +37,9 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (${aws_iam_user.starting_user.name}) → iam:AttachRolePolicy (attach AdministratorAccess to ${aws_iam_role.target_role.name}) → iam:UpdateAssumeRolePolicy (modify ${aws_iam_role.target_role.name} trust policy) → sts:AssumeRole → Admin Access"
 }
+
+# CTF flag output
+output "flag_ssm_parameter_name" {
+  description = "SSM Parameter Store name containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}

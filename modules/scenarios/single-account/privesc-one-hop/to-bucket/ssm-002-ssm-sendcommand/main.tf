@@ -274,3 +274,11 @@ resource "aws_instance" "target" {
     Purpose     = "target-instance"
   }
 }
+
+# CTF flag object in the target S3 bucket
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.target_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}

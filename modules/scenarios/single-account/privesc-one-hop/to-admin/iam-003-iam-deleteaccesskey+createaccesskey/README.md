@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Bypassing AWS's 2-access-key limit by deleting an existing key before creating a new one for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-003
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -65,6 +66,7 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions to delete and create access keys |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-admin-target-user` | Target admin user with AdministratorAccess managed policy attached and 2 pre-existing access keys |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -81,6 +83,7 @@ The script will:
 2. Show the commands being executed and their results
 3. Demonstrate bypassing the 2-key limit by deleting an existing key
 4. Verify successful privilege escalation
+5. Capture the CTF flag from SSM Parameter Store
 
 
 #### Resources Created by Attack Script

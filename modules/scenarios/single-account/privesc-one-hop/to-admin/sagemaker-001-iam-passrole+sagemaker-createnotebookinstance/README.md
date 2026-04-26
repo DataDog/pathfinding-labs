@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sagemaker-001
+* **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/sagemaker-001-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
 
@@ -68,6 +69,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-001-to-admin-starting-user` | Scenario-specific starting user with access keys |
 | `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-001-to-admin-passable-role` | Admin role that can be passed to SageMaker notebook instances (trusted by sagemaker.amazonaws.com) |
 | Policy attached to starting user | Grants `iam:PassRole` on passable role, `sagemaker:CreateNotebookInstance`, and `sagemaker:CreatePresignedNotebookInstanceUrl` |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sagemaker-001-to-admin` | SSM parameter holding the CTF flag; readable only with admin permissions |
 
 ### Solution
 
@@ -87,6 +89,7 @@ The script will:
 5. Generate a presigned URL for accessing the notebook
 6. Display instructions for accessing the Jupyter terminal and executing commands
 7. Verify successful privilege escalation
+8. Capture the CTF flag from SSM Parameter Store using the newly-gained admin credentials
 
 
 **Note**: The notebook instance will incur costs (~$0.05/hour for ml.t3.medium instance type). The cleanup script should be run promptly after testing.

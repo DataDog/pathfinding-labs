@@ -34,12 +34,24 @@ attackMap:
       label: "Admin Notebook Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-sagemaker-004-to-admin-notebook-role"
       description: >
         This IAM role is attached as the execution role of the SageMaker notebook instance.
         It has AdministratorAccess, meaning any code or terminal command run inside the notebook
         operates with full administrative privileges in the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sagemaker-004-to-admin"
+      description: >
+        The CTF flag stored in AWS Systems Manager Parameter Store. Reading this parameter
+        proves end-to-end exploitation of the privilege escalation path. The AdministratorAccess
+        policy attached to the starting user during the attack grants the ssm:GetParameter
+        permission needed to retrieve it.
 
   edges:
     - from: starting-principal
@@ -86,3 +98,18 @@ attackMap:
           command: "aws iam attach-user-policy --user-name pl-prod-sagemaker-004-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
         - description: "Verify administrative access by listing IAM users (run from original terminal after propagation)"
           command: "aws iam list-users --max-items 3 --output table"
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Use the administrative access now granted to the starting user to read the CTF flag
+        from AWS Systems Manager Parameter Store. The AdministratorAccess policy implicitly
+        grants ssm:GetParameter on this parameter.
+      hints:
+        - "The flag lives in SSM Parameter Store under the /pathfinding-labs/flags/ prefix."
+        - "The parameter name follows the pattern /pathfinding-labs/flags/{scenario-id}-to-admin."
+        - "Use aws ssm get-parameter with the --query flag to extract just the value."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-004-to-admin --query 'Parameter.Value' --output text"

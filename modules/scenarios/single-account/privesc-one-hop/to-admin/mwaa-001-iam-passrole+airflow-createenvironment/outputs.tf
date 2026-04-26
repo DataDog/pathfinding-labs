@@ -89,3 +89,13 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-mwaa-001-to-admin-starting-user) -> iam:PassRole + airflow:CreateEnvironment -> MWAA environment with ${aws_iam_role.admin_role.name} -> startup script executes with admin credentials -> attaches AdministratorAccess to starting user -> admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -163,6 +163,17 @@ aws iam list-users --max-items 3
 
 A successful result confirms full administrative access to the account.
 
+## Capture the Flag
+
+With administrative access established via the extracted credentials, read the CTF flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/bedrock-002-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
 ## What Happened
 
 You started with a minimal set of permissions — `StartCodeInterpreterSession` and `InvokeCodeInterpreter` — which most organizations would consider low-risk "operational" access to an AI/ML workload. However, because `pl-prod-bedrock-002-to-admin-target-role` (AdministratorAccess) was already attached to the interpreter at deploy time, no `iam:PassRole` was needed. By executing a short Python snippet inside the interpreter's Firecracker MicroVM, you were able to query the MicroVM Metadata Service and retrieve live temporary credentials for the admin role.

@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modify another role's inline policy and assume it
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-017
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation
 
@@ -65,6 +66,7 @@ plabs apply
 | -- | -- |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-017-to-admin-starting-user` | Scenario-specific starting user with access keys and inline policy |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-017-to-admin-target-role` | Target role that trusts the starting user and can be modified |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-017-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 5. Wait 15 seconds for IAM policy propagation
 6. Use `sts:AssumeRole` to assume the now-privileged target role
 7. Verify administrator access by listing IAM users
+8. Capture the CTF flag from SSM Parameter Store using the assumed role's admin permissions
 
 #### Resources Created by Attack Script
 

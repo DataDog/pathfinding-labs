@@ -164,6 +164,26 @@ aws iam list-users --max-items 3
 # Successfully lists IAM users -- admin access confirmed
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` permission on the extracted role credentials provides implicitly.
+
+Using the temporary credentials extracted from IMDS (the `AccessKeyId`, `SecretAccessKey`, and `Token` from the admin role), read the flag:
+
+```bash
+export AWS_ACCESS_KEY_ID=<extracted_key>
+export AWS_SECRET_ACCESS_KEY=<extracted_secret>
+export AWS_SESSION_TOKEN=<extracted_token>
+
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/ec2-002-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited the combination of `ec2:StopInstances`, `ec2:ModifyInstanceAttribute`, and `ec2:StartInstances` to gain code execution on an EC2 instance with an attached administrative IAM role. By crafting a cloud-init multipart MIME payload and injecting it as the instance's userData, your script ran automatically at boot time with the permissions of the attached role -- without ever having explicit permission to assume that role.

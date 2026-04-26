@@ -83,7 +83,7 @@ Ask for:
 - Whether a pivot step is involved (e.g., Lambda code update to privileged function)
 - Does the attack start from anonymous public access (no AWS credentials needed), or does the attacker begin with some IAM credentials?
 
-Note: CTF scenarios do still include `demo_attack.sh` — the exploit IS the challenge. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement).
+Note: CTF scenarios do NOT include `demo_attack.sh` — the exploit IS the challenge, so no demo script is provided. They may include `cleanup_attack.sh` if the attack modifies infrastructure state (e.g., Lambda code replacement). The `### Automated Demo` section is omitted from the README for the same reason.
 
 **Attack Simulation:**
 This category has a unique multi-step wizard flow:
@@ -562,6 +562,31 @@ Once you have all required information, you must delegate to these agents **conc
 
 Before launching agents, derive a short `type_brief` from the scenario.yaml. Include this block verbatim in every agent's delegation prompt — it tells the agent what decisions have already been made so it doesn't need to re-derive them.
 
+**Compute the scenario unique ID and flag brief FIRST**, and include the flag brief in every non-tool-testing delegation:
+
+- **Scenario unique ID** (this is the ID plabs uses; agents hardcode it into the SSM path, the `lookup(var.scenario_flags, "<id>", ...)` call, the flags.default.yaml key, and the attack_map terminal node's ARN):
+  - If `scenario.yaml` has `pathfinding-cloud-id`: `{pathfinding-cloud-id}-{target}` (e.g., `glue-003-to-admin`, `iam-002-to-admin`)
+  - Else: `{leaf-directory-name}-{target}` (e.g., `role-chain-to-s3-to-bucket`)
+
+- **Flag brief** (required for every category EXCEPT `Tool Testing`):
+  ```
+  FLAG BRIEF:
+  - CTF Flag Location: ssm-parameter  # if target == to-admin
+    Flag resource: aws_ssm_parameter.flag at /pathfinding-labs/flags/<scenario-unique-id>
+    Retrieved with: aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id> --query 'Parameter.Value' --output text
+  - CTF Flag Location: s3-object        # if target == to-bucket
+    Flag resource: aws_s3_object.flag with key "flag.txt" inside the scenario's target bucket
+    Retrieved with: aws s3 cp s3://<target-bucket>/flag.txt -
+  - flag_value variable: declared in scenario's variables.tf with default "flag{MISSING}"
+  - Root main.tf: passes flag_value = lookup(var.scenario_flags, "<scenario-unique-id>", "flag{MISSING}")
+  - flags.default.yaml entry: <scenario-unique-id>: "flag{<readable_default>}" (alphabetically sorted)
+  - attack_map.yaml terminal: the flag resource carries isTarget: true; admin principals carry isAdmin: true (mutually exclusive)
+  - solution.md: includes a ## Capture the Flag section showing the retrieval command (not the flag value)
+  - demo_attack.sh: final [EXPLOIT] step reads the flag using whatever credentials the attack already produced; banner reads "CTF FLAG CAPTURED!"
+  ```
+
+- **For Tool Testing scenarios**, omit the flag brief entirely and explicitly note: `No CTF flag — tool-testing scenarios are exempt from the flag terminal pattern.`
+
 **Compute the type_brief as follows (pick the matching case):**
 
 **`path_type: "self-escalation"` or `path_type: "one-hop"`:**
@@ -638,7 +663,7 @@ TYPE BRIEF:
 
 ### Step 2: Agents to Launch in Parallel
 
-For each sub-agent, pass the full contents of the scenario.yaml AND the computed type_brief.
+For each sub-agent, pass the full contents of the scenario.yaml, the computed type_brief, AND the computed flag_brief (unless the scenario is tool-testing, in which case include the explicit "No CTF flag" note instead).
 
 1. **scenario-terraform-builder** - Creates all Terraform files
    - Pass: scenario.yaml, type_brief, directory path, provider config.

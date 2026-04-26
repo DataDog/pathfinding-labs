@@ -22,13 +22,25 @@ attackMap:
       label: "Prod Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role"
       description: >
         This IAM role in the production account has AdministratorAccess. Its trust policy
         explicitly trusts the dev account starting user, allowing direct cross-account role
         assumption. By assuming this role you gain full administrative access to the
         production AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{prod_region}:{prod_account_id}:parameter/pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin"
+      description: >
+        The CTF flag is stored in AWS Systems Manager Parameter Store in the production
+        account. Reading it requires the ssm:GetParameter permission, which is available
+        to the prod admin role via AdministratorAccess. Successfully reading this parameter
+        proves you have achieved administrative access in the production account.
 
   edges:
     - from: starting-principal
@@ -49,3 +61,14 @@ attackMap:
           command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-xsare-to-admin-target-role --role-session-name xsare-attack-session"
         - description: "Verify administrative access in the prod account"
           command: "aws iam list-users --max-items 1"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        Read the CTF flag from SSM Parameter Store using the prod admin role's credentials.
+        The AdministratorAccess policy attached to the target role grants ssm:GetParameter
+        on all resources, making this the final step to capture the flag.
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store (run with prod admin role credentials active)"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin --query 'Parameter.Value' --output text"

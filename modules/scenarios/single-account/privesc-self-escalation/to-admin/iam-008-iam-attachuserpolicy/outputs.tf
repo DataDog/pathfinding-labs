@@ -22,10 +22,21 @@ output "starting_user_secret_access_key" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-iam-008-to-admin-starting-user) → AttachUserPolicy (AdministratorAccess) → Admin Access"
+  value       = "User (pl-prod-iam-008-to-admin-starting-user) → AttachUserPolicy (AdministratorAccess) → Admin Access → ssm:GetParameter → CTF flag"
 }
 
 output "next_steps" {
   description = "Instructions for running the demo"
   value       = "Run ./demo_attack.sh to see the privilege escalation in action. The user will attach the AdministratorAccess managed policy to itself."
+}
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }

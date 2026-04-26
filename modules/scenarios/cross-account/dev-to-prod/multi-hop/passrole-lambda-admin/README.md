@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multi-hop cross-account privilege escalation using PassRole to create Lambda with admin role
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_passrole_lambda_admin`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1098 - Account Manipulation
 
@@ -65,6 +66,7 @@ plabs apply
 | `arn:aws:iam::{dev_account_id}:role/pl-lambda-prod-updater` | Dev role assumed by starting user; bridges dev to prod |
 | `arn:aws:iam::{prod_account_id}:role/pl-lambda-updater` | Prod role trusted by dev role; holds PassRole + Lambda permissions |
 | `arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin` | Admin role passable to Lambda; grants full administrative access |
+| `arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/passrole-lambda-admin-to-admin` | CTF flag stored in SSM Parameter Store; readable with admin permissions |
 
 ### Solution
 
@@ -83,7 +85,8 @@ The script will:
 3. **Cross-Account Role Assumption**: Assume the prod lambda-updater role cross-account
 4. **PassRole Abuse**: Create a Lambda function using the admin role
 5. **Admin Verification**: Invoke the Lambda function to confirm admin access
-6. **Cleanup**: Remove the created Lambda function
+6. **Flag Capture**: Retrieve the CTF flag from SSM Parameter Store using Lambda's admin execution role
+7. **Cleanup**: Remove the created Lambda function
 
 #### Resources Created by Attack Script
 

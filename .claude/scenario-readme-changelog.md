@@ -4,6 +4,66 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.6.0 — 2026-04-22
+
+Minor version bump: added `CTF Flag Location` metadata field and the `## Capture the Flag` section in `solution.md`. Pairs with attack map schema v1.4.0.
+
+**Changes:**
+- **Metadata block** — new required field for all non-tool-testing scenarios: `* **CTF Flag Location:** {ssm-parameter|s3-object}`. Placed after `Supports Online Mode` (the previous last conditional field). Indicates the storage mechanism for the scenario's CTF flag; the exact path/key is in the `attack_map.yaml` terminal node ARN.
+- **solution.md structure** — new required section `## Capture the Flag`, positioned between `## Verification` and `## What Happened`. Describes the final flag-retrieval step using the credentials/access gained in the previous sections. Shows the exact CLI command but never the flag value (values are deployment-specific and come from `flags.default.yaml` or a vendor override file).
+- **Compliance checklist** — two new assertions:
+  - Non-tool-testing scenarios must have `CTF Flag Location` in metadata.
+  - Non-tool-testing scenarios' `solution.md` must have a `## Capture the Flag` section.
+- **Schema version pinning** — bumped the hardcoded version reference in the compliance checklist from `4.5.0` to `4.6.0`.
+
+**Motivation:**
+- Pathfinding Labs is shifting from "the attack ends at admin" to a true CTF model where every scenario has a concrete flag to capture. The flag resource (SSM parameter or S3 object) is declared in the scenario's Terraform, exposed by the attack map as the new `isTarget: true` terminal, and retrieved as the last step of the demo script. The README and solution.md need to reflect this final step consistently across all scenarios.
+- A structured `CTF Flag Location` field (rather than prose) lets the pathfinding.cloud frontend and the `plabs` CLI reason about flag storage without natural-language parsing. The exact flag path is already recoverable from `attack_map.yaml` and terraform outputs, so this field only needs to identify the storage pattern.
+- Tool-testing scenarios are exempt: they exist for detection-engine testing rather than CTF gameplay, so they don't get a flag terminal.
+
+**Migration rules:**
+- Applies to every scenario NOT under `tool-testing/` (privesc-self-escalation, privesc-one-hop, privesc-multi-hop, cspm-misconfig, cspm-toxic-combo, attack-simulation, cross-account, ctf).
+- Add `* **CTF Flag Location:** ssm-parameter` to metadata for every `target: to-admin` scenario.
+- Add `* **CTF Flag Location:** s3-object` to metadata for every `target: to-bucket` scenario.
+- Add a `## Capture the Flag` section to `solution.md` between `## Verification` and `## What Happened`. The section shows the appropriate retrieval command (`aws ssm get-parameter ...` for to-admin, `aws s3 cp s3://<bucket>/flag.txt -` for to-bucket) plus a short paragraph explaining why the credentials from the previous step grant flag access.
+- Stamp `Schema Version: 4.6.0`.
+- This migration is executed as part of `scenario-migrator` Phase 5 (CTF Flag Migration), which simultaneously updates Terraform (flag resource + `flag_value` variable), attack_map.yaml (isAdmin/isTarget rewiring per attackmap v1.4.0), demo_attack.sh (final flag-retrieval step), and the root Terraform (`flag_value = lookup(var.scenario_flags, ...)` plumbing). Running the README migration standalone will produce incomplete scenarios; always run Phase 5 end-to-end.
+
+```yaml
+migration:
+  tier: agent
+  scope:
+    field: "category"
+    custom: "all scenarios except those under tool-testing/"
+  requires_scenario_yaml_fields: [target, name]
+  requires_companion_files: true
+  affected_sections:
+    - "metadata_block"
+    - "solution.md"
+  operations:
+    - find: "Schema Version: 4.5.0"
+      replace: "Schema Version: 4.6.0"
+  agent_instructions: |
+    Run only as part of scenario-migrator Phase 5 (CTF Flag Migration). Do NOT run standalone.
+
+    For the README:
+    1. Read scenario.yaml to determine `target` (to-admin or to-bucket).
+    2. Add the appropriate `* **CTF Flag Location:** ssm-parameter` (to-admin) or `* **CTF Flag Location:** s3-object` (to-bucket) line after the existing last conditional metadata field. If the scenario already has a legacy CTF `* **Flag Location:** ...` prose line (ctf/ directory only), keep it — it describes specifics; the new structured enum is orthogonal.
+    3. Stamp `Schema Version: 4.6.0`.
+
+    For solution.md:
+    1. Add a `## Capture the Flag` section between `## Verification` and `## What Happened`.
+    2. Show the exact retrieval command:
+       - to-admin: `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-id> --query 'Parameter.Value' --output text`
+       - to-bucket: `aws s3 cp s3://<bucket-name>/flag.txt -`
+    3. Do NOT include the actual flag value — it is deployment-specific.
+    4. Write 1-2 paragraphs explaining why the credentials obtained in the Exploitation/Verification step grant access to the flag (administrator permissions include ssm:GetParameter; bucket access already includes s3:GetObject).
+
+    Tool-testing scenarios: skip entirely.
+```
+
+---
+
 ## 4.5.0 — 2026-04-18
 
 Minor version bump: added `Supports Online Mode` conditional metadata field.

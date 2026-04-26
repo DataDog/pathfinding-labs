@@ -432,6 +432,19 @@ aws ec2 run-instances \
 plabs cleanup sysdig-8-minutes-to-admin
 ```
 
+## Capture the Flag
+
+With `pl-prod-8min-frick`'s admin credentials active, read the CTF flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin \
+  --query Parameter.Value \
+  --output text
+```
+
+A successful read confirms full administrative access has been achieved and completes the scenario objective.
+
 ## What Happened
 
 You started with a single IAM user that could read one S3 bucket. Inside that bucket was a plaintext credential embedded in a pipeline config file — a developer shortcut that bypassed the credential management tooling entirely. Those embedded credentials belonged to a service account that had write access to a Lambda function. That Lambda function had an execution role that could create IAM credentials for an admin user.

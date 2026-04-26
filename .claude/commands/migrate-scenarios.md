@@ -1,6 +1,6 @@
 ---
 name: migrate-scenarios
-description: Migrates scenarios to the attacker-account, readonly-credentials, per-principal permissions, and demo-restriction pattern, then tests them
+description: Migrates scenarios to the attacker-account, readonly-credentials, per-principal permissions, demo-restriction, and CTF-flag-terminal patterns, then tests them
 tools: Task, Bash, Read, Grep, Glob, Write
 model: inherit
 color: yellow
@@ -8,7 +8,7 @@ color: yellow
 
 # Pathfinding Labs Scenario Migration Orchestrator
 
-You orchestrate the migration of scenarios to the attacker-account, readonly-credentials, per-principal permissions, and demo-restriction pattern, then verify they still work via batched deploy+test cycles.
+You orchestrate the migration of scenarios to the attacker-account, readonly-credentials, per-principal permissions, demo-restriction, and CTF-flag-terminal patterns, then verify they still work via batched deploy+test cycles.
 
 ## Input Parsing
 
@@ -17,7 +17,7 @@ The user invokes you via `/migrate-scenarios` with arguments:
 **Positional arguments**: Specific scenario paths or IDs
 **Flags**:
 - `--all` -- migrate all un-migrated scenarios
-- `--phase=1|2|2.5|3` -- only run a specific phase (default: all applicable phases)
+- `--phase=1|2|2.5|3|5` -- only run a specific phase (default: all applicable phases)
 - `--dry-run` -- analyze only, don't make changes
 - `--skip-tests` -- skip Stage 2 (deploy+test)
 - `--batch-size=N` -- how many scenarios to enable/test at once (default: 5)
@@ -25,8 +25,11 @@ The user invokes you via `/migrate-scenarios` with arguments:
 **Examples**:
 - `/migrate-scenarios --all` -- migrate everything
 - `/migrate-scenarios --all --phase=1 --skip-tests` -- just trim permissions, no deploy
+- `/migrate-scenarios --all --phase=5` -- just add CTF flag terminals
 - `/migrate-scenarios modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey`
 - `/migrate-scenarios --all --batch-size=3`
+
+**Phase 5 note**: Phase 5 (CTF flag terminal) applies to every scenario EXCEPT those under `tool-testing/`. When discovering candidates, exclude tool-testing scenarios from Phase 5 analysis.
 
 ## Stage 1: Discovery & Migration (Code Changes)
 
@@ -48,6 +51,18 @@ Find scenarios with `demo_attack.sh` but without `use_readonly_creds`:
 
 **Phase 3 candidates** (attacker provider):
 Find scenarios with `aws_s3_bucket` resources containing exploit code but without `aws.attacker` in configuration_aliases. Target: mwaa-001, mwaa-002, sagemaker-002, sagemaker-003.
+
+**Phase 5 candidates** (CTF flag terminal):
+Find non-tool-testing scenarios that don't yet have a `flag_value` variable or a flag resource. Exclude `modules/scenarios/tool-testing/**` from the search.
+```
+# scenarios that declare flag_value (already migrated)
+grep -rl "^variable \"flag_value\"" modules/scenarios/ | grep -v tool-testing
+# all non-tool-testing scenarios
+find modules/scenarios -name variables.tf -not -path "*/tool-testing/*"
+# the diff is the Phase 5 candidate set
+```
+
+Or equivalently, find scenarios whose attack_map.yaml still has `isTarget: true` on a principal node rather than on a flag resource (ssm-parameter for to-admin, s3-bucket with `flag.txt` retrieval for to-bucket).
 
 ### Step 2: Present summary
 

@@ -205,3 +205,16 @@ resource "aws_iam_role_policy_attachment" "prod_cloudformation_admin_role" {
   role       = aws_iam_role.prod_cloudformation_admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/multiple-paths-combined-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-multiple-paths-combined-to-admin-flag"
+    Scenario = "multiple-paths-combined"
+    Purpose  = "ctf-flag"
+  }
+}

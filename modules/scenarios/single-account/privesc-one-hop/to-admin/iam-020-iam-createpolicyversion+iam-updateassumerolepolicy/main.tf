@@ -129,3 +129,21 @@ resource "aws_iam_role_policy_attachment" "target_role_custom_policy" {
   role       = aws_iam_role.target_role.name
   policy_arn = aws_iam_policy.target_policy.arn
 }
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/iam-020-to-admin"
+  description = "CTF flag for the iam-020-to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-iam-020-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-020-iam-createpolicyversion+iam-updateassumerolepolicy"
+    Purpose     = "ctf-flag"
+  }
+}

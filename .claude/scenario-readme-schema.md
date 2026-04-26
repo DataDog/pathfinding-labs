@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.5.0`**
+**Current schema version: `4.6.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -99,6 +99,12 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 
 * **Supports Online Mode:** Yes
   <- only if supports_online_mode: true in scenario.yaml
+
+* **CTF Flag Location:** {ssm-parameter|s3-object}
+  <- required on all scenarios EXCEPT those under tool-testing/. Value is the storage mechanism only.
+     - `ssm-parameter` -- all to-admin scenarios. The flag lives at `/pathfinding-labs/flags/{scenario-id}` in SSM Parameter Store in the target account.
+     - `s3-object` -- all to-bucket scenarios. The flag lives as `flag.txt` inside the scenario's target S3 bucket.
+     The exact path/key is documented in the scenario's `attack_map.yaml` terminal node ARN and is retrievable via terraform outputs.
 ```
 
 **CTF scenario additional fields** (in place of Sub-Category, after Cost Estimate):
@@ -417,7 +423,8 @@ A separate file per scenario, located in the same directory as the README. Writt
 4. **Reconnaissance** (`## Reconnaissance`) -- walks through discovery steps using helpful permissions. Narrative tone: "First, let's figure out what we're working with..." Includes AWS CLI commands inline in code blocks.
 5. **Exploitation** (`## Exploitation`) -- step-by-step walkthrough of the attack, matching demo_attack.sh flow. Explains the *why* behind each step, not just the *what*. Multi-hop scenarios use subsections for each hop (e.g., `### Hop 1: ...`).
 6. **Verification** (`## Verification`) -- confirming the escalation worked. "Now let's verify we have admin access..."
-7. **What Happened** (`## What Happened`) -- brief summary of the attack chain, connecting it back to real-world implications. 1-2 paragraphs.
+7. **Capture the Flag** (`## Capture the Flag`) -- the final step, required on every non-tool-testing scenario. Retrieve the CTF flag from its terminal location using the credentials/access you gained in the previous steps. Show the exact AWS CLI command but NOT the flag value (the value is deployment-specific and comes from `flags.default.yaml` or a vendor override). For to-admin scenarios: `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-id> --query 'Parameter.Value' --output text`. For to-bucket scenarios: `aws s3 cp s3://<bucket>/flag.txt -`. 1-2 paragraphs explaining why these credentials grant flag access (admin has `ssm:GetParameter` implicitly via `AdministratorAccess`; bucket-access principal already has `s3:GetObject`).
+8. **What Happened** (`## What Happened`) -- brief summary of the attack chain, connecting it back to real-world implications. 1-2 paragraphs.
 
 **Tone:** Second person ("you"), narrative, educational. Like explaining the attack to a colleague over coffee. Not a dry list of commands -- a story with commands embedded in it.
 
@@ -501,7 +508,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.5.0`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.6.0`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)
@@ -525,3 +532,5 @@ A README is compliant if all of the following are true:
 - [ ] `#### Detonation logs` contains the standard placeholder text
 - [ ] Companion `attack_map.yaml` file exists (validated separately per attackmap schema)
 - [ ] Companion `solution.md` file exists with link from README
+- [ ] *Non-tool-testing scenarios only*: metadata block contains `* **CTF Flag Location:** {ssm-parameter|s3-object}`
+- [ ] *Non-tool-testing scenarios only*: `solution.md` contains a `## Capture the Flag` section that shows the retrieval command (not the value) for the scenario's flag terminal

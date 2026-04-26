@@ -89,6 +89,22 @@ aws iam list-users --max-items 3 --output table
 
 If the table renders cleanly, the `AdministratorAccess` managed policy has been attached to your user and you have full IAM read access — the privilege escalation worked.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now granted to your starting user provides implicitly.
+
+Using your starting user credentials (which, thanks to the previous step, now hold `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/codebuild-003-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited a subtle but powerful trust relationship: the CodeBuild project's service role is assumed automatically during any build, including ones triggered with a buildspec override. Because the project already existed with a privileged role attached, you needed only `codebuild:StartBuildBatch` — no `iam:PassRole`, no `codebuild:CreateProject`. The injected buildspec ran as `pl-prod-codebuild-003-to-admin-target-role`, which had `iam:AttachUserPolicy`, and used that permission to elevate your starting user to full administrator.

@@ -36,3 +36,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-ecs-001-to-admin-starting-user) → ecs:CreateCluster → ecs:RegisterTaskDefinition (with ${aws_iam_role.target_role.name}) → ecs:CreateService (on Fargate) → ECS task launches container that attaches AdministratorAccess to starting user → admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "SSM parameter name containing the CTF flag (readable after reaching admin)"
+  value       = aws_ssm_parameter.flag.name
+}

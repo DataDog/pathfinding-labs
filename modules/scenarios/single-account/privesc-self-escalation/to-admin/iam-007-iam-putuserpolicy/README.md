@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Self-modification via iam:PutUserPolicy to attach inline admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-007
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 
@@ -61,6 +62,7 @@ plabs apply
 | ARN | Purpose |
 | -- | -- |
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-007-to-admin-starting-user` | User with PutUserPolicy permission on itself |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-007-to-admin` | SSM parameter holding the CTF flag |
 
 ### Solution
 
@@ -76,6 +78,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
 3. Verify successful privilege escalation
+4. Capture the CTF flag from SSM Parameter Store using the escalated credentials
 
 
 #### Resources Created by Attack Script

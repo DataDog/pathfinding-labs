@@ -103,6 +103,22 @@ aws s3 ls
 
 All three calls should succeed, confirming you hold admin-level permissions in the prod account.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the full admin policy attached to `pl-Jeremy` provides implicitly.
+
+As `pl-Jeremy` (or using any admin-equivalent credentials obtained through this chain), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/multi-hop-both-sides-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 Starting from a low-privilege dev user, you chained four hops across two AWS accounts to reach prod admin. The critical enablers were: an overly permissive helpdesk role that could create login profiles for admin users, and a cross-account trust relationship that allowed a dev admin to assume a role in prod. Neither misconfiguration is individually catastrophic, but together they form a complete privilege escalation path invisible to single-account policy reviews.

@@ -91,6 +91,27 @@ cat sensitive-data.txt
 
 If you can list objects and download `sensitive-data.txt`, the escalation is complete.
 
+## Capture the Flag
+
+The target S3 bucket contains a `flag.txt` object. Once you are authenticated as `pl-prod-iam-006-to-bucket-user` (either via the console session or any programmatic credentials that user holds), retrieve the flag:
+
+```bash
+BUCKET_NAME="pl-prod-iam-006-to-bucket-sensitive-data-{account_id}"
+aws s3 cp s3://$BUCKET_NAME/flag.txt -
+```
+
+If you logged into the console and obtained temporary credentials from the browser session, you can also run this command with those credentials exported:
+
+```bash
+export AWS_ACCESS_KEY_ID="<session_access_key>"
+export AWS_SECRET_ACCESS_KEY="<session_secret_key>"
+export AWS_SESSION_TOKEN="<session_token>"
+
+aws s3 cp s3://pl-prod-iam-006-to-bucket-sensitive-data-{account_id}/flag.txt -
+```
+
+A successful read returns the flag string. That string is your proof of exploitation.
+
 ## What Happened
 
 You exploited an overly permissive `iam:UpdateLoginProfile` grant. The starting user was never intended to have administrative authority over other users, but the policy scoping allowed it to reset the console password for any user in a specific namespace — including one with sensitive data access.

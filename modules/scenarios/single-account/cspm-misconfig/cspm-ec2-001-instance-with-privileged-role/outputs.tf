@@ -63,3 +63,14 @@ output "misconfiguration_summary" {
   description = "Description of the misconfiguration"
   value       = "EC2 instance ${aws_instance.target.id} has highly privileged role ${aws_iam_role.ec2_admin.name} (AdministratorAccess) attached via instance profile ${aws_iam_instance_profile.ec2_admin.name}"
 }
+
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

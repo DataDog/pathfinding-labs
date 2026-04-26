@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Direct role assumption via sts:AssumeRole
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sts-001
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -63,6 +64,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-admin-starting-user` | Starting user with sts:AssumeRole permission |
 | `arn:aws:iam::{account_id}:role/pl-prod-sts-001-to-admin-target-role` | Admin role with AdministratorAccess policy attached |
 | `arn:aws:iam::aws:policy/AdministratorAccess` | AWS-managed policy granting full admin permissions |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sts-001-to-admin` | CTF flag stored in SSM Parameter Store |
 
 ### Solution
 
@@ -79,6 +81,7 @@ The script will:
 2. Verify identity as the starting user and confirm no admin access
 3. Call `sts:AssumeRole` to directly assume `pl-prod-sts-001-to-admin-target-role`
 4. Verify the new identity and confirm administrator access by listing IAM users
+5. Capture the CTF flag from SSM Parameter Store using the assumed role session credentials
 
 #### Resources Created by Attack Script
 

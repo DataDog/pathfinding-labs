@@ -42,7 +42,18 @@ output "stack_role_name" {
   value       = aws_iam_role.stack_role.name
 }
 
+# CTF flag outputs
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-cloudformation-005-to-admin-starting-user) → cloudformation:CreateChangeSet + ExecuteChangeSet on stack (pl-prod-cloudformation-005-to-admin-target-stack) → stack updates using admin service role (pl-prod-cloudformation-005-to-admin-stack-role) → creates escalated-role with admin access → admin privileges"
+  value       = "User (pl-prod-cloudformation-005-to-admin-starting-user) → cloudformation:CreateChangeSet + ExecuteChangeSet on stack (pl-prod-cloudformation-005-to-admin-target-stack) → stack updates using admin service role (pl-prod-cloudformation-005-to-admin-stack-role) → creates escalated-role with admin access → admin privileges → ssm:GetParameter → CTF flag"
 }

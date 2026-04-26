@@ -98,3 +98,19 @@ resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+# CTF flag stored in prod account SSM Parameter Store
+# The flag is only accessible after gaining admin access in the prod account
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-xsare-to-admin-ctf-flag"
+    Environment = "prod"
+    Scenario    = "simple-role-assumption"
+    Purpose     = "ctf-flag"
+  }
+}

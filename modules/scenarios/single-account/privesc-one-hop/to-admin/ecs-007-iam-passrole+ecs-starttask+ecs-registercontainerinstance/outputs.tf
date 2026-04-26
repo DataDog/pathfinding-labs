@@ -66,3 +66,12 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "instance_role (${aws_iam_role.container_instance.name}) on EC2 (${aws_instance.container_instance.id}) -> (attacker has RCE) -> ecs:RegisterContainerInstance (direct API call with IMDS identity docs) -> reconfigure ECS agent -> ecs:StartTask with --overrides (iam:PassRole admin role + command override) -> ECS task attaches AdministratorAccess to instance role -> admin access"
 }
+
+# =============================================================================
+# CTF FLAG OUTPUT
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "SSM Parameter Store name containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}

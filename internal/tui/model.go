@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -103,6 +106,9 @@ type Model struct {
 	runningCmd  *exec.Cmd
 	cmdScanner  *bufio.Scanner
 	cmdWaitDone chan error
+
+	// Transient status bar message shown after clipboard copy
+	copyToast string
 }
 
 // Message types for async operations
@@ -139,6 +145,12 @@ type interactiveDemoDoneMsg struct {
 	err error
 }
 
+type shellExitMsg struct {
+	err error
+}
+
+type clearCopyToastMsg struct{}
+
 // interactiveDemoCmd wraps a bash command for tea.Exec
 type interactiveDemoCmd struct {
 	cmd *exec.Cmd
@@ -162,7 +174,7 @@ func (c *interactiveDemoCmd) SetStderr(w io.Writer) {
 
 // NewModel creates a new TUI model
 func NewModel(paths *repo.Paths) *Model {
-	styles := DefaultStyles()
+	styles := DefaultStyles(lipgloss.HasDarkBackground())
 	keys := DefaultKeyMap()
 
 	// Filter input
@@ -443,7 +455,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "demo":
 			return m, m.executeDemo(scenarioID)
 		case "cleanup":
-			return m, m.executeCleanup(scenarioID)
+			return m, m.executeCleanup(scenarioID, false)
 		case "cleanupAll":
 			return m, m.executeCleanupQueue()
 		}
@@ -475,6 +487,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Interactive demo finished (TUI was suspended during execution)
 		// Reload scenarios to refresh deployment state
 		return m, m.loadScenarios
+
+	case shellExitMsg:
+		if msg.err != nil {
+			m.overlay.Show(OverlayError, "Shell Error", msg.err.Error())
+		}
+		return m, nil
+
+	case clearCopyToastMsg:
+		m.copyToast = ""
+		return m, nil
 
 	case errMsg:
 		m.err = msg.err
@@ -918,6 +940,21 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Config):
 		m.showConfig()
 		return m, nil
+
+	case key.Matches(msg, m.keys.CopyCredentials):
+		if m.details.HasCreds() {
+			return m, m.copyCredentials()
+		}
+
+	case key.Matches(msg, m.keys.CopyCredentialsProfile):
+		if m.details.HasCreds() {
+			return m, m.copyCredentialsProfile()
+		}
+
+	case key.Matches(msg, m.keys.SpawnShell):
+		if m.details.HasCreds() {
+			return m.spawnShell()
+		}
 	}
 
 	// Pane-specific keys
@@ -1076,11 +1113,97 @@ func (m *Model) updateDetails() {
 	} else {
 		m.details.ClearResources()
 	}
+
+	m.actions.SetHasCreds(m.details.HasCreds())
 }
 
 func (m *Model) updateDetailsForSelected() {
 	// Use cached outputs - no need to re-fetch on every navigation
 	m.updateDetails()
+}
+
+func (m *Model) copyCredentials() tea.Cmd {
+	creds := m.details.Creds()
+	region := ""
+	if m.config != nil {
+		region = m.config.AWS.Prod.Region
+	}
+
+	var lines []string
+	lines = append(lines, "export AWS_ACCESS_KEY_ID="+creds.AccessKeyID)
+	lines = append(lines, "export AWS_SECRET_ACCESS_KEY="+creds.SecretAccessKey)
+	if region != "" {
+		lines = append(lines, "export AWS_DEFAULT_REGION="+region)
+	}
+	if creds.SessionToken != "" {
+		lines = append(lines, "export AWS_SESSION_TOKEN="+creds.SessionToken)
+	}
+
+	if err := clipboard.WriteAll(strings.Join(lines, "\n")); err != nil {
+		m.overlay.Show(OverlayError, "Copy Failed", err.Error())
+		return nil
+	}
+
+	m.copyToast = "Credentials copied as environment variables"
+	return tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
+		return clearCopyToastMsg{}
+	})
+}
+
+func (m *Model) copyCredentialsProfile() tea.Cmd {
+	creds := m.details.Creds()
+	profileName := ""
+	if selected := m.scenariosPane.Selected(); selected != nil {
+		profileName = selected.Scenario.UniqueID()
+	}
+	if profileName == "" {
+		profileName = "pathfinding-lab"
+	}
+
+	var lines []string
+	lines = append(lines, "["+profileName+"]")
+	lines = append(lines, "aws_access_key_id = "+creds.AccessKeyID)
+	lines = append(lines, "aws_secret_access_key = "+creds.SecretAccessKey)
+	if creds.SessionToken != "" {
+		lines = append(lines, "aws_session_token = "+creds.SessionToken)
+	}
+	if m.config != nil && m.config.AWS.Prod.Region != "" {
+		lines = append(lines, "region = "+m.config.AWS.Prod.Region)
+	}
+
+	if err := clipboard.WriteAll(strings.Join(lines, "\n")); err != nil {
+		m.overlay.Show(OverlayError, "Copy Failed", err.Error())
+		return nil
+	}
+
+	m.copyToast = "Credentials copied as ~/.aws/credentials block"
+	return tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
+		return clearCopyToastMsg{}
+	})
+}
+
+func (m *Model) spawnShell() (tea.Model, tea.Cmd) {
+	creds := m.details.Creds()
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/bash"
+	}
+
+	cmd := exec.Command(shell)
+	cmd.Env = append(os.Environ(),
+		"AWS_ACCESS_KEY_ID="+creds.AccessKeyID,
+		"AWS_SECRET_ACCESS_KEY="+creds.SecretAccessKey,
+	)
+	if m.config != nil && m.config.AWS.Prod.Region != "" {
+		cmd.Env = append(cmd.Env, "AWS_DEFAULT_REGION="+m.config.AWS.Prod.Region)
+	}
+	if creds.SessionToken != "" {
+		cmd.Env = append(cmd.Env, "AWS_SESSION_TOKEN="+creds.SessionToken)
+	}
+
+	return m, tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return shellExitMsg{err: err}
+	})
 }
 
 func (m *Model) toggleSelected() tea.Cmd {
@@ -1355,10 +1478,10 @@ func (m *Model) executeCleanupQueue() tea.Cmd {
 	// Pop the first ID from the queue
 	nextID := m.cleanupQueue[0]
 	m.cleanupQueue = m.cleanupQueue[1:]
-	return m.executeCleanup(nextID)
+	return m.executeCleanup(nextID, true)
 }
 
-func (m *Model) executeCleanup(scenarioID string) tea.Cmd {
+func (m *Model) executeCleanup(scenarioID string, skipPause bool) tea.Cmd {
 	// Find scenario by ID
 	var scenario *scenarios.Scenario
 	for _, s := range m.allScenarios {
@@ -1375,6 +1498,10 @@ func (m *Model) executeCleanup(scenarioID string) tea.Cmd {
 	cleanupDir := filepath.Dir(cleanupPath)
 
 	// Wrap the script to pause before returning to TUI so users can see output
+	pauseSnippet := `echo "Press Enter to return to TUI..."; read`
+	if skipPause {
+		pauseSnippet = ""
+	}
 	wrapperScript := fmt.Sprintf(`
 		bash %q
 		exit_code=$?
@@ -1385,10 +1512,9 @@ func (m *Model) executeCleanup(scenarioID string) tea.Cmd {
 			echo -e "\033[0;31m[Cleanup failed with exit code $exit_code]\033[0m"
 		fi
 		echo ""
-		echo "Press Enter to return to TUI..."
-		read
+		%s
 		exit $exit_code
-	`, cleanupPath)
+	`, cleanupPath, pauseSnippet)
 
 	cmd := exec.Command("bash", "-c", wrapperScript)
 	cmd.Dir = cleanupDir
@@ -2278,33 +2404,38 @@ func (m *Model) renderStatusBar() string {
 	deployedCount := m.scenariosPane.GetDeployedCount()
 
 	// Colors with status bar background
-	statusBg := lipgloss.Color("#1F2937")
-	enabledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Background(statusBg)   // Cyan
-	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg)  // Green
-	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Background(statusBg) // Gray
-	pendingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg)   // Warning yellow
-	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Background(statusBg)       // Light gray for keys
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Background(statusBg)      // Dim for descriptions
+	statusBg := m.styles.ColorStatusBg
+	enabledStyle := lipgloss.NewStyle().Foreground(m.styles.ColorKey).Background(statusBg)
+	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg)
+	separatorStyle := lipgloss.NewStyle().Foreground(m.styles.ColorDim).Background(statusBg)
+	pendingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg)
+	keyStyle := lipgloss.NewStyle().Foreground(m.styles.ColorDim).Background(statusBg)
+	descStyle := lipgloss.NewStyle().Foreground(m.styles.ColorDim).Background(statusBg)
 
-	demoActiveStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg) // Warning yellow
+	demoActiveStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg)
 
-	// Build left side - status counts
+	// Build left side - copy toast when active, otherwise status counts
 	var leftParts []string
-	leftParts = append(leftParts, enabledStyle.Render(fmt.Sprintf("%d enabled", enabledCount)))
-	leftParts = append(leftParts, separatorStyle.Render(" . "))
-	leftParts = append(leftParts, deployedStyle.Render(fmt.Sprintf("%d deployed", deployedCount)))
-
-	// Show demo-active count if any
-	demoActiveCount := m.scenariosPane.GetDemoActiveCount()
-	if demoActiveCount > 0 {
+	if m.copyToast != "" {
+		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg).Bold(true)
+		leftParts = append(leftParts, toastStyle.Render(m.copyToast))
+	} else {
+		leftParts = append(leftParts, enabledStyle.Render(fmt.Sprintf("%d enabled", enabledCount)))
 		leftParts = append(leftParts, separatorStyle.Render(" . "))
-		leftParts = append(leftParts, demoActiveStyle.Render(fmt.Sprintf("%d demo active \u26a0", demoActiveCount)))
-	}
+		leftParts = append(leftParts, deployedStyle.Render(fmt.Sprintf("%d deployed", deployedCount)))
 
-	// Check if deploy is needed
-	if m.scenariosPane.HasPendingChanges() {
-		leftParts = append(leftParts, separatorStyle.Render(" . "))
-		leftParts = append(leftParts, pendingStyle.Render("[a] to apply changes"))
+		// Show demo-active count if any
+		demoActiveCount := m.scenariosPane.GetDemoActiveCount()
+		if demoActiveCount > 0 {
+			leftParts = append(leftParts, separatorStyle.Render(" . "))
+			leftParts = append(leftParts, demoActiveStyle.Render(fmt.Sprintf("%d demo active \u26a0", demoActiveCount)))
+		}
+
+		// Check if deploy is needed
+		if m.scenariosPane.HasPendingChanges() {
+			leftParts = append(leftParts, separatorStyle.Render(" . "))
+			leftParts = append(leftParts, pendingStyle.Render("[a] to apply changes"))
+		}
 	}
 
 	leftText := strings.Join(leftParts, "")
@@ -2328,7 +2459,7 @@ func (m *Model) renderStatusBar() string {
 		padding = 1
 	}
 
-	paddingStr := lipgloss.NewStyle().Background(statusBg).Render(strings.Repeat(" ", padding))
+	paddingStr := lipgloss.NewStyle().Background(m.styles.ColorStatusBg).Render(strings.Repeat(" ", padding))
 
 	return m.styles.StatusBar.Width(m.termWidth).Render(leftText + paddingStr + rightText)
 }

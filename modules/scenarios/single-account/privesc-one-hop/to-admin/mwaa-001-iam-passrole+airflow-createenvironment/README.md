@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** Pass privileged role to MWAA environment with malicious startup script for privilege escalation
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** mwaa-001
+* **CTF Flag Location:** ssm-parameter
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098 - Account Manipulation, T1059 - Command and Scripting Interpreter
@@ -78,6 +79,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-mwaa-001-to-admin-admin-role` | Administrative execution role passed to MWAA environment |
 | `arn:aws:ec2:{region}:{account_id}:vpc/pl-prod-mwaa-001-vpc` | Dedicated VPC with private subnets and NAT Gateway for MWAA |
 | `arn:aws:s3:::pl-mwaa-001-attacker-bucket-{account_id}-{suffix}` | S3 bucket containing DAGs folder and malicious startup script |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/mwaa-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -98,6 +100,7 @@ The script will:
 4. Create an MWAA environment with the admin execution role
 5. Wait for environment creation (20-30 minutes with progress updates)
 6. Verify successful privilege escalation by demonstrating admin access
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 
 #### Resources Created by Attack Script

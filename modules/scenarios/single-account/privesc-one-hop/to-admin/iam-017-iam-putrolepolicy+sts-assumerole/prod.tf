@@ -93,6 +93,26 @@ resource "aws_iam_role" "target_role" {
   }
 }
 
+# CTF flag stored in SSM Parameter Store. The flag is readable by any principal
+# with ssm:GetParameter on the parameter ARN — in practice this means any
+# admin-equivalent principal, since AdministratorAccess grants the required
+# permission implicitly. The starting user escalates to admin via iam:PutRolePolicy
+# + sts:AssumeRole, then retrieves the flag.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/iam-017-to-admin"
+  description = "CTF flag for the iam-017 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-iam-017-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-putrolepolicy+sts-assumerole"
+    Purpose     = "ctf-flag"
+  }
+}
+
 # Minimal read-only policy for the target role (initially no admin access)
 resource "aws_iam_role_policy" "target_role_initial_policy" {
   provider = aws.prod

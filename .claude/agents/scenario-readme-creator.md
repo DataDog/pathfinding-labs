@@ -58,8 +58,9 @@ The orchestrator will provide you with a complete `scenario.yaml` file. This YAM
 | `risk.impact` | `* **Risk Impact:** {item1}; {item2}; {item3}` *(semicolon-separated; CSPM scenarios only)* |
 | `remediation.recommendations` | `* **Remediation:** {item1}; {item2}; {item3}` *(semicolon-separated; CSPM scenarios only)* |
 | `ctf.difficulty` | `* **Difficulty:** {beginner\|intermediate\|advanced}` *(CTF scenarios only)* |
-| `ctf.flag_location` | `* **Flag Location:** {value}` *(CTF scenarios only)* |
+| `ctf.flag_location` | `* **Flag Location:** {value}` *(CTF scenarios only — the legacy prose field)* |
 | `supports_online_mode: true` | `* **Supports Online Mode:** Yes` *(omit line if false/absent)* |
+| *(derived from `target`)* | `* **CTF Flag Location:** {ssm-parameter\|s3-object}` *(required on every scenario EXCEPT tool-testing; `ssm-parameter` for to-admin, `s3-object` for to-bucket)* |
 
 Additionally, the orchestrator will provide:
 - **Resource names**: All resources created for the scenario
@@ -147,6 +148,10 @@ Follow the attack map schema exactly. Include:
 - 3-7 hints per edge, ordered by operations then vague-to-specific
 - Pathfinding.cloud link in hints where a path ID is relevant
 - Proper target node identity (real infrastructure resource, not relabeled starting principal)
+- For every scenario EXCEPT those under `tool-testing/`: the terminal node is the CTF flag resource (see "CTF Flag Terminal" below)
+- `isAdmin: true` on any principal node that holds administrator-equivalent permissions
+
+**CTF Flag Terminal (non-tool-testing scenarios):** The `isTarget: true` node is the CTF flag resource. For to-admin scenarios, add a new node of `type: resource`, `subType: ssm-parameter`, with `arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/{scenario-unique-id}"` and `isTarget: true`. The admin principal it pivoted through takes `isAdmin: true` instead of `isTarget: true`. Add a final edge from the admin principal to the flag node labeled "Read CTF flag" with the `aws ssm get-parameter ...` invocation in `commands`. For to-bucket scenarios, the existing target bucket keeps `isTarget: true` (no new node); append `aws s3 cp s3://{bucket}/flag.txt -` to the final edge's `commands` array. If any intermediate principal in a multi-hop to-bucket chain reaches admin-equivalent permissions, add `isAdmin: true` to that node as well. Tool-testing scenarios are exempt and follow pre-1.4.0 attack map rules.
 
 **Public/anonymous entry point:** When `permissions.required` in scenario.yaml has a `principal_type: "public"` entry, the publicly accessible resource itself is the starting node -- do NOT add a separate IAM user or "public internet" node before it. Use the public access prologue (not the IAM credentials prologue) on that node. The `arn` field holds the real AWS ARN of the public resource. Any optional IAM recon steps are described in prose within the starting node description or first edge, not modeled as a separate node. Also add the `access` field to this starting node (after `arn`, before `description`) with `type: public-network` and the appropriate endpoint sub-field: `url` for Lambda Function URLs, API Gateway, or App Runner; `ip` for public EC2 without a load balancer; `domain` for CloudFront or ALB-fronted services. Example for Lambda Function URL: `url: "https://{function_url_id}.lambda-url.{region}.on.aws/"`.
 
@@ -174,6 +179,10 @@ Write a narrative CTF writeup with this structure:
 ## Verification
 
 {Confirming escalation worked}
+
+## Capture the Flag
+
+{Required for every scenario EXCEPT tool-testing. Retrieve the flag from its terminal location using the access gained in the previous steps. Show the AWS CLI command but NOT the flag value (deployment-specific). For to-admin: `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id> --query 'Parameter.Value' --output text`. For to-bucket: `aws s3 cp s3://<bucket>/flag.txt -`. 1-2 paragraphs explaining why the credentials from the previous step grant flag access.}
 
 ## What Happened
 
@@ -260,6 +269,7 @@ Additionally verify:
 5. Guided walkthrough reads as a genuine narrative
 6. Hints don't reveal exact commands
 7. Technical accuracy -- attack path is feasible
+8. **Non-tool-testing scenarios only**: README metadata contains `* **CTF Flag Location:** {ssm-parameter|s3-object}`; the Scenario Specific Resources Created table lists the flag resource ARN; the attack_map.yaml terminal is the flag resource (ssm-parameter for to-admin, S3 bucket with flag.txt retrieval for to-bucket); admin principals carry `isAdmin: true` and never co-occur with `isTarget: true`; solution.md contains a `## Capture the Flag` section with the retrieval command but no flag value
 
 ## Output
 

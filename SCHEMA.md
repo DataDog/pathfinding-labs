@@ -1221,8 +1221,6 @@ permissions:
     - principal: "pl-prod-sysdig-8min-starting-user"
       principal_type: "user"
       permissions:
-        - permission: "iam:ListUsers"
-          purpose: "Discover IAM users and identify admin targets"
         - permission: "lambda:ListFunctions"
           purpose: "Discover Lambda functions to target for code injection"
         - permission: "sts:AssumeRole"

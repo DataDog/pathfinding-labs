@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** EC2 instance launch with privileged role and user-data backdoor
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ec2-001
+* **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
@@ -65,6 +66,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-ec2-001-to-admin-starting-user` | Starting user with PassRole and RunInstances permissions (with access keys) |
 | `arn:aws:iam::{account_id}:role/pl-prod-ec2-001-to-admin-target-role` | Admin role that EC2 instance uses to attach policy (trusts ec2.amazonaws.com) |
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-001-to-admin-instance-profile` | Instance profile wrapping the admin role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 5. Launch an EC2 instance with the admin instance profile (`pl-prod-ec2-001-to-admin-instance-profile`) passing the user-data payload
 6. Poll until `AdministratorAccess` is confirmed attached to the starting user (up to 5 minutes)
 7. Verify administrator access by listing IAM users
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
 #### Resources Created by Attack Script
 

@@ -151,3 +151,10 @@ resource "aws_s3_object" "sensitive_file" {
   key      = "sensitive-data.txt"
   content  = "SUCCESS! GitHub Actions OIDC cross-account pivot complete.\nFlag: PATHFINDER-GITHUB-OIDC-CROSS-ACCOUNT-2024"
 }
+
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.flag_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}

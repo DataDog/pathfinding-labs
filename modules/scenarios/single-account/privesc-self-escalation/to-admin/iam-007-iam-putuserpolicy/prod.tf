@@ -50,3 +50,20 @@ resource "aws_iam_user_policy" "starting_user_policy" {
     ]
   })
 }
+
+# CTF flag stored in SSM Parameter Store. Readable by any principal with ssm:GetParameter on
+# this parameter — in practice this means any admin-equivalent principal, since the inline
+# admin policy granting Action:* on Resource:* provides the required permission.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/iam-007-to-admin"
+  description = "CTF flag for the iam-007 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-iam-007-to-admin-flag"
+    Scenario = "iam-putuserpolicy"
+    Purpose  = "ctf-flag"
+  }
+}

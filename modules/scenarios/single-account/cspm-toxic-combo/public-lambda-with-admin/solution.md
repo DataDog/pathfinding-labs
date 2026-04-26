@@ -94,6 +94,18 @@ You should see output like:
 
 You are now operating as `pl-public-lambda-admin-role` with `AdministratorAccess`. You can perform any action in the AWS account — read secrets from Secrets Manager, create IAM users, exfiltrate data from S3, or establish persistence.
 
+## Capture the Flag
+
+With the Lambda execution role's temporary credentials configured, retrieve the scenario flag from SSM Parameter Store. `AdministratorAccess` grants `ssm:GetParameter` on all parameters in the account, so no additional permissions are needed beyond the credentials already extracted.
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/public-lambda-with-admin-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
 ## What Happened
 
 An unauthenticated HTTP request was all it took to compromise the AWS account. The `pl-public-admin-lambda` function had a URL configured with `AuthorizationType: NONE`, making it publicly invocable by anyone. When invoked, the Lambda runtime injected the execution role's temporary credentials — belonging to `pl-public-lambda-admin-role` with `AdministratorAccess` — into the function's environment variables. The function returned those credentials in its response, handing full administrative control to the attacker.

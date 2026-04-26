@@ -8,7 +8,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** GitHub repo write access enables OIDC assumption of an ops role that pivots cross-account to a prod role with S3 read access on a sensitive bucket.
 * **Terraform Variable:** `enable_cross_account_ops_to_prod_github_oidc_pivot`
-* **Schema Version:** 4.4.0
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1550.001 - Use Alternate Authentication Material: Application Access Token
 
@@ -75,7 +76,8 @@ plabs apply
 | `arn:aws:iam::{operations_account_id}:oidc-provider/token.actions.githubusercontent.com` | GitHub Actions OIDC provider in the operations account; trust policy uses wildcard sub-claim |
 | `arn:aws:iam::{operations_account_id}:role/pl-ops-goidc-pivot-deployer-role` | Ops account role assumable via GitHub OIDC; has cross-account AssumeRole to prod |
 | `arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role` | Prod account role trusted by ops deployer role; has S3 read access to the flag bucket |
-| `arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}` | Prod S3 bucket containing `sensitive-data.txt` with the flag |
+| `arn:aws:s3:::pl-prod-goidc-pivot-flag-{account_id}-{suffix}` | Prod S3 bucket containing `sensitive-data.txt` with legacy flag content |
+| `s3://pl-prod-goidc-pivot-flag-{account_id}-{suffix}/flag.txt` | CTF flag object; read with `aws s3 cp s3://...flag.txt -` once prod role credentials are held |
 
 ### Solution
 
@@ -95,6 +97,7 @@ The script will:
 5. Use the ops role to call `sts:AssumeRole` and pivot to `pl-prod-goidc-pivot-deployer-role` in the prod account
 6. Verify prod role identity to confirm cross-account pivot succeeded
 7. List and read the contents of `sensitive-data.txt` from the flag bucket
+8. Read `flag.txt` from the flag bucket to capture the CTF flag
 
 #### Resources Created by Attack Script
 

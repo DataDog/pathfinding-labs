@@ -47,3 +47,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-codebuild-003-to-admin-starting-user) → codebuild:StartBuildBatch with buildspec-override → existing CodeBuild project (pl-prod-codebuild-003-to-admin-target-project) → buildspec executes with admin role → grants admin to starting_user → admin access"
 }
+
+output "flag_ssm_parameter_name" {
+  description = "SSM Parameter Store name containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}

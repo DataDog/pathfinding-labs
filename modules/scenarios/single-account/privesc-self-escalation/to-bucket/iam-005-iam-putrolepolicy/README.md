@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Role with iam:PutRolePolicy on itself can add inline policy granting S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepolicy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-005
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
 
@@ -65,8 +66,9 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-starting-role` | Starting role with PutRolePolicy permission on itself |
 | `arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-bucket-target-role` | Target role with S3 bucket permissions |
 | `arn:aws:iam::{account_id}:policy/pl-prod-iam-005-to-bucket-access-policy` | Grants S3 read/write access to target bucket |
-| `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag |
 | `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-prod-iam-005-to-bucket-{account_id}-{suffix}/flag.txt` | CTF flag file in the target bucket |
 
 ### Solution
 
@@ -86,6 +88,7 @@ The script will:
 5. Wait 15 seconds for IAM policy propagation
 6. List the target S3 bucket contents to confirm access
 7. Download `sensitive-data.txt` from the target bucket
+8. Read `flag.txt` from the target bucket to capture the CTF flag
 
 #### Resources Created by Attack Script
 

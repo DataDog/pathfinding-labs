@@ -87,6 +87,22 @@ aws iam list-users --max-items 3 --output table
 
 If the command succeeds and returns a list of IAM users, you have full administrator access. The escalation is complete.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now granted to your starting user provides implicitly.
+
+Using your starting user credentials (which, thanks to the previous step, now hold `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/sagemaker-004-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited the trust relationship between a low-privileged IAM user and a pre-existing SageMaker notebook that carries an admin execution role. The `sagemaker:CreatePresignedNotebookInstanceUrl` permission is often granted to data scientists so they can access their notebooks without navigating the AWS console — but when a notebook has a privileged execution role, that permission becomes a privilege escalation vector.

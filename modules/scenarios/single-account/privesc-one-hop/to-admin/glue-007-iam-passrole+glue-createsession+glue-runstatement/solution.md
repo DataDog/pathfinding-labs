@@ -107,6 +107,22 @@ aws iam list-attached-user-policies \
 
 You will see `AdministratorAccess` listed.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now attached to your starting user provides implicitly.
+
+Using your starting user credentials (which, thanks to the previous step, now hold `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/glue-007-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited a privilege escalation path that is easy to overlook during IAM reviews. The `iam:PassRole` permission is often granted broadly to let users assign roles to compute services. When combined with `glue:CreateSession` and `glue:RunStatement`, it becomes a full code execution primitive under the passed role's identity. There was no direct `sts:AssumeRole` involved -- Glue assumed the role on your behalf during session initialization, and your subsequent `RunStatement` call ran inside that privileged context.

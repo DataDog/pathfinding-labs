@@ -62,10 +62,20 @@ output "ecs_service_name" {
 }
 
 # =============================================================================
-# ATTACK PATH DESCRIPTION
+# CTF FLAG OUTPUTS
 # =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ecs:ExecuteCommand) -> ECS task (${aws_ecs_cluster.cluster.name}) with admin role (${aws_iam_role.target_role.name}) -> curl 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI -> admin credentials"
+  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (ecs:ExecuteCommand) -> ECS task (${aws_ecs_cluster.cluster.name}) with admin role (${aws_iam_role.target_role.name}) -> curl 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI -> admin credentials -> ssm:GetParameter -> CTF flag"
 }

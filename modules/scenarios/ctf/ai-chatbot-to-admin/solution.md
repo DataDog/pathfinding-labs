@@ -8,7 +8,7 @@ The attack does not require any AWS credentials -- the chatbot is publicly acces
 
 ## The Challenge
 
-You've been given the URL to the new Acme Corp engineering chatbot. As it turns out, this chatbot is actually public. Oops. Your goal is to exploit the chatbot and ultimately retrieve the CTF flag stored in AWS Systems Manager Parameter Store at `/ctf/ctf-001/flag`. 
+You've been given the URL to the new Acme Corp engineering chatbot. As it turns out, this chatbot is actually public. Oops. Your goal is to exploit the chatbot and ultimately retrieve the CTF flag stored in AWS Systems Manager Parameter Store at `/pathfinding-labs/flags/ctf-001-to-admin`. 
 
 Start by retrieving the URL from plabs. 
 
@@ -61,12 +61,13 @@ aws sts get-caller-identity
 
 You should see an assumed-role ARN for `pl-prod-ctf-001-chatbot-role`. You are now operating as an administrator in this AWS account.
 
-Read the flag:
+## Capture the Flag
+
+With admin credentials in your environment, read the flag from SSM Parameter Store:
 
 ```bash
 aws ssm get-parameter \
-  --name /ctf/ctf-001/flag \
-  --with-decryption \
+  --name /pathfinding-labs/flags/ctf-001-to-admin \
   --query 'Parameter.Value' \
   --output text
 ```

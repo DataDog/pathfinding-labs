@@ -92,3 +92,18 @@ resource "aws_iam_role_policy_attachment" "target_role_admin_access" {
   role       = aws_iam_role.target_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+# CTF flag stored in SSM Parameter Store — readable only after gaining admin access
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/iam-012-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-iam-012-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-012-iam-updateassumerolepolicy"
+    Purpose     = "ctf-flag"
+  }
+}

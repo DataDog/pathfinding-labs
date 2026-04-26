@@ -23,13 +23,26 @@ attackMap:
       label: "Target Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-017-to-admin-target-role"
       description: >
         This IAM role trusts the starting user and can have its inline policies modified
         by that user. Initially it may have minimal permissions, but once an inline admin
         policy is attached and the role is assumed, the attacker gains full AdministratorAccess
-        to the AWS account.
+        to the AWS account — admin-equivalent permissions that are then used to read the
+        scenario's CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-017-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by the wildcard inline policy added to the target role).
+        Your goal is to read this parameter using the admin access gained from the previous step.
 
   edges:
     - from: starting-user
@@ -56,3 +69,19 @@ attackMap:
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-iam-017-to-admin-target-role --role-session-name privesc-session"
         - description: "Verify administrator access"
           command: "aws iam list-users"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the target role's temporary credentials (which now carry full AdministratorAccess
+        via the inline policy you attached), retrieve the scenario flag from SSM Parameter Store.
+        AdministratorAccess grants ssm:GetParameter on all parameters implicitly, so no additional
+        permissions are needed beyond the admin access you just gained.
+      hints:
+        - "You now hold admin-equivalent credentials via the assumed role. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-017-to-admin --query 'Parameter.Value' --output text"

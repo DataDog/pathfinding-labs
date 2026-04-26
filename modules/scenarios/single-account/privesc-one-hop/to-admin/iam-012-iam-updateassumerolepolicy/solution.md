@@ -107,6 +107,17 @@ aws iam list-users --max-items 3 --output table
 
 If you can list IAM users, you have `AdministratorAccess`. Privilege escalation is complete.
 
+## Capture the Flag
+
+With administrative access established via the assumed role, read the CTF flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/iam-012-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
 ## What Happened
 
 You started as a low-privilege IAM user with a very specific — and dangerous — permission: the ability to edit who can assume an administrative role. By rewriting the role's trust policy to include your own user ARN, you unlocked the door that was already in front of you. A single call to `sts:AssumeRole` was all it took to walk through.

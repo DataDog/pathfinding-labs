@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Create Data Pipeline with passed role to read sensitive S3 data the starting user cannot access directly; exfiltrate to attacker-controlled S3 bucket in separate account
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline`
-* **Schema Version:** 4.1.1
+* **CTF Flag Location:** s3-object
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** datapipeline-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection, TA0010 - Exfiltration
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1530 - Data from Cloud Storage Object
@@ -70,6 +71,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:policy/pl-prod-datapipeline-001-to-bucket-starting-user-policy` | Policy granting Data Pipeline and iam:PassRole permissions |
 | `arn:aws:iam::{account_id}:policy/pl-prod-datapipeline-001-to-bucket-pipeline-policy` | Policy granting s3:GetObject on sensitive bucket |
 | `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}` | Sensitive data bucket containing secret data (the attack target) |
+| `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}/flag.txt` | CTF flag object stored in the sensitive bucket |
 | `arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{attacker_account_id}-{suffix}` | Attacker-controlled exfil bucket (deployed in attacker account, NOT a victim misconfiguration) |
 
 ### Solution

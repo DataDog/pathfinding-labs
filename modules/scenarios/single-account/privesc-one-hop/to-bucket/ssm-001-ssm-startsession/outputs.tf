@@ -54,6 +54,11 @@ output "target_bucket_arn" {
   value       = aws_s3_bucket.target_bucket.arn
 }
 
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/flag.txt"
+}
+
 # Attack path description
 output "attack_path" {
   description = "Description of the attack path"

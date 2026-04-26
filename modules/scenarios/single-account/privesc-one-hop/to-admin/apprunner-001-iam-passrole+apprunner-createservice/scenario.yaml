@@ -52,8 +52,6 @@ permissions:
           purpose: "List App Runner services to verify service creation"
         - permission: "apprunner:DescribeService"
           purpose: "Check service status and configuration"
-        - permission: "iam:ListUsers"
-          purpose: "Verify admin access after escalation"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

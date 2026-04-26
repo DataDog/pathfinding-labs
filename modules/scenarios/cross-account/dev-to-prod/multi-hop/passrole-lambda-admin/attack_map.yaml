@@ -54,13 +54,26 @@ attackMap:
       label: "Lambda Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{prod_account_id}:role/pl-Lambda-admin"
       description: >
         This IAM role has AdministratorAccess and a trust policy permitting the Lambda
         service to assume it. By passing this role to a Lambda function you control,
         you gain the ability to execute any AWS API call with full administrative
         privileges in the prod account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/passrole-lambda-admin-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the prod account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained by invoking the Lambda function as the pl-Lambda-admin
+        role.
 
   edges:
     - from: starting-user
@@ -143,3 +156,18 @@ attackMap:
               --function-name pl-passrole-demo
               --region us-east-1
               /tmp/lambda_response.json
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        With the Lambda function confirmed to execute as pl-Lambda-admin, use the
+        same admin credentials to read the CTF flag from SSM Parameter Store.
+        AdministratorAccess grants ssm:GetParameter on all parameters in the account.
+      hints:
+        - "You now have access to admin-level AWS credentials via the Lambda execution role. The scenario flag is stored in SSM Parameter Store."
+        - "Scenario flags live under the /pathfinding-labs/flags/ prefix -- consider what the parameter name for this scenario would be."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/passrole-lambda-admin-to-admin --query 'Parameter.Value' --output text --region us-east-1"

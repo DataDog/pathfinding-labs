@@ -103,6 +103,23 @@ aws s3 cp s3://pl-sensitive-data-ssm-002-123456789012-a3f9x2/sensitive-data.txt 
 # [contents of sensitive data file]
 ```
 
+## Capture the Flag
+
+The target bucket contains a `flag.txt` object placed there by Terraform. Once you have the EC2 instance role credentials, read it directly with:
+
+```bash
+aws s3 cp s3://$BUCKET_NAME/flag.txt -
+```
+
+For example:
+
+```bash
+aws s3 cp s3://pl-sensitive-data-ssm-002-123456789012-a3f9x2/flag.txt -
+# FLAG{...}
+```
+
+This confirms you have fully achieved the objective: you extracted credentials from the EC2 instance via SSM and used them to read data from the sensitive bucket that was inaccessible to your starting user.
+
 ## What Happened
 
 You exploited a one-hop privilege escalation path: your starting user had `ssm:SendCommand` on all EC2 instances, and one of those instances had an IAM role with S3 access. By sending a shell command via SSM, you reached inside the instance and extracted its temporary AWS credentials from the Instance Metadata Service. Those credentials, once exported locally, gave you the same S3 permissions as if you were the instance itself.

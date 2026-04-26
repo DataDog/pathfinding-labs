@@ -70,3 +70,8 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "User (pl-prod-rcs-to-bucket-starting-user) → AssumeRole → pl-prod-initial-role → AssumeRole → pl-prod-intermediate-role → AssumeRole → pl-prod-s3-access-role → S3 Bucket Access"
 }
+
+output "flag_s3_uri" {
+  description = "S3 URI of the CTF flag object"
+  value       = "s3://${aws_s3_bucket.prod_role_chain_destination.id}/flag.txt"
+}

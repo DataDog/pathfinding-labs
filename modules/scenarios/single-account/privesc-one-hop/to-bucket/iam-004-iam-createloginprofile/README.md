@@ -9,8 +9,9 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:CreateLoginProfile can set password for user with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-004
+* **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
 
@@ -65,8 +66,9 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-iam-004-bucket-hop1` | Target user with S3 bucket access (initially no console password) |
 | `pl-prod-iam-004-bucket-starting-user-policy` (inline policy) | Allows `iam:CreateLoginProfile` on `pl-prod-iam-004-bucket-hop1` only |
 | `pl-prod-iam-004-bucket-hop1-s3-policy` (inline policy) | Grants S3 read access to sensitive bucket |
-| `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}` | Target S3 bucket containing sensitive data |
+| `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag |
 | `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-sensitive-data-iam-004-{account_id}-{suffix}/flag.txt` | CTF flag file in the target bucket |
 
 ### Solution
 
@@ -84,6 +86,7 @@ The script will:
 3. Create a console password for the target user
 4. Display console login URL and credentials
 5. Verify successful privilege escalation to bucket access
+6. Read `flag.txt` from the target bucket and display the CTF flag
 
 
 #### Resources Created by Attack Script

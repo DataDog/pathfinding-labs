@@ -105,6 +105,16 @@ aws s3 cp s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/sensiti
 
 You've successfully accessed the sensitive bucket.
 
+## Capture the Flag
+
+The target bucket contains `flag.txt` — the CTF flag for this scenario. With the EC2 instance role credentials active, read it directly from the bucket:
+
+```bash
+aws s3 cp s3://$BUCKET_NAME/flag.txt -
+```
+
+Replace `$BUCKET_NAME` with the actual bucket name (e.g., `pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>`). The flag value will be printed to stdout.
+
 ## What Happened
 
 You started with an IAM user that had no direct path to the S3 bucket. The vulnerability was a combination of two misconfigurations: the starting user had unrestricted `ssm:StartSession` permission (no resource conditions, no tag-based restrictions), and an EC2 instance in the account was running with an instance role that held S3 read access to a sensitive bucket.

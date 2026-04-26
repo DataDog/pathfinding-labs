@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with PassRole and CreateProcessingJob can create processing job with malicious script and admin role to execute code with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
+* **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** sagemaker-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1098.001 - Account Manipulation: Additional Cloud Credentials
@@ -68,6 +69,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-sagemaker-003-to-admin-starting-user` | Scenario-specific starting user with iam:PassRole and sagemaker:CreateProcessingJob permissions |
 | `arn:aws:iam::{account_id}:role/pl-prod-sagemaker-003-to-admin-passable-role` | Admin role with AdministratorAccess that trusts sagemaker.amazonaws.com service |
 | `arn:aws:s3:::pl-prod-sagemaker-003-to-admin-bucket-{account_id}-{suffix}` | S3 bucket for storing the malicious processing script and job outputs |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/sagemaker-003-to-admin` | SSM parameter holding the CTF flag (readable with AdministratorAccess) |
 
 ### Solution
 
@@ -87,6 +89,7 @@ The script will:
 5. Create a SageMaker processing job referencing the admin-privileged execution role and the uploaded script
 6. Wait (up to 10 minutes) for the processing job to reach `Completed` status
 7. Verify that AdministratorAccess is now attached to the starting user
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin credentials
 
 #### Resources Created by Attack Script
 

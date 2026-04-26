@@ -79,6 +79,22 @@ aws iam list-users --max-items 3 --output table
 # Returns a table of IAM users -- you now have full admin access
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which `AdministratorAccess` provides implicitly.
+
+Using the assumed role session credentials obtained in the previous step, read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/sts-001-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 The entire attack chain consisted of a single API call: `sts:AssumeRole`. The starting user held an IAM policy granting `sts:AssumeRole` on the target role's ARN. The target role's trust policy permitted that user to assume it. AWS's STS service returned temporary credentials with full `AdministratorAccess` — no questions asked, no conditions enforced.

@@ -208,3 +208,27 @@ resource "aws_iam_user_policy" "demo_user_policy" {
     ]
   })
 }
+
+# ==============================================================================
+# CTF FLAG
+# ==============================================================================
+
+# The flag is stored in SSM Parameter Store and is readable by any admin-equivalent
+# principal. In this scenario, the attacker extracts temporary credentials from the
+# EC2 instance metadata service (IMDS) via an SSM session. Those credentials belong
+# to the instance's admin role (AdministratorAccess), which implicitly grants
+# ssm:GetParameter. The attacker uses the stolen credentials to read the flag.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/cspm-ec2-001-to-admin"
+  description = "CTF flag for the cspm-ec2-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-cspm-ec2-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "cspm-ec2-001"
+    Purpose     = "ctf-flag"
+  }
+}

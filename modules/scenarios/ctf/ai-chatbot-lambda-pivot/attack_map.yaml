@@ -33,11 +33,20 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-ctf-002-target-role"
       description: >
         The execution role attached to the data processor Lambda. Gaining access to these
         credentials is your final objective -- once you have them, find the flag.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ctf-002-to-admin"
+      description: >
+        The CTF flag stored in SSM Parameter Store. Readable only with the admin role credentials.
 
   edges:
     - from: acmebot-lambda
@@ -55,7 +64,7 @@ attackMap:
         - description: "Confirm identity as the chatbot role"
           command: "aws sts get-caller-identity"
         - description: "Confirm the flag is not directly accessible with these credentials"
-          command: "aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --with-decryption"
       hints:
         - "The chatbot has tools it can invoke. What happens if you ask it to help with a server diagnostic?"
         - "LLMs can sometimes be coerced into using their tools in unintended ways through carefully crafted prompts"
@@ -104,9 +113,19 @@ attackMap:
         - description: "Verify admin access"
           command: "aws sts get-caller-identity"
         - description: "Read the CTF flag"
-          command: "aws ssm get-parameter --name /ctf/ctf-002/flag --with-decryption --query 'Parameter.Value' --output text"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --with-decryption --query 'Parameter.Value' --output text"
       hints:
         - "Once you have replaced the function code, invoke the data processor. The response contains the output of your handler."
         - "The response body is a JSON string -- parse it to extract the individual credential fields."
         - "Export the new credentials and verify your identity with the STS service."
         - "With these credentials, look for the flag in the service commonly used to securely store secrets and configuration values."
+
+    - from: target-role
+      to: ctf-flag
+      label: "Flag retrieval"
+      description: >
+        With administrator credentials from the target role, read the CTF flag from SSM
+        Parameter Store.
+      commands:
+        - description: "Read the CTF flag"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --query 'Parameter.Value' --output text"

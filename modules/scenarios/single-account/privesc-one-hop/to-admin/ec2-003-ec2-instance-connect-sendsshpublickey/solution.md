@@ -120,6 +120,22 @@ aws iam list-users --max-items 3 --output table
 
 Success — you can now list IAM users, confirming the starting user has been elevated to administrator access.
 
+## Capture the Flag
+
+Admin access isn't the finish line — the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` managed policy now granted to your starting user provides implicitly.
+
+Using your starting user credentials (which, thanks to the previous step, now hold `AdministratorAccess`), read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/ec2-003-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them — only the scenario ID in the path changes.
+
 ## What Happened
 
 You exploited the combination of two misconfigurations: an IAM policy granting `ec2-instance-connect:SendSSHPublicKey` on a specific EC2 instance, and that instance running with an administrative IAM role attached via its instance profile. Neither condition alone is necessarily catastrophic, but together they form a direct privilege escalation path.

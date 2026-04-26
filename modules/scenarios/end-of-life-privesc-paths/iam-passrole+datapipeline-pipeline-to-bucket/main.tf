@@ -133,6 +133,16 @@ resource "aws_s3_object" "sensitive_data" {
   content  = "CONFIDENTIAL: Database credentials and API keys for production systems."
 }
 
+# CTF flag stored as an S3 object in the target bucket. The attacker retrieves this after
+# successfully reading data from the sensitive bucket via the pipeline role. Readable by
+# any principal with s3:GetObject on this bucket.
+resource "aws_s3_object" "flag" {
+  provider = aws.prod
+  bucket   = aws_s3_bucket.sensitive_bucket.id
+  key      = "flag.txt"
+  content  = var.flag_value
+}
+
 # Exfiltration bucket — attacker-controlled infrastructure deployed in the attacker account.
 # This bucket receives stolen data from the pipeline EC2 instance. It is NOT a victim
 # misconfiguration; it is something the attacker brings to the attack. When no separate

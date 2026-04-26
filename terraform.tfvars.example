@@ -194,6 +194,9 @@ enable_ctf_ai_chatbot_lambda_pivot                                              
 # Attack Simulation
 enable_attack_simulation_sysdig_8_minutes_to_admin                                 = false
 
+# End-of-Life Privesc Paths (AWS services that are deprecated or end-of-life)
+enable_end_of_life_privesc_iam_passrole_datapipeline_to_admin                       = false
+
 ##############################################################################
 # BUDGET ALERTS (OPTIONAL)
 ##############################################################################

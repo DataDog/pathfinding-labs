@@ -8,9 +8,9 @@
 * **Cost Estimate When Demo Executed:** $1/mo
 * **Technique:** Acme Corp has deployed an AI-powered customer assistant at a public Lambda endpoint. Escalate to administrative access and retrieve the flag.
 * **Difficulty:** beginner
-* **Flag Location:** SSM Parameter Store at /ctf/ctf-001/flag (requires admin credentials)
+* **Flag Location:** ssm-parameter at /pathfinding-labs/flags/ctf-001-to-admin
 * **Terraform Variable:** `enable_ctf_ai_chatbot_to_admin`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ctf-001
 * **MITRE Tactics:** TA0001 - Initial Access, TA0006 - Credential Access, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
@@ -20,7 +20,7 @@
 Acme Corp has deployed an AI-powered customer assistant at a public Lambda Function URL. Your goal is to escalate to administrative access and retrieve the flag.
 
 - **Start:** `https://{function_url_id}.lambda-url.{region}.on.aws/` (public, no auth)
-- **Goal:** Retrieve the flag from SSM Parameter Store at `/ctf/ctf-001/flag`
+- **Goal:** Retrieve the flag from SSM Parameter Store at `/pathfinding-labs/flags/ctf-001-to-admin`
 
 ### Starting Permissions
 
@@ -64,7 +64,7 @@ plabs apply
 | `arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-001-acmebot` | Vulnerable AcmeBot chatbot Lambda with public Function URL |
 | `arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role` | Lambda execution role with AdministratorAccess |
 | `arn:aws:iam::{account_id}:user/pl-prod-ctf-001-starting-user` | Optional starting user for CLI-based enumeration |
-| `arn:aws:ssm:{region}:{account_id}:parameter/ctf/ctf-001/flag` | CTF flag (SecureString, requires admin credentials to read) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ctf-001-to-admin` | CTF flag (String, requires admin credentials to read) |
 
 ### Solution
 

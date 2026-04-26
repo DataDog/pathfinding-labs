@@ -128,3 +128,16 @@ resource "aws_s3_bucket_public_access_block" "training_bucket" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+resource "aws_ssm_parameter" "flag" {
+  provider = aws.prod
+  name     = "/pathfinding-labs/flags/sagemaker-002-to-admin"
+  type     = "String"
+  value    = var.flag_value
+
+  tags = {
+    Name     = "pl-prod-sagemaker-002-to-admin-flag"
+    Scenario = "sagemaker-002-iam-passrole+sagemaker-createtrainingjob"
+    Purpose  = "ctf-flag"
+  }
+}

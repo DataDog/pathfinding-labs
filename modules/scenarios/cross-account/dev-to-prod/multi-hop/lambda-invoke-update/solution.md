@@ -157,6 +157,19 @@ You should see output identifying the session as `pl-prod-lambda-execution-role`
 aws iam list-users
 ```
 
+## Capture the Flag
+
+With the prod Lambda execution role credentials active, retrieve the scenario flag from SSM Parameter Store. The `AdministratorAccess` policy attached to the Lambda execution role grants `ssm:GetParameter` on all parameters in the account:
+
+```bash
+aws ssm get-parameter \
+  --name /pathfinding-labs/flags/lambda-invoke-update-to-admin \
+  --query 'Parameter.Value' \
+  --output text
+```
+
+A successful read returns the flag value, confirming full administrative access to the prod account. This is the final step of the attack chain — you started as a low-privilege dev IAM user and now hold the prod account's most sensitive credential.
+
 ## What Happened
 
 You exploited a chain of three misconfigurations: a dev account role with overly broad cross-account Lambda permissions, a prod Lambda function with a resource policy allowing code updates from the dev account, and a Lambda execution role carrying `AdministratorAccess`. Each individual misconfiguration might seem manageable in isolation, but together they form a complete privilege escalation path from a low-privilege dev user to full admin in prod.

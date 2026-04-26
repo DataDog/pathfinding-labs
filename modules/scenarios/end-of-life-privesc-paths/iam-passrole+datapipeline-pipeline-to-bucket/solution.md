@@ -144,6 +144,16 @@ aws s3 cp s3://$EXFIL_BUCKET/exfiltrated.txt - --region us-east-1
 
 You should see the contents of `secret-data.txt` from the sensitive bucket. Data exfiltrated.
 
+## Capture the Flag
+
+With the pipeline running and data copied to your exfil bucket, retrieve the CTF flag using your attacker-account credentials:
+
+```bash
+aws s3 cp s3://pl-exfil-bucket-datapipeline-001-{attacker_account_id}-{suffix}/flag.txt -
+```
+
+The flag is stored as a plain-text S3 object in the sensitive bucket and was exfiltrated to your attacker-controlled exfil bucket by the pipeline's shell command alongside `secret-data.txt`. The `aws s3 cp ... -` syntax streams the object contents to stdout. Any principal with `s3:GetObject` on the exfil bucket can retrieve it — and since you own the bucket, you have full access.
+
 ## What Happened
 
 The attack succeeded because of a single compounding misconfiguration on the victim side: the starting user held `iam:PassRole` on a role that had read access to a sensitive S3 bucket, combined with enough Data Pipeline permissions to run arbitrary shell commands on EC2 instances. That combination let the attacker reach data they had no direct IAM access to.

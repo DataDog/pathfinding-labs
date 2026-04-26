@@ -7,7 +7,7 @@
 * **Cost Estimate:** $1/mo
 * **Cost Estimate When Demo Executed:** $1/mo
 * **Difficulty:** intermediate
-* **Flag Location:** SSM Parameter Store at /ctf/ctf-002/flag (requires admin credentials)
+* **Flag Location:** SSM Parameter Store at /pathfinding-labs/flags/ctf-002-to-admin (requires admin credentials)
 * **Technique:** Acme Corp's AI assistant fronts a suite of internal Lambda services. Chain your way from the public chatbot to administrative access and retrieve the flag.
 * **Terraform Variable:** `enable_ctf_ai_chatbot_lambda_pivot`
 * **Schema Version:** 4.1.1
@@ -20,7 +20,7 @@
 Acme Corp runs an AI-powered chatbot alongside internal backend services, all on Lambda. Starting from the public chatbot endpoint, your goal is to escalate to administrative access and retrieve the flag.
 
 - **Start:** `https://{function_url_id}.lambda-url.{region}.on.aws/` (public, no auth)
-- **Goal:** Retrieve the flag from SSM Parameter Store at `/ctf/ctf-002/flag`
+- **Goal:** Retrieve the flag from SSM Parameter Store at `/pathfinding-labs/flags/ctf-002-to-admin`
 
 ### Starting Permissions
 
@@ -78,7 +78,7 @@ plabs apply
 | `arn:aws:lambda:{region}:{account_id}:function/pl-prod-ctf-002-acme-data-processor` | Privileged target Lambda (AdministratorAccess execution role) |
 | `arn:aws:iam::{account_id}:role/pl-prod-ctf-002-target-role` | Target Lambda execution role (AdministratorAccess) |
 | `arn:aws:iam::{account_id}:user/pl-prod-ctf-002-starting-user` | Starting IAM user for CLI-based participants |
-| `arn:aws:ssm:{region}:{account_id}:parameter/ctf/ctf-002/flag` | CTF flag (SecureString, requires admin credentials to read) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ctf-002-to-admin` | CTF flag (String, requires admin credentials to read) |
 
 ### Solution
 

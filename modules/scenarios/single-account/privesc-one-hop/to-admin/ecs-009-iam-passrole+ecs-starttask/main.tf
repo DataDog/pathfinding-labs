@@ -359,3 +359,27 @@ resource "aws_instance" "container_instance" {
 # Note: Container instance ARN is not available via Terraform data source.
 # The EC2 instance must register with the ECS cluster first (happens via user_data).
 # The demo script will retrieve the container instance ARN via AWS CLI.
+
+# =============================================================================
+# CTF FLAG (Stored in SSM Parameter Store)
+# =============================================================================
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/ecs-009-to-admin"
+  description = "CTF flag for the ecs-009 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-ecs-009-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+ecs-starttask"
+    Purpose     = "ctf-flag"
+  }
+}

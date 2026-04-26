@@ -27,3 +27,13 @@ output "prod_lambda_execution_role_arn" {
   description = "The ARN of the prod Lambda execution role"
   value       = aws_iam_role.prod_lambda_execution_role.arn
 }
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter containing the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

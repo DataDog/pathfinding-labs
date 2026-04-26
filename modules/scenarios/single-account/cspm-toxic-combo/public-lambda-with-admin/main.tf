@@ -52,4 +52,24 @@ resource "aws_lambda_function_url" "hello_world_url" {
   provider           = aws.dev
   function_name      = aws_lambda_function.hello_world.function_name
   authorization_type = "NONE" # Makes the function publicly accessible
-} 
+}
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions by extracting the Lambda execution role's
+# temporary credentials from the function's HTTP response. The flag lives in the same
+# account as the Lambda function and is readable by any principal with ssm:GetParameter
+# on the parameter ARN — in practice this means any caller holding the admin execution
+# role's credentials, since AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.dev
+  name        = "/pathfinding-labs/flags/public-lambda-with-admin-to-admin"
+  description = "CTF flag for the public-lambda-with-admin to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name     = "pl-public-lambda-with-admin-to-admin-flag"
+    Scenario = "public-lambda-with-admin"
+    Purpose  = "ctf-flag"
+  }
+}

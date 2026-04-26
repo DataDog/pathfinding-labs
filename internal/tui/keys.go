@@ -42,6 +42,11 @@ type KeyMap struct {
 	// Category collapse
 	ToggleCollapseAll key.Binding
 
+	// Credential actions
+	CopyCredentials        key.Binding
+	CopyCredentialsProfile key.Binding
+	SpawnShell             key.Binding
+
 	// Help and quit
 	Help key.Binding
 	Quit key.Binding
@@ -140,6 +145,20 @@ func DefaultKeyMap() *KeyMap {
 			key.WithHelp("s", "settings"),
 		),
 
+		// Credential actions
+		CopyCredentials: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy creds (env vars)"),
+		),
+		CopyCredentialsProfile: key.NewBinding(
+			key.WithKeys("Y"),
+			key.WithHelp("Y", "copy creds (credentials file)"),
+		),
+		SpawnShell: key.NewBinding(
+			key.WithKeys("x"),
+			key.WithHelp("x", "spawn shell"),
+		),
+
 		// Filter
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
@@ -204,6 +223,7 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		{k.Tab, k.Toggle, k.Enable, k.Disable},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup, k.CleanupAll},
 		{k.Destroy, k.Config},
+		{k.CopyCredentials, k.CopyCredentialsProfile, k.SpawnShell},
 		{k.Filter, k.ToggleEnabledOnly, k.ToggleDemoActive, k.ToggleCosts},
 		{k.ToggleCollapseAll},
 		{k.Help, k.Quit},

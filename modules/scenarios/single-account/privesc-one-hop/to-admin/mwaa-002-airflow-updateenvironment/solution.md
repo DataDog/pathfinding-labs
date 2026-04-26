@@ -108,6 +108,22 @@ aws iam list-users --max-items 3 --output table
 # Should succeed -- you now have full administrator access
 ```
 
+## Capture the Flag
+
+Admin access isn't the finish line -- the flag is. Every Pathfinding Labs scenario stores a flag in a well-known location, and retrieving it is how you prove the end-to-end attack worked. For `to-admin` scenarios like this one, the flag lives in AWS Systems Manager Parameter Store at a predictable path under `/pathfinding-labs/flags/`. Reading it requires `ssm:GetParameter` on that specific parameter, which the `AdministratorAccess` now attached to your starting user provides implicitly.
+
+The malicious DAG granted `AdministratorAccess` to `pl-prod-mwaa-002-to-admin-starting-user` -- use those same credentials (your original starting-user keys) to read the flag:
+
+```bash
+aws ssm get-parameter \
+    --name /pathfinding-labs/flags/mwaa-002-to-admin \
+    --query 'Parameter.Value' \
+    --output text
+# flag{...}  — your scenario-specific flag value
+```
+
+The value printed is the flag you submit to complete the challenge. Its exact contents are deployment-specific (the default ships in `flags.default.yaml` in the repo root; vendors running hosted labs can swap in their own set via `plabs init --flag-file` or `plabs flags import`). The retrieval mechanism and path are identical across every `to-admin` scenario, so this same command works as the final step for any of them -- only the scenario ID in the path changes.
+
 ## What Happened
 
 You started with a user that had only two MWAA API permissions and some EC2 describe calls. By redirecting the environment's DAG source to a bucket you controlled, you injected code into a managed service that was already trusted to run as an admin role. The MWAA service retrieved your malicious DAG using the admin execution role's cross-account S3 read, then executed that DAG under the same role -- giving your code unrestricted IAM access.

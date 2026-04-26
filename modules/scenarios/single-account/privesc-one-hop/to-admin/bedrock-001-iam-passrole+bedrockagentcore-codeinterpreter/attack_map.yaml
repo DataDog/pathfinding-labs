@@ -34,12 +34,24 @@ attackMap:
       label: "Admin Role"
       type: principal
       subType: iam-role
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-001-to-admin-target-role"
       description: >
         This IAM role has AdministratorAccess. Its temporary credentials are available
         inside the code interpreter's MicroVM via the Metadata Service. Once extracted,
         they can be used directly to perform any action in the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-001-to-admin"
+      description: >
+        The CTF flag is stored in AWS Systems Manager Parameter Store. Only a principal
+        with sufficient IAM permissions (such as the admin role you just obtained credentials
+        for) can read this parameter. Retrieving it proves you have successfully escalated
+        privileges and completed the scenario.
 
   edges:
     - from: starting-principal
@@ -77,3 +89,20 @@ attackMap:
           command: "python3 /tmp/extract_bedrock_creds.py $INTERPRETER_ID $AWS_REGION"
         - description: "Verify admin access with extracted credentials"
           command: "aws iam list-users --max-items 3 --output table"
+
+    - from: target-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        Use the admin credentials extracted from the MicroVM Metadata Service to read the
+        CTF flag from AWS Systems Manager Parameter Store. This proves full administrative
+        access has been obtained.
+      hints:
+        - "You now hold temporary credentials for an IAM role with AdministratorAccess. Export them to your shell environment."
+        - "The flag is stored in SSM Parameter Store. Use the AWS CLI ssm get-parameter subcommand."
+        - "The parameter name follows the pattern /pathfinding-labs/flags/{scenario-id}. The scenario ID here is bedrock-001-to-admin."
+        - "Remember to pass --with-decryption if the parameter were SecureString, but for a plain String type it is not required."
+        - "The --query 'Parameter.Value' flag with --output text gives a clean output of just the flag value."
+      commands:
+        - description: "Read the CTF flag from SSM Parameter Store using admin credentials"
+          command: "aws ssm get-parameter --name '/pathfinding-labs/flags/bedrock-001-to-admin' --query 'Parameter.Value' --output text"

