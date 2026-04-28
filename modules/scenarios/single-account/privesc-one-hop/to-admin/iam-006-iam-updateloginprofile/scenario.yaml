@@ -66,3 +66,8 @@ mitre_attack:
 terraform:
   variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile"
   module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-006-iam-updateloginprofile"
+
+# =============================================================================
+# DEMO CONFIGURATION
+# =============================================================================
+interactive_demo: true  # Attack grants console access only — capturing the flag requires a manual console login as the target admin user, which the automated demo cannot perform.

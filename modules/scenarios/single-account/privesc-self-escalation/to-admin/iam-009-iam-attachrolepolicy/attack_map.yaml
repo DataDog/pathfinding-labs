@@ -22,7 +22,6 @@ attackMap:
       label: "Starting Role"
       type: principal
       subType: iam-role
-      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-009-to-admin-starting-role"
       description: >
         This IAM role has iam:AttachRolePolicy permission scoped to itself. An attacker
@@ -63,6 +62,7 @@ attackMap:
     - from: starting-role
       to: starting-role
       label: "iam:AttachRolePolicy"
+      grantsAdmin: true
       description: >
         The role uses iam:AttachRolePolicy to attach the AWS-managed AdministratorAccess
         policy to itself, immediately granting full administrator privileges.

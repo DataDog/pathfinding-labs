@@ -47,6 +47,16 @@ permissions:
           purpose: "Retrieve pipeline definition for verification"
         - permission: "s3:ListBucket"
           purpose: "List objects in buckets for verification"
+
+  lab_simulation:
+    - permission: "s3:GetObject"
+      resource: "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{attacker_account_id}-{suffix}/*"
+      principal: "pl-prod-datapipeline-001-to-bucket-starting-user"
+      purpose: "Used in the demo's fallback mode (no separate attacker account configured) so the starting user can read the exfil bucket — simulating the attacker reading their own infrastructure. In cross-account mode this is unused; the demo uses real attacker-account credentials."
+    - permission: "s3:ListBucket"
+      resource: "arn:aws:s3:::pl-exfil-bucket-datapipeline-001-{attacker_account_id}-{suffix}"
+      principal: "pl-prod-datapipeline-001-to-bucket-starting-user"
+      purpose: "Same as above — fallback-mode-only ListBucket on the exfil bucket."
 mitre_attack:
   tactics:
     - "TA0004 - Privilege Escalation"

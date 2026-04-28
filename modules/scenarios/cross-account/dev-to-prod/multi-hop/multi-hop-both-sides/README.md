@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides`
 * **Schema Version:** 4.6.0
 * **CTF Flag Location:** ssm-parameter
+* **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1078.004 - Valid Accounts: Cloud Accounts
 

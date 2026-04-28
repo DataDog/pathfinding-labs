@@ -22,7 +22,6 @@ attackMap:
       label: "Starting Role"
       type: principal
       subType: iam-role
-      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-001-to-admin-starting-role"
       description: >
         This IAM role holds iam:CreatePolicyVersion permission scoped to its own
@@ -64,6 +63,7 @@ attackMap:
     - from: starting-role
       to: starting-role
       label: "iam:CreatePolicyVersion"
+      grantsAdmin: true
       description: >
         Create a new version of the policy attached to this role that grants
         AdministratorAccess and set it as the default, achieving full privilege escalation.

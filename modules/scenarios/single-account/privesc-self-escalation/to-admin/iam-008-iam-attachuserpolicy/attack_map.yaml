@@ -4,7 +4,6 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-008-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
@@ -30,6 +29,7 @@ attackMap:
     - from: starting-principal
       to: starting-principal
       label: "iam:AttachUserPolicy"
+      grantsAdmin: true
       description: >
         Attach the AdministratorAccess managed policy to the starting user, immediately
         granting full administrative access to the AWS account.

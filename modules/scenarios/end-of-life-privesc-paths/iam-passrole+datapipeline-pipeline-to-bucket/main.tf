@@ -224,6 +224,22 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:PassRole"
         ]
         Resource = aws_iam_role.pipeline_role.arn
+      },
+      {
+        # Lets the demo read the attacker-controlled exfil bucket as the starting user
+        # when no separate attacker account is configured (the bucket then lives in prod
+        # and there is no real attacker principal to act as). In cross-account mode this
+        # statement is unused — the demo uses real attacker-account credentials instead.
+        Sid    = "LabSimulationReadExfilBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.exfil_bucket.arn,
+          "${aws_s3_bucket.exfil_bucket.arn}/*"
+        ]
       }
     ]
   })

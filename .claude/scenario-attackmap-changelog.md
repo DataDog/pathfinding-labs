@@ -4,6 +4,49 @@ Version history for `.claude/scenario-attackmap-schema.md`. When bumping the sch
 
 ---
 
+## 1.5.0 — 2026-04-27
+
+Minor: added `grantsAdmin` boolean field on edges to fix the dual-crown bug in self-escalation to-admin scenarios.
+
+**Changes:**
+- New optional `grantsAdmin` boolean field on edges (default `false`). Only meaningful on self-loop edges (`from === to`). When `true`, the frontend suppresses the crown on the pre-escalation visual instance of the principal and applies the crown to the post-escalation instance.
+- `isAdmin: true` on a node now means "this principal already holds admin at this point in the path." Self-escalating principals that *gain* admin through the self-loop should NOT carry `isAdmin: true` on the node; they should carry `grantsAdmin: true` on the self-loop edge.
+- Updated `isAdmin` node field description with explicit "Do NOT set on self-escalating principals" guidance.
+- New "Self-Escalation Self-Loop" pattern section describing the before/after visual split and the `grantsAdmin` field.
+- Compliance checklist: added rule requiring `grantsAdmin: true` on the self-loop edge (not `isAdmin: true` on the node) for self-escalation to-admin scenarios.
+
+**Why:** The frontend (`parseAttackMapToGameNodes`) expands a self-loop edge into two visual node instances — one before escalation, one after. Both instances were created from the same `nodeData` object, so `isAdmin: true` on the node caused both copies to get the admin crown. The fix separates the semantics: node-level `isAdmin` means "currently admin", edge-level `grantsAdmin` means "transitions to admin here."
+
+**Migration rules:**
+- Affects all self-escalation to-admin scenarios where the self-escalating principal currently has `isAdmin: true` and a self-loop edge.
+- For each affected scenario: remove `isAdmin: true` from the self-escalating principal node; add `grantsAdmin: true` to the self-loop edge.
+- Migrated in this release: iam-001, iam-005 (to-admin), iam-007, iam-008, iam-009 (to-admin).
+- To-bucket self-escalation scenarios (iam-005-to-bucket, iam-009-to-bucket) are not affected — the self-loop grants scoped access, not full admin, so `isAdmin: true` was never set on those nodes.
+
+```yaml
+migration:
+  tier: simple
+  scope:
+    field: "category"
+    custom: "self-escalation to-admin scenarios with a self-loop edge where the escalating principal has isAdmin: true"
+  requires_scenario_yaml_fields: []
+  requires_companion_files: false
+  affected_sections:
+    - "attack_map.yaml:nodes[].isAdmin"
+    - "attack_map.yaml:edges[].grantsAdmin"
+  operations:
+    - description: "Remove isAdmin: true from the self-escalating principal node"
+    - description: "Add grantsAdmin: true to the self-loop edge on the same node"
+  agent_instructions: |
+    For each self-escalation to-admin scenario:
+    1. Find the node that has both isAdmin: true and a self-loop edge (from === to === node.id).
+    2. Remove isAdmin: true from that node.
+    3. Add grantsAdmin: true to the self-loop edge.
+    No other changes required.
+```
+
+---
+
 ## 1.4.0 — 2026-04-22
 
 Minor: added CTF flag terminal pattern and `isAdmin` node flag. Every scenario (except `tool-testing/`) now ends at a CTF flag resource rather than at the admin principal.

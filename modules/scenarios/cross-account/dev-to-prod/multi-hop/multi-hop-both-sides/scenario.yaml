@@ -75,3 +75,8 @@ mitre_attack:
 terraform:
   variable_name: "enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides"
   module_path: "modules/scenarios/cross-account/dev-to-prod/multi-hop/multi-hop-both-sides"
+
+# =============================================================================
+# DEMO CONFIGURATION
+# =============================================================================
+interactive_demo: true  # The final hop grants console access to pl-Jeremy in prod — capturing the flag requires a manual console login as the target admin user, which the automated demo cannot perform.

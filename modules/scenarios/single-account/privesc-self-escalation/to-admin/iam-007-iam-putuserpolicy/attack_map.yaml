@@ -4,7 +4,6 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      isAdmin: true
       arn: "arn:aws:iam::{account_id}:user/pl-prod-iam-007-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
@@ -31,6 +30,7 @@ attackMap:
     - from: starting-user
       to: starting-user
       label: "iam:PutUserPolicy"
+      grantsAdmin: true
       description: >
         Call iam:PutUserPolicy targeting your own user to attach an inline policy
         that grants AdministratorAccess. The escalation is immediate — no approval

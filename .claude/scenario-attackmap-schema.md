@@ -1,6 +1,6 @@
 # Pathfinding Labs Attack Map Schema
 
-**Current schema version: `1.4.0`**
+**Current schema version: `1.5.0`**
 
 See `.claude/scenario-attackmap-changelog.md` for version history and migration rules.
 
@@ -43,7 +43,7 @@ attackMap:
 | `subType` | Yes | `iam-user`, `iam-role`, `iam-group`, `apprunner-service`, `lambda-function`, `ec2-instance`, `ecs-task`, `s3-bucket`, `glue-job`, `codebuild-project`, `cloudformation-stack`, `sagemaker-notebook`, `ssm-document`, `ssm-parameter`, `bedrock-agent`, etc. |
 | `isTarget` | No (default `false`) | Boolean. Exactly one node per map must have `isTarget: true` -- the final destination of the attack path (typically the CTF flag resource). Mutually exclusive with `isAttackerControlled` and with `isAdmin`. |
 | `isAttackerControlled` | No (default `false`) | Boolean. Set to `true` on nodes representing infrastructure the attacker owns or controls (e.g., a script-hosting bucket, an exfil destination, a C2 endpoint). These nodes are NOT victim misconfigurations. A node cannot be both `isTarget` and `isAttackerControlled`. |
-| `isAdmin` | No (default `false`) | Boolean. Set to `true` on `type: principal` nodes that hold administrator-equivalent permissions in their account (e.g., `AdministratorAccess` managed policy, wildcard inline policy). The frontend uses this to render admin-equivalent pivots distinctly. Mutually exclusive with `isTarget: true` on the same node — once flag resources became the canonical terminal, admin principals are pivots, not targets. Not mutually exclusive with `isAttackerControlled`. |
+| `isAdmin` | No (default `false`) | Boolean. Set to `true` on `type: principal` nodes that **already hold** administrator-equivalent permissions in their account (e.g., `AdministratorAccess` managed policy, wildcard inline policy). The frontend uses this to render admin-equivalent pivots distinctly. Mutually exclusive with `isTarget: true` on the same node — once flag resources became the canonical terminal, admin principals are pivots, not targets. Not mutually exclusive with `isAttackerControlled`. **Do NOT set this on a principal that starts without admin but gains it via a self-loop edge** — use `grantsAdmin: true` on that edge instead (see Edge Schema). |
 | `arn` | Yes | Full ARN with `{account_id}` and `{region}` placeholders |
 | `access` | No (required on entry-point nodes) | Structured entry point for frontend display. Present only on nodes that represent a reachable starting point (public or internal network, or pre-given credentials). See Access Object below. |
 | `description` | Yes | Second-person narrative. Starting node MUST begin with the standard prologue paragraph (see below). |
@@ -126,6 +126,7 @@ Followed by scenario-specific details about what the resource does, why it is vu
 | `description` | Yes | What this transition does |
 | `commands` | Yes | Array of `{description, command}` objects -- the AWS CLI commands from demo_attack.sh. May be empty (`[]`) for implicit edges like instance profiles. |
 | `hints` | Yes | Ordered array of progressive hints guiding the attacker toward completing this edge. See Hints Design Principles below. |
+| `grantsAdmin` | No (default `false`) | Boolean. Set to `true` on self-loop edges (`from === to`) where the principal transitions from non-admin to admin-equivalent by traversing this edge. The frontend suppresses the crown on the pre-escalation instance of the node and applies it to the post-escalation instance. Only meaningful on self-loop edges; has no effect on edges between distinct nodes. |
 
 ---
 
@@ -179,7 +180,13 @@ hints:
 
 ### Self-Escalation Self-Loop
 
-Self-escalation scenarios use a self-loop edge where `from` and `to` are the same node. The starting role is both the actor and the target (`isTarget: true`). Example: a role with `iam:PutRolePolicy` modifies its own policy. The map has 2 nodes (starting user + starting role) and 2 edges (assume role + self-loop).
+Self-escalation scenarios use a self-loop edge where `from` and `to` are the same node. The frontend expands a self-loop into two visual instances of the same principal: a "before escalation" copy (no crown) and an "after escalation" copy (crown, if admin was granted).
+
+- **Do NOT set `isAdmin: true` on the self-escalating principal node.** The node starts without admin; setting `isAdmin: true` on it would incorrectly crown the pre-escalation instance too.
+- **Set `grantsAdmin: true` on the self-loop edge** when the principal transitions to admin-equivalent through this step. The frontend will then crown only the post-escalation instance.
+- After the self-loop, the escalated principal continues to the CTF flag terminal via a forward edge.
+
+For to-admin scenarios the final shape is: starting-principal (no crown) → self-loop edge with `grantsAdmin: true` → starting-principal (crown) → ctf-flag (`isTarget: true`). For to-bucket scenarios where the self-loop grants scoped access (not full admin), omit `grantsAdmin: true`.
 
 ### Multi-Hop Pattern
 
@@ -378,5 +385,6 @@ An `attack_map.yaml` is compliant if all of the following are true:
 - [ ] No duplicate ARNs across nodes (no phantom nodes)
 - [ ] Target node represents the real infrastructure target, not the starting principal relabeled
 - [ ] Self-escalation scenarios use a self-loop edge (`from` and `to` are the same node)
+- [ ] **Self-escalation to-admin scenarios**: the self-escalating principal node does NOT have `isAdmin: true`; the self-loop edge has `grantsAdmin: true` instead
 - [ ] **CTF scenarios only**: Node descriptions do not list IAM permissions or reveal the attack path; edge labels use descriptive phrases, not permission names; hints guide toward discovery without naming exact permissions, commands, resource names, or flag location; commands use `<placeholder>` syntax for enumerated resource names
 - [ ] Valid YAML that parses without errors

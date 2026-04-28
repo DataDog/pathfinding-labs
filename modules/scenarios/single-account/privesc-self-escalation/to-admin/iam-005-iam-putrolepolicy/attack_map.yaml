@@ -22,7 +22,6 @@ attackMap:
       label: "Starting Role"
       type: principal
       subType: iam-role
-      isAdmin: true
       arn: "arn:aws:iam::{account_id}:role/pl-prod-iam-005-to-admin-starting-role"
       description: >
         This IAM role has iam:PutRolePolicy on itself. By adding an inline policy
@@ -61,6 +60,7 @@ attackMap:
     - from: starting-role
       to: starting-role
       label: "iam:PutRolePolicy"
+      grantsAdmin: true
       description: >
         Add an inline policy to the starting role itself, granting AdministratorAccess.
         Because the role has iam:PutRolePolicy on itself, this self-modification

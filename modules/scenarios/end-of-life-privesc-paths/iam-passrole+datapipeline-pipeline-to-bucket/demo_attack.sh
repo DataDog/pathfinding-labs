@@ -88,10 +88,10 @@ if [ -n "$ATTACKER_ACCESS_KEY" ] && [ "$ATTACKER_ACCESS_KEY" != "null" ]; then
     HAVE_ATTACKER_CREDS=true
 else
     echo "No attacker account configured -- exfil bucket is in prod account (demo convenience mode)"
-    echo "Using prod admin credentials to read exfil bucket"
+    echo "Falling back to starting user credentials to read the exfil bucket"
+    echo "(the starting user's IAM policy includes a LabSimulationReadExfilBucket statement"
+    echo " for exactly this case — see scenario.yaml lab_simulation permissions)"
     HAVE_ATTACKER_CREDS=false
-    ATTACKER_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null || echo "")
-    ATTACKER_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null || echo "")
 fi
 
 # Get region
@@ -125,8 +125,16 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 use_attacker_creds() {
-    export AWS_ACCESS_KEY_ID="$ATTACKER_ACCESS_KEY"
-    export AWS_SECRET_ACCESS_KEY="$ATTACKER_SECRET_KEY"
+    if [ "$HAVE_ATTACKER_CREDS" = "true" ]; then
+        export AWS_ACCESS_KEY_ID="$ATTACKER_ACCESS_KEY"
+        export AWS_SECRET_ACCESS_KEY="$ATTACKER_SECRET_KEY"
+    else
+        # Fallback: no separate attacker account configured. The exfil bucket lives in
+        # prod and the starting user has s3:GetObject/s3:ListBucket on it via the
+        # LabSimulationReadExfilBucket IAM statement.
+        export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+        export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    fi
     unset AWS_SESSION_TOKEN
 }
 
