@@ -50,6 +50,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "codebuild:StartBuildBatch"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "codebuild:ListProjects",
+          "codebuild:BatchGetProjects",
+          "codebuild:BatchGetBuildBatches"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -79,33 +89,10 @@ resource "aws_iam_role" "target_role" {
   }
 }
 
-# Policy for the target role - includes permissions to grant admin access
-resource "aws_iam_role_policy" "target_role_policy" {
-  provider = aws.prod
-  name     = "pl-prod-codebuild-003-to-admin-target-role-policy"
-  role     = aws_iam_role.target_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:AttachUserPolicy"
-        ]
-        Resource = aws_iam_user.starting_user.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "arn:aws:logs:*:${var.account_id}:log-group:/aws/codebuild/*"
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "target_role_admin" {
+  provider   = aws.prod
+  role       = aws_iam_role.target_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 # Existing CodeBuild project with the privileged role
