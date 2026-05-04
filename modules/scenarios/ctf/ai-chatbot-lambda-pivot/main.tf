@@ -262,6 +262,14 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "ec2:DescribeRegions"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

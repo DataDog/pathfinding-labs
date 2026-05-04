@@ -60,6 +60,18 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:AssumeRole"
         ]
         Resource = aws_iam_role.intermediate_role.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ecs:DescribeTasks",
+          "iam:ListRoles",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

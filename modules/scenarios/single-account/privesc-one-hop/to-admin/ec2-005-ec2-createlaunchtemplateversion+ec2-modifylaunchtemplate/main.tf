@@ -65,6 +65,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "autoscaling:SetDesiredCapacity"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "autoscaling:DescribeAutoScalingGroups",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
       }
     ]
   })

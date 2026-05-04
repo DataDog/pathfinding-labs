@@ -67,6 +67,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "lambda:InvokeFunction"
         ]
         Resource = aws_lambda_function.target_function.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "lambda:ListFunctions",
+          "lambda:GetFunction",
+          "lambda:GetFunctionConfiguration"
+        ]
+        Resource = "*"
       }
     ]
   })

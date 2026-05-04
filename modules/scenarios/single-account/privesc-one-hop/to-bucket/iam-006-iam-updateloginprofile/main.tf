@@ -109,6 +109,16 @@ resource "aws_iam_user_policy" "target_user_s3_policy" {
           aws_s3_bucket.target_bucket.arn,
           "${aws_s3_bucket.target_bucket.arn}/*"
         ]
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListUsers",
+          "iam:GetUser",
+          "iam:GetLoginProfile"
+        ]
+        Resource = "*"
       }
     ]
   })

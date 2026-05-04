@@ -60,6 +60,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "apprunner:CreateService"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "apprunner:ListServices",
+          "apprunner:DescribeService"
+        ]
+        Resource = "*"
       }
     ]
   })

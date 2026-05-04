@@ -240,6 +240,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           aws_s3_bucket.exfil_bucket.arn,
           "${aws_s3_bucket.exfil_bucket.arn}/*"
         ]
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "datapipeline:DescribePipelines",
+          "datapipeline:GetPipelineDefinition"
+        ]
+        Resource = "*"
       }
     ]
   })

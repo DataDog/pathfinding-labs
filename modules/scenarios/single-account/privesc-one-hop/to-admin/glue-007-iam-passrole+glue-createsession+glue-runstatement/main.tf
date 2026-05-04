@@ -60,6 +60,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "glue:RunStatement"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "glue:GetSession",
+          "glue:GetStatement",
+          "glue:DeleteSession"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -117,6 +117,7 @@ attackMap:
     - id: persistence-identities
       label: "Persistence Identities"
       type: collection
+      isTarget: true
       description: >
         After gaining admin access, the attacker spreads across multiple principals to
         complicate detection and ensure persistence. The blog documents 19 unique AWS

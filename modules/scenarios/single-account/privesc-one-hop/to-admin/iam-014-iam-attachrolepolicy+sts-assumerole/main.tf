@@ -51,6 +51,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-iam-014-to-admin-target-role"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole",
+          "iam:ListAttachedRolePolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -56,6 +56,16 @@ resource "aws_iam_user_policy" "privesc_policy" {
           "iam:AddUserToGroup"
         ]
         Resource = aws_iam_group.admin_group.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListGroups",
+          "iam:GetGroup",
+          "iam:ListAttachedGroupPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

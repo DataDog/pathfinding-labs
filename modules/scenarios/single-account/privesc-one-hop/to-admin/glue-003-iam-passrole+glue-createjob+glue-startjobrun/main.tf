@@ -136,6 +136,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "glue:StartJobRun"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "glue:GetJob",
+          "glue:GetJobRun",
+          "glue:GetJobRuns"
+        ]
+        Resource = "*"
       }
     ]
   })

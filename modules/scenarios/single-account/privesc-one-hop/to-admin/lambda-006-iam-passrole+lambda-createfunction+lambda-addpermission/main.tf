@@ -70,6 +70,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:GetCallerIdentity"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "lambda:GetFunction",
+          "lambda:GetPolicy",
+          "lambda:DeleteFunction"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -377,6 +377,14 @@ resource "aws_iam_user_policy" "starting_user" {
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-epe-role-*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
       }
     ]
   })

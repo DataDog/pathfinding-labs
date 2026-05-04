@@ -141,6 +141,18 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           aws_instance.target.arn,
           "arn:aws:ssm:*:*:document/AWS-RunShellScript"
         ]
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ssm:ListCommands",
+          "ssm:ListCommandInvocations",
+          "ssm:GetCommandInvocation",
+          "ssm:DescribeInstanceInformation",
+          "ec2:DescribeInstances"
+        ]
+        Resource = "*"
       }
     ]
   })

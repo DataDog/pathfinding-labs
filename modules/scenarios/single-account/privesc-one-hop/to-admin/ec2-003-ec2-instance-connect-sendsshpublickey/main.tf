@@ -86,6 +86,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "ec2-instance-connect:SendSSHPublicKey"
         ]
         Resource = aws_instance.target.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "iam:GetInstanceProfile",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

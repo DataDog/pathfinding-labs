@@ -53,6 +53,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:CreateLoginProfile"
         ]
         Resource = aws_iam_user.hop1_user.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListUsers",
+          "iam:GetUser",
+          "iam:GetLoginProfile"
+        ]
+        Resource = "*"
       }
     ]
   })

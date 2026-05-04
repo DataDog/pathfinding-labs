@@ -61,6 +61,19 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:PassRole"
         ]
         Resource = aws_iam_role.target_role.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ecs:DescribeServices",
+          "ecs:DescribeTasks",
+          "ecs:ListTasks",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

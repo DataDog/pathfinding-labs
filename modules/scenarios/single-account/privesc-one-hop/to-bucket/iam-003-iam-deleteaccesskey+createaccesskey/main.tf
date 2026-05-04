@@ -66,6 +66,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:CreateAccessKey"
         ]
         Resource = aws_iam_user.target_user.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListUsers",
+          "iam:GetUser",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

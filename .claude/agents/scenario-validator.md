@@ -257,14 +257,17 @@ For any command used in the demo script, determine whether it is an exploit step
 #### Attack Simulation `|| true` pattern
 Attack Simulation demo scripts may include commands with `|| true` for recon and failed attempt steps. This is expected and should not be flagged as an error.
 
-#### Validate minimal permissions pattern (CRITICAL)
+#### Validate permissions pattern (CRITICAL)
 Check that the starting user's IAM policies in main.tf do NOT contain any of the following:
 - `sts:GetCallerIdentity` -- identity checks use the readonly user
-- Sids containing `HelpfulForDemoScript` or `helpfulAdditionalPermissions`
-- Separate `starting_user_helpful` policy resources
-- Observation-only actions that should use readonly creds: `Describe*`, `List*`, `Get*` for non-exploit purposes (e.g., `glue:GetJobRun`, `ec2:DescribeVpcs`, `sagemaker:DescribeTrainingJob`, `iam:ListUsers`, `iam:ListAttachedUserPolicies`, `codebuild:BatchGetBuilds`, `cloudformation:DescribeStacks`)
+- Sids containing `HelpfulForDemoScript`, `helpfulAdditionalPermissions`, or `HelpfulForExploitation*` -- these are old patterns superseded by `HelpfulForReconAndMonitoring`
+- Separate `starting_user_helpful` policy resources -- helpful permissions belong in the same `aws_iam_user_policy` resource as required permissions, as a second statement
+- Write or destructive actions in the `HelpfulForReconAndMonitoring` statement (e.g., `ecs:DeleteCluster`, `ecs:StopTask`, `ecs:DeregisterTaskDefinition`, `iam:DetachUserPolicy`) -- cleanup actions run as admin in `cleanup_attack.sh`, not as the starting user
+- Post-escalation verification permissions described as "verify admin access" (e.g., `iam:ListUsers`) -- these should be reached organically through the escalation, not granted upfront
 
-Sids should follow the `RequiredForExploitation{Purpose}` naming pattern.
+Check that the starting user's IAM policies in main.tf DO contain a `HelpfulForReconAndMonitoring` statement if `permissions.helpful` is non-empty in scenario.yaml. Every helpful permission listed in scenario.yaml must appear in the Terraform policy. Missing helpful permissions leave manual exploiters without necessary recon capabilities (the demo script's `restrict_helpful_permissions` call handles denying them at runtime, so Terraform granting them does not affect demo determinism).
+
+Required permission Sids should follow the `RequiredForExploitation{Purpose}` naming pattern. The helpful statement must use the exact Sid `HelpfulForReconAndMonitoring` (single fixed name, no purpose suffix).
 
 #### Validate attacker provider pattern (if applicable)
 If the scenario has attacker-controlled S3 buckets (exploit scripts, payloads):

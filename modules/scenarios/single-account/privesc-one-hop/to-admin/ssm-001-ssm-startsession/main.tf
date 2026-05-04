@@ -91,6 +91,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "ssm:TerminateSession"
         ]
         Resource = "arn:aws:ssm:*:*:session/*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ssm:DescribeInstanceInformation",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
       }
     ]
   })

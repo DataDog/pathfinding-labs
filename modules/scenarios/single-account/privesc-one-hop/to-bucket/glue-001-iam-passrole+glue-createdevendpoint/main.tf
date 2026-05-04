@@ -62,6 +62,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "glue:CreateDevEndpoint"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "glue:GetDevEndpoint",
+          "iam:ListRoles",
+          "s3:ListBuckets",
+          "glue:DeleteDevEndpoint"
+        ]
+        Resource = "*"
       }
     ]
   })

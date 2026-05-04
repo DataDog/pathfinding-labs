@@ -92,6 +92,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "s3:GetObject"
         ]
         Resource = "${aws_s3_bucket.processing_bucket.arn}/*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole",
+          "sagemaker:DescribeProcessingJob",
+          "s3:ListBucket"
+        ]
+        Resource = "*"
       }
     ]
   })

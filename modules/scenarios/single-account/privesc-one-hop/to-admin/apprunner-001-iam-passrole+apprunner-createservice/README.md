@@ -32,7 +32,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 **Helpful** (`pl-prod-apprunner-001-to-admin-starting-user`):
 - `apprunner:ListServices` -- list App Runner services to verify service creation
 - `apprunner:DescribeService` -- check service status and configuration
-- `iam:ListUsers` -- verify admin access after escalation
 
 ## Self-hosted Lab Setup
 

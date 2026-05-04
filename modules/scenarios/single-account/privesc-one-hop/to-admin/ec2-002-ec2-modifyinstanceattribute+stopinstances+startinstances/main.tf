@@ -83,6 +83,14 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "ec2:DescribeInstanceAttribute"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -52,6 +52,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "apprunner:UpdateService"
         ]
         Resource = "arn:aws:apprunner:*:${var.account_id}:service/pl-apprunner-002-to-admin/*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "apprunner:DescribeService",
+          "apprunner:ListServices"
+        ]
+        Resource = "*"
       }
     ]
   })

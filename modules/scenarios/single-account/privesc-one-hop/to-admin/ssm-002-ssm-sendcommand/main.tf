@@ -91,6 +91,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "ssm:ListCommandInvocations"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "ssm:ListCommands",
+          "ec2:DescribeInstances"
+        ]
+        Resource = "*"
       }
     ]
   })

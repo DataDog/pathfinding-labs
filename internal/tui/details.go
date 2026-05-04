@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -190,9 +191,6 @@ func (d *DetailsPane) buildContent() []string {
 		contentWidth = 20
 	}
 
-	// Short Name (ID)
-	lines = append(lines, d.styles.DetailLabel.Render("Short Name ")+d.styles.DetailHighlight.Bold(true).Render(d.scenario.UniqueID()))
-
 	// Long Name (truncated if needed) — use Title if set, fall back to Name
 	name := d.scenario.Title
 	if name == "" {
@@ -202,6 +200,9 @@ func (d *DetailsPane) buildContent() []string {
 		name = name[:contentWidth-14] + "..."
 	}
 	lines = append(lines, d.styles.DetailLabel.Render("Long Name  ")+d.styles.DetailValue.Render(name))
+
+	// Short Name (ID)
+	lines = append(lines, d.styles.DetailLabel.Render("Short Name ")+d.styles.DetailHighlight.Bold(true).Render(d.scenario.UniqueID()))
 
 	// Status with color - show pending states
 	var statusLine string
@@ -227,17 +228,25 @@ func (d *DetailsPane) buildContent() []string {
 
 	// Metadata fields
 	lines = append(lines, d.styles.DetailLabel.Render("Category  ")+d.styles.DetailValue.Render(d.scenario.CategoryShort()))
-	lines = append(lines, d.styles.DetailLabel.Render("Target    ")+d.styles.DetailValue.Render(d.scenario.TargetShort()))
-	lines = append(lines, d.styles.DetailLabel.Render("Cost      ")+d.styles.DetailValue.Render(d.scenario.CostEstimate))
+	lines = append(lines, d.styles.DetailLabel.Render("Idle Cost ")+d.styles.DetailValue.Render(d.scenario.CostEstimate))
 
-	// Pathfinding.cloud link
+	// Links — labs guide is always present; the pathfinding.cloud path
+	// reference appears alongside it when the scenario carries a path ID.
+	// Slug rule mirrors pathfinding.cloud/scripts/generate-labs-json.py:
+	// "{id}" for to-admin/none, "{id}-to-bucket" for to-bucket, directory
+	// basename when no path ID is set.
+	slug := d.scenario.PathfindingCloudID
+	if slug != "" && d.scenario.Target == "to-bucket" {
+		slug += "-to-bucket"
+	}
+	if slug == "" {
+		slug = filepath.Base(d.scenario.DirPath)
+	}
+	labsURL := fmt.Sprintf("https://pathfinding.cloud/labs/%s", slug)
+	lines = append(lines, d.styles.DetailLabel.Render("Lab Guide  ")+hyperlink(labsURL, d.styles.DetailHighlight.Render(labsURL)))
 	if d.scenario.PathfindingCloudID != "" {
-		url := fmt.Sprintf("https://pathfinding.cloud/paths/%s", d.scenario.PathfindingCloudID)
-		displayText := url
-		if len(displayText) > contentWidth-10 {
-			displayText = displayText[:contentWidth-13] + "..."
-		}
-		lines = append(lines, d.styles.DetailLabel.Render("Link      ")+hyperlink(url, d.styles.DetailHighlight.Render(displayText)))
+		pathURL := fmt.Sprintf("https://pathfinding.cloud/paths/%s", d.scenario.PathfindingCloudID)
+		lines = append(lines, d.styles.DetailLabel.Render("Path  ")+hyperlink(pathURL, d.styles.DetailHighlight.Render(pathURL)))
 	}
 
 	// Description
@@ -309,24 +318,24 @@ func (d *DetailsPane) buildContent() []string {
 
 	// Start Learning — always shown, content depends on deployment state
 	lines = append(lines, "")
-	lines = append(lines, sectionStyle.Render("Start Learning"))
+	lines = append(lines, sectionStyle.Render("Start Learning (Lab key bindings)"))
 
 	key := d.styles.CredentialKey // orange, same as cost indicators
 	desc := d.styles.HelpDesc
 
 	if d.deployed && d.creds != nil && d.creds.AccessKeyID != "" {
-		lines = append(lines, "  "+key.Render("[x]")+"  "+desc.Render("spawn shell with starting credentials"))
+		lines = append(lines, "  "+key.Render("[x]    ")+"  "+desc.Render("spawn shell with starting credentials"))
 		lines = append(lines, "       "+d.styles.ScenarioDisabled.Render("(type exit to return to TUI)"))
-		lines = append(lines, "  "+key.Render("[y]")+"  "+desc.Render("copy credentials as environment variables"))
-		lines = append(lines, "  "+key.Render("[Y]")+"  "+desc.Render("copy credentials as ~/.aws/credentials block"))
+		lines = append(lines, "  "+key.Render("[y]    ")+"  "+desc.Render("copy credentials as environment variables"))
+		lines = append(lines, "  "+key.Render("[Y]    ")+"  "+desc.Render("copy credentials as ~/.aws/credentials block"))
 		if d.scenario.HasDemo() {
-			lines = append(lines, "  "+key.Render("[r]")+"  "+desc.Render("run automated attack demo end to end"))
+			lines = append(lines, "  "+key.Render("[r]    ")+"  "+desc.Render("run automated attack demo end to end"))
 		}
 		if d.scenario.HasCleanup() {
-			lines = append(lines, "  "+key.Render("[c]")+"  "+desc.Render("clean up demo artifacts"))
+			lines = append(lines, "  "+key.Render("[c]    ")+"  "+desc.Render("clean up demo artifacts"))
 		}
 		if d.scenario.HasConfig() {
-			lines = append(lines, "  "+key.Render("[e]")+"  "+desc.Render("edit scenario configuration"))
+			lines = append(lines, "  "+key.Render("[e]    ")+"  "+desc.Render("edit scenario configuration"))
 		}
 		lines = append(lines, "")
 		lines = append(lines, "  "+key.Render("[space]")+"  "+desc.Render("disable this scenario"))

@@ -60,20 +60,8 @@ permissions:
           purpose: "Monitor task execution status and verify task completion"
         - permission: "ecs:ListTasks"
           purpose: "List tasks in the cluster to get task ARN for monitoring"
-        - permission: "ecs:UpdateService"
-          purpose: "Scale down service during cleanup"
-        - permission: "ecs:DeleteService"
-          purpose: "Clean up ECS service after demonstration"
-        - permission: "ecs:StopTask"
-          purpose: "Stop running tasks during cleanup"
-        - permission: "ecs:DeregisterTaskDefinition"
-          purpose: "Clean up task definition after demonstration"
-        - permission: "ecs:DeleteCluster"
-          purpose: "Clean up ECS cluster after demonstration"
         - permission: "iam:ListAttachedUserPolicies"
           purpose: "Verify privilege escalation success by listing attached policies"
-        - permission: "iam:DetachUserPolicy"
-          purpose: "Remove admin policy from starting user during cleanup"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

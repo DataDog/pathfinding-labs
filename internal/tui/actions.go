@@ -14,7 +14,7 @@ type ActionsPane struct {
 	enabled            bool
 	deployed           bool
 	demoActive         bool
-	demoActiveCount    int  // total number of scenarios with active demos
+	demoActiveCount    int // total number of scenarios with active demos
 	showOnlyEnabled    bool
 	showOnlyDemoActive bool
 	focusedPane        Pane // Which pane is currently focused
@@ -136,16 +136,18 @@ func (a *ActionsPane) View() string {
 	sb.WriteString(a.styles.HelpDesc.Render("   show all key bindings"))
 	sb.WriteString("\n")
 
-	// Divider
-	sb.WriteString(a.styles.ScenarioDisabled.Render(" ───────────"))
-	sb.WriteString("\n")
+	// Divider — only when context-specific actions follow. The PaneScenarios
+	// branch intentionally renders nothing, so showing a divider would leave a
+	// trailing horizontal rule with no content under it.
+	if a.focusedPane != PaneScenarios {
+		sb.WriteString(a.styles.ScenarioDisabled.Render(" ───────────"))
+		sb.WriteString("\n")
+	}
 
 	// Context-specific actions based on focused pane
 	switch a.focusedPane {
 	case PaneEnvironment:
 		a.renderEnvironmentActions(&sb)
-	case PaneScenarios:
-		a.renderScenarioActions(&sb)
 	case PaneDetails:
 		if a.hasCreds {
 			sb.WriteString(a.styles.HelpKey.Render(" x"))

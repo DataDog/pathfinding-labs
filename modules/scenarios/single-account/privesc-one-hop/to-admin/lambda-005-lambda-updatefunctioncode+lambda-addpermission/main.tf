@@ -56,6 +56,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "lambda:AddPermission"
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.id}:${var.account_id}:function:pl-prod-lambda-005-to-admin-target-lambda"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunction",
+          "lambda:GetPolicy",
+          "lambda:ListFunctions"
+        ]
+        Resource = "*"
       }
     ]
   })

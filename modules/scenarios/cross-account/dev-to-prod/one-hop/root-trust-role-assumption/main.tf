@@ -56,6 +56,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-xsarrt-to-admin-target-role"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "sts:GetCallerIdentity",
+          "iam:ListRoles"
+        ]
+        Resource = "*"
       }
     ]
   })

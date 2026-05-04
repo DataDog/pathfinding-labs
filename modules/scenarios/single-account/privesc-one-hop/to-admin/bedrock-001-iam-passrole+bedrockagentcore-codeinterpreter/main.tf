@@ -68,6 +68,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "bedrock-agentcore:InvokeCodeInterpreter"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole",
+          "bedrock-agentcore:GetCodeInterpreter"
+        ]
+        Resource = "*"
       }
     ]
   })

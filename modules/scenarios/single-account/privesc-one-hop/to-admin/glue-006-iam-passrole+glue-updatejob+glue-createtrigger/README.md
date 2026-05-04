@@ -35,7 +35,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `glue:GetJobRun` -- get details about a specific job run
 - `glue:GetJobRuns` -- list job runs to monitor execution status
 - `sts:GetCallerIdentity` -- verify current identity and account ID
-- `iam:ListUsers` -- verify admin access after privilege escalation
 
 ## Self-hosted Lab Setup
 

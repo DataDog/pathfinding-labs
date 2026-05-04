@@ -51,6 +51,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "glue:UpdateDevEndpoint"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "glue:GetDevEndpoint",
+          "glue:GetDevEndpoints"
+        ]
+        Resource = "*"
       }
     ]
   })

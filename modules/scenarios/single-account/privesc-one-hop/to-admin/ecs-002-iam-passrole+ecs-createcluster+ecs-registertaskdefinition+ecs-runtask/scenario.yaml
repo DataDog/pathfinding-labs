@@ -56,16 +56,8 @@ permissions:
           purpose: "Find subnet in default VPC for ECS task network configuration"
         - permission: "ecs:DescribeTasks"
           purpose: "Monitor task execution status and verify task completion"
-        - permission: "ecs:StopTask"
-          purpose: "Stop running tasks during cleanup"
-        - permission: "ecs:DeregisterTaskDefinition"
-          purpose: "Clean up task definition after demonstration"
-        - permission: "ecs:DeleteCluster"
-          purpose: "Clean up ECS cluster after demonstration"
         - permission: "iam:ListAttachedUserPolicies"
           purpose: "Verify privilege escalation success by listing attached policies"
-        - permission: "iam:DetachUserPolicy"
-          purpose: "Remove admin policy from starting user during cleanup"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

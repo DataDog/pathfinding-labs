@@ -34,7 +34,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `glue:GetTrigger` -- monitor trigger state and verify activation
 - `glue:GetJobRun` -- get details about a specific job run
 - `glue:GetJobRuns` -- list job runs to monitor execution status
-- `iam:ListUsers` -- verify admin access after privilege escalation
 
 ## Self-hosted Lab Setup
 

@@ -48,7 +48,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file that conf
 - **attack_path.principals**: Ordered list of all principals in the attack
 - **attack_path.summary**: Human-readable attack flow
 - **permissions.required**: Array of principal entries. Each entry has a `principal` name, `principal_type` (user/role), and `permissions` array. Required permissions should use `RequiredForExploitation` Sid prefix in IAM policy statements.
-- **permissions.helpful**: Array of principal entries (same structure as required). Helpful permissions SHOULD be added to each principal's IAM policy as a separate statement with `HelpfulForExploitation` Sid prefix. These are non-essential permissions that make exploitation easier (e.g., `iam:ListRoles` to discover targets).
+- **permissions.helpful**: Array of principal entries (same structure as required). Helpful permissions MUST be added to each principal's IAM policy as a separate statement with the fixed Sid `HelpfulForReconAndMonitoring`. These are recon/observation permissions that make manual exploitation easier (e.g., `iam:ListRoles` to discover targets, `ec2:DescribeInstances` to find instances). Do NOT include write or destructive actions (e.g., `ecs:DeleteCluster`, `iam:DetachUserPolicy`) — those belong in `cleanup_attack.sh` using admin credentials. Do NOT include post-escalation verification permissions described as "verify admin access" (e.g., `iam:ListUsers` to confirm privilege escalation succeeded) — those should be reached organically through the escalation.
 - **terraform.module_path**: Where to create the Terraform files
 - **name**: Scenario name
 
@@ -137,7 +137,7 @@ resource "aws_iam_role" "vulnerable_role" {
 
 # Attach policy granting the exploitable permission(s)
 # Each principal in permissions.required gets a RequiredForExploitation statement
-# Each principal in permissions.helpful gets a HelpfulForExploitation statement
+# Each principal in permissions.helpful gets a HelpfulForReconAndMonitoring statement
 resource "aws_iam_role_policy" "vulnerable_role_policy" {
   provider = aws.prod
   name     = "pl-{environment}-{scenario-shorthand}-policy"
@@ -155,7 +155,7 @@ resource "aws_iam_role_policy" "vulnerable_role_policy" {
         Resource = "*"  # Or more specific resources
       },
       {
-        Sid    = "HelpfulForExploitationDiscovery"
+        Sid    = "HelpfulForReconAndMonitoring"
         Effect = "Allow"
         Action = [
           # Add the helpful permissions from scenario.yaml here
@@ -742,7 +742,7 @@ Before considering your work done:
 6. Ensure variables.tf is exactly the standard template
 7. Validate that the attack_path output accurately describes the scenario
 8. **CRITICAL**: Ensure all Statement IDs (Sid) in IAM policies are unique - use numbered suffixes like "requiredPermissions1", "requiredPermissions2", etc.
-9. **Add helpful permissions as a separate IAM policy statement** - For each principal in `permissions.helpful`, add a statement with Sid `HelpfulForExploitation{Purpose}` to that principal's IAM policy. These are permissions that make exploitation easier but are not strictly required (e.g., `iam:ListRoles` to discover targets). Do NOT include demo-only actions like `sts:GetCallerIdentity` or script-polling actions -- those are handled by the readonly user and admin cleanup user in demo scripts.
+9. **Add helpful permissions as a separate IAM policy statement** - For each principal in `permissions.helpful`, add a statement with the fixed Sid `HelpfulForReconAndMonitoring` to that principal's IAM policy in Terraform. Every helpful permission in `scenario.yaml` must appear in Terraform — omitting them means manual exploitation is unnecessarily restricted. The demo script's `restrict_helpful_permissions` call temporarily denies these via an inline deny policy at runtime, so adding them to Terraform does not affect demo determinism. Do NOT include: write/destructive cleanup actions (e.g., `ecs:DeleteCluster`, `iam:DetachUserPolicy`, `ecs:StopTask`) — those run as admin in `cleanup_attack.sh`; post-escalation verification permissions described as "verify admin access" (e.g., `iam:ListUsers`) — those should be reached organically through the escalation.
 10. When scenarios need attacker-side infrastructure (S3 buckets with exploit scripts, ECR repos, etc.), use the `aws.attacker` provider alias. This requires:
     - Adding `aws.attacker` to `configuration_aliases`: `configuration_aliases = [aws.prod, aws.attacker]`
     - Using `provider = aws.attacker` on attacker-controlled resources (S3 buckets, objects, bucket policies, PABs)
@@ -750,7 +750,7 @@ Before considering your work done:
     - Adding a bucket policy granting the prod account (`var.account_id`) read access via resource policy
     - Adding `attacker_account_id` variable to variables.tf
     - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
-11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements and `HelpfulForExploitation{Purpose}` for helpful permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`, `HelpfulForExploitationListRoles`).
+11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`). Use the single fixed Sid `HelpfulForReconAndMonitoring` for all helpful permission statements — do NOT suffix it with a purpose name, and do NOT use the old `HelpfulForExploitation*` pattern.
 12. **CTF flag resource**: For every scenario EXCEPT those under `tool-testing/`, confirm the flag resource is created in `main.tf` (SSM parameter for to-admin, S3 object inside the target bucket for to-bucket), the `flag_value` variable is declared in `variables.tf` with a `"flag{MISSING}"` default, and the corresponding outputs (`flag_ssm_parameter_name`/`_arn` for to-admin, `flag_s3_key`/`_uri` for to-bucket) are in `outputs.tf`. Do NOT add extra IAM permissions for flag retrieval — the existing attack already produces principals with the access needed (admin has `ssm:GetParameter` implicitly; bucket-access principal already has `s3:GetObject`).
 
 ## Output Format

@@ -61,6 +61,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sagemaker:StartNotebookInstance"
         ]
         Resource = "arn:aws:sagemaker:*:${var.account_id}:notebook-instance/pl-prod-sagemaker-005-to-admin-notebook"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "sagemaker:DescribeNotebookInstance",
+          "sagemaker:ListNotebookInstances",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -31,7 +31,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `codebuild:ListProjects` -- discover existing CodeBuild projects with privileged roles
 - `codebuild:BatchGetProjects` -- view project details including service role ARN
 - `codebuild:BatchGetBuilds` -- monitor build execution status and verify success
-- `iam:ListUsers` -- verify admin access after escalation
 
 ## Self-hosted Lab Setup
 

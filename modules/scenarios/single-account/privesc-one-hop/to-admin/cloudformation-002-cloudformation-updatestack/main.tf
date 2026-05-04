@@ -59,6 +59,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-cloudformation-002-to-admin-escalated-role"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "cloudformation:DescribeStacks",
+          "cloudformation:GetTemplate",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

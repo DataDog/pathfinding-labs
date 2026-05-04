@@ -55,6 +55,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:AssumeRole"
         ]
         Resource = aws_iam_role.target_role.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole"
+        ]
+        Resource = "*"
       }
     ]
   })

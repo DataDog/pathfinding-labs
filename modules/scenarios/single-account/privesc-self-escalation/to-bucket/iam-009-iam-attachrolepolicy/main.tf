@@ -43,6 +43,15 @@ resource "aws_iam_user_policy" "starting_user_basic" {
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-iam-009-to-bucket-starting-role"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListAttachedRolePolicies",
+          "iam:ListPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

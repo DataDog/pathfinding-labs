@@ -36,14 +36,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:DescribeServices` -- monitor service status and verify service creation
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:ListTasks` -- list tasks in the cluster to get the task ARN for monitoring
-- `ecs:UpdateService` -- scale down the service during cleanup
-- `ecs:DeleteService` -- clean up the ECS service after demonstration
-- `ecs:StopTask` -- stop running tasks during cleanup
-- `ecs:DeregisterTaskDefinition` -- clean up the task definition after demonstration
-- `ecs:DeleteCluster` -- clean up the ECS cluster after demonstration
 - `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
-- `iam:ListUsers` -- verify administrator access by listing IAM users
-- `iam:DetachUserPolicy` -- remove the admin policy from the starting user during cleanup
 
 ## Self-hosted Lab Setup
 

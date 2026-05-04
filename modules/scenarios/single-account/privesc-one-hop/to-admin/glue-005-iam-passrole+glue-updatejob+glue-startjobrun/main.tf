@@ -254,6 +254,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         ]
         Resource = "*"
       },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "glue:GetJob",
+          "glue:GetJobRun",
+          "glue:GetJobRuns",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
     ]
   })
 }

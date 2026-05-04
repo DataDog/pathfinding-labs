@@ -61,6 +61,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "codebuild:StartBuild"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "codebuild:ListProjects",
+          "codebuild:BatchGetBuilds"
+        ]
+        Resource = "*"
       }
     ]
   })

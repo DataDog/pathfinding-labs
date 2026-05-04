@@ -33,7 +33,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `iam:ListRoles` -- discover available privileged roles to pass to CodeBuild
 - `codebuild:ListProjects` -- list existing CodeBuild projects
 - `codebuild:BatchGetBuildBatches` -- monitor build batch execution status
-- `iam:ListUsers` -- verify admin access after escalation
 
 ## Self-hosted Lab Setup
 

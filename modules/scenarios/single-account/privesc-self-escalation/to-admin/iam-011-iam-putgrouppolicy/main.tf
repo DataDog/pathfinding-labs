@@ -81,6 +81,16 @@ resource "aws_iam_user_policy" "privesc_policy" {
           "iam:PutGroupPolicy"
         ]
         Resource = aws_iam_group.target_group.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListGroups",
+          "iam:GetGroupPolicy",
+          "iam:ListGroupPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })

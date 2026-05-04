@@ -62,6 +62,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "datapipeline:ActivatePipeline"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "datapipeline:DescribePipelines",
+          "datapipeline:GetPipelineDefinition",
+          "iam:ListRoles",
+          "iam:GetUser"
+        ]
+        Resource = "*"
       }
     ]
   })

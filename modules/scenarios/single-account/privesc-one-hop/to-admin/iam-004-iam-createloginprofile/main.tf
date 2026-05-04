@@ -49,6 +49,16 @@ resource "aws_iam_user_policy" "starting_user_basic" {
           "sts:AssumeRole"
         ]
         Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-iam-004-to-admin-starting-role"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListUsers",
+          "iam:GetUser",
+          "iam:GetLoginProfile"
+        ]
+        Resource = "*"
       }
     ]
   })

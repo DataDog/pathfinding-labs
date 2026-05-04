@@ -60,6 +60,18 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sagemaker:CreatePresignedNotebookInstanceUrl"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole",
+          "sagemaker:DescribeNotebookInstance",
+          "sagemaker:ListNotebookInstances",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
       }
     ]
   })

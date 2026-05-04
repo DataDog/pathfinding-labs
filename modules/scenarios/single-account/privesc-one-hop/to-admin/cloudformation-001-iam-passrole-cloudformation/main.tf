@@ -60,6 +60,16 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "cloudformation:CreateStack"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "cloudformation:DescribeStacks",
+          "iam:ListRoles",
+          "cloudformation:DeleteStack"
+        ]
+        Resource = "*"
       }
     ]
   })

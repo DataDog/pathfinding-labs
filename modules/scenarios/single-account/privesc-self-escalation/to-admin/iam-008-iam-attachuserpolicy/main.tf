@@ -44,6 +44,15 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "iam:AttachUserPolicy"
         ]
         Resource = aws_iam_user.starting_user.arn
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "iam:ListAttachedUserPolicies",
+          "iam:ListPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
