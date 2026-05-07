@@ -2,6 +2,7 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.0.0"
+status: "beta"
 name: "exclusive-resource-policy"
 title: "Exclusive Resource Policy Access to Bucket"
 description: "Access S3 bucket with exclusive resource policy that denies all except specific role"

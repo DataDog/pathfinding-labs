@@ -2,6 +2,7 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.2.0"
+status: "beta"
 name: "test-reverse-blast-radius-direct-and-indirect-through-admin"
 title: "Direct and Indirect Access via Admin to Bucket"
 description: "Tool testing scenario validating reverse blast radius detection - tests whether security tools identify both direct S3 access (user1) and indirect access via administrative role assumption (user2 -> admin role -> bucket)"

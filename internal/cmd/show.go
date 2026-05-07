@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
-	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -42,7 +41,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Find scenario by ID
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 	scenario, err := discovery.FindByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find scenario: %w", err)

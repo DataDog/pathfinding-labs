@@ -71,7 +71,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	singleAccountMode := cfg.IsSingleAccountMode()
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()

@@ -2,6 +2,7 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.0.0"
+status: "beta"
 name: "resource-policy-bypass"
 title: "Resource Policy Bypass via Role Assumption to Bucket"
 description: "Bypass S3 bucket resource policy restrictions by assuming role with bucket access"

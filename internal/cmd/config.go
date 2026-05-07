@@ -47,7 +47,8 @@ Available keys:
   ops-region         Operations AWS region
   attacker-profile   Attacker AWS CLI profile
   attacker-region    Attacker AWS region
-  dev-mode           Enable/disable development mode (true/false)`,
+  dev-mode           Enable/disable development mode (true/false)
+  include-beta       Show beta scenarios in listings and TUI (true/false)`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
 }
@@ -101,6 +102,11 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  dev-path:      %s\n", cfg.DevModePath)
 	} else {
 		fmt.Printf("  dev-mode:      %s\n", "disabled")
+	}
+	if cfg.IncludeBeta {
+		fmt.Printf("  include-beta:  %s\n", green("true"))
+	} else {
+		fmt.Printf("  include-beta:  false\n")
 	}
 	fmt.Println()
 
@@ -206,8 +212,17 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		} else {
 			return fmt.Errorf("invalid value for dev-mode: %s (use true/false)", value)
 		}
+	case "include-beta":
+		lowerVal := strings.ToLower(value)
+		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
+			cfg.IncludeBeta = true
+		} else if lowerVal == "false" || lowerVal == "0" || lowerVal == "no" {
+			cfg.IncludeBeta = false
+		} else {
+			return fmt.Errorf("invalid value for include-beta: %s (use true/false)", value)
+		}
 	default:
-		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode", key)
+		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode, include-beta", key)
 	}
 
 	// Save config (single source of truth)

@@ -9,12 +9,20 @@ import (
 
 // Discovery handles finding and loading scenarios from the filesystem
 type Discovery struct {
-	basePath string
+	basePath    string
+	IncludeBeta bool // When false, scenarios with status "beta" are hidden
 }
 
 // NewDiscovery creates a new scenario discovery instance
 func NewDiscovery(basePath string) *Discovery {
 	return &Discovery{basePath: basePath}
+}
+
+// WithIncludeBeta sets whether beta scenarios are included in discovery results.
+// Returns the receiver for chaining: scenarios.NewDiscovery(path).WithIncludeBeta(true)
+func (d *Discovery) WithIncludeBeta(v bool) *Discovery {
+	d.IncludeBeta = v
+	return d
 }
 
 // DiscoverAll finds and loads all scenarios from the scenarios directory
@@ -39,6 +47,11 @@ func (d *Discovery) DiscoverAll() ([]*Scenario, error) {
 		scenario, err := LoadFromFile(path)
 		if err != nil {
 			// Log warning but continue discovering other scenarios
+			return nil
+		}
+
+		// Skip beta scenarios unless explicitly opted in
+		if scenario.IsBeta() && !d.IncludeBeta {
 			return nil
 		}
 

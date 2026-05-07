@@ -9,7 +9,6 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/demo"
-	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -34,7 +33,7 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	}
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 
 	// Get enabled status from config (source of truth)
 	cfg, _ := config.Load()

@@ -101,7 +101,7 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	singleAccountMode := cfg == nil || !cfg.IsMultiAccountMode()
 
 	// Discover all scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 	allScenarios, err := discovery.DiscoverAll()
 	if err != nil {
 		return fmt.Errorf("failed to discover scenarios: %w", err)

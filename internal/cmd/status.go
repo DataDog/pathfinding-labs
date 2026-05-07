@@ -111,7 +111,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Println(dim("---------------------------------------------------------"))
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 	allScenarios, err := discovery.DiscoverAll()
 	if err != nil {
 		return fmt.Errorf("failed to discover scenarios: %w", err)

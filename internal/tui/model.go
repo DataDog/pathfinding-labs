@@ -244,7 +244,7 @@ func (m *Model) loadScenarios() tea.Msg {
 	runner := terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir)
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(m.paths.ScenariosPath())
+	discovery := scenarios.NewDiscovery(m.paths.ScenariosPath()).WithIncludeBeta(cfg.IncludeBeta)
 	allScenarios, err := discovery.DiscoverAll()
 	if err != nil {
 		return errMsg{err}
@@ -326,7 +326,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.config = cfg
 		m.tfvars = terraform.NewTFVars(m.paths.TFVarsPath)
 		m.tfRunner = terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir)
-		m.discovery = scenarios.NewDiscovery(m.paths.ScenariosPath())
+		m.discovery = scenarios.NewDiscovery(m.paths.ScenariosPath()).WithIncludeBeta(cfg.IncludeBeta)
 		m.allScenarios = msg.scenarios
 
 		// Recalculate layout now that config is available

@@ -124,7 +124,7 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	// Scenarios
 	fmt.Println(cyan("Scenarios:"))
 	if paths.RepoExists() {
-		discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+		discovery := newDiscovery(paths.ScenariosPath())
 		allScenarios, err := discovery.DiscoverAll()
 		if err != nil {
 			fmt.Printf("  Error discovering scenarios: %v\n", err)

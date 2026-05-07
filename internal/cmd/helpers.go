@@ -194,6 +194,18 @@ func validateAWSCredentials(cfg *config.Config) error {
 	return nil
 }
 
+// newDiscovery creates a Discovery instance wired to the current config.
+// IncludeBeta is set from the loaded config so beta scenarios are hidden unless
+// the user has run: plabs config set include-beta true
+func newDiscovery(scenariosPath string) *scenarios.Discovery {
+	cfg, _ := config.Load()
+	d := scenarios.NewDiscovery(scenariosPath)
+	if cfg != nil {
+		d.WithIncludeBeta(cfg.IncludeBeta)
+	}
+	return d
+}
+
 // syncTFVars regenerates terraform.tfvars from the config
 func syncTFVars() error {
 	cfg, err := config.Load()

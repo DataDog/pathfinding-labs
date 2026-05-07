@@ -66,7 +66,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 	}
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()

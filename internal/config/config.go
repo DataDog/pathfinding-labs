@@ -46,6 +46,11 @@ type Config struct {
 	// `scenario_flags = { ... }` map variable.
 	Flags map[string]string `yaml:"flags,omitempty"`
 
+	// IncludeBeta controls whether scenarios marked status: "beta" are visible in
+	// listings and the TUI. Defaults to false (beta scenarios are hidden). Set to
+	// true with: plabs config set include-beta true
+	IncludeBeta bool `yaml:"include_beta"`
+
 	// Initialized indicates if plabs init has been run
 	Initialized bool `yaml:"initialized"`
 

@@ -11,7 +11,6 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
-	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -94,7 +93,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 	fmt.Println()
 
 	// Discover and disable all scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 	allScenarios, err := discovery.DiscoverAll()
 	if err != nil {
 		return fmt.Errorf("failed to discover scenarios: %w", err)

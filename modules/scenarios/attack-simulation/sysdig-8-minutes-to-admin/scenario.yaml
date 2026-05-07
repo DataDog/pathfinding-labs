@@ -2,6 +2,7 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.4.0"
+status: "beta"
 name: "sysdig-8-minutes-to-admin"
 title: "AI-Assisted Cloud Intrusion: 8 Minutes to Admin"
 description: "Recreation of the attack documented by Sysdig Threat Research Team: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes"

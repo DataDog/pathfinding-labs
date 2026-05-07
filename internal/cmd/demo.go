@@ -51,7 +51,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Discover scenarios
-	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+	discovery := newDiscovery(paths.ScenariosPath())
 
 	// Get enabled status from config (source of truth)
 	cfg, _ := config.Load()

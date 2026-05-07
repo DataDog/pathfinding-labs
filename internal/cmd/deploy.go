@@ -12,7 +12,6 @@ import (
 
 	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
-	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -47,7 +46,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	// Check for enabled scenarios with missing required config before doing any AWS calls
 	{
-		discovery := scenarios.NewDiscovery(paths.ScenariosPath())
+		discovery := newDiscovery(paths.ScenariosPath())
 		allScenarios, discoverErr := discovery.DiscoverAll()
 		if discoverErr == nil {
 			enabledVars := cfg.GetEnabledScenarioVars()

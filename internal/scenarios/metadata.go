@@ -91,6 +91,10 @@ type Scenario struct {
 	// Config declares per-scenario configuration keys requiring user-supplied values at deploy time
 	Config []ScenarioConfigKey `yaml:"config,omitempty"`
 
+	// Status marks a scenario as "beta" to hide it from default listings.
+	// Absence (empty string) means the scenario is stable and always visible.
+	Status string `yaml:"status,omitempty"`
+
 	// Internal fields (not from YAML)
 	FilePath string `yaml:"-"` // Path to the scenario.yaml file
 	DirPath  string `yaml:"-"` // Directory containing the scenario
@@ -212,6 +216,11 @@ func (s *Scenario) TargetShort() string {
 // HasConfig returns true if this scenario declares configurable keys
 func (s *Scenario) HasConfig() bool {
 	return len(s.Config) > 0
+}
+
+// IsBeta returns true if this scenario is marked as beta and should be hidden by default
+func (s *Scenario) IsBeta() bool {
+	return s.Status == "beta"
 }
 
 // MitreIDs extracts just the technique IDs (e.g., "T1098" from "T1098.001 - Account Manipulation")
