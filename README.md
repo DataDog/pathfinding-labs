@@ -1,7 +1,6 @@
 <div align="center">
 
-# Pathfinding Labs
-
+<img width="3800" height="1930" alt="pathfinding-labs-3800x1930 (2)" src="https://github.com/user-attachments/assets/873fe49a-3646-4319-9e8b-6848ec8bafcd" />
 
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
@@ -20,135 +19,13 @@ Pathfinding Labs helps security teams validate their Cloud Security Posture Mana
 > **Full scenario catalog, individual lab docs, and guided installation:** [pathfinding.cloud/labs](https://pathfinding.cloud/labs)
 > This README is a quick-start guide and command reference for users working directly from the repository.
 
-### How Pathfinding Labs Works
-
-```mermaid
-graph LR
-    A[Enable<br/>Scenarios<br/>&<br/>Deploy<br/>Vulnerable<br/>Infrastructure] 
-    A -->|Blue Team| D[ Validate<br/>CSPM Detection]
-    A -->|Red Team| E[ Validate <br/>your tools<br>& skills]
-    D --> F[Measure<br/>Coverage Gaps]
-    E --> G[Run Attack<br/>Demonstrations] 
-    F --> H[Cleanup<br/>Demonstration<br/>Artifacts<br/>&<br/>Disable<br/>Scenarios]
-    G --> H
+<img width="1440" height="1174" alt="pathfinding-labs-overview (1)" src="https://github.com/user-attachments/assets/41b74df4-c1a5-440d-aec1-d09ea0f57bec" />
 
 
-    style A fill:#e8f5e9
-    style D fill:#e1f5ff
-    style E fill:#ffebee
-    style F fill:#e1f5ff
-    style G fill:#fce4ec
-    style H fill:#e8f5e9
-
-```
-
-##  Who Is This For?
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🛡️ **Blue Teamers**
-- ✅ **Validate CSPM Detection**: Does your security tooling detect all vulnerable configurations?
-- ✅ **Train Your Team**: Provide hands-on experience with real attack scenarios
-- ✅ **Measure Coverage**: Identify gaps in your security monitoring
-
-</td>
-<td width="50%" valign="top">
-
-### ⚔️ **Red Teamers**
-- ✅ **Practice IAM Exploitation**: Sharpen your privilege escalation skills
-- ✅ **Test Your Tooling**: Does your toolset find all the paths?
-- ✅ **Build Attack Chains**: Learn complex multi-hop and cross-account techniques
-- ✅ **Demonstrate Risk**: Show stakeholders real-world attack scenarios
-
-</td>
-</tr>
-</table>
 
 ## What types of scenarios are supported?
 
-
-<table>
-<tr>
-<td align="center" colspan="4">
-
-**💀 Privilege Escalation Scenarios**
-
-Each privilege escalation scenario comes in two forms.
-A scenario that leads **to admin**, and a scenario that leads **to a specific target bucket**.
-The bucket scenarios exist to show you that you don't always need administrative permissions to access the most sensitive data.
-</td>
-</tr>
-<tr>
-<td align="center" width="25%">
-
-**🎯 Self-Escalation**
-
-Principal modifies itself<br/>
-
-To Admin | To Bucket
-
-</td>
-<td align="center" width="25%">
-
-**⚡ One-Hop**
-
-Single principal traversal
-
-To Admin | To Bucket
-
-</td>
-<td align="center" width="25%">
-
-**🔗 Multi-Hop**
-
-Multiple principal traversals
-
-To Admin | To Bucket
-
-</td>
-<td align="center" width="25%">
-
-**🌐 Cross-Account**
-
-Spans multiple accounts
-
-To Admin | To Bucket
-
-</td>
-</tr>
-<tr>
-<td align="center" colspan="4">
-
-**🔍 CSPM: Misconfig Scenarios** — Single-condition security misconfigurations
-</td>
-</tr>
-<tr>
-<td align="center" colspan="4">
-
-**☠️ CSPM: Toxic Combination Scenarios** — Multiple compounding misconfigurations that together create critical risk
-</td>
-</tr>
-<tr>
-<td align="center" colspan="4">
-
-**🧪 Tool Testing Scenarios** — Edge cases designed to stress-test detection engine accuracy (false positives, policy parsing, complex conditions)
-</td>
-</tr>
-<tr>
-<td align="center" colspan="4">
-
-**🎮 CTF Scenarios** — Capture-the-flag challenges blending real attack techniques with a hidden flag; no demo script provided — the exploit is the challenge
-</td>
-</tr>
-<tr>
-<td align="center" colspan="4">
-
-**🎬 Attack Simulation Scenarios** — Recreations of documented real-world cloud breaches, sourced from public incident reports
-</td>
-</tr>
-</table>
+<img width="1280" height="1284" alt="pathfinding-lab-types (2)" src="https://github.com/user-attachments/assets/34bc2fdc-ed15-4135-bc21-9712f32c91e2" />
 
 
 
@@ -161,8 +38,10 @@ To Admin | To Bucket
 ### Install plabs
 
 ```bash
+# Download 
+
 # Option A: Homebrew (recommended)
-brew install pathfinding-labs/tap/plabs
+brew install plabs
 
 # Option B: Build from source
 git clone https://github.com/DataDog/pathfinding-labs.git
@@ -188,10 +67,10 @@ plabs
 # 3. In the TUI: use ↑↓ to browse scenarios, space to toggle, a to deploy
 ```
 
-<!-- SCREENSHOT: plabs TUI dashboard — three-pane layout: environment/account status (left), scrollable+filterable scenario list with enabled indicators (center), scenario detail with attack path and credentials (right) -->
-> _[Screenshot: plabs TUI dashboard — replace this line with the image]_
+<img width="1559" height="987" alt="plabs" src="https://github.com/user-attachments/assets/76a9f5d4-70fa-4645-a61b-e8a7ed4cc2dd" />
 
-### Non-Interactive Setup
+
+### Non-Interactive Setup (Only needed if you are deploying via autoamtion)
 
 ```bash
 # 1. Configure your AWS profile
@@ -359,8 +238,7 @@ The demo scripts provide:
 - ✅ Color-coded output for clarity
 - ✅ **Automatic credential retrieval** — no manual AWS profile setup needed
 
-<!-- SCREENSHOT: demo_attack.sh output — color-coded terminal output showing step-by-step exploitation walkthrough with AWS CLI commands and verification steps -->
-> _[Screenshot: demo_attack.sh output — replace this line with the image]_
+<img width="1085" height="932" alt="Screenshot 2026-05-07 at 11 59 10 AM" src="https://github.com/user-attachments/assets/7c5cf6e6-53a1-47f2-8216-9ead4a05dfae" />
 
 ---
 
