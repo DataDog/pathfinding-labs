@@ -38,12 +38,14 @@ Pathfinding Labs helps security teams validate their Cloud Security Posture Mana
 ### Install plabs
 
 ```bash
-# Download 
+# Option A: Download the latest release (recommended)
+curl -fsSL "https://github.com/DataDog/pathfinding-labs/releases/latest/download/plabs_$(uname -s)_$(uname -m)" -o /usr/local/bin/plabs
+chmod +x /usr/local/bin/plabs
 
-# Option A: Homebrew (recommended)
+# Option B: Homebrew
 brew install plabs
 
-# Option B: Build from source
+# Option C: Build from source
 git clone https://github.com/DataDog/pathfinding-labs.git
 cd pathfinding-labs
 go build -o plabs ./cmd/plabs
@@ -51,16 +53,12 @@ cp plabs /usr/local/bin/
 chmod +x /usr/local/bin/plabs
 ```
 
-### Interactive Setup (recommended)
+### Setup
 
 ```bash
 # 1. Initialize: downloads terraform, clones repo, runs AWS profile setup wizard
 plabs init
-```
 
-> Contributing or testing local Terraform changes? Enable [Dev Mode](#dev-mode).
-
-```bash
 # 2. Open the TUI dashboard
 plabs
 
@@ -68,28 +66,6 @@ plabs
 ```
 
 <img width="1559" height="987" alt="plabs" src="https://github.com/user-attachments/assets/76a9f5d4-70fa-4645-a61b-e8a7ed4cc2dd" />
-
-
-### Non-Interactive Setup (Only needed if you are deploying via autoamtion)
-
-```bash
-# 1. Configure your AWS profile
-plabs config set prod-profile my-playground-account
-plabs config set prod-region us-east-1
-```
-
-> Contributing or testing local Terraform changes? Enable [Dev Mode](#dev-mode).
-
-```bash
-# 2. Enable scenarios
-plabs enable iam-002-iam-createaccesskey
-
-# 3. Deploy
-plabs apply -y
-
-# 4. Run a demo
-plabs demo iam-002-iam-createaccesskey
-```
 
 ---
 
@@ -121,16 +97,7 @@ The full catalog of labs — with descriptions, attack maps, difficulty levels, 
 
 ### Scenario Outputs
 
-All scenarios expose credentials and resource information via grouped outputs:
-
-```bash
-# View credentials and outputs for a scenario
-plabs credentials iam-002-iam-createaccesskey
-plabs output iam-002-iam-createaccesskey
-
-# Demo scripts automatically read these outputs
-# No need to manually configure AWS profiles or copy credentials
-```
+All scenarios expose credentials and resource information via grouped Terraform outputs. Demo scripts read these automatically — no manual credential setup needed.
 
 ---
 
@@ -140,13 +107,13 @@ All configuration is managed through `plabs`. There is no need to edit Terraform
 
 ### Configuring AWS Profiles
 
-**Interactive** — run the setup wizard:
+Run the interactive setup wizard (recommended):
 
 ```bash
 plabs init
 ```
 
-**Non-interactive** — set values directly:
+Or set values directly (useful for CI/automation):
 
 ```bash
 plabs config set prod-profile   my-prod-profile
@@ -342,7 +309,7 @@ Example:
 
 ## Scenario Taxonomy
 
-Pathfinding Labs organizes scenarios into eight categories:
+Pathfinding Labs organizes scenarios into five categories:
 
 ### **Self-Escalation**
 Principal directly modifies itself to gain elevated privileges without traversing to another principal. This is the most direct form of privilege escalation where an entity grants itself additional permissions.
@@ -393,34 +360,7 @@ Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). The
 - `Dev:Role → Lambda:InvokeFunction → Prod:Lambda → Extract Credentials → Prod:Admin`
 - `Ops:User → AssumeRole → Prod:Role → S3:SensitiveBucket`
 
-### **Tool Testing**
-Edge cases and scenarios designed to test detection engine capabilities. These scenarios aren't distinct escalation types, but rather configurations that challenge CSPM and security tool detection accuracy.
-
-**Focus Areas:**
-- Resource policies that bypass IAM restrictions
-- Complex policy condition evaluation
-- False positive scenarios
-- Policy parsing edge cases
-
-**Examples:**
-- `Resource policy granting exclusive bucket access, bypassing IAM policies`
-- `Complex condition keys that tools may misinterpret`
-- `Legitimate configurations that appear vulnerable`
-
-### **CTF**
-Capture-the-flag challenges that blend real-world AWS attack techniques with a hidden flag. No demo script is provided — finding and exploiting the path is the challenge. Suitable for individual practice or team competitions.
-
-**Examples:**
-- Prompt injection against an LLM chatbot leaks Lambda execution role credentials
-- Limited credentials require chaining multiple techniques to reach full admin access
-
-### **Attack Simulation**
-Recreations of documented real-world cloud breaches, sourced from public incident reports and blog posts. Demo scripts mirror the original attack as closely as possible — including failed recon attempts and enumeration steps — rather than taking the most direct path. The attack map records only the successful path.
-
-**Examples:**
-- Recreation of the Sysdig TRT breach: credentials in a private S3 RAG bucket → Lambda code injection → admin in under 8 minutes
-
---- 
+---
 
 
 ## Architecture
