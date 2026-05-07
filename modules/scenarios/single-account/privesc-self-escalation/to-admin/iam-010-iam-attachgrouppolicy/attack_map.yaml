@@ -49,9 +49,8 @@ attackMap:
         user is already a member of. This immediately grants admin permissions to all
         members of the group, including the attacker.
       hints:
-        - "You can modify the policies attached to groups you belong to."
-        - "Look for groups your user is a member of and consider what policies could be attached."
-        - "Attaching AdministratorAccess to your own group grants you admin access via group membership."
+        - "Attach AdministratorAccess to the group your user belongs to using iam:AttachGroupPolicy -- group policy changes take effect without needing to re-issue credentials."
+        - "Wait 15 seconds for IAM to propagate the group policy attachment, then verify the escalation by calling a previously-denied API such as iam:ListUsers."
         - "Browse to https://pathfinding.cloud/paths/iam-010 for technique details."
       commands:
         - description: "Attach AdministratorAccess to the group"
@@ -63,10 +62,7 @@ attackMap:
         The starting user is already a member of the group. Once AdministratorAccess
         is attached, all group members — including the attacker — inherit those
         permissions automatically.
-      hints:
-        - "Group policy attachments propagate immediately to all group members -- no further action needed."
-        - "Wait a few seconds for IAM to propagate the policy, then test your new permissions."
-        - "Try an action that requires admin access to confirm the escalation worked, such as listing IAM users."
+      hints: []
       commands:
         - description: "Verify administrator access via group membership"
           command: "aws iam list-users"
@@ -78,9 +74,7 @@ attackMap:
         user credentials to read the CTF flag from SSM Parameter Store. This proves
         end-to-end exploitation of the privilege escalation path.
       hints:
-        - "The flag is stored in SSM Parameter Store under /pathfinding-labs/flags/."
-        - "Your new admin permissions include ssm:GetParameter — use it."
-        - "The parameter name follows the pattern /pathfinding-labs/flags/{scenario-id}-to-admin."
+        - "Use the elevated credentials to read the flag from SSM Parameter Store at the path shown in the target node ARN."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"
           command: "aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text"

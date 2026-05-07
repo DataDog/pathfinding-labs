@@ -1595,6 +1595,7 @@ output "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
     privesc_role_arn                = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].privesc_role_arn
     privesc_role_name               = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].privesc_role_name
     ec2_admin_role_arn              = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].ec2_admin_role_arn
+    ec2_admin_instance_profile_name = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].ec2_admin_instance_profile_name
     lambda_admin_role_arn           = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].lambda_admin_role_arn
     cloudformation_admin_role_arn   = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].cloudformation_admin_role_arn
     attack_path                     = module.single_account_privesc_multi_hop_to_admin_multiple_paths_combined[0].attack_path

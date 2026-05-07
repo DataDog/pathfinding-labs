@@ -63,8 +63,6 @@ permissions:
           purpose: "Discover available privileged roles to pass"
         - permission: "iam:GetRole"
           purpose: "Verify the escalated role was created"
-        - permission: "sts:AssumeRole"
-          purpose: "Assume the escalated role for admin access"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -182,6 +182,14 @@ else
 fi
 echo ""
 
+# ssm:StartSession requires an interactive terminal — exit 3 in non-interactive mode so
+# capture_demos.py marks this as "skipped (requires user interaction)" rather than a failure.
+if [ ! -t 0 ]; then
+    echo "SSM StartSession requires an interactive terminal. Skipping in non-interactive mode."
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+    exit 3
+fi
+
 # [OBSERVATION] Step 6: Check SSM agent status
 echo -e "${YELLOW}Step 6: Checking if instance is ready for SSM session${NC}"
 use_readonly_creds

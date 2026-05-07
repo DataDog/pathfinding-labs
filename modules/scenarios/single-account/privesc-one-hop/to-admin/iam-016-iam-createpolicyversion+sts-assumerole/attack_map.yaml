@@ -57,15 +57,8 @@ attackMap:
         now-privileged target role to obtain temporary credentials with full administrative
         control over the AWS account.
       hints:
-        - "Start by understanding what policy you have write access to. Use iam:GetPolicy to retrieve its metadata and see which version is currently the default."
-        - "Use iam:GetPolicyVersion to read the actual document of the current default version and confirm it has no admin permissions yet."
-        - "Use iam:ListRoles and iam:GetRole to discover which roles have this policy attached -- that tells you what you'll be able to do once you modify it."
-        - "AWS customer-managed policies support versioning. You can create a new version with any content you choose, and the --set-as-default flag makes it active immediately."
-        - "A policy granting Action:* on Resource:* is the simplest path to AdministratorAccess. Write that document and create it as a new version."
-        - "IAM policy changes take a moment to propagate; wait at least 15 seconds after creating the new policy version before attempting to assume the role."
-        - "The trust policy on the target role already allows your starting user to assume it -- no trust policy modification is needed."
-        - "Use sts:AssumeRole to obtain temporary credentials for the target role and export the returned AccessKeyId, SecretAccessKey, and SessionToken as environment variables."
-        - "Verify success by attempting a privileged action such as listing IAM users, which would have been denied before the escalation."
+        - "Create a new policy version with Action '*' and Resource '*' using --set-as-default to make it active immediately, then assume the target role with sts:AssumeRole."
+        - "IAM policy version changes propagate in about 15 seconds -- wait before assuming the role."
         - "Browse to https://pathfinding.cloud/paths/iam-016 for full technique details."
       commands:
         - description: "Create a new policy version with admin permissions"
@@ -91,8 +84,6 @@ attackMap:
         on all parameters in the account, so no additional permissions are needed beyond
         the admin session you already have.
       hints:
-        - "You now hold temporary admin credentials from the assumed role. The scenario flag is stored in an AWS service commonly used for configuration values and small secrets."
-        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
         - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"

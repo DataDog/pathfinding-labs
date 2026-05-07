@@ -154,6 +154,13 @@ resource "aws_iam_role_policy_attachment" "prod_ec2_admin_role" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+# Instance profile wrapping the EC2 admin role (required for ec2:RunInstances --iam-instance-profile)
+resource "aws_iam_instance_profile" "prod_ec2_admin_profile" {
+  provider = aws.prod
+  name     = "pl-EC2Admin"
+  role     = aws_iam_role.prod_ec2_admin_role.name
+}
+
 # Lambda service role for privilege escalation
 resource "aws_iam_role" "prod_lambda_admin_role" {
   provider = aws.prod

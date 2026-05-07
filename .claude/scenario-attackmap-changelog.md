@@ -4,6 +4,94 @@ Version history for `.claude/scenario-attackmap-schema.md`. When bumping the sch
 
 ---
 
+## 1.7.0 — 2026-05-05
+
+Minor: codified the principal→resource→principal authoring rule — all hints for a combined visual hop live on the IN edge; resource→principal (OUT) edges carry `hints: []`.
+
+**Changes:**
+- New "Principal→Resource→Principal Pairs" section: when the frontend collapses a resource node into a companion islet, the two edge hint sets are displayed together. Authors must treat the pair as a single unit: resynthesize 1-3 hints on the IN (principal→resource) edge covering the full execution story; set the OUT (resource→principal) edge to `hints: []`.
+- Minimum hints updated: 0 is now valid on resource→principal (OUT) edges; 1 remains the minimum on principal→resource and principal→principal edges.
+- pathfinding.cloud link must be last on the IN edge (so it remains last in the combined display).
+- Added Lambda UpdateFunctionCode style note: frame as "fetch existing code and append payload" — less destructive to the environment than a full replace.
+- Compliance checklist updated with four new assertions covering the pair rule and link-last requirement.
+
+**Why:** The frontend collapses principal→resource→principal chains into a single visual hop, merging hint sets from both edges. Before this fix, the pathfinding.cloud link (last hint on the IN edge) was followed by OUT edge hints, making it no longer last. Combined hint counts also exceeded 3 in 25 of 69 pairs. The fix moves all hint authorship to the IN edge and leaves the OUT edge empty, giving authors a single place to craft the full story.
+
+**Migration rules:**
+- Applies to all scenarios with at least one principal→resource→principal chain.
+- For each such pair: resynthesize IN edge hints + OUT edge hints into 1-3 cohesive hints on the IN edge, pathfinding.cloud link last. Set OUT edge to `hints: []`.
+
+```yaml
+migration:
+  tier: agent
+  scope:
+    field: "structure"
+    custom: "all scenarios with a principal→resource→principal edge chain"
+  requires_scenario_yaml_fields: []
+  requires_companion_files: false
+  affected_sections:
+    - "attack_map.yaml:edges[].hints (principal→resource IN edges)"
+    - "attack_map.yaml:edges[].hints (resource→principal OUT edges)"
+  operations:
+    - description: "Resynthesize IN+OUT hints into 1-3 hints on the IN edge, pathfinding.cloud link last"
+    - description: "Set OUT edge hints to []"
+  agent_instructions: |
+    For each principal→resource→principal triple in the attack map:
+    1. Identify the IN edge (principal→resource) and OUT edge (resource→principal).
+    2. Combine the hints from both edges.
+    3. Resynthesize into 1-3 cohesive hints that preserve all useful information from both.
+    4. If a pathfinding.cloud link appears anywhere in the combined set, it must be the last hint.
+    5. Write the resynthesized hints onto the IN edge.
+    6. Set the OUT edge hints to [].
+    No other changes to the file.
+```
+
+---
+
+## 1.6.0 — 2026-05-05
+
+Minor: reduced hints per edge from 3-7 to 1-3 and refocused hint content from recon/identification to exploitation mechanics.
+
+**Changes:**
+- Quantity rule updated: minimum 3 → 1, maximum 7 → 3 hints per edge
+- Content rules updated: hints now assume the attacker already knows the target (the attack map shows the destination node). Recon/enumeration steps ("use ListRoles to find...", "discover which...", "start by enumerating...") are no longer appropriate hint content.
+- New explicit guidance: hints focus on exploitation mechanics, timing gotchas (IAM propagation delays, Lambda update latency), required flags, and pitfalls
+- Every hop where a pathfinding.cloud path ID is relevant must include a link hint (was "typically the last or second-to-last hint" — now always the last)
+- Ordering rules simplified: order of operations first, pathfinding.cloud link last
+- Example hints rewritten to reflect new style (ssm-001 and iam-002 examples)
+
+**Why:** The context assumption changed. Since a CSPM tool or open source tool (e.g., pmapper) has already identified the attack path, and the attack map visualizes the next hop's destination node, hints that guide target discovery add noise rather than value. The focus should be: you know where you're going, here's how to execute it well.
+
+**Migration rules:**
+- Applies to all `attack_map.yaml` files (all scenarios)
+- For each edge: rewrite hints to 1-3 exploitation-focused hints
+- Drop all hints that guide target discovery or enumeration
+- Keep: exploitation mechanics, timing notes, required flags, pitfall warnings, pathfinding.cloud links
+- Add a pathfinding.cloud link hint on any edge that references a path ID but is missing one
+
+```yaml
+migration:
+  tier: agent
+  scope: all
+  requires_scenario_yaml_fields: []
+  requires_companion_files: false
+  affected_sections:
+    - "attack_map.yaml:edges[].hints"
+  operations:
+    - description: "Rewrite each edge's hints array to 1-3 exploitation-focused hints, dropping recon/identification content"
+    - description: "Add pathfinding.cloud link hint to any edge missing one where a path ID is known"
+  agent_instructions: |
+    For each edge in the attack map:
+    1. Read the current hints array.
+    2. Drop all hints that guide the attacker to discover, enumerate, or identify the target (e.g., "use ListRoles to find...", "look for users with elevated permissions", "start by understanding what roles exist").
+    3. Keep and condense: exploitation mechanics (how to execute the hop), timing gotchas (IAM propagation, Lambda update delay), required flags, pitfall warnings.
+    4. If a pathfinding.cloud path ID appears in the edge label, description, or existing hints, ensure the last hint is "Browse to https://pathfinding.cloud/paths/{path-id} for technique details."
+    5. Result must be 1-3 hints total. If the condensed content naturally fits in 1-2, do not pad to 3.
+    No other changes to the file (nodes, commands, descriptions, ARNs are untouched).
+```
+
+---
+
 ## 1.5.0 — 2026-04-27
 
 Minor: added `grantsAdmin` boolean field on edges to fix the dual-crown bug in self-escalation to-admin scenarios.

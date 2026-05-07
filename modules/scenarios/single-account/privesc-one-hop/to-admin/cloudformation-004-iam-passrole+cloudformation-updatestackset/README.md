@@ -35,7 +35,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `cloudformation:CreateStackInstances` -- create new stack instances if needed
 - `cloudformation:DeleteStackInstances` -- remove stack instances if needed
 - `iam:GetRole` -- verify the escalated role was created by the StackSet update
-- `sts:AssumeRole` -- assume the escalated role created by StackSet update
 
 ## Self-hosted Lab Setup
 

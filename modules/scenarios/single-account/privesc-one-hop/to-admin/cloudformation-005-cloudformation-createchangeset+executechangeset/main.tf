@@ -62,14 +62,6 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Resource = "*"
       },
       {
-        Sid    = "RequiredForExploitationAssumeRole"
-        Effect = "Allow"
-        Action = [
-          "sts:AssumeRole"
-        ]
-        Resource = "arn:aws:iam::${var.account_id}:role/pl-prod-cloudformation-005-to-admin-escalated-role"
-      },
-      {
         Sid    = "HelpfulForReconAndMonitoring"
         Effect = "Allow"
         Action = [

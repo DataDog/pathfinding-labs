@@ -308,9 +308,11 @@ aws cloudformation update-stack \
 
 echo -e "${GREEN}✓ Stack update initiated${NC}\n"
 
-# Wait for stack update to complete
+# Wait for stack update to complete (use readonly creds — attacker's DescribeStacks is helpful/denied)
 echo -e "${YELLOW}Waiting for stack update to complete...${NC}"
+use_readonly_creds
 aws --region $AWS_REGION cloudformation wait stack-update-complete --stack-name $STACK_NAME
+use_starting_creds
 echo -e "${GREEN}✓ Stack update completed${NC}\n"
 
 # Additional wait for IAM propagation

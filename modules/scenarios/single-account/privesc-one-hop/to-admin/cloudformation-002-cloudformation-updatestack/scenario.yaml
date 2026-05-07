@@ -51,8 +51,6 @@ permissions:
           purpose: "Retrieve current stack template for modification"
         - permission: "iam:GetRole"
           purpose: "Verify the escalated role was created by the stack update"
-        - permission: "sts:AssumeRole"
-          purpose: "Assume the escalated role created by stack update"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

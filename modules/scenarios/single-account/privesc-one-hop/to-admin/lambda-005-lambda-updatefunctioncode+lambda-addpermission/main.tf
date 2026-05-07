@@ -53,7 +53,8 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Effect = "Allow"
         Action = [
           "lambda:UpdateFunctionCode",
-          "lambda:AddPermission"
+          "lambda:AddPermission",
+          "lambda:InvokeFunction"
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.id}:${var.account_id}:function:pl-prod-lambda-005-to-admin-target-lambda"
       },

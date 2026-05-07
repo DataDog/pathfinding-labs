@@ -145,8 +145,10 @@ Follow the canonical section structure from the schema exactly:
 Follow the attack map schema exactly. Include:
 - Nodes with proper prologue on starting node (see below for which prologue to use)
 - Edges with commands from demo_attack.sh
-- 3-7 hints per edge, ordered by operations then vague-to-specific
-- Pathfinding.cloud link in hints where a path ID is relevant
+- 1-3 hints per principal→resource and principal→principal edge; `hints: []` on resource→principal (OUT) edges
+- Hints are exploitation-focused (not recon/enumeration); pathfinding.cloud link is always the last hint on any edge that includes one
+- For principal→resource→principal chains: author all hints on the IN (principal→resource) edge as a single 1-3 hint unit covering the full execution story; leave the OUT edge with `hints: []`
+- For Lambda UpdateFunctionCode edges: frame hints as fetching existing code and appending a payload, not replacing outright
 - Proper target node identity (real infrastructure resource, not relabeled starting principal)
 - For every scenario EXCEPT those under `tool-testing/`: the terminal node is the CTF flag resource (see "CTF Flag Terminal" below)
 - `isAdmin: true` on any principal node that holds administrator-equivalent permissions

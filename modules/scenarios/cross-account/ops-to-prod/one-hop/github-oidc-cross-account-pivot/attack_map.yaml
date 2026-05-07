@@ -86,11 +86,8 @@ attackMap:
         a wildcard (repo:{github_repo}:*), any workflow triggered in the repository -- on any
         branch or by any event -- satisfies the condition and receives credentials.
       hints:
-        - "GitHub Actions can request short-lived AWS credentials without storing any static access keys. Look into how OIDC federation works between GitHub and AWS."
-        - "The operations account has an OIDC identity provider registered for token.actions.githubusercontent.com. Check the trust policy on the ops deployer role to understand what conditions it requires."
-        - "The trust policy's sub claim condition is a wildcard. Consider what that means for which workflow triggers -- branches, tags, pull requests -- can satisfy it."
-        - "A GitHub Actions workflow that runs in the repository can call the AWS credential action (aws-actions/configure-aws-credentials) with the role ARN to exchange an OIDC token for temporary credentials. No secrets need to be stored in the repository."
-        - "Once you have a workflow YAML that requests credentials for the ops role, trigger it on any branch. The OIDC exchange happens automatically during the workflow run."
+        - "Create a GitHub Actions workflow with id-token: write permission that uses aws-actions/configure-aws-credentials to exchange an OIDC token for the ops deployer role — no static secrets required."
+        - "The trust policy's sub claim uses a wildcard (repo:{github_repo}:*), so any branch, tag, or PR trigger satisfies the condition. Push to any branch to trigger the exchange."
       commands:
         - description: "Example GitHub Actions workflow step that performs the OIDC exchange (add to .github/workflows/exploit.yml in the repository)"
           command: |
@@ -117,11 +114,7 @@ attackMap:
         principal, so no additional conditions need to be satisfied. This single API call
         crosses the account boundary from operations to prod.
       hints:
-        - "You are now operating as a role in the operations account. Check what cross-account permissions this role has -- specifically whether it can assume roles in other accounts."
-        - "Use iam:ListRoles or inspect the role's inline/attached policies to discover what sts:AssumeRole permissions are granted and which account they target."
-        - "The sts:AssumeRole call takes a --role-arn argument. The target role ARN is in the prod account. The role session name can be anything you choose."
-        - "After assuming the prod role, export the returned AccessKeyId, SecretAccessKey, and SessionToken as environment variables to operate as the new identity."
-        - "Run sts:GetCallerIdentity after the assumption to confirm you are now operating in the prod account under the prod deployer role."
+        - "Call sts:AssumeRole with the prod deployer role ARN, then export the returned AccessKeyId, SecretAccessKey, and SessionToken to switch into the prod account identity."
       commands:
         - description: "Assume the prod deployer role from the ops account"
           command: "aws sts assume-role --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-goidc-pivot-deployer-role --role-session-name goidc-pivot-session --query 'Credentials' --output json"
@@ -141,9 +134,7 @@ attackMap:
         and retrieve the sensitive-data.txt object. The role has both s3:ListBucket (to
         discover object keys) and s3:GetObject (to read object contents) on the target bucket.
       hints:
-        - "You are now in the prod account. Check what S3 permissions the prod deployer role has -- use s3:ListAllMyBuckets to find accessible buckets, then s3:ListBucket to see what objects are inside."
-        - "Once you have identified the bucket name, list its contents to find the object key for the flag file."
-        - "Use the AWS CLI s3api get-object command (or aws s3 cp) to download the object and read its contents."
+        - "Use s3:ListBucket to enumerate the flag bucket's objects, then s3:GetObject (aws s3 cp) to download flag.txt and read its contents."
       commands:
         - description: "List accessible buckets in prod"
           command: "aws s3 ls"

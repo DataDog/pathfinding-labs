@@ -244,12 +244,8 @@ echo -e "  Username: ${YELLOW}$ADMIN_USER_NAME${NC}"
 echo -e "  New Password: ${YELLOW}$NEW_PASSWORD${NC}"
 echo -e "  Original Password: ${YELLOW}$ORIGINAL_PASSWORD${NC} (saved for cleanup)"
 echo ""
-echo -e "${YELLOW}========================================${NC}"
-echo -e "${YELLOW}AUTOMATED DEMO ENDS HERE — CAPTURE THE FLAG MANUALLY${NC}"
-echo -e "${YELLOW}========================================${NC}"
 echo "The attacker now holds a working console password for $ADMIN_USER_NAME but no"
-echo "programmatic credentials exist for this user, so the automated demo cannot read"
-echo "the CTF flag on your behalf. Complete the scenario manually:"
+echo "programmatic credentials exist for this user. Complete the scenario manually:"
 echo ""
 echo "  1. Open the Console URL above and sign in as $ADMIN_USER_NAME with the new password."
 echo "  2. From the console, open AWS CloudShell (top-right toolbar) and run:"
@@ -262,6 +258,12 @@ echo "     Or read the parameter directly via Systems Manager > Parameter Store.
 echo ""
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to restore the original password${NC}"
 echo ""
+
+# Flag capture requires interactive console login — exit 3 in non-interactive mode so
+# capture_demos.py marks this as "skipped (requires user interaction)" rather than a failure.
+if [ ! -t 0 ]; then
+    exit 3
+fi
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

@@ -62,12 +62,7 @@ attackMap:
         The starting user assumes the operations role using sts:AssumeRole.
         The operations role's trust policy allows the starting user to assume it.
       hints:
-        - "Start by confirming your identity and what account you are in using sts:GetCallerIdentity."
-        - "You are operating in the operations account. Check what roles exist in this account that you might be able to assume."
-        - "Use iam:ListRoles to list roles in the operations account and look for roles with trust policies that include your user."
-        - "Read the trust policy of the ops role to confirm whether your starting user principal is listed as a trusted entity."
-        - "Once you identify an assumable ops role, use sts:AssumeRole to assume it and export the returned credentials as environment variables."
-        - "Check the inline and attached policies on the ops role to understand what it can do — this will reveal your next move."
+        - "Assume the ops role with sts:AssumeRole and export the returned credentials as environment variables — this role holds sts:AssumeRole on * enabling cross-account pivots."
       commands:
         - description: "Confirm your starting identity"
           command: "aws sts get-caller-identity --profile pl-pathfinding-starting-user-operations"
@@ -82,12 +77,7 @@ attackMap:
         privileged prod target role in the production account, completing the cross-account
         lateral movement and privilege escalation.
       hints:
-        - "Now that you hold ops role credentials, inspect the role's policies to understand what permissions you have."
-        - "The ops role has sts:AssumeRole on * — think about what that means across account boundaries."
-        - "Enumerate roles in the prod account using iam:ListRoles to find roles that might trust the operations account."
-        - "For each candidate prod role, use iam:GetRole to read its trust policy and check whether the operations account or this role's ARN is listed as a trusted principal."
-        - "Once you identify a prod role that trusts the operations account, attempt to assume it directly with sts:AssumeRole — no special conditions should block you."
-        - "After assuming the prod role, run sts:GetCallerIdentity to confirm you are now operating in the production account."
+        - "Use sts:AssumeRole with the prod target role ARN — the ops role's wildcard sts:AssumeRole on * permits cross-account assumption of any prod role whose trust policy allows the operations account."
         - "Browse to https://pathfinding.cloud/paths/sts-001 for technique details on cross-account role assumption."
       commands:
         - description: "Enumerate roles in the prod account to identify targets"
@@ -108,9 +98,7 @@ attackMap:
         grants ssm:GetParameter on all parameters, so no additional permissions are needed
         beyond the access you just gained.
       hints:
-        - "You now hold credentials for an admin-level prod role. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
-        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
-        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+        - "Use ssm:GetParameter with the full parameter name /pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin to retrieve the flag."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"
           command: "aws ssm get-parameter --name /pathfinding-labs/flags/ops-to-prod-simple-role-assumption-to-admin --query 'Parameter.Value' --output text"

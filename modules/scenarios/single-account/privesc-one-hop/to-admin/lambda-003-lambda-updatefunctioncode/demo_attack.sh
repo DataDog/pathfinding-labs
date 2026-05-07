@@ -327,10 +327,10 @@ echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
 
 # [OBSERVATION] Step 13: Verify administrator access
 echo -e "${YELLOW}Step 13: Verifying administrator access${NC}"
-use_readonly_creds
-echo "Attempting to list IAM users..."
+use_starting_creds
+echo "Attempting to list IAM users with newly-granted admin credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

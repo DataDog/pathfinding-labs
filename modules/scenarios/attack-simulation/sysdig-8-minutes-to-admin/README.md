@@ -10,7 +10,7 @@
 * **Source Title:** AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes
 * **Source Author:** Alessandro Brucato and Michael Clark (Sysdig Threat Research Team)
 * **Source Date:** 2026-02-03
-* **Technique:** Recreation of the Nov 2025 Sysdig TRT breach: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes
+* **Technique:** Recreation of the attack documented by Sysdig Threat Research Team: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes
 * **Terraform Variable:** `enable_attack_simulation_sysdig_8_minutes_to_admin`
 * **Schema Version:** 4.6.0
 * **CTF Flag Location:** ssm-parameter

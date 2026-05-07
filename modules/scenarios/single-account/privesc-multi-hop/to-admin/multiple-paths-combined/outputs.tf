@@ -36,6 +36,11 @@ output "ec2_admin_role_arn" {
   value       = aws_iam_role.prod_ec2_admin_role.arn
 }
 
+output "ec2_admin_instance_profile_name" {
+  description = "Name of the EC2 instance profile for the admin role"
+  value       = aws_iam_instance_profile.prod_ec2_admin_profile.name
+}
+
 output "lambda_admin_role_arn" {
   description = "ARN of the Lambda admin role"
   value       = aws_iam_role.prod_lambda_admin_role.arn

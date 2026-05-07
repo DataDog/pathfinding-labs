@@ -134,6 +134,7 @@ def main():
     parser.add_argument("--workers",    type=int, default=4, metavar="N", help="Concurrent demo workers (default: 4)")
     parser.add_argument("--no-cleanup", action="store_true", help="Skip cleanup_attack.sh after each demo")
     parser.add_argument("--force", action="store_true", help="Re-run demos even if a redacted transcript already exists in pathfinding.cloud")
+    parser.add_argument("--labs", nargs="+", metavar="SLUG", help="Run only these labs (by pathfinding.cloud slug, e.g. cloudformation-002). Skips plabs status query.")
     parser.add_argument(
         "--labs-source-dir", metavar="PATH", default=str(LABS_REPO),
         help=f"Path to pathfinding-labs repo (default: {LABS_REPO})",
@@ -144,20 +145,28 @@ def main():
         sys.exit(1)
 
     # ------------------------------------------------------------------
-    # Step 1: Get enabled scenarios
+    # Step 1: Get enabled scenarios (or use --labs override)
     # ------------------------------------------------------------------
-    print("Step 1: Querying enabled scenarios from plabs...")
-    unique_ids = get_enabled_unique_ids()
+    if args.labs:
+        # User specified slugs directly — skip plabs status
+        slugs = args.labs
+        unique_ids = slugs  # run_demos.py accepts slugs directly
+        print(f"Step 1: Using --labs override ({len(slugs)} lab(s)):")
+        for slug in slugs:
+            print(f"    {slug}")
+    else:
+        print("Step 1: Querying enabled scenarios from plabs...")
+        unique_ids = get_enabled_unique_ids()
 
-    if not unique_ids:
-        print("No enabled scenarios found. Enable some with: plabs enable <id>")
-        sys.exit(0)
+        if not unique_ids:
+            print("No enabled scenarios found. Enable some with: plabs enable <id>")
+            sys.exit(0)
 
-    slugs = [uniqueid_to_slug(uid) for uid in unique_ids]
+        slugs = [uniqueid_to_slug(uid) for uid in unique_ids]
 
-    print(f"  Found {len(unique_ids)} enabled scenario(s):")
-    for uid, slug in zip(unique_ids, slugs):
-        print(f"    {uid:<45} → slug: {slug}")
+        print(f"  Found {len(unique_ids)} enabled scenario(s):")
+        for uid, slug in zip(unique_ids, slugs):
+            print(f"    {uid:<45} → slug: {slug}")
 
     # ------------------------------------------------------------------
     # Filter: skip slugs that already have a redacted transcript

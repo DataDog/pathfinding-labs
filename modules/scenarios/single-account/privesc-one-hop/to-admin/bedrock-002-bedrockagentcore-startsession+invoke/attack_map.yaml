@@ -1,106 +1,102 @@
 attackMap:
   nodes:
-    - id: starting-principal
-      label: "Starting User"
-      type: principal
-      subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-002-to-admin-starting-user"
-      access:
-        type: assumed-breach-credentials
-      description: >
-        You have gained access to this principal's AWS IAM credentials. These could
-        have been obtained through many real-world vectors: phishing a developer and
-        gaining access to their workstation, compromising a browser session, exploiting
-        a vulnerable workload running in this AWS account, discovering credentials in
-        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+  - id: starting-principal
+    label: Starting User
+    type: principal
+    subType: iam-user
+    arn: arn:aws:iam::{account_id}:user/pl-prod-bedrock-002-to-admin-starting-user
+    access:
+      type: assumed-breach-credentials
+    description: 'You have gained access to this principal''s AWS IAM credentials. These could have been obtained through
+      many real-world vectors: phishing a developer and gaining access to their workstation, compromising a browser session,
+      exploiting a vulnerable workload running in this AWS account, discovering credentials in a public S3 bucket, or finding
+      them hardcoded in source code or a CI/CD pipeline.
 
-        Regardless of how you obtained them, you are now operating as this principal.
-        This IAM user has bedrock-agentcore:StartCodeInterpreterSession and
-        bedrock-agentcore:InvokeCodeInterpreter permissions on the pre-deployed target
-        code interpreter. No iam:PassRole permission is required because the privileged
-        role is already attached to the existing interpreter.
+      Regardless of how you obtained them, you are now operating as this principal. This IAM user has bedrock-agentcore:StartCodeInterpreterSession
+      and bedrock-agentcore:InvokeCodeInterpreter permissions on the pre-deployed target code interpreter. No iam:PassRole
+      permission is required because the privileged role is already attached to the existing interpreter.
 
-    - id: code-interpreter
-      label: "Code Interpreter"
-      type: resource
-      subType: bedrock-agent
-      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter"
-      description: >
-        This is a pre-deployed Bedrock AgentCore code interpreter with an admin
-        execution role already attached. It runs on a Firecracker MicroVM that exposes
-        a metadata service at 169.254.169.254, similar to EC2 IMDS but without the
-        IMDSv2 token requirement. Python code executed in this interpreter can read
-        temporary credentials from the metadata endpoint.
+      '
+  - id: code-interpreter
+    label: Code Interpreter
+    type: resource
+    subType: bedrock-agent
+    arn: arn:aws:bedrock-agentcore:{region}:{account_id}:code-interpreter/pl-prod-bedrock-002-to-admin-target-interpreter
+    description: 'This is a pre-deployed Bedrock AgentCore code interpreter with an admin execution role already attached.
+      It runs on a Firecracker MicroVM that exposes a metadata service at 169.254.169.254, similar to EC2 IMDS but without
+      the IMDSv2 token requirement. Python code executed in this interpreter can read temporary credentials from the metadata
+      endpoint.
 
-    - id: target-role
-      label: "Admin Role"
-      type: principal
-      subType: iam-role
-      isAdmin: true
-      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-002-to-admin-target-role"
-      description: >
-        This IAM role has AdministratorAccess and is pre-attached as the execution role
-        for the code interpreter. By extracting its temporary credentials from the
-        MicroVM Metadata Service, you gain full administrative access to the AWS account.
+      '
+  - id: target-role
+    label: Admin Role
+    type: principal
+    subType: iam-role
+    isAdmin: true
+    arn: arn:aws:iam::{account_id}:role/pl-prod-bedrock-002-to-admin-target-role
+    description: 'This IAM role has AdministratorAccess and is pre-attached as the execution role for the code interpreter.
+      By extracting its temporary credentials from the MicroVM Metadata Service, you gain full administrative access to the
+      AWS account.
 
-    - id: ctf-flag
-      label: "CTF Flag"
-      type: resource
-      subType: ssm-parameter
-      isTarget: true
-      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-002-to-admin"
-      description: >
-        The CTF flag is stored in this SSM Parameter Store parameter. It can only be
-        read by a principal with ssm:GetParameter permission — which the admin role
-        provides. Successfully reading this flag proves you have achieved full
-        administrative access to the account.
+      '
+  - id: ctf-flag
+    label: CTF Flag
+    type: resource
+    subType: ssm-parameter
+    isTarget: true
+    arn: arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-002-to-admin
+    description: 'The CTF flag is stored in this SSM Parameter Store parameter. It can only be read by a principal with ssm:GetParameter
+      permission — which the admin role provides. Successfully reading this flag proves you have achieved full administrative
+      access to the account.
 
+      '
   edges:
-    - from: starting-principal
-      to: code-interpreter
-      label: "bedrock-agentcore:StartCodeInterpreterSession"
-      description: >
-        Start a session on the existing code interpreter. Because the role is already
-        attached to the interpreter, no iam:PassRole permission is required.
-      hints:
-        - "Start by enumerating what Bedrock code interpreters exist in this account -- your helpful permissions let you list and inspect them."
-        - "Use bedrock-agentcore:ListCodeInterpreters to discover interpreters, then bedrock-agentcore:GetCodeInterpreter to examine their execution roles."
-        - "When you find a code interpreter with a privileged execution role, that interpreter is your target -- no need to create a new one."
-        - "You can start a session on an existing interpreter without iam:PassRole because the role is already attached. Look for the start-session API call in the bedrock-agentcore service."
-        - "Browse to https://pathfinding.cloud/paths/bedrock-002 for technique details and context on this attack path."
-      commands:
-        - description: "List available code interpreters to identify the target"
-          command: "aws bedrock-agentcore list-code-interpreters"
-        - description: "Inspect the execution role of the target interpreter"
-          command: "aws bedrock-agentcore get-code-interpreter --interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter"
-        - description: "Start a session on the existing code interpreter"
-          command: "aws bedrock-agentcore start-code-interpreter-session --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter"
+  - from: starting-principal
+    to: code-interpreter
+    label: bedrock-agentcore:StartCodeInterpreterSession
+    description: 'Start a session on the existing code interpreter. Because the role is already attached to the interpreter,
+      no iam:PassRole permission is required.
 
-    - from: code-interpreter
-      to: target-role
-      label: "bedrock-agentcore:InvokeCodeInterpreter + MMDS"
-      description: >
-        Execute Python code within the interpreter session to access the MicroVM
-        Metadata Service and extract the execution role's temporary credentials.
-      hints:
-        - "The code interpreter runs inside a MicroVM -- think about what services are typically available to compute workloads running in AWS."
-        - "EC2 instances expose a metadata service at a well-known link-local address. Bedrock code interpreters run on Firecracker MicroVMs and expose a similar service."
-        - "Use the invoke-code-interpreter API to send Python code into the running session. Your code can make HTTP requests to internal addresses."
-        - "Once inside the interpreter, query the metadata endpoint to discover what IAM role is attached, then retrieve its temporary credentials."
-        - "The credentials returned from the metadata service include AccessKeyId, SecretAccessKey, and a session Token -- export all three to assume the role's identity locally."
-        - "Browse to https://pathfinding.cloud/paths/bedrock-002 for full technique context and comparison with the bedrock-001 path."
-      commands:
-        - description: "Invoke the interpreter to extract credentials from MMDS"
-          command: "aws bedrock-agentcore invoke-code-interpreter --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter --session-id <SESSION_ID> --name executeCode --arguments '{\"code\": \"<extraction_script>\", \"language\": \"python\"}'"
-        - description: "Verify admin access with extracted credentials"
-          command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws iam list-users"
+      '
+    hints:
+    - Call bedrock-agentcore:StartCodeInterpreterSession on the existing interpreter — no iam:PassRole is needed because
+      the privileged role is already attached. Then use bedrock-agentcore:InvokeCodeInterpreter to run Python code that
+      queries the MicroVM Metadata Service at 169.254.169.254 — it vends temporary credentials for the execution role.
+      Unlike EC2 IMDSv2, no token PUT is required.
+    - Export the AccessKeyId, SecretAccessKey, and Token from the metadata response as environment variables to operate
+      as the admin role locally.
+    - Browse to https://pathfinding.cloud/paths/bedrock-002 for technique details.
+    commands:
+    - description: List available code interpreters to identify the target
+      command: aws bedrock-agentcore list-code-interpreters
+    - description: Inspect the execution role of the target interpreter
+      command: aws bedrock-agentcore get-code-interpreter --interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter
+    - description: Start a session on the existing code interpreter
+      command: aws bedrock-agentcore start-code-interpreter-session --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter
+  - from: code-interpreter
+    to: target-role
+    label: bedrock-agentcore:InvokeCodeInterpreter + MMDS
+    description: 'Execute Python code within the interpreter session to access the MicroVM Metadata Service and extract the
+      execution role''s temporary credentials.
 
-    - from: target-role
-      to: ctf-flag
-      label: "ssm:GetParameter"
-      description: >
-        With full administrative access via the extracted admin role credentials, read
-        the CTF flag from SSM Parameter Store to complete the challenge.
-      commands:
-        - description: "Read the CTF flag from SSM Parameter Store"
-          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-002-to-admin --query 'Parameter.Value' --output text"
+      '
+    hints: []
+    commands:
+    - description: Invoke the interpreter to extract credentials from MMDS
+      command: 'aws bedrock-agentcore invoke-code-interpreter --code-interpreter-id pl-prod-bedrock-002-to-admin-target-interpreter
+        --session-id <SESSION_ID> --name executeCode --arguments ''{"code": "<extraction_script>", "language": "python"}'''
+    - description: Verify admin access with extracted credentials
+      command: AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws iam list-users
+  - from: target-role
+    to: ctf-flag
+    label: ssm:GetParameter
+    description: 'With full administrative access via the extracted admin role credentials, read the CTF flag from SSM Parameter
+      Store to complete the challenge.
+
+      '
+    commands:
+    - description: Read the CTF flag from SSM Parameter Store
+      command: aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-002-to-admin --query 'Parameter.Value' --output
+        text
+    hints:
+    - Use ssm:GetParameter with the flag parameter name shown in the target node ARN to retrieve the CTF flag value.

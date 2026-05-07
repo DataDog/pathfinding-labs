@@ -426,6 +426,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createc
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "ecs-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {

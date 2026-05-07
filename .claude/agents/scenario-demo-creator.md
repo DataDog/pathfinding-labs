@@ -1112,6 +1112,18 @@ The demo script includes commands that the original attacker ran but which may f
 
 Cleanup scripts for attack simulation work identically to other categories -- remove artifacts created during the demo, preserve infrastructure.
 
+## Additional Rules
+
+**StartCommand in JSON service configs**: Never wrap in `sh -c '...'`. Services like App Runner word-split the field before exec — single-quoted arguments get split, causing shell syntax errors. Write the pipeline directly (without the outer `sh -c` layer); the container runtime wraps in `/bin/sh -c` automatically when there's no ENTRYPOINT.
+
+**Terminal error states that are actually success**: Some single-shot container exploits (e.g. a container that runs one IAM call and exits) cause the service to report a failure state (e.g. `CREATE_FAILED`) even though the exploit already succeeded. Check the service's lifecycle — don't treat every non-RUNNING terminal state as an error. Break the wait loop on the expected terminal state with a green success message.
+
+**`--region` in remote shell contexts**: Always pass `--region $AWS_REGION` to every AWS CLI call executed over SSH or in a remote subshell. IAM/STS are global and silently ignore missing region; all other services fail silently when wrapped in `$()` with `2>/dev/null`.
+
+**Browser-required steps**: When an exploit requires a browser UI (Jupyter, console), check `[ -t 0 ]`. Interactive: guide the user and `read -r` to continue. Non-interactive: print the URL and the exact command to run, then `exit 3`. Never simulate the result with admin credentials — that proves nothing about the attack path. Exit code 3 means "requires user interaction"; `run_demos.py` treats it as skipped, not failed.
+
+**Helpful-permission-restricted operations**: When a demo step uses a permission listed as `helpful` in scenario.yaml (e.g. `dynamodb:PutItem` to trigger a Lambda), switch to `use_admin_creds` for that call — the restriction system adds an explicit Deny on all helpful permissions to the starting user, and the readonly user lacks write access. Retrieve admin credentials from Terraform in Step 1 and define `use_admin_creds()` alongside the other helpers. Add a comment explaining why.
+
 ## Quality Checklist
 
 Before completing, verify:
@@ -1147,7 +1159,11 @@ Before completing, verify:
 29. ✅ Clear step numbering and descriptions
 30. ✅ Final summary is accurate
 31. ✅ Scripts will be made executable (chmod +x)
-32. ✅ **Non-tool-testing scenarios only**: demo_attack.sh has a `[EXPLOIT]` flag-capture step as its final attack action (before `restore_helpful_permissions`), using `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id>` for to-admin or `aws s3 cp s3://<bucket>/flag.txt -` for to-bucket; the script fails (`exit 1`) if the flag read returns empty; the final summary reads `CTF FLAG CAPTURED!` rather than `PRIVILEGE ESCALATION SUCCESSFUL!`; credentials are whatever the attack just produced (never a brand-new assume-role or access-key solely for the flag read)
+32. ✅ **No `sh -c '...'` wrappers in JSON StartCommand fields** — write the pipeline directly
+33. ✅ **`--region $AWS_REGION` on every AWS CLI call in SSH/remote subshell contexts**
+34. ✅ **Browser-required steps use exit 3 in non-interactive mode** — never simulate with admin creds
+35. ✅ **Helpful-permission-restricted steps use `use_admin_creds`** with an explanatory comment
+36. ✅ **Non-tool-testing scenarios only**: demo_attack.sh has a `[EXPLOIT]` flag-capture step as its final attack action (before `restore_helpful_permissions`), using `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id>` for to-admin or `aws s3 cp s3://<bucket>/flag.txt -` for to-bucket; the script fails (`exit 1`) if the flag read returns empty; the final summary reads `CTF FLAG CAPTURED!` rather than `PRIVILEGE ESCALATION SUCCESSFUL!`; credentials are whatever the attack just produced (never a brand-new assume-role or access-key solely for the flag read)
 
 ## File Permissions
 

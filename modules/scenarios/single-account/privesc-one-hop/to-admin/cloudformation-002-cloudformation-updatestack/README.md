@@ -31,7 +31,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `cloudformation:DescribeStacks` -- view stack details and verify stack configuration
 - `cloudformation:GetTemplate` -- retrieve the current stack template for modification
 - `iam:GetRole` -- verify the escalated role was created by the stack update
-- `sts:AssumeRole` -- assume the escalated role created by the stack update
 
 ## Self-hosted Lab Setup
 

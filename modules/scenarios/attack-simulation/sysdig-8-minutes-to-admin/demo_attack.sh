@@ -420,6 +420,8 @@ aws lambda update-function-code \
     --function-name $EC2_INIT_FUNCTION \
     --zip-file fileb:///tmp/malicious_lambda_v1.zip > /dev/null
 
+aws lambda wait function-updated --region $AWS_REGION --function-name $EC2_INIT_FUNCTION 2>/dev/null || sleep 10
+
 show_attack_cmd "Attacker ($COMPROMISED_USER)" "aws lambda update-function-configuration --region $AWS_REGION --function-name $EC2_INIT_FUNCTION --handler malicious_handler_v1.handler --timeout 30"
 aws lambda update-function-configuration \
     --region $AWS_REGION \
@@ -512,6 +514,8 @@ aws lambda update-function-code \
     --region $AWS_REGION \
     --function-name $EC2_INIT_FUNCTION \
     --zip-file fileb:///tmp/malicious_lambda_v2.zip > /dev/null
+
+aws lambda wait function-updated --region $AWS_REGION --function-name $EC2_INIT_FUNCTION 2>/dev/null || sleep 10
 
 show_attack_cmd "Attacker ($COMPROMISED_USER)" "aws lambda update-function-configuration --region $AWS_REGION --function-name $EC2_INIT_FUNCTION --handler malicious_handler_v2.handler --timeout 30"
 aws lambda update-function-configuration \

@@ -65,11 +65,7 @@ attackMap:
         User1 has direct IAM permissions to list and read objects from the sensitive
         S3 bucket. No intermediate role assumption is required.
       hints:
-        - "Start by checking what S3 permissions are directly attached to this user's IAM policy."
-        - "With s3:ListAllMyBuckets, you can discover which buckets exist in the account."
-        - "Once you identify the target bucket, you have s3:ListBucket to enumerate its contents."
-        - "Use s3:GetObject to read individual objects from the bucket -- no role assumption needed."
-        - "The bucket name follows the pattern pl-sensitive-data-rbr-di-{account_id}-{suffix}; you can discover the exact name from the Terraform output or by listing buckets."
+        - "Use s3:ListBucket and s3:GetObject directly -- this user has explicit IAM permissions on the target bucket without needing to assume any role."
       commands:
         - description: "List bucket contents as user1"
           command: "aws s3 ls s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/"
@@ -83,11 +79,7 @@ attackMap:
         User2 assumes pl-prod-rbr-di-role3, which has S3 bucket permissions. This
         grants user2 temporary credentials scoped to that role's permissions.
       hints:
-        - "Try accessing the S3 bucket directly as user2 -- it will fail. You need a different path."
-        - "Review the IAM policies attached to this user to understand what actions are available."
-        - "This user has sts:AssumeRole permission. Use iam:ListRoles or inspect your policy to identify which role ARN you are allowed to assume."
-        - "Trust policies on roles specify which principals can assume them. Look for pl-prod-rbr-di-role3 and check its trust policy."
-        - "Use aws sts assume-role with the role ARN to obtain temporary credentials for that role."
+        - "Use sts:AssumeRole to assume pl-prod-rbr-di-role3. Export the returned temporary credentials before accessing the bucket."
       commands:
         - description: "Assume the intermediate role"
           command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-di-role3 --role-session-name rbr-test --query 'Credentials' --output json"
@@ -100,10 +92,7 @@ attackMap:
         temporary credentials from the assumed role, user2 can now list and read
         objects from the sensitive bucket.
       hints:
-        - "Export the temporary credentials from the assume-role response as environment variables before making S3 calls."
-        - "This role has s3:ListBucket and s3:GetObject on the same bucket user1 can access directly."
-        - "Verify your identity has changed by calling sts:GetCallerIdentity -- you should now be operating as a role session, not user2."
-        - "List the bucket contents and then download an object to confirm the indirect access path is fully functional."
+        - "With the assumed role credentials active, use s3:ListBucket and s3:GetObject to access the same sensitive bucket that user1 reaches directly."
       commands:
         - description: "List bucket contents using assumed role credentials"
           command: "aws s3 ls s3://pl-sensitive-data-rbr-di-{account_id}-{suffix}/"

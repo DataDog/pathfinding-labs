@@ -64,12 +64,8 @@ attackMap:
         S3 bucket containing a malicious DAG. Wait 10-30 minutes for the environment update
         to complete, then 60 seconds for DAG synchronization.
       hints:
-        - "Use airflow:GetEnvironment to inspect the target environment -- note the ExecutionRoleArn and the current SourceBucketArn."
-        - "You can change where MWAA looks for DAG files by updating the environment's source bucket configuration."
-        - "You need an S3 bucket that the execution role can read from. Its resource policy must allow the MWAA execution role to read objects."
-        - "Use airflow:UpdateEnvironment to change SourceBucketArn and DagS3Path to point to your attacker-controlled bucket."
-        - "After calling UpdateEnvironment, poll airflow:GetEnvironment until Status returns to AVAILABLE -- this takes 10-30 minutes."
-        - "Once the environment is AVAILABLE, wait an additional 60 seconds for MWAA to discover and parse DAGs from the new bucket location."
+        - "Call airflow:UpdateEnvironment to change SourceBucketArn and DagS3Path to point to an attacker-controlled bucket containing a malicious DAG. After the call, poll airflow:GetEnvironment until Status returns to AVAILABLE (10-30 minutes), then wait an additional 60 seconds for DAG synchronization."
+        - "Use airflow:CreateCliToken to obtain a short-lived Bearer token, then trigger the malicious DAG via the Airflow CLI API endpoint using `dags trigger`. The DAG executes as the admin execution role. After triggering, wait ~30 seconds for execution and IAM policy propagation before verifying the escalation."
         - "Browse to https://pathfinding.cloud/paths/mwaa-002 for full technique details."
       commands:
         - description: "Inspect the MWAA environment to confirm its execution role and current DAG source"
@@ -85,12 +81,7 @@ attackMap:
       description: >
         The malicious DAG executes within the MWAA environment using the admin execution
         role's credentials, attaching AdministratorAccess to the starting user.
-      hints:
-        - "Once the environment is updated, use airflow:CreateCliToken to obtain a short-lived token for the Airflow web server API."
-        - "The Airflow CLI API endpoint is https://{webserver-hostname}/aws_mwaa/cli -- use the CLI token as a Bearer token to trigger DAGs."
-        - "Trigger the malicious DAG using the dags trigger command via the Airflow CLI API. The DAG will execute as the admin execution role."
-        - "After triggering the DAG, wait ~30 seconds for execution to complete and for IAM policy changes to propagate."
-        - "Use iam:ListAttachedUserPolicies on the starting user to verify that AdministratorAccess has been attached."
+      hints: []
       commands:
         - description: "Obtain a CLI token to access the Airflow API"
           command: "aws mwaa create-cli-token --name pl-prod-mwaa-002-to-admin-env"
@@ -108,9 +99,7 @@ attackMap:
         SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all parameters
         in the account, so no additional permissions are needed.
       hints:
-        - "The malicious DAG attached AdministratorAccess to your starting user. Switch back to your starting-user credentials -- they now have admin access."
-        - "Scenario flags live under a shared prefix in SSM Parameter Store -- consider what a reasonable naming convention for this lab might look like."
-        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+        - "Switch back to your starting-user credentials and use ssm:GetParameter to retrieve the flag from SSM Parameter Store."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store using the now-elevated starting user credentials"
           command: "aws ssm get-parameter --name /pathfinding-labs/flags/mwaa-002-to-admin --query 'Parameter.Value' --output text"

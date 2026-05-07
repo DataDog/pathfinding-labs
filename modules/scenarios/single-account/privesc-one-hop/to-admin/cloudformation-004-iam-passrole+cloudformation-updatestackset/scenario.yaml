@@ -28,7 +28,7 @@ attack_path:
     - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-stackset-execution-role"
     - "arn:aws:iam::{account_id}:role/pl-prod-cloudformation-004-to-admin-escalated-role"
 
-  summary: "starting_user → (iam:PassRole + cloudformation:UpdateStackSet) → StackSet (with admin execution role) → creates escalated admin role → (sts:AssumeRole) → admin access"
+  summary: "starting_user → (iam:PassRole + cloudformation:UpdateStackSet) → StackSet (with admin execution role) → creates escalated admin role → admin access"
 
 # =============================================================================
 # PERMISSIONS
@@ -59,8 +59,6 @@ permissions:
           purpose: "Remove stack instances if needed"
         - permission: "iam:GetRole"
           purpose: "Verify the escalated role was created by the StackSet update"
-        - permission: "sts:AssumeRole"
-          purpose: "Assume the escalated role created by StackSet update"
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

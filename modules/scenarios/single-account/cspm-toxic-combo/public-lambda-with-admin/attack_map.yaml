@@ -60,12 +60,8 @@ attackMap:
         AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN and use them
         to operate as the admin execution role.
       hints:
-        - "Lambda function URLs are HTTPS endpoints that can be configured to require no authentication. A plain HTTP request is all that's needed to invoke them."
-        - "If you have any low-privilege AWS credentials, use lambda:ListFunctions to discover functions, then check each for a function URL with lambda:GetFunctionUrlConfig."
-        - "Check the AuthorizationType field of any function URL -- a value of NONE means no AWS Signature Version 4 is required to invoke it."
-        - "Invoke the public URL directly with curl and examine the response body for any credential data the function may expose."
-        - "When a Lambda function executes, the AWS runtime injects the execution role's temporary credentials as environment variables. If the function returns these in its response, you have the role's credentials."
-        - "Export the extracted credentials and call aws sts get-caller-identity to confirm which role you now control."
+        - "Invoke the public function URL with a plain curl request (no AWS credentials required -- AuthorizationType is NONE). The function returns the execution role's temporary credentials from its environment variables in the response body."
+        - "Export the returned AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN to operate as the admin execution role."
       commands:
         - description: "Invoke the public Lambda function URL (no credentials required)"
           command: "curl -s https://<function-url-id>.lambda-url.<region>.on.aws/"
@@ -82,9 +78,7 @@ attackMap:
         AdministratorAccess grants ssm:GetParameter on all parameters in the account, so
         no additional permissions are needed beyond the credentials already extracted.
       hints:
-        - "You now hold the Lambda execution role's temporary credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
-        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
-        - "Export the extracted credentials and use ssm:GetParameter with the full parameter name to retrieve the flag value."
+        - "Export the extracted credentials and call ssm:GetParameter with the full parameter name to retrieve the flag."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store using the extracted Lambda role credentials"
           command: "AWS_ACCESS_KEY_ID=<extracted> AWS_SECRET_ACCESS_KEY=<extracted> AWS_SESSION_TOKEN=<extracted> aws ssm get-parameter --name /pathfinding-labs/flags/public-lambda-with-admin-to-admin --query 'Parameter.Value' --output text"

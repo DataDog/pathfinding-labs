@@ -37,7 +37,6 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `cloudformation:DeleteStackSet` -- clean up attack artifacts
 - `iam:ListRoles` -- discover available privileged roles to pass
 - `iam:GetRole` -- verify the escalated role was created
-- `sts:AssumeRole` -- assume the escalated role for admin access
 
 ## Self-hosted Lab Setup
 

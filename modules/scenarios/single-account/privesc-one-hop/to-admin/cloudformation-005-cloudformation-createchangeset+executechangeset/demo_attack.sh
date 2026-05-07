@@ -206,7 +206,7 @@ MALICIOUS_TEMPLATE=$(cat <<EOF
     "InitialBucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
-        "BucketName": "pl-prod-cloudformation-005-to-admin-initial-bucket-${ACCOUNT_ID}-${RESOURCE_SUFFIX}",
+        "BucketName": "pl-cfn-005-admin-bucket-${ACCOUNT_ID}-${RESOURCE_SUFFIX}",
         "Tags": [
           {
             "Key": "Name",

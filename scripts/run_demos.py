@@ -120,13 +120,16 @@ def read_scenario_timeouts(scenario_dir: Path) -> tuple[int, int]:
     return demo_timeout, cleanup_timeout
 
 
-def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: bool = True) -> tuple[bool, str]:
+EXIT_USER_ACTION_REQUIRED = 3  # demo needs a human (e.g. browser step) — not a failure
+
+
+def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: bool = True) -> tuple[str, str]:
     """Run demo_attack.sh for a single scenario, save the transcript, then run cleanup.
 
     cleanup_attack.sh is always run after the demo (even on failure) unless
     cleanup=False, to ensure no demo artifacts are left behind.
 
-    Returns (success, slug).
+    Returns (status, slug) where status is one of: "ok", "failed", "skipped".
     Output is buffered and printed atomically after the script finishes
     so concurrent runs don't interleave.
     """
@@ -142,38 +145,51 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
     if not skip_check and not os.access(script_path, os.X_OK):
         lines.append(f"  [{slug}] WARNING: not executable, skipping. Run: chmod +x {script_path}")
         log("\n".join(lines))
-        return False, slug
+        return "failed", slug
 
-    demo_ok = False
+    status = "failed"
     try:
         result = subprocess.run(
             ["bash", str(script_path)],
             cwd=str(scenario_dir),
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             # Do not set text=True — preserve raw bytes for ANSI codes
             timeout=demo_timeout,
         )
         combined = result.stdout + result.stderr
         output_file.write_bytes(combined)
 
-        if result.returncode != 0:
-            lines.append(f"  [{slug}] WARNING: demo exited with code {result.returncode}")
-        else:
+        if result.returncode == 0:
             lines.append(f"  [{slug}] demo done — {len(combined):,} bytes -> {output_file.name}")
-        demo_ok = result.returncode == 0
+            status = "ok"
+        elif result.returncode == EXIT_USER_ACTION_REQUIRED:
+            lines.append(f"  [{slug}] SKIPPED — requires user interaction (exit 3)")
+            status = "skipped"
+        else:
+            lines.append(f"  [{slug}] WARNING: demo exited with code {result.returncode}")
 
-    except subprocess.TimeoutExpired:
-        lines.append(f"  [{slug}] ERROR: demo timed out after {demo_timeout}s")
+    except subprocess.TimeoutExpired as e:
+        # Save whatever output was captured before the timeout
+        partial = (e.stdout or b"") + (e.stderr or b"")
+        if partial:
+            output_file.write_bytes(partial)
+            lines.append(f"  [{slug}] ERROR: demo timed out after {demo_timeout}s ({len(partial):,} bytes captured)")
+        else:
+            lines.append(f"  [{slug}] ERROR: demo timed out after {demo_timeout}s")
     except Exception as e:
         lines.append(f"  [{slug}] ERROR: {e}")
 
-    # Always run cleanup after the demo, regardless of demo success
-    if cleanup and cleanup_path.exists():
+    # Always run cleanup after the demo, regardless of demo success.
+    # Skip cleanup for user-action-required exits — the demo script already
+    # restored helpful permissions and left the notebook running for the user.
+    if cleanup and status != "skipped" and cleanup_path.exists():
         try:
             cleanup_result = subprocess.run(
                 ["bash", str(cleanup_path)],
                 cwd=str(scenario_dir),
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 timeout=cleanup_timeout,
             )
             if cleanup_result.returncode != 0:
@@ -184,16 +200,17 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
             lines.append(f"  [{slug}] WARNING: cleanup timed out after {cleanup_timeout}s")
         except Exception as e:
             lines.append(f"  [{slug}] WARNING: cleanup error: {e}")
-    elif cleanup and not cleanup_path.exists():
+    elif cleanup and status != "skipped" and not cleanup_path.exists():
         lines.append(f"  [{slug}] WARNING: no cleanup_attack.sh found")
 
     log("\n".join(lines))
-    return demo_ok, slug
+    return status, slug
 
 
-def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_check: bool, cleanup: bool) -> tuple[int, int]:
-    """Run demos in parallel batches. Returns (success_count, failure_count)."""
+def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_check: bool, cleanup: bool) -> tuple[int, int, int]:
+    """Run demos in parallel batches. Returns (success_count, skipped_count, failure_count)."""
     success = 0
+    skipped = 0
     failure = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
@@ -202,13 +219,15 @@ def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_che
             for entry in targets
         }
         for future in concurrent.futures.as_completed(futures):
-            ok, slug = future.result()
-            if ok:
+            status, slug = future.result()
+            if status == "ok":
                 success += 1
+            elif status == "skipped":
+                skipped += 1
             else:
                 failure += 1
 
-    return success, failure
+    return success, skipped, failure
 
 
 def main():
@@ -283,9 +302,13 @@ def main():
     if not cleanup:
         print("  Cleanup disabled (--no-cleanup)")
 
-    success, failure = run_demos_concurrent(targets, output_dir, workers, args.skip_check, cleanup)
+    success, skipped, failure = run_demos_concurrent(targets, output_dir, workers, args.skip_check, cleanup)
 
-    print(f"\nDone: {success} succeeded, {failure} failed.")
+    parts = [f"{success} succeeded"]
+    if skipped:
+        parts.append(f"{skipped} skipped (requires user interaction)")
+    parts.append(f"{failure} failed")
+    print(f"\nDone: {', '.join(parts)}.")
     print(f"Next step: run redact_transcripts.py on {output_dir} before committing.")
     if failure:
         sys.exit(1)

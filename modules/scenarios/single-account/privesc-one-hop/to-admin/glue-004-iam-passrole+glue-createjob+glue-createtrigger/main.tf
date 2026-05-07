@@ -37,8 +37,9 @@ resource "aws_iam_access_key" "starting_user_key" {
 
 # S3 bucket for Glue job scripts (attacker-controlled)
 resource "aws_s3_bucket" "script_bucket" {
-  provider = aws.attacker
-  bucket   = "pl-glue-scripts-glue-004-${var.attacker_account_id}-${var.resource_suffix}"
+  provider      = aws.attacker
+  bucket        = "pl-glue-scripts-glue-004-${var.attacker_account_id}-${var.resource_suffix}"
+  force_destroy = true
 
   tags = {
     Name        = "pl-glue-scripts-glue-004-${var.attacker_account_id}-${var.resource_suffix}"
