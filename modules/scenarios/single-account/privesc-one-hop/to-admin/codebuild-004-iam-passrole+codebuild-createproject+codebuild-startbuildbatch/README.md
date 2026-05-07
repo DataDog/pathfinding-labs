@@ -163,10 +163,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `CodeBuild: CreateProject` -- New CodeBuild project created; alert when combined with a privileged service role and an inline buildspec
-- `CodeBuild: StartBuildBatch` -- Build batch execution triggered; monitor for custom buildspec overrides that execute IAM-modifying commands
-- `IAM: AttachUserPolicy` -- Managed policy attached to a user; critical when `AdministratorAccess` is the policy and the caller is a CodeBuild service principal (`codebuild.amazonaws.com`)
-- `STS: AssumeRole` -- CodeBuild assumes the passed service role at build start; alert when the assumed role has IAM administrative permissions
+- `codebuild:CreateProject` -- New CodeBuild project created; alert when combined with a privileged service role and an inline buildspec
+- `codebuild:StartBuildBatch` -- Build batch execution triggered; monitor for custom buildspec overrides that execute IAM-modifying commands
+- `iam:AttachUserPolicy` -- Managed policy attached to a user; critical when `AdministratorAccess` is the policy and the caller is a CodeBuild service principal (`codebuild.amazonaws.com`)
+- `sts:AssumeRole` -- CodeBuild assumes the passed service role at build start; alert when the assumed role has IAM administrative permissions
 
 #### Detonation logs
 

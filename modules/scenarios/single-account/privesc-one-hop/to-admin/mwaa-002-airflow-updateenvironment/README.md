@@ -221,10 +221,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `MWAA: UpdateEnvironment` -- API calls that modify `SourceBucketArn` or `DagS3Path`; high severity when the new source bucket references an external S3 bucket or different AWS account, or targets environments with administrative execution roles
-- `MWAA: CreateCliToken` -- CLI token obtained for Airflow API access; critical when occurring shortly after an UpdateEnvironment operation
-- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; critical when originating from an MWAA execution role context
-- `IAM: PutUserPolicy` -- Inline policy added to an IAM user; critical when originating from an MWAA execution role context
+- `mwaa:UpdateEnvironment` -- API calls that modify `SourceBucketArn` or `DagS3Path`; high severity when the new source bucket references an external S3 bucket or different AWS account, or targets environments with administrative execution roles
+- `mwaa:CreateCliToken` -- CLI token obtained for Airflow API access; critical when occurring shortly after an UpdateEnvironment operation
+- `iam:AttachUserPolicy` -- Managed policy attached to an IAM user; critical when originating from an MWAA execution role context
+- `iam:PutUserPolicy` -- Inline policy added to an IAM user; critical when originating from an MWAA execution role context
 
 **CloudWatch Logs indicators:**
 - MWAA task logs showing unexpected AWS CLI commands or boto3 IAM operations

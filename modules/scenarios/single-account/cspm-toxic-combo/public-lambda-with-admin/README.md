@@ -135,7 +135,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- Lambda function `pl-public-admin-lambda` has a function URL with `AuthorizationType: NONE` — the function is publicly invocable without any AWS credentials
+- Lambda function `pl-public-admin-lambda` has a function URL with `AuthorizationType: NONE` -- the function is publicly invocable without any AWS credentials
 - Lambda function `pl-public-admin-lambda` executes with the role `pl-public-lambda-admin-role`, which has `AdministratorAccess` (an AWS-managed policy granting `*:*` on `*`)
 - Toxic combination: a publicly invocable Lambda function whose execution role provides full administrative access to the account
 - The execution role's trust policy allows only `lambda.amazonaws.com` as the principal, but the public URL bypasses the need for any IAM principal to invoke it
@@ -153,12 +153,12 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Lambda: CreateFunctionUrlConfig` — A function URL was created; check the `authorizationType` field for `NONE` which indicates public access
-- `Lambda: UpdateFunctionUrlConfig` — A function URL authorization was changed; `NONE` after `AWS_IAM` means the function was made public
-- `IAM: AttachRolePolicy` — A managed policy was attached to a role; critical when `policyArn` is `arn:aws:iam::aws:policy/AdministratorAccess` and the role is a Lambda execution role
-- `Lambda: CreateFunction20150331` — A new Lambda function was created; correlate the `role` parameter against high-privilege roles
-- `Lambda: UpdateFunctionConfiguration20150331v2` — A Lambda function's configuration was updated; watch for changes to the execution role
-- `STS: AssumeRole` — Role assumption events for `pl-public-lambda-admin-role` from the Lambda service; unexpected assumption outside normal function invocations warrants investigation
+- `lambda:CreateFunctionUrlConfig` -- A function URL was created; check the `authorizationType` field for `NONE` which indicates public access
+- `lambda:UpdateFunctionUrlConfig` -- A function URL authorization was changed; `NONE` after `AWS_IAM` means the function was made public
+- `iam:AttachRolePolicy` -- A managed policy was attached to a role; critical when `policyArn` is `arn:aws:iam::aws:policy/AdministratorAccess` and the role is a Lambda execution role
+- `lambda:CreateFunction20150331` -- A new Lambda function was created; correlate the `role` parameter against high-privilege roles
+- `lambda:UpdateFunctionConfiguration20150331v2` -- A Lambda function's configuration was updated; watch for changes to the execution role
+- `sts:AssumeRole` -- Role assumption events for `pl-public-lambda-admin-role` from the Lambda service; unexpected assumption outside normal function invocations warrants investigation
 
 #### Detonation logs
 

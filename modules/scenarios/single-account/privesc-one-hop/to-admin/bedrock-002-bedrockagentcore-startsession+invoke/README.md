@@ -218,8 +218,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Bedrock: StartCodeInterpreterSession` -- session started on an existing code interpreter; critical when the target interpreter has a privileged execution role
-- `Bedrock: InvokeCodeInterpreter` -- code invoked within an interpreter session; high severity when followed by credential usage from a different IP address
+- `bedrock:StartCodeInterpreterSession` -- session started on an existing code interpreter; critical when the target interpreter has a privileged execution role
+- `bedrock:InvokeCodeInterpreter` -- code invoked within an interpreter session; high severity when followed by credential usage from a different IP address
 
 #### Detonation logs
 

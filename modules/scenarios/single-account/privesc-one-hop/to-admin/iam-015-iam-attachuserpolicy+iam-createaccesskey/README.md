@@ -214,13 +214,13 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachUserPolicy` -- especially when attaching high-privilege policies like AdministratorAccess; critical when the target user differs from the caller
-- `IAM: CreateAccessKey` -- particularly when the caller is not the user for whom keys are being created; indicates potential lateral movement
+- `iam:AttachUserPolicy` -- especially when attaching high-privilege policies like AdministratorAccess; critical when the target user differs from the caller
+- `iam:CreateAccessKey` -- particularly when the caller is not the user for whom keys are being created; indicates potential lateral movement
 
 Alert on these patterns:
-- User A calling `IAM: AttachUserPolicy` for User B followed by `IAM: CreateAccessKey` for User B within a short time window
-- `IAM: AttachUserPolicy` events targeting AWS-managed policies with "Admin" or "FullAccess" in their name
-- `IAM: CreateAccessKey` where `userName` parameter differs from the authenticated principal
+- User A calling `iam:AttachUserPolicy` for User B followed by `iam:CreateAccessKey` for User B within a short time window
+- `iam:AttachUserPolicy` events targeting AWS-managed policies with "Admin" or "FullAccess" in their name
+- `iam:CreateAccessKey` where `userName` parameter differs from the authenticated principal
 
 #### Detonation logs
 

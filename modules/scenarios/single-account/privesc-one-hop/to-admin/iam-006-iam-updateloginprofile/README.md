@@ -158,7 +158,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: UpdateLoginProfile` -- Console password reset on an IAM user; critical when the target account has elevated permissions, as it enables console login as that user
+- `iam:UpdateLoginProfile` -- Console password reset on an IAM user; critical when the target account has elevated permissions, as it enables console login as that user
 
 #### Detonation logs
 

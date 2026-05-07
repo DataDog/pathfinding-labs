@@ -160,8 +160,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` -- Inline policy added or modified on a role; critical when the target role is assumable and the new policy grants elevated permissions
-- `STS: AssumeRole` -- Role assumption event; high severity when preceded by a `PutRolePolicy` call on the same role within a short time window
+- `iam:PutRolePolicy` -- Inline policy added or modified on a role; critical when the target role is assumable and the new policy grants elevated permissions
+- `sts:AssumeRole` -- Role assumption event; high severity when preceded by a `PutRolePolicy` call on the same role within a short time window
 
 #### Detonation logs
 

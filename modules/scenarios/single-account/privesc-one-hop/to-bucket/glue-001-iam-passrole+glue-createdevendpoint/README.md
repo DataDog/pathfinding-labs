@@ -192,11 +192,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Role passed to Glue service principal; high severity when the passed role has S3 or admin permissions
-- `Glue: CreateDevEndpoint` -- New Glue development endpoint created; critical when combined with a privileged role
-- `Glue: GetDevEndpoint` -- Endpoint status queried; may indicate attacker polling for readiness
-- `STS: AssumeRole` -- Role assumed by Glue service principal (`glue.amazonaws.com`); indicates endpoint is using the passed role
-- `S3: GetObject` -- Objects retrieved from S3; high severity when the calling principal is a Glue endpoint role
+- `glue:CreateDevEndpoint` -- new Glue development endpoint created; inspect the `roleArn` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to Glue; critical when the role has S3 or admin permissions
+- `glue:GetDevEndpoint` -- endpoint status queried; may indicate attacker polling for readiness
+- `sts:AssumeRole` -- role assumed by Glue service principal (`glue.amazonaws.com`); indicates endpoint is using the passed role
+- `s3:GetObject` -- objects retrieved from S3; high severity when the calling principal is a Glue endpoint role
 
 #### Detonation logs
 

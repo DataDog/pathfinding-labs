@@ -167,11 +167,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- IAM role passed to SageMaker service; critical when the passed role has administrative permissions
-- `SageMaker: CreateProcessingJob` -- SageMaker processing job created; high severity when the execution role has elevated permissions
-- `IAM: AttachUserPolicy` -- Managed policy attached to IAM user; critical when the policy is AdministratorAccess
-- `IAM: PutUserPolicy` -- Inline policy added to IAM user; investigate if policy grants broad permissions
-- `IAM: CreateAccessKey` -- New access keys created for an IAM user; critical when the target has elevated permissions
+- `sagemaker:CreateProcessingJob` -- SageMaker processing job created; inspect the `roleArn` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to SageMaker; high severity when the role has elevated permissions
+- `iam:AttachUserPolicy` -- managed policy attached to IAM user; critical when the policy is AdministratorAccess
+- `iam:PutUserPolicy` -- inline policy added to IAM user; investigate if policy grants broad permissions
+- `iam:CreateAccessKey` -- new access keys created for an IAM user; critical when the target has elevated permissions
 
 #### Detonation logs
 

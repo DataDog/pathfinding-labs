@@ -174,9 +174,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SageMaker: CreateNotebookInstance` -- new notebook instance created; high severity when the execution role has elevated privileges; the `roleArn` field in the event identifies which role was passed
-- `SageMaker: CreatePresignedNotebookInstanceUrl` -- presigned URL generated for notebook access; indicates imminent interactive access to the notebook environment
-- `SageMaker: DescribeNotebookInstance` -- notebook instance status queried; often seen while attacker polls for InService state
+- `sagemaker:CreateNotebookInstance` -- new notebook instance created; high severity when the execution role has elevated privileges; the `roleArn` field in the event identifies which role was passed
+- `sagemaker:CreatePresignedNotebookInstanceUrl` -- presigned URL generated for notebook access; indicates imminent interactive access to the notebook environment
+- `sagemaker:DescribeNotebookInstance` -- notebook instance status queried; often seen while attacker polls for InService state
 
 #### Detonation logs
 

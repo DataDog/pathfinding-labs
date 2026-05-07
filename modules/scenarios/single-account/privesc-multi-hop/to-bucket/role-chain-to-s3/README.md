@@ -157,10 +157,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption recorded; three sequential `AssumeRole` calls from the same originating identity within a short time window is a strong indicator of role chain traversal
-- `S3: GetObject` -- Object retrieved from the sensitive bucket; especially suspicious when the requesting principal is a role assumed via a chain of `AssumeRole` calls
-- `S3: ListBucket` -- Bucket contents listed; baseline recon step after gaining S3 access via a role chain
-- `STS: GetCallerIdentity` -- Identity verification call; commonly used by attackers to confirm which role they currently hold at each hop
+- `sts:AssumeRole` -- Role assumption recorded; three sequential `AssumeRole` calls from the same originating identity within a short time window is a strong indicator of role chain traversal
+- `s3:GetObject` -- Object retrieved from the sensitive bucket; especially suspicious when the requesting principal is a role assumed via a chain of `AssumeRole` calls
+- `s3:ListBucket` -- Bucket contents listed; baseline recon step after gaining S3 access via a role chain
+- `sts:GetCallerIdentity` -- Identity verification call; commonly used by attackers to confirm which role they currently hold at each hop
 
 #### Detonation logs
 

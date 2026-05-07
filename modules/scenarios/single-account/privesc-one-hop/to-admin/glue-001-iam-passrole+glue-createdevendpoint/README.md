@@ -203,9 +203,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- IAM role passed to a Glue service; high severity when the passed role has administrative permissions
-- `Glue: CreateDevEndpoint` -- Glue development endpoint created; critical when combined with PassRole on a privileged role
-- `Glue: GetDevEndpoint` -- attacker retrieves endpoint details (SSH key, endpoint address) for interactive access
+- `glue:CreateDevEndpoint` -- Glue development endpoint created; inspect the `roleArn` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to Glue; critical when the role has administrative permissions
+- `glue:GetDevEndpoint` -- attacker retrieves endpoint details (SSH key, endpoint address) for interactive access
 
 #### Detonation logs
 

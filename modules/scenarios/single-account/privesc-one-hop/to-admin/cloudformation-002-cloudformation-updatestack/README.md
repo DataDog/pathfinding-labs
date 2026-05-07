@@ -162,10 +162,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `CloudFormation: UpdateStack` -- CloudFormation stack update executed; high severity when the stack has an elevated service role and the update modifies IAM resources
-- `IAM: CreateRole` -- New IAM role created; critical when triggered by a CloudFormation stack execution with an administrative service role
-- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when `AdministratorAccess` or other high-privilege policies are attached via CloudFormation
-- `STS: AssumeRole` -- Role assumption; investigate when the assumed role was recently created by a CloudFormation stack update
+- `cloudformation:UpdateStack` -- CloudFormation stack update executed; high severity when the stack has an elevated service role and the update modifies IAM resources
+- `iam:CreateRole` -- New IAM role created; critical when triggered by a CloudFormation stack execution with an administrative service role
+- `iam:AttachRolePolicy` -- Managed policy attached to a role; critical when `AdministratorAccess` or other high-privilege policies are attached via CloudFormation
+- `sts:AssumeRole` -- Role assumption; investigate when the assumed role was recently created by a CloudFormation stack update
 
 #### Detonation logs
 

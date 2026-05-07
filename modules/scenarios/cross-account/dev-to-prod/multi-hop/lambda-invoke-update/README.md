@@ -154,16 +154,16 @@ plabs apply
 - **Resource Policy Auditing**: Regularly audit Lambda resource policies using `aws lambda get-policy` and alert on policies granting broad cross-account access
 - **Execution Role Restrictions**: Limit Lambda execution role permissions to only what the function needs; never attach `AdministratorAccess` to a Lambda execution role
 - **Code Review and Signing**: Implement Lambda code signing with AWS Signer to prevent unauthorized code from being deployed
-- **Monitoring**: Alert on `Lambda: UpdateFunctionCode20150331v2` events, especially when the caller is from a different account than the function
+- **Monitoring**: Alert on `lambda:UpdateFunctionCode20150331v2` events, especially when the caller is from a different account than the function
 
 ### Detecting Abuse (CloudSIEM)
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Dev user assumes the `pl-dev-lambda-invoke-role`; monitor cross-account role assumptions from dev to roles with Lambda permissions
-- `Lambda: UpdateFunctionCode20150331v2` — Lambda function code modified cross-account; high severity when caller account differs from function account
-- `Lambda: Invoke` — Lambda function invoked shortly after a code update; correlate with `UpdateFunctionCode` events from the same session
-- `STS: GetCallerIdentity` — Often called to confirm identity after credential extraction; monitor for calls using Lambda execution role temporary credentials from unexpected source IPs
+- `sts:AssumeRole` -- Dev user assumes the `pl-dev-lambda-invoke-role`; monitor cross-account role assumptions from dev to roles with Lambda permissions
+- `lambda:UpdateFunctionCode20150331v2` -- Lambda function code modified cross-account; high severity when caller account differs from function account
+- `lambda:Invoke` -- Lambda function invoked shortly after a code update; correlate with `UpdateFunctionCode` events from the same session
+- `sts:GetCallerIdentity` -- Often called to confirm identity after credential extraction; monitor for calls using Lambda execution role temporary credentials from unexpected source IPs
 
 #### Detonation logs
 

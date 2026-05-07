@@ -169,8 +169,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: UpdateAssumeRolePolicy` -- Trust policy modified on a role; critical when the target role has elevated permissions, indicates potential privilege escalation setup
-- `STS: AssumeRole` -- Role assumption event; high severity when preceded by a trust policy modification on the same role within a short time window
+- `iam:UpdateAssumeRolePolicy` -- Trust policy modified on a role; critical when the target role has elevated permissions, indicates potential privilege escalation setup
+- `sts:AssumeRole` -- Role assumption event; high severity when preceded by a trust policy modification on the same role within a short time window
 
 #### Detonation logs
 

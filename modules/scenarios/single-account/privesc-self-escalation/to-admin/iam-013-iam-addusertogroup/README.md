@@ -157,7 +157,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AddUserToGroup` -- User added to an IAM group; critical when the target group has elevated or administrative permissions attached
+- `iam:AddUserToGroup` -- User added to an IAM group; critical when the target group has elevated or administrative permissions attached
 
 #### Detonation logs
 

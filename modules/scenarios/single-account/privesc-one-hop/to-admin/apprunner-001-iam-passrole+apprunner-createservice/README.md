@@ -179,7 +179,7 @@ plabs apply
   }
   ```
 
-- **Monitor CloudTrail for App Runner Activity**: Set up alerts for `AppRunner: CreateService` and `AppRunner: UpdateService` API calls, especially those that specify instance roles with sensitive permissions. Pay special attention to services using `StartCommand` overrides.
+- **Monitor CloudTrail for App Runner Activity**: Set up alerts for `apprunner:CreateService` and `apprunner:UpdateService` API calls, especially those that specify instance roles with sensitive permissions. Pay special attention to services using `StartCommand` overrides.
 
 - **Use IAM Access Analyzer**: Leverage IAM Access Analyzer to identify privilege escalation paths involving `iam:PassRole` and compute service permissions.
 
@@ -193,9 +193,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to App Runner service; high risk when the passed role has IAM modification permissions
-- `AppRunner: CreateService` -- new App Runner service created; critical when combined with a privileged instance role and a `StartCommand` override
-- `IAM: AttachUserPolicy` -- policy attached to a user; critical when the policy is `AdministratorAccess` and follows App Runner service creation
+- `apprunner:CreateService` -- new App Runner service created; inspect `instanceConfiguration.instanceRoleArn` in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to App Runner; critical when combined with a `StartCommand` override
+- `iam:AttachUserPolicy` -- policy attached to a user; critical when the policy is `AdministratorAccess` and follows App Runner service creation
 
 #### Detonation logs
 

@@ -165,10 +165,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: DeleteAccessKey` -- Existing access key deleted for a user; when followed immediately by CreateAccessKey on the same user, indicates 2-key limit bypass and potential credential theft
-- `IAM: CreateAccessKey` -- New access key created for an IAM user; critical when the target user has S3 bucket access permissions
-- `S3: GetObject` -- Object retrieved from the sensitive S3 bucket; indicates the newly created credentials were used for data access
-- `S3: ListBucket` -- Bucket contents listed; used to enumerate sensitive data after gaining target user credentials
+- `iam:DeleteAccessKey` -- Existing access key deleted for a user; when followed immediately by CreateAccessKey on the same user, indicates 2-key limit bypass and potential credential theft
+- `iam:CreateAccessKey` -- New access key created for an IAM user; critical when the target user has S3 bucket access permissions
+- `s3:GetObject` -- Object retrieved from the sensitive S3 bucket; indicates the newly created credentials were used for data access
+- `s3:ListBucket` -- Bucket contents listed; used to enumerate sensitive data after gaining target user credentials
 
 #### Detonation logs
 

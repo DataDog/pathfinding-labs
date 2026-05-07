@@ -155,7 +155,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreateAccessKey` -- New access keys were created for an IAM user; critical when the target user has elevated permissions
+- `iam:CreateAccessKey` -- New access keys were created for an IAM user; critical when the target user has elevated permissions
 
 #### Detonation logs
 

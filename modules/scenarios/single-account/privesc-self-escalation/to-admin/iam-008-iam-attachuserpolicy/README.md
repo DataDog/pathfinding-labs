@@ -139,7 +139,7 @@ plabs apply
 
 - IAM user has `iam:AttachUserPolicy` permission on `*`, enabling self-attachment of any managed policy
 - Privilege escalation path detected: user can attach `AdministratorAccess` to themselves
-- No resource constraint on `iam:AttachUserPolicy` — no `iam:PolicyARN` condition key limiting attachable policies
+- No resource constraint on `iam:AttachUserPolicy` -- no `iam:PolicyARN` condition key limiting attachable policies
 
 #### Prevention Recommendations
 
@@ -155,7 +155,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; critical when the target user is the caller (self-attachment) or when the attached policy is `AdministratorAccess`
+- `iam:AttachUserPolicy` -- Managed policy attached to an IAM user; critical when the target user is the caller (self-attachment) or when the attached policy is `AdministratorAccess`
 
 #### Detonation logs
 

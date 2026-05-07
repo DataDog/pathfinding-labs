@@ -188,7 +188,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Cross-account role assumption; critical when the source account differs from the target account and the target role has administrative permissions
+- `sts:AssumeRole` -- Cross-account role assumption; critical when the source account differs from the target account and the target role has administrative permissions
 
 #### Detonation logs
 

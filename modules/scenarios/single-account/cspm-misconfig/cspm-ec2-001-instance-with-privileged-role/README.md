@@ -161,10 +161,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumed via instance profile; suspicious when called from an EC2 instance with an administrative role and followed by high-privilege API calls
-- `EC2: DescribeInstances` -- Reconnaissance after gaining admin credentials extracted from IMDS
-- `IAM: ListAttachedRolePolicies` -- Attacker enumerating the permissions of the instance role
-- `SSM: StartSession` -- SSM session started to the instance; the initial access vector in the demo
+- `sts:AssumeRole` -- Role assumed via instance profile; suspicious when called from an EC2 instance with an administrative role and followed by high-privilege API calls
+- `ec2:DescribeInstances` -- Reconnaissance after gaining admin credentials extracted from IMDS
+- `iam:ListAttachedRolePolicies` -- Attacker enumerating the permissions of the instance role
+- `ssm:StartSession` -- SSM session started to the instance; the initial access vector in the demo
 
 #### Detonation logs
 

@@ -155,7 +155,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutGroupPolicy` -- Inline policy added to a group; critical when the calling user is a member of the target group and the policy grants elevated permissions
+- `iam:PutGroupPolicy` -- Inline policy added to a group; critical when the calling user is a member of the target group and the policy grants elevated permissions
 
 #### Detonation logs
 

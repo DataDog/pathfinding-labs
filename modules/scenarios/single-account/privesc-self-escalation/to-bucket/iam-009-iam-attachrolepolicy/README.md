@@ -163,10 +163,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when the target role is the same as the calling principal (self-escalation)
-- `STS: AssumeRole` -- Role assumption event; look for the starting user assuming the privesc role prior to the policy attachment
-- `S3: GetObject` -- Object retrieved from S3 bucket; high severity when preceded by an `AttachRolePolicy` event on the accessing role
-- `S3: ListBucket` -- Bucket enumeration; watch for new access patterns following a policy attachment event
+- `iam:AttachRolePolicy` -- Managed policy attached to a role; critical when the target role is the same as the calling principal (self-escalation)
+- `sts:AssumeRole` -- Role assumption event; look for the starting user assuming the privesc role prior to the policy attachment
+- `s3:GetObject` -- Object retrieved from S3 bucket; high severity when preceded by an `AttachRolePolicy` event on the accessing role
+- `s3:ListBucket` -- Bucket enumeration; watch for new access patterns following a policy attachment event
 
 #### Detonation logs
 

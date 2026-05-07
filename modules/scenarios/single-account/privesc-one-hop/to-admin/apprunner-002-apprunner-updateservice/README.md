@@ -224,9 +224,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `AppRunner: UpdateService` -- App Runner service configuration modified; critical when `ImageConfiguration.StartCommand` is changed on a service with a privileged instance role
-- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; high severity when the policy is `AdministratorAccess` and the caller is an App Runner service role
-- `AppRunner: DescribeService` -- Service details retrieved; may indicate reconnaissance to identify services with privileged roles
+- `apprunner:UpdateService` -- App Runner service configuration modified; critical when `ImageConfiguration.StartCommand` is changed on a service with a privileged instance role
+- `iam:AttachUserPolicy` -- Managed policy attached to an IAM user; high severity when the policy is `AdministratorAccess` and the caller is an App Runner service role
+- `apprunner:DescribeService` -- Service details retrieved; may indicate reconnaissance to identify services with privileged roles
 
 #### Detonation logs
 

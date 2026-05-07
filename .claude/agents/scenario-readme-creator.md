@@ -140,6 +140,12 @@ Follow the canonical section structure from the schema exactly:
 
 **Defend:** CSPM findings (specific to this scenario's resources), prevention recommendations, CloudTrail events, detonation logs placeholder.
 
+**CloudTrail event format rules (strictly enforced):**
+- Format: `` `service:EventName` -- description `` — lowercase service prefix, no space after the colon, `--` separator
+- Never: `` `IAM: CreateAccessKey` `` (uppercase, space after colon) or `` `iam:CreateAccessKey` — `` (em dash)
+- Service prefix examples: `iam`, `lambda`, `sts`, `ec2`, `ecs`, `ssm`, `glue`, `cloudformation`, `codebuild`, `sagemaker`, `s3`, `apprunner`, `mwaa`, `datapipeline`, `dynamodb`
+- Do NOT list `iam:PassRole` as a monitored event — it does not produce a standalone CloudTrail event. Instead, detect PassRole abuse via the role ARN field in the resource creation event (e.g., `requestParameters.role` in `lambda:CreateFunction20150331`, `requestParameters.taskRoleArn` in `ecs:RegisterTaskDefinition`, `requestParameters.serviceRole` in `codebuild:CreateProject`, etc.)
+
 ## File 2: attack_map.yaml
 
 Follow the attack map schema exactly. Include:

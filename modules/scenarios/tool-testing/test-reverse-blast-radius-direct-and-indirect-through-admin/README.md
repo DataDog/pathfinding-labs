@@ -199,10 +199,10 @@ If your security tooling identifies only user1 (direct access) but misses user2 
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Role assumption by user2 to the administrative role; critical when the target role has AdministratorAccess or broad permissions
-- `S3: GetObject` — Object retrieval from the sensitive bucket; monitor for access by principals that should not have direct S3 permissions
-- `S3: ListBucket` — Bucket enumeration on the sensitive bucket; indicates a principal is discovering bucket contents
-- `IAM: GetUser` — Identity enumeration; often precedes escalation or access attempts
+- `sts:AssumeRole` -- Role assumption by user2 to the administrative role; critical when the target role has AdministratorAccess or broad permissions
+- `s3:GetObject` -- Object retrieval from the sensitive bucket; monitor for access by principals that should not have direct S3 permissions
+- `s3:ListBucket` -- Bucket enumeration on the sensitive bucket; indicates a principal is discovering bucket contents
+- `iam:GetUser` -- Identity enumeration; often precedes escalation or access attempts
 
 #### Detonation logs
 

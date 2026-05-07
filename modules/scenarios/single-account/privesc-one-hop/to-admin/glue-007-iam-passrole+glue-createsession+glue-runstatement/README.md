@@ -201,12 +201,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- starting user passes the admin role to the Glue service; critical when the target role has elevated permissions
-- `Glue: CreateSession` -- new Glue Interactive Session created; high severity when the `Role` parameter references an administrative role
-- `Glue: RunStatement` -- statement executed within a Glue Interactive Session; monitor for boto3 IAM operations in the statement code
-- `IAM: AttachUserPolicy` -- managed policy attached to an IAM user from a Glue session context; critical when the policy is `AdministratorAccess`
-- `IAM: PutUserPolicy` -- inline policy added to an IAM user from a Glue session context
-- `Glue: DeleteSession` -- session deleted after use; short-lived sessions (created, used briefly, then deleted) indicate potential abuse
+- `glue:CreateSession` -- new Glue Interactive Session created; inspect the `role` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to Glue; high severity when the role has administrative permissions
+- `glue:RunStatement` -- statement executed within a Glue Interactive Session; monitor for boto3 IAM operations in the statement code
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user from a Glue session context; critical when the policy is `AdministratorAccess`
+- `iam:PutUserPolicy` -- inline policy added to an IAM user from a Glue session context
+- `glue:DeleteSession` -- session deleted after use; short-lived sessions (created, used briefly, then deleted) indicate potential abuse
 
 #### Detonation logs
 

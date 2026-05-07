@@ -153,8 +153,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` -- Inline policy added to a role; critical when the caller and the target role are the same principal (self-modification)
-- `STS: AssumeRole` -- Role assumption event; monitor for the starting user assuming the escalation role
+- `iam:PutRolePolicy` -- Inline policy added to a role; critical when the caller and the target role are the same principal (self-modification)
+- `sts:AssumeRole` -- Role assumption event; monitor for the starting user assuming the escalation role
 
 #### Detonation logs
 

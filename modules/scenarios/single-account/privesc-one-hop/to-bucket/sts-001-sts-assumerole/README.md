@@ -163,9 +163,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption by the starting user; critical when the assumed role has access to sensitive S3 resources
-- `S3: GetObject` -- Object download from the sensitive bucket; high severity when performed under a newly assumed role session
-- `S3: ListBucket` -- Bucket enumeration; watch for listing activity immediately following a role assumption event
+- `sts:AssumeRole` -- Role assumption by the starting user; critical when the assumed role has access to sensitive S3 resources
+- `s3:GetObject` -- Object download from the sensitive bucket; high severity when performed under a newly assumed role session
+- `s3:ListBucket` -- Bucket enumeration; watch for listing activity immediately following a role assumption event
 
 #### Detonation logs
 

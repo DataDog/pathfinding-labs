@@ -168,12 +168,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- IAM role passed to SageMaker service; critical when the passed role has administrative permissions
-- `SageMaker: CreateTrainingJob` -- New training job created; high severity when the execution role has elevated privileges
-- `S3: PutObject` -- Object uploaded to training bucket; suspicious when followed by a CreateTrainingJob event targeting that bucket
-- `IAM: CreateAccessKey` -- Access keys created; indicates the training script may have executed privilege escalation actions
-- `IAM: AttachUserPolicy` -- Managed policy attached to a user; indicates the training script may have granted elevated permissions
-- `IAM: PutUserPolicy` -- Inline policy added to a user; indicates privilege escalation via training job execution
+- `sagemaker:CreateTrainingJob` -- new training job created; inspect the `roleArn` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to SageMaker; high severity when the role has elevated privileges
+- `s3:PutObject` -- object uploaded to training bucket; suspicious when followed by a CreateTrainingJob event targeting that bucket
+- `iam:CreateAccessKey` -- access keys created; indicates the training script may have executed privilege escalation actions
+- `iam:AttachUserPolicy` -- managed policy attached to a user; indicates the training script may have granted elevated permissions
+- `iam:PutUserPolicy` -- inline policy added to a user; indicates privilege escalation via training job execution
 
 #### Detonation logs
 

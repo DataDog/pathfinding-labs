@@ -142,13 +142,13 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Lambda: GetFunctionUrlConfig` -- retrieval of a function's public URL; unusual when performed by principals outside CI/CD or deployment workflows
-- `Lambda: ListFunctions` -- Lambda enumeration by a role not associated with deployment tooling, especially from credentials sourced from a Lambda execution environment
-- `Lambda: GetFunction` -- inspection of a specific function's configuration including role ARN; precedes code injection attacks
-- `IAM: ListAttachedRolePolicies` -- enumerating policies on a role during reconnaissance; high signal when performed by a Lambda execution role
-- `Lambda: UpdateFunctionCode20150331v2` -- Lambda function code modified; critical when the target function has a privileged execution role, especially when followed immediately by an invocation
-- `Lambda: InvokeFunction` -- function invocation; high severity when it follows a recent `UpdateFunctionCode` event on the same function
-- `SSM: GetParameter` -- SSM parameter retrieval, especially with `--with-decryption`; alert when the caller is a newly seen role or one not normally associated with parameter access
+- `lambda:GetFunctionUrlConfig` -- retrieval of a function's public URL; unusual when performed by principals outside CI/CD or deployment workflows
+- `lambda:ListFunctions` -- Lambda enumeration by a role not associated with deployment tooling, especially from credentials sourced from a Lambda execution environment
+- `lambda:GetFunction` -- inspection of a specific function's configuration including role ARN; precedes code injection attacks
+- `iam:ListAttachedRolePolicies` -- enumerating policies on a role during reconnaissance; high signal when performed by a Lambda execution role
+- `lambda:UpdateFunctionCode20150331v2` -- Lambda function code modified; critical when the target function has a privileged execution role, especially when followed immediately by an invocation
+- `lambda:InvokeFunction` -- function invocation; high severity when it follows a recent `UpdateFunctionCode` event on the same function
+- `ssm:GetParameter` -- SSM parameter retrieval, especially with `--with-decryption`; alert when the caller is a newly seen role or one not normally associated with parameter access
 
 #### Detonation logs
 

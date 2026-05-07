@@ -265,13 +265,13 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SSM: StartSession` -- Interactive shell session started on an EC2 instance; high severity when the target instance has an IAM role with S3 access permissions
-- `S3: GetObject` -- Object downloaded from S3; critical when the caller is an EC2 instance role used from a non-EC2 IP address
-- `S3: ListBucket` -- Bucket contents enumerated; investigate when instance role credentials are used from an unexpected source IP or geographic location
-- `STS: GetCallerIdentity` -- Caller identity verified; commonly used by attackers after extracting credentials to confirm they are working
+- `ssm:StartSession` -- Interactive shell session started on an EC2 instance; high severity when the target instance has an IAM role with S3 access permissions
+- `s3:GetObject` -- Object downloaded from S3; critical when the caller is an EC2 instance role used from a non-EC2 IP address
+- `s3:ListBucket` -- Bucket contents enumerated; investigate when instance role credentials are used from an unexpected source IP or geographic location
+- `sts:GetCallerIdentity` -- Caller identity verified; commonly used by attackers after extracting credentials to confirm they are working
 
 **Credential Extraction Pattern**:
-- `SSM: StartSession` targeting an instance with an S3 access role, followed by S3 API calls from the instance role credentials originating from non-EC2 IP addresses or geographic locations inconsistent with the EC2 instance region
+- `ssm:StartSession` targeting an instance with an S3 access role, followed by S3 API calls from the instance role credentials originating from non-EC2 IP addresses or geographic locations inconsistent with the EC2 instance region
 
 **SSM Session Anomalies**:
 - SSM session initiated by principals who rarely or never use SSM

@@ -211,7 +211,7 @@ plabs apply
 #### CloudTrail Events to Monitor
 
 - `EC2InstanceConnect: SendSSHPublicKey` -- SSH public key pushed to an EC2 instance via Instance Connect; high severity when the target instance has a privileged role attached
-- `STS: AssumeRole` -- role assumed using temporary credentials retrieved from IMDS; alert when the role ARN matches an instance profile role being used from an unexpected source IP
+- `sts:AssumeRole` -- role assumed using temporary credentials retrieved from IMDS; alert when the role ARN matches an instance profile role being used from an unexpected source IP
 
 #### Detonation logs
 

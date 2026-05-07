@@ -159,8 +159,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutUserPolicy` -- Inline policy added to an IAM user; critical when targeting a user other than the caller and when the policy grants elevated permissions
-- `IAM: CreateAccessKey` -- New access keys created for an IAM user; critical when the caller and the target user differ, indicating cross-user credential creation
+- `iam:PutUserPolicy` -- Inline policy added to an IAM user; critical when targeting a user other than the caller and when the policy grants elevated permissions
+- `iam:CreateAccessKey` -- New access keys created for an IAM user; critical when the caller and the target user differ, indicating cross-user credential creation
 
 #### Detonation logs
 

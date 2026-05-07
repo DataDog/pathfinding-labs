@@ -200,13 +200,13 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SSM: SendCommand` -- SSM command executed on an EC2 instance; critical when the target instance has a privileged IAM role attached
-- `SSM: ListCommandInvocations` -- Command output retrieved; high severity when following a SendCommand on a privileged instance, as it may contain extracted credentials
-- `STS: GetCallerIdentity` -- Identity verification call; suspicious when originating from instance role credentials used at a non-EC2 IP address or in an unexpected region
+- `ssm:SendCommand` -- SSM command executed on an EC2 instance; critical when the target instance has a privileged IAM role attached
+- `ssm:ListCommandInvocations` -- Command output retrieved; high severity when following a SendCommand on a privileged instance, as it may contain extracted credentials
+- `sts:GetCallerIdentity` -- Identity verification call; suspicious when originating from instance role credentials used at a non-EC2 IP address or in an unexpected region
 
 **Credential Extraction Pattern to alert on**:
-- `SSM: SendCommand` targeting an instance with a privileged role, followed by
-- `SSM: ListCommandInvocations` retrieving the output, followed by
+- `ssm:SendCommand` targeting an instance with a privileged role, followed by
+- `ssm:ListCommandInvocations` retrieving the output, followed by
 - AWS API calls using the instance role credentials from a non-EC2 source IP
 
 **Anomalous API Usage indicators**:

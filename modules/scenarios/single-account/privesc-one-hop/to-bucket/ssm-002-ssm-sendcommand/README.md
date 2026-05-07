@@ -232,10 +232,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SSM: SendCommand` -- SSM command sent to an EC2 instance; critical when targeting instances with S3 access roles attached
-- `SSM: ListCommandInvocations` -- listing command invocations to track execution status; suspicious when following a SendCommand targeting a privileged instance
-- `SSM: GetCommandInvocation` -- retrieving detailed command output; high severity when used to extract credentials from instance metadata
-- `S3: GetObject` -- object downloaded from S3 bucket; critical when performed using EC2 instance role credentials from a non-EC2 source IP address
+- `ssm:SendCommand` -- SSM command sent to an EC2 instance; critical when targeting instances with S3 access roles attached
+- `ssm:ListCommandInvocations` -- listing command invocations to track execution status; suspicious when following a SendCommand targeting a privileged instance
+- `ssm:GetCommandInvocation` -- retrieving detailed command output; high severity when used to extract credentials from instance metadata
+- `s3:GetObject` -- object downloaded from S3 bucket; critical when performed using EC2 instance role credentials from a non-EC2 source IP address
 
 #### Detonation logs
 

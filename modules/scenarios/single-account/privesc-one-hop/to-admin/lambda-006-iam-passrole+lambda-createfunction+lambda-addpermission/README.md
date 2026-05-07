@@ -163,10 +163,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Starting user passes an admin role to a Lambda function; critical when the target role has elevated permissions
-- `Lambda: CreateFunction20150331` — New Lambda function created; high severity when the execution role has administrative privileges
-- `Lambda: AddPermission20150331v2` — Resource-based policy added to a Lambda function; suspicious when the principal granting rights is the same as the function creator
-- `Lambda: Invoke` — Lambda function invoked; correlate with preceding CreateFunction and AddPermission events for full attack chain
+- `lambda:CreateFunction20150331` -- new Lambda function created; inspect the `role` field in request parameters to identify the role being passed — a privileged role ARN here is the CloudTrail signal for PassRole; high severity when the role has administrative privileges
+- `lambda:AddPermission20150331v2` -- resource-based policy added to a Lambda function; suspicious when the principal granting rights is the same as the function creator
+- `lambda:Invoke` -- Lambda function invoked; correlate with preceding CreateFunction and AddPermission events for full attack chain
 
 #### Detonation logs
 

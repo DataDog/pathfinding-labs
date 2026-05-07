@@ -168,8 +168,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreatePolicyVersion` -- New policy version created; critical when the target policy is attached to a privileged role, as new versions automatically become the default
-- `STS: AssumeRole` -- Role assumption; high severity when the assumed role has administrator permissions and follows a recent `CreatePolicyVersion` call
+- `iam:CreatePolicyVersion` -- New policy version created; critical when the target policy is attached to a privileged role, as new versions automatically become the default
+- `sts:AssumeRole` -- Role assumption; high severity when the assumed role has administrator permissions and follows a recent `CreatePolicyVersion` call
 
 #### Detonation logs
 

@@ -204,9 +204,9 @@ While this is a tool-testing scenario designed to validate detection capabilitie
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption by user2 to gain indirect S3 bucket access; monitor for assumption of `pl-prod-rbr-di-role3`
-- `S3: GetObject` -- Object retrieval from the sensitive bucket; monitor for access by unexpected principals or assumed-role sessions
-- `S3: ListBucket` -- Bucket listing requests; monitor for enumeration of bucket contents from both direct and indirect principals
+- `sts:AssumeRole` -- Role assumption by user2 to gain indirect S3 bucket access; monitor for assumption of `pl-prod-rbr-di-role3`
+- `s3:GetObject` -- Object retrieval from the sensitive bucket; monitor for access by unexpected principals or assumed-role sessions
+- `s3:ListBucket` -- Bucket listing requests; monitor for enumeration of bucket contents from both direct and indirect principals
 
 #### Detonation logs
 

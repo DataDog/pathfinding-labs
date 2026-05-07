@@ -169,11 +169,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SageMaker: StopNotebookInstance` — Notebook instance stopped; when followed by lifecycle config changes, indicates potential injection setup
-- `SageMaker: CreateNotebookInstanceLifecycleConfig` — New lifecycle configuration created; high severity when performed by non-infrastructure users
-- `SageMaker: UpdateNotebookInstance` — Notebook instance configuration modified; critical when lifecycle config attachment is changed
-- `SageMaker: StartNotebookInstance` — Notebook instance started; the lifecycle script executes here with the notebook's execution role credentials
-- `IAM: AttachUserPolicy` — Policy attached to a user; watch for AdministratorAccess attachments originating from a SageMaker execution role
+- `sagemaker:StopNotebookInstance` -- Notebook instance stopped; when followed by lifecycle config changes, indicates potential injection setup
+- `sagemaker:CreateNotebookInstanceLifecycleConfig` -- New lifecycle configuration created; high severity when performed by non-infrastructure users
+- `sagemaker:UpdateNotebookInstance` -- Notebook instance configuration modified; critical when lifecycle config attachment is changed
+- `sagemaker:StartNotebookInstance` -- Notebook instance started; the lifecycle script executes here with the notebook's execution role credentials
+- `iam:AttachUserPolicy` -- Policy attached to a user; watch for AdministratorAccess attachments originating from a SageMaker execution role
 
 Monitor for the specific API call sequence: `StopNotebookInstance` → `CreateNotebookInstanceLifecycleConfig` → `UpdateNotebookInstance` → `StartNotebookInstance` as this pattern indicates potential exploitation.
 

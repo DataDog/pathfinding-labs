@@ -163,9 +163,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: UpdateLoginProfile` -- Console password reset for an IAM user; critical when the target user has S3 bucket access permissions
-- `S3: GetObject` -- Object retrieval from S3; high severity when preceded by a login profile update on the accessing user
-- `S3: ListBucket` -- Bucket enumeration; monitor for access following a login profile change event
+- `iam:UpdateLoginProfile` -- Console password reset for an IAM user; critical when the target user has S3 bucket access permissions
+- `s3:GetObject` -- Object retrieval from S3; high severity when preceded by a login profile update on the accessing user
+- `s3:ListBucket` -- Bucket enumeration; monitor for access following a login profile change event
 
 #### Detonation logs
 

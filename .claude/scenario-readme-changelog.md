@@ -4,6 +4,46 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.6.1 — 2026-05-07
+
+Patch: standardized CloudTrail event format in `#### CloudTrail Events to Monitor` sections.
+
+**Changes:**
+- **`#### CloudTrail Events to Monitor` format** -- event names now use lowercase service prefix with no space after the colon: `` `service:EventName` `` (e.g., `iam:CreateAccessKey`, `lambda:CreateFunction20150331`). Previous format was `` `Service: EventName` `` (capitalized, space after colon).
+- **Separator** -- standardized to `--` (double dash) throughout. Em dash `—` is no longer permitted.
+- **`iam:PassRole` prohibition** -- `iam:PassRole` must not appear as a monitored CloudTrail event because it does not produce a standalone event. PassRole abuse is detected via the role ARN field in the service creation event (e.g., `requestParameters.role` in `lambda:CreateFunction20150331`, `requestParameters.taskRoleArn` in `ecs:RegisterTaskDefinition`, `requestParameters.serviceRole` in `codebuild:CreateProject`, `requestParameters.roleARN` in `cloudformation:CreateStack`, `requestParameters.roleArn` in `sagemaker:CreateTrainingJob`, etc.).
+- **Compliance checklist** -- updated assertion to: `` `service:EventName` `` format (lowercase service prefix, no space after colon, `--` separator — never an em dash).
+
+**Motivation:**
+- AWS CloudTrail uses lowercase service prefixes with no space (e.g., `iam:CreateAccessKey`), matching the IAM action syntax. The previous capitalized format (`IAM: CreateAccessKey`) was inconsistent with how events appear in CloudTrail logs, CloudWatch filters, and EventBridge rules.
+- `iam:PassRole` does not emit a CloudTrail event — it is an authorization check embedded within service creation calls. Listing it as a detectable event was misleading to practitioners.
+
+**Migration rules:**
+- This is a PATCH — no structural changes. Existing READMEs remain compliant at their current schema version. Apply opportunistically when a README is otherwise being updated.
+- In `#### CloudTrail Events to Monitor`: replace `` `Service: Action` `` with `` `service:Action` `` (lowercase prefix, remove space after colon).
+- Replace any `` ` — `` (em dash separator) with `` ` -- `` (double dash).
+- Remove any `` - `iam:PassRole` `` bullet entirely. Move the PassRole detection context into the description of the service creation event that carries the role ARN field.
+- Stamp `Schema Version: 4.6.1`.
+
+```yaml
+migration:
+  tier: script
+  scope: all
+  affected_sections:
+    - "#### CloudTrail Events to Monitor"
+    - "metadata:Schema Version"
+  operations:
+    - pattern: "- `([A-Z][a-zA-Z]*): ([^`]+)`"
+      replace: "- `{lowercase($1)}:{$2}`"
+    - find: "` — "
+      replace: "` -- "
+    - remove_line_matching: "^- `iam:PassRole`"
+    - find: "Schema Version: 4.6.0"
+      replace: "Schema Version: 4.6.1"
+```
+
+---
+
 ## 4.6.0 — 2026-04-22
 
 Minor version bump: added `CTF Flag Location` metadata field and the `## Capture the Flag` section in `solution.md`. Pairs with attack map schema v1.4.0.

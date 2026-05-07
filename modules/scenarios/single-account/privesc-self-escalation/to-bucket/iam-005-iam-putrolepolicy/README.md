@@ -163,9 +163,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` -- inline policy added to a role; critical when the target role is the same as the calling principal (self-escalation)
-- `STS: AssumeRole` -- role assumption event; watch for the starting role assuming the target role after a PutRolePolicy call
-- `S3: GetObject` -- object retrieved from S3 bucket; monitor for access by roles that recently had inline policies added
+- `iam:PutRolePolicy` -- inline policy added to a role; critical when the target role is the same as the calling principal (self-escalation)
+- `sts:AssumeRole` -- role assumption event; watch for the starting role assuming the target role after a PutRolePolicy call
+- `s3:GetObject` -- object retrieved from S3 bucket; monitor for access by roles that recently had inline policies added
 
 #### Detonation logs
 

@@ -197,13 +197,12 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `DataPipeline: CreatePipeline` -- new pipeline created; suspicious when followed immediately by PutPipelineDefinition and ActivatePipeline
-- `DataPipeline: PutPipelineDefinition` -- pipeline definition set; high severity when the definition contains a ShellCommandActivity with IAM-related commands
-- `DataPipeline: ActivatePipeline` -- pipeline activated; alert when called by non-automation principals
-- `IAM: AttachUserPolicy` -- managed policy attached to a user; critical when the source is an EC2 instance launched by Data Pipeline
-- `IAM: AttachRolePolicy` -- managed policy attached to a role; critical when originating from Data Pipeline-launched EC2 instances
-- `EC2: RunInstances` -- EC2 instance launched; monitor for instances launched with administrative instance profiles by Data Pipeline service principals
-- `IAM: PassRole` -- role passed to a service; alert when an administrative role is passed to `datapipeline.amazonaws.com`
+- `datapipeline:CreatePipeline` -- new pipeline created; suspicious when followed immediately by PutPipelineDefinition and ActivatePipeline
+- `datapipeline:PutPipelineDefinition` -- pipeline definition set; inspect the pipeline definition JSON for `resourceRole` values containing privileged role ARNs — this is the CloudTrail signal for PassRole to Data Pipeline; high severity when the definition contains a ShellCommandActivity with IAM-related commands
+- `datapipeline:ActivatePipeline` -- pipeline activated; alert when called by non-automation principals
+- `iam:AttachUserPolicy` -- managed policy attached to a user; critical when the source is an EC2 instance launched by Data Pipeline
+- `iam:AttachRolePolicy` -- managed policy attached to a role; critical when originating from Data Pipeline-launched EC2 instances
+- `ec2:RunInstances` -- EC2 instance launched; monitor for instances launched with administrative instance profiles by Data Pipeline service principals
 
 #### Detonation logs
 

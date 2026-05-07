@@ -140,7 +140,7 @@ plabs apply
 
 - S3 bucket resource policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` to a specific IAM role while explicitly denying all other principals — creating a hidden exclusive-access channel
 - IAM role (`pl-exclusive-bucket-access-role`) has no direct S3 permissions in its identity policy yet can fully read and write a sensitive bucket via the bucket resource policy
-- S3 bucket resource policy contains an explicit `Deny` on `Principal: "*"` with a `StringNotEquals` condition on `aws:PrincipalArn` — a pattern that is easy to misconfigure and creates blind spots in access reviews
+- S3 bucket resource policy contains an explicit `Deny` on `Principal: "*"` with a `StringNotEquals` condition on `aws:PrincipalArn` -- a pattern that is easy to misconfigure and creates blind spots in access reviews
 - The combination of a minimal-permission role and an exclusive resource policy means standard IAM analysis tools will underreport actual access
 
 #### Prevention Recommendations
@@ -150,16 +150,16 @@ plabs apply
 - **Access Logging**: Enable S3 server access logging and CloudTrail data events to monitor all bucket access patterns
 - **Conditional Policies**: Strengthen resource policy conditions (e.g., require `aws:SourceVpc` or `aws:PrincipalOrgID`) rather than relying solely on `aws:PrincipalArn`
 - **Policy Testing**: Regularly test effective permissions using `aws iam simulate-principal-policy` and Access Analyzer to surface resource-policy-granted access
-- **Monitoring**: Set up CloudTrail and CloudWatch alerts for `S3: GetObject` and `S3: PutObject` events from roles with no explicit S3 identity policy
+- **Monitoring**: Set up CloudTrail and CloudWatch alerts for `s3:GetObject` and `s3:PutObject` events from roles with no explicit S3 identity policy
 
 ### Detecting Abuse (CloudSIEM)
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption by the starting user; flag when the assumed role has minimal IAM permissions but is known to have exclusive resource-policy access
-- `S3: ListBucket` -- Bucket enumeration by the exclusive role; precedes data access
-- `S3: GetObject` -- Object read from the exclusive bucket; critical when the accessing principal has no direct S3 IAM permissions
-- `S3: PutObject` -- Object write to the exclusive bucket; high severity when the accessing principal's identity policy does not grant S3 write access
+- `sts:AssumeRole` -- Role assumption by the starting user; flag when the assumed role has minimal IAM permissions but is known to have exclusive resource-policy access
+- `s3:ListBucket` -- Bucket enumeration by the exclusive role; precedes data access
+- `s3:GetObject` -- Object read from the exclusive bucket; critical when the accessing principal has no direct S3 IAM permissions
+- `s3:PutObject` -- Object write to the exclusive bucket; high severity when the accessing principal's identity policy does not grant S3 write access
 
 #### Detonation logs
 

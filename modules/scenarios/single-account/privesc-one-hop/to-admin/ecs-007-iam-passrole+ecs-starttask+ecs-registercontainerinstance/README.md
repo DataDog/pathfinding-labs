@@ -147,7 +147,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- IAM user or role has `iam:PassRole` permission granting access to a role with administrative privileges (e.g., `AdministratorAccess`), combined with `ecs:StartTask` — forming a privilege escalation path
+- IAM user or role has `iam:PassRole` permission granting access to a role with administrative privileges (e.g., `AdministratorAccess`), combined with `ecs:StartTask` -- forming a privilege escalation path
 - IAM principal has `ssm:SendCommand` permission on EC2 instances running the ECS agent, enabling remote reconfiguration of the ECS cluster assignment
 - ECS task definition exists with no container-level resource restrictions, making it exploitable via `--overrides` at launch time
 - EC2 instances with ECS agent installed are not assigned to any cluster, leaving them in an uncontrolled state susceptible to cluster hijacking via SSM
@@ -166,10 +166,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SSM: SendCommand` — SSM command sent to an EC2 instance; suspicious when used to modify ECS agent configuration files or restart the ECS agent service
-- `ECS: RegisterContainerInstance` — EC2 instance registered to an ECS cluster; unexpected registrations may indicate an attacker redirecting an unmanaged instance to a target cluster
-- `ECS: StartTask` — ECS task started on a specific container instance; high severity when the request includes `overrides` with a `taskRoleArn` that differs from the task definition's default role
-- `IAM: AttachUserPolicy` — Policy attached to an IAM user; critical when AdministratorAccess or similarly broad policies are attached during or immediately after ECS task execution
+- `ssm:SendCommand` -- SSM command sent to an EC2 instance; suspicious when used to modify ECS agent configuration files or restart the ECS agent service
+- `ecs:RegisterContainerInstance` -- EC2 instance registered to an ECS cluster; unexpected registrations may indicate an attacker redirecting an unmanaged instance to a target cluster
+- `ecs:StartTask` -- ECS task started on a specific container instance; high severity when the request includes `overrides` with a `taskRoleArn` that differs from the task definition's default role
+- `iam:AttachUserPolicy` -- Policy attached to an IAM user; critical when AdministratorAccess or similarly broad policies are attached during or immediately after ECS task execution
 
 #### Detonation logs
 

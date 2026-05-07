@@ -162,9 +162,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreateLoginProfile` -- Console password created for an IAM user; critical when the target user has access to sensitive data
-- `S3: GetObject` -- Objects accessed in S3 bucket; high severity when accessed from a newly created console session
-- `S3: ListBucket` -- Bucket contents listed; monitor for access from users that typically use only programmatic access
+- `iam:CreateLoginProfile` -- Console password created for an IAM user; critical when the target user has access to sensitive data
+- `s3:GetObject` -- Objects accessed in S3 bucket; high severity when accessed from a newly created console session
+- `s3:ListBucket` -- Bucket contents listed; monitor for access from users that typically use only programmatic access
 
 #### Detonation logs
 

@@ -185,9 +185,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRoleWithWebIdentity` -- OIDC-based role assumption in the operations account; look for the `WebIdentityToken` issuer matching `token.actions.githubusercontent.com` and flag assumptions from unexpected repos or refs
-- `STS: AssumeRole` -- Cross-account role assumption where the source account is the operations account and the target role is in prod; correlate with a preceding `AssumeRoleWithWebIdentity` event in the ops account to identify the full chain
-- `S3: GetObject` -- Object retrieval from the flag bucket using credentials belonging to `pl-prod-goidc-pivot-deployer-role`; alert when the assumed-role session originates from a cross-account assumption chain rather than a known deployment pipeline
+- `sts:AssumeRoleWithWebIdentity` -- OIDC-based role assumption in the operations account; look for the `WebIdentityToken` issuer matching `token.actions.githubusercontent.com` and flag assumptions from unexpected repos or refs
+- `sts:AssumeRole` -- Cross-account role assumption where the source account is the operations account and the target role is in prod; correlate with a preceding `AssumeRoleWithWebIdentity` event in the ops account to identify the full chain
+- `s3:GetObject` -- Object retrieval from the flag bucket using credentials belonging to `pl-prod-goidc-pivot-deployer-role`; alert when the assumed-role session originates from a cross-account assumption chain rather than a known deployment pipeline
 
 #### Detonation logs
 

@@ -240,10 +240,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Glue: UpdateDevEndpoint` -- dev endpoint updated; critical when a new SSH public key is added, indicating an attacker gaining access to the endpoint's role credentials
-- `Glue: GetDevEndpoint` -- endpoint details retrieved; may indicate reconnaissance to discover endpoint addresses and configurations
-- `Glue: GetDevEndpoints` -- all endpoints listed; low-privilege enumeration that often precedes an update attack
-- `S3: GetObject` -- objects accessed from the sensitive bucket; high severity when sourced from a Glue endpoint IP after an `UpdateDevEndpoint` event
+- `glue:UpdateDevEndpoint` -- dev endpoint updated; critical when a new SSH public key is added, indicating an attacker gaining access to the endpoint's role credentials
+- `glue:GetDevEndpoint` -- endpoint details retrieved; may indicate reconnaissance to discover endpoint addresses and configurations
+- `glue:GetDevEndpoints` -- all endpoints listed; low-privilege enumeration that often precedes an update attack
+- `s3:GetObject` -- objects accessed from the sensitive bucket; high severity when sourced from a Glue endpoint IP after an `UpdateDevEndpoint` event
 
 #### Detonation logs
 

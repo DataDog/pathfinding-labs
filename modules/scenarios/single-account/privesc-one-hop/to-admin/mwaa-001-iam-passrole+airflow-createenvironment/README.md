@@ -238,10 +238,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `MWAA: CreateEnvironment` -- MWAA environment created; critical when the `ExecutionRoleArn` references an administrative role or when `StartupScriptS3Path` references an external AWS account
-- `IAM: PassRole` -- role passed to a service; monitor when the passed role has administrative permissions and the service is `airflow.amazonaws.com`
-- `IAM: AttachUserPolicy` -- policy attached to a user; high severity when originating from an MWAA execution role context
-- `IAM: PutUserPolicy` -- inline policy written to a user; high severity when originating from an MWAA execution role context
+- `mwaa:CreateEnvironment` -- MWAA environment created; critical when the `ExecutionRoleArn` references an administrative role or when `StartupScriptS3Path` references an external AWS account
+- `iam:AttachUserPolicy` -- policy attached to a user; high severity when originating from an MWAA execution role context
+- `iam:PutUserPolicy` -- inline policy written to a user; high severity when originating from an MWAA execution role context
 
 #### Detonation logs
 

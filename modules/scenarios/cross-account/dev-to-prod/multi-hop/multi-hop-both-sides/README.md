@@ -170,11 +170,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption from dev to the helpdesk role; alert when the source principal is the pathfinding starting user
-- `IAM: CreateLoginProfile` -- Login profile created for a user; critical when the target user holds admin or elevated permissions
-- `STS: AssumeRole` -- Cross-account role assumption from dev `pl-Josh` to prod `pl-trustsdev`; alert on cross-account assumptions involving non-prod principals
-- `IAM: UpdateLoginProfile` -- Login profile updated for a user; high severity when the target user holds admin permissions in prod
-- `STS: GetCallerIdentity` -- Identity verification calls that follow a chain of role assumptions; useful for tracing lateral movement
+- `sts:AssumeRole` -- Role assumption from dev to the helpdesk role; alert when the source principal is the pathfinding starting user
+- `iam:CreateLoginProfile` -- Login profile created for a user; critical when the target user holds admin or elevated permissions
+- `sts:AssumeRole` -- Cross-account role assumption from dev `pl-Josh` to prod `pl-trustsdev`; alert on cross-account assumptions involving non-prod principals
+- `iam:UpdateLoginProfile` -- Login profile updated for a user; high severity when the target user holds admin permissions in prod
+- `sts:GetCallerIdentity` -- Identity verification calls that follow a chain of role assumptions; useful for tracing lateral movement
 
 #### Detonation logs
 

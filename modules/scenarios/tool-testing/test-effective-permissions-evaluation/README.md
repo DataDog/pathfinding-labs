@@ -280,10 +280,10 @@ While this is a tool-testing scenario rather than a vulnerability demonstration,
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Starting user assumes test roles during evaluation; monitor for unexpected role assumption patterns
-- `S3: GetObject` — Access to the test S3 bucket; isAdmin principals should succeed, notAdmin should be blocked
-- `S3: ListBucket` — Listing the test S3 bucket contents during access validation
-- `IAM: ListUsers` — IAM read access used to validate effective permissions for admin principals
+- `sts:AssumeRole` -- Starting user assumes test roles during evaluation; monitor for unexpected role assumption patterns
+- `s3:GetObject` -- Access to the test S3 bucket; isAdmin principals should succeed, notAdmin should be blocked
+- `s3:ListBucket` -- Listing the test S3 bucket contents during access validation
+- `iam:ListUsers` -- IAM read access used to validate effective permissions for admin principals
 
 #### Detonation logs
 

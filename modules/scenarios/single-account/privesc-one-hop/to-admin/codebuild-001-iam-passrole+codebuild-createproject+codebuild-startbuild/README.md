@@ -160,10 +160,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Role passed to CodeBuild service; critical when the target role has elevated IAM permissions
-- `CodeBuild: CreateProject` -- New CodeBuild project created; high severity when a privileged service role is specified
-- `CodeBuild: StartBuild` -- Build execution triggered; monitor for inline buildspec overrides containing AWS CLI commands
-- `IAM: AttachUserPolicy` -- Managed policy attached to a user; critical when AdministratorAccess is attached from a CodeBuild service principal
+- `codebuild:CreateProject` -- new CodeBuild project created; inspect the `serviceRole` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to CodeBuild; high severity when the role has elevated IAM permissions
+- `codebuild:StartBuild` -- build execution triggered; monitor for inline buildspec overrides containing AWS CLI commands
+- `iam:AttachUserPolicy` -- managed policy attached to a user; critical when AdministratorAccess is attached from a CodeBuild service principal
 
 #### Detonation logs
 

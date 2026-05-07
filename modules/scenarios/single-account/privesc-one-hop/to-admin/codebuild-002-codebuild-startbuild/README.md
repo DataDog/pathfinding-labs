@@ -161,8 +161,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `CodeBuild: StartBuild` -- Build triggered with buildspec override; critical when targeting projects with privileged service roles
-- `IAM: AttachUserPolicy` -- Managed policy attached to a user; high severity when AdministratorAccess is attached from a CodeBuild service principal
+- `codebuild:StartBuild` -- Build triggered with buildspec override; critical when targeting projects with privileged service roles
+- `iam:AttachUserPolicy` -- Managed policy attached to a user; high severity when AdministratorAccess is attached from a CodeBuild service principal
 
 #### Detonation logs
 

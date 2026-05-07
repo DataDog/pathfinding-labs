@@ -168,11 +168,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Starting user passes the StackSet admin role; indicates the privilege escalation attempt is underway
-- `CloudFormation: UpdateStackSet` -- StackSet template modified; high severity when the new template contains IAM resource definitions
-- `CloudFormation: DescribeStackSetOperation` -- Attacker polling for operation completion after submitting the update
-- `IAM: CreateRole` -- New IAM role created by the StackSet execution role; critical when the new role has AdministratorAccess
-- `STS: AssumeRole` -- Starting user assumes the newly created escalated role
+- `cloudformation:UpdateStackSet` -- StackSet template modified; inspect the `administrationRoleARN` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to CloudFormation StackSets; high severity when the new template contains IAM resource definitions
+- `cloudformation:DescribeStackSetOperation` -- attacker polling for operation completion after submitting the update
+- `iam:CreateRole` -- new IAM role created by the StackSet execution role; critical when the new role has AdministratorAccess
+- `sts:AssumeRole` -- starting user assumes the newly created escalated role
 
 #### Detonation logs
 

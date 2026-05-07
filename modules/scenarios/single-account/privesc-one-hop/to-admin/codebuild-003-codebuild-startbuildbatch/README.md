@@ -159,8 +159,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `CodeBuild: StartBuildBatch` -- Batch build started; critical when `buildspec-override` parameter is present on projects with privileged service roles
-- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; high severity when originating from a CodeBuild service role session
+- `codebuild:StartBuildBatch` -- Batch build started; critical when `buildspec-override` parameter is present on projects with privileged service roles
+- `iam:AttachUserPolicy` -- Managed policy attached to an IAM user; high severity when originating from a CodeBuild service role session
 
 #### Detonation logs
 

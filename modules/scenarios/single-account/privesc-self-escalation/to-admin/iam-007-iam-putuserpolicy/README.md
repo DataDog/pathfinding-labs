@@ -153,7 +153,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutUserPolicy` -- Inline policy added to an IAM user; critical when the target is the calling principal (self-escalation)
+- `iam:PutUserPolicy` -- Inline policy added to an IAM user; critical when the target is the calling principal (self-escalation)
 
 #### Detonation logs
 

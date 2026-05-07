@@ -142,7 +142,7 @@ plabs apply
 #### What CSPM tools should detect
 
 - IAM user has `iam:PassRole` permission targeting a role with administrative privileges
-- IAM user has `ec2:RequestSpotInstances` permission combined with `iam:PassRole` — this combination enables privilege escalation via Spot Instance user-data
+- IAM user has `ec2:RequestSpotInstances` permission combined with `iam:PassRole` -- this combination enables privilege escalation via Spot Instance user-data
 - Admin role (`pl-prod-ec2-004-to-admin-target-role`) is passable to EC2 Spot Instances and carries `iam:AttachUserPolicy` on all resources
 - Instance profile wrapping an administrative role is accessible to the starting user via `iam:PassRole`
 
@@ -150,8 +150,8 @@ plabs apply
 
 - Restrict `iam:PassRole` permissions with resource-based conditions to limit which roles can be passed and to which services
 - Implement SCPs preventing EC2 Spot Instances from being launched with administrative IAM roles
-- Apply the same restrictions to `ec2:RequestSpotInstances` as you would to `ec2:RunInstances` — they provide equivalent privilege escalation paths
-- Alert on `IAM: AttachUserPolicy` and `IAM: PutUserPolicy` API calls, especially when invoked from EC2 instances
+- Apply the same restrictions to `ec2:RequestSpotInstances` as you would to `ec2:RunInstances` -- they provide equivalent privilege escalation paths
+- Alert on `iam:AttachUserPolicy` and `iam:PutUserPolicy` API calls, especially when invoked from EC2 instances
 - Regularly audit EC2 instances (including Spot Instances) for excessive IAM permissions using IAM Access Analyzer
 - Implement IAM permission boundaries on users to limit the maximum permissions that can be attached
 
@@ -159,9 +159,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Starting user passes the admin role to the EC2 Spot Instance; critical when the target role has elevated permissions
-- `EC2: RequestSpotInstances` — Spot Instance request launched with an administrative instance profile; high severity when combined with a preceding `PassRole` event
-- `IAM: AttachUserPolicy` — AdministratorAccess managed policy attached to the starting user; critical when invoked from an EC2 instance metadata context
+- `ec2:RequestSpotInstances` -- Spot Instance request launched; inspect `launchSpecification.iamInstanceProfile` in request parameters to identify the role being passed — a privileged role ARN here is the CloudTrail signal for PassRole; high severity when combined with user-data containing IAM commands
+- `iam:AttachUserPolicy` -- AdministratorAccess managed policy attached to the starting user; critical when invoked from an EC2 instance metadata context
 
 #### Detonation logs
 

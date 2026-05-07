@@ -165,10 +165,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Role passed to ECS task execution role; high severity when the passed role has administrative privileges
-- `ECS: RegisterTaskDefinition` -- New or updated task definition registered; critical when task execution role has elevated permissions
-- `ECS: RunTask` -- ECS task launched; high severity when combined with a privileged task execution role
-- `IAM: AttachUserPolicy` -- Policy attached to a user; critical when `AdministratorAccess` is attached and the principal is an ECS task role
+- `ecs:RegisterTaskDefinition` -- new or updated task definition registered; inspect `taskRoleArn` and `executionRoleArn` in request parameters — a privileged role ARN in either field is the CloudTrail signal for PassRole to ECS; critical when the role has elevated permissions
+- `ecs:RunTask` -- ECS task launched; high severity when combined with a privileged task execution role
+- `iam:AttachUserPolicy` -- policy attached to a user; critical when `AdministratorAccess` is attached and the principal is an ECS task role
 
 #### Detonation logs
 

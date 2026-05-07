@@ -170,11 +170,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Starting user passes the privileged execution role to CloudFormation; critical when the target role has administrative permissions
-- `CloudFormation: CreateStackSet` -- A new StackSet is created; high severity when accompanied by a PassRole event for an admin-level execution role
-- `CloudFormation: CreateStackInstances` -- Stack instances are deployed; triggers actual resource creation in the target account and region
-- `IAM: CreateRole` -- A new IAM role is created by the StackSet execution role; indicates potential privilege escalation via CloudFormation
-- `STS: AssumeRole` -- Attacker assumes the newly created escalated role to gain admin access
+- `cloudformation:CreateStackSet` -- a new StackSet is created; inspect the `administrationRoleARN` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to CloudFormation StackSets; high severity when the role has administrative permissions
+- `cloudformation:CreateStackInstances` -- stack instances are deployed; triggers actual resource creation in the target account and region
+- `iam:CreateRole` -- a new IAM role is created by the StackSet execution role; indicates potential privilege escalation via CloudFormation
+- `sts:AssumeRole` -- attacker assumes the newly created escalated role to gain admin access
 
 #### Detonation logs
 

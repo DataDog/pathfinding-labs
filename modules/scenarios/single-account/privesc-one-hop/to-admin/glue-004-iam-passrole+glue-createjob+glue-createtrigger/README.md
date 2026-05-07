@@ -221,11 +221,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to Glue service; critical when the passed role has administrative permissions
-- `Glue: CreateJob` -- new Glue job created; high severity when combined with a privileged execution role or inline script
-- `Glue: CreateTrigger` -- Glue trigger created; critical when `StartOnCreation=true` or schedule is very frequent (e.g., every minute)
-- `IAM: AttachUserPolicy` -- managed policy attached to IAM user; critical when source is the Glue service principal
-- `IAM: AttachRolePolicy` -- managed policy attached to IAM role; critical when originating from Glue service principal
+- `glue:CreateJob` -- new Glue job created; inspect the `role` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to Glue; high severity when combined with an inline script
+- `glue:CreateTrigger` -- Glue trigger created; critical when `StartOnCreation=true` or schedule is very frequent (e.g., every minute)
+- `iam:AttachUserPolicy` -- managed policy attached to IAM user; critical when source is the Glue service principal
+- `iam:AttachRolePolicy` -- managed policy attached to IAM role; critical when originating from Glue service principal
 
 #### Detonation logs
 

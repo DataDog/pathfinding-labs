@@ -17,7 +17,7 @@
 
 ## Objective
 
-Your objective is to exfiltrate sensitive data from `pl-sensitive-data-datapipeline-001-{account_id}-{suffix}` — a bucket the starting user has no direct IAM access to — by passing the pipeline role to AWS Data Pipeline and running a shell command on an EC2 instance that reads and ships the data to your attacker-controlled exfil bucket.
+Your objective is to exfiltrate sensitive data from `pl-sensitive-data-datapipeline-001-{account_id}-{suffix}` -- a bucket the starting user has no direct IAM access to — by passing the pipeline role to AWS Data Pipeline and running a shell command on an EC2 instance that reads and ships the data to your attacker-controlled exfil bucket.
 
 - **Start:** `arn:aws:iam::{account_id}:user/pl-prod-datapipeline-001-to-bucket-starting-user`
 - **Target resource (victim):** `arn:aws:s3:::pl-sensitive-data-datapipeline-001-{account_id}-{suffix}`
@@ -185,13 +185,12 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to Data Pipeline service; high severity when the role has access to sensitive S3 buckets
-- `DataPipeline: CreatePipeline` -- new Data Pipeline created; investigate when combined with PassRole and PutPipelineDefinition
-- `DataPipeline: PutPipelineDefinition` -- pipeline definition set, potentially including ShellCommandActivity with arbitrary commands
-- `DataPipeline: ActivatePipeline` -- pipeline activated, triggering EC2 instance launch and command execution
-- `EC2: RunInstances` -- EC2 instance launched by the Data Pipeline service role
-- `S3: GetObject` -- objects read from the sensitive data bucket by the pipeline EC2 instance
-- `S3: PutObject` -- objects written cross-account to attacker-controlled exfil bucket; detect cross-account S3 writes from EC2 instances launched by Data Pipeline
+- `datapipeline:CreatePipeline` -- new Data Pipeline created; investigate when followed by PutPipelineDefinition and ActivatePipeline
+- `datapipeline:PutPipelineDefinition` -- pipeline definition set; inspect the pipeline definition JSON for `resourceRole` values containing privileged role ARNs — this is the CloudTrail signal for PassRole to Data Pipeline; high severity when the definition contains a ShellCommandActivity targeting S3 buckets
+- `datapipeline:ActivatePipeline` -- pipeline activated, triggering EC2 instance launch and command execution
+- `ec2:RunInstances` -- EC2 instance launched by the Data Pipeline service role
+- `s3:GetObject` -- objects read from the sensitive data bucket by the pipeline EC2 instance
+- `s3:PutObject` -- objects written cross-account to attacker-controlled exfil bucket; detect cross-account S3 writes from EC2 instances launched by Data Pipeline
 
 #### Detonation logs
 

@@ -109,10 +109,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Lambda: GetFunctionUrlConfig` -- retrieval of a Lambda Function URL config; when performed by an external or unfamiliar principal, may indicate reconnaissance for a publicly exposed endpoint
-- `SSM: GetParameter` -- access to a SecureString parameter; critical when performed using credentials associated with a Lambda execution role operating outside of Lambda's normal invocation context (i.e., from a non-Lambda source IP)
-- `STS: AssumeRole` -- if the chatbot role credentials are used to assume further roles, this indicates credential extraction and lateral movement
-- `IAM: ListUsers` or `IAM: ListRoles` -- broad IAM enumeration immediately after a Lambda invocation may indicate successful credential extraction
+- `lambda:GetFunctionUrlConfig` -- retrieval of a Lambda Function URL config; when performed by an external or unfamiliar principal, may indicate reconnaissance for a publicly exposed endpoint
+- `ssm:GetParameter` -- access to a SecureString parameter; critical when performed using credentials associated with a Lambda execution role operating outside of Lambda's normal invocation context (i.e., from a non-Lambda source IP)
+- `sts:AssumeRole` -- if the chatbot role credentials are used to assume further roles, this indicates credential extraction and lateral movement
+- `iam:ListUsers` or `iam:ListRoles` -- broad IAM enumeration immediately after a Lambda invocation may indicate successful credential extraction
 
 #### Detonation logs
 

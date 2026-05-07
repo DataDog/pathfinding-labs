@@ -165,9 +165,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Lambda: UpdateFunctionCode20150331v2` -- Lambda function code modified; high severity when followed by an invocation, especially for functions with privileged execution roles
-- `Lambda: Invoke` -- Lambda function invoked; correlate with recent UpdateFunctionCode events to detect attacker-controlled execution
-- `IAM: AttachUserPolicy` -- Managed policy attached to an IAM user; critical when the policy grants elevated or administrative access
+- `lambda:UpdateFunctionCode20150331v2` -- Lambda function code modified; high severity when followed by an invocation, especially for functions with privileged execution roles
+- `lambda:Invoke` -- Lambda function invoked; correlate with recent UpdateFunctionCode events to detect attacker-controlled execution
+- `iam:AttachUserPolicy` -- Managed policy attached to an IAM user; critical when the policy grants elevated or administrative access
 
 #### Detonation logs
 

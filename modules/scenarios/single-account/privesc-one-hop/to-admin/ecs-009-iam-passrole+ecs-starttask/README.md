@@ -173,10 +173,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- PassRole granted to ECS; alert when the passed role has administrative permissions
-- `ECS: StartTask` -- ECS task started; high severity when the request includes `overrides.taskRoleArn` or container command overrides
-- `IAM: AttachUserPolicy` -- admin policy attached to an IAM user; critical when the caller is an ECS task role
-- `IAM: DetachUserPolicy` -- admin policy detached from an IAM user; useful for detecting cleanup after escalation
+- `ecs:StartTask` -- ECS task started; inspect `overrides.taskRoleArn` in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole; high severity when the request includes container command overrides
+- `iam:AttachUserPolicy` -- admin policy attached to an IAM user; critical when the caller is an ECS task role
+- `iam:DetachUserPolicy` -- admin policy detached from an IAM user; useful for detecting cleanup after escalation
 
 #### Detonation logs
 

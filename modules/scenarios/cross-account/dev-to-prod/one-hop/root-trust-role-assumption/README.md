@@ -219,7 +219,7 @@ A properly configured Cloud Security Posture Management (CSPM) tool should detec
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Cross-account role assumption; alert when source account ID differs from the target account ID, especially when the assumed role has administrative permissions
+- `sts:AssumeRole` -- Cross-account role assumption; alert when source account ID differs from the target account ID, especially when the assumed role has administrative permissions
 
 #### Detonation logs
 

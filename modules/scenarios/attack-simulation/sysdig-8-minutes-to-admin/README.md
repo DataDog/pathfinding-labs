@@ -237,23 +237,23 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `S3: GetObject` -- object retrieval from data pipeline buckets; flag when the object key matches patterns like `*config*`, `*credentials*`, `*secret*`, or `*key*`
-- `IAM: ListUsers` -- bulk IAM enumeration; when called by a non-human principal (Lambda execution role, EC2 instance profile) outside a deployment context, indicates reconnaissance
-- `IAM: ListAttachedUserPolicies` -- policy enumeration on specific users; combined with ListUsers, indicates an attacker mapping privilege levels
-- `Lambda: GetFunction20150331v2` -- function configuration retrieval; note when caller is not the owner account's deployment role and the function has a privileged execution role
-- `Lambda: UpdateFunctionCode20150331v2` -- code replacement on a Lambda function; critical when followed within seconds by an invocation of the same function
-- `Lambda: UpdateFunctionConfiguration20150331v2` -- configuration change; combined with UpdateFunctionCode, almost certainly indicates code injection
-- `Lambda: InvokeFunction` -- function invocation; correlate with recent UpdateFunctionCode events to detect injection-then-invoke attack pattern
-- `IAM: CreateAccessKey` -- new credentials created; critical when the caller is a Lambda execution role ARN (not a human user), indicating Lambda-mediated credential theft
-- `IAM: CreateUser` -- new IAM user created; combined with AttachUserPolicy for AdministratorAccess within seconds, indicates backdoor account creation
-- `IAM: AttachUserPolicy` -- managed policy attached to user; flag immediately when the policy ARN is `arn:aws:iam::aws:policy/AdministratorAccess`
-- `STS: AssumeRole` -- role assumption; a burst of failures followed by successes (as seen in this attack) indicates automated role enumeration; post-escalation, a single principal assuming many roles with varied session names (explore, test, pwned, escalation) within a short window indicates identity spreading for persistence
-- `IAM: CreateAccessKey` (bulk) -- multiple `CreateAccessKey` calls targeting different users from a single session within minutes; this pattern indicates an attacker establishing persistence across multiple pre-existing identities
-- `Bedrock: InvokeModel` -- AI model invocation; flag when caller is not a known application role, or when called immediately after a period of IAM/Lambda enumeration
-- `EC2: RunInstances` -- instance launch; flag `p`-series instance types (GPU), especially combined with a CreateKeyPair + CreateSecurityGroup burst in the same session
-- `EC2: CreateSecurityGroup` + `EC2: AuthorizeSecurityGroupIngress` -- new security group with 0.0.0.0/0 inbound on port 22, created immediately before RunInstances, indicates attacker-controlled compute provisioning
-- `SecretsManager: GetSecretValue` -- secret retrieval; flag when the caller is not the application that owns the secret
-- `SSM: GetParameter` -- parameter retrieval; flag when the parameter path contains `key`, `secret`, `password`, or `token` and the caller is not an expected application role
+- `s3:GetObject` -- object retrieval from data pipeline buckets; flag when the object key matches patterns like `*config*`, `*credentials*`, `*secret*`, or `*key*`
+- `iam:ListUsers` -- bulk IAM enumeration; when called by a non-human principal (Lambda execution role, EC2 instance profile) outside a deployment context, indicates reconnaissance
+- `iam:ListAttachedUserPolicies` -- policy enumeration on specific users; combined with ListUsers, indicates an attacker mapping privilege levels
+- `lambda:GetFunction20150331v2` -- function configuration retrieval; note when caller is not the owner account's deployment role and the function has a privileged execution role
+- `lambda:UpdateFunctionCode20150331v2` -- code replacement on a Lambda function; critical when followed within seconds by an invocation of the same function
+- `lambda:UpdateFunctionConfiguration20150331v2` -- configuration change; combined with UpdateFunctionCode, almost certainly indicates code injection
+- `lambda:InvokeFunction` -- function invocation; correlate with recent UpdateFunctionCode events to detect injection-then-invoke attack pattern
+- `iam:CreateAccessKey` -- new credentials created; critical when the caller is a Lambda execution role ARN (not a human user), indicating Lambda-mediated credential theft
+- `iam:CreateUser` -- new IAM user created; combined with AttachUserPolicy for AdministratorAccess within seconds, indicates backdoor account creation
+- `iam:AttachUserPolicy` -- managed policy attached to user; flag immediately when the policy ARN is `arn:aws:iam::aws:policy/AdministratorAccess`
+- `sts:AssumeRole` -- role assumption; a burst of failures followed by successes (as seen in this attack) indicates automated role enumeration; post-escalation, a single principal assuming many roles with varied session names (explore, test, pwned, escalation) within a short window indicates identity spreading for persistence
+- `iam:CreateAccessKey` (bulk) -- multiple `CreateAccessKey` calls targeting different users from a single session within minutes; this pattern indicates an attacker establishing persistence across multiple pre-existing identities
+- `bedrock:InvokeModel` -- AI model invocation; flag when caller is not a known application role, or when called immediately after a period of IAM/Lambda enumeration
+- `ec2:RunInstances` -- instance launch; flag `p`-series instance types (GPU), especially combined with a CreateKeyPair + CreateSecurityGroup burst in the same session
+- `ec2:CreateSecurityGroup` + `ec2:AuthorizeSecurityGroupIngress` -- new security group with 0.0.0.0/0 inbound on port 22, created immediately before RunInstances, indicates attacker-controlled compute provisioning
+- `secretsmanager:GetSecretValue` -- secret retrieval; flag when the caller is not the application that owns the secret
+- `ssm:GetParameter` -- parameter retrieval; flag when the parameter path contains `key`, `secret`, `password`, or `token` and the caller is not an expected application role
 
 #### Detonation logs
 

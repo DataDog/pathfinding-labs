@@ -213,10 +213,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Bedrock: CreateCodeInterpreter` -- Bedrock AgentCore code interpreter created with an execution role; critical when the passed role ARN has elevated or administrative permissions
-- `Bedrock: StartCodeInterpreterSession` -- A new interactive session started on a code interpreter; monitor for sessions initiated outside of expected automation workflows
-- `Bedrock: InvokeCodeInterpreter` -- Code executed within a code interpreter session; high severity when combined with credential usage from a different IP address immediately after
-- `STS: AssumeRole` -- Temporary credentials assumed by the Bedrock AgentCore service on behalf of a code interpreter execution role; look for `bedrock-agentcore.amazonaws.com` as the assumed-role principal
+- `bedrock:CreateCodeInterpreter` -- Bedrock AgentCore code interpreter created with an execution role; critical when the passed role ARN has elevated or administrative permissions
+- `bedrock:StartCodeInterpreterSession` -- A new interactive session started on a code interpreter; monitor for sessions initiated outside of expected automation workflows
+- `bedrock:InvokeCodeInterpreter` -- Code executed within a code interpreter session; high severity when combined with credential usage from a different IP address immediately after
+- `sts:AssumeRole` -- Temporary credentials assumed by the Bedrock AgentCore service on behalf of a code interpreter execution role; look for `bedrock-agentcore.amazonaws.com` as the assumed-role principal
 
 #### Detonation logs
 

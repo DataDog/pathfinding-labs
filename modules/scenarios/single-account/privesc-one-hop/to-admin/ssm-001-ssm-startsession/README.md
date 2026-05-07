@@ -235,11 +235,11 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SSM: StartSession` -- Interactive session started on an EC2 instance; high severity when the target instance has a privileged IAM role attached
-- `SSM: TerminateSession` -- Session terminated; correlate with StartSession events to measure session duration and flag unusually long sessions
-- `SSM: ResumeSession` -- Session resumed; may indicate persistent interactive access to a sensitive instance
-- `STS: GetCallerIdentity` -- Caller identity verified; commonly used after extracting credentials to confirm the level of access obtained
-- `EC2: DescribeInstances` -- EC2 instance enumeration; when followed by StartSession, may indicate reconnaissance to identify high-value targets
+- `ssm:StartSession` -- Interactive session started on an EC2 instance; high severity when the target instance has a privileged IAM role attached
+- `ssm:TerminateSession` -- Session terminated; correlate with StartSession events to measure session duration and flag unusually long sessions
+- `ssm:ResumeSession` -- Session resumed; may indicate persistent interactive access to a sensitive instance
+- `sts:GetCallerIdentity` -- Caller identity verified; commonly used after extracting credentials to confirm the level of access obtained
+- `ec2:DescribeInstances` -- EC2 instance enumeration; when followed by StartSession, may indicate reconnaissance to identify high-value targets
 
 #### Detonation logs
 

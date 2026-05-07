@@ -139,7 +139,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- IAM role in the operations account has `sts:AssumeRole` on `*` — this is an overly permissive cross-account permission that enables lateral movement to any role in any account
+- IAM role in the operations account has `sts:AssumeRole` on `*` -- this is an overly permissive cross-account permission that enables lateral movement to any role in any account
 - Prod IAM role trust policy allows assumption from the operations account without condition keys (e.g., no `aws:PrincipalArn` condition narrowing which operations principals may assume it)
 - No MFA or external ID condition on cross-account role assumption in the trust policy of the prod target role
 - The combination of an unconstrained ops-to-prod trust relationship and admin-level permissions on the prod role creates a direct privilege escalation path from the operations account
@@ -157,8 +157,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Cross-account role assumption; alert when a principal in the operations account assumes a role in the prod account, especially admin-level roles
-- `IAM: ListRoles` -- Enumeration of roles in the prod account; expected from legitimate ops tooling but suspicious if not from a known automation principal
+- `sts:AssumeRole` -- Cross-account role assumption; alert when a principal in the operations account assumes a role in the prod account, especially admin-level roles
+- `iam:ListRoles` -- Enumeration of roles in the prod account; expected from legitimate ops tooling but suspicious if not from a known automation principal
 
 #### Detonation logs
 

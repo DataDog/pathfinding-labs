@@ -169,11 +169,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Starting user passes a privileged role to a Lambda function; high severity when the passed role has admin permissions
-- `Lambda: CreateFunction20150331` — New Lambda function created with a privileged execution role; critical when combined with PassRole activity
-- `Lambda: CreateEventSourceMapping` — Lambda function linked to a DynamoDB stream trigger; suspicious when the function was recently created by a low-privilege user
-- `DynamoDB: PutItem` — Record inserted into the trigger table; may indicate attacker-initiated Lambda execution
-- `IAM: AttachUserPolicy` — AdministratorAccess policy attached to a user; confirms successful privilege escalation
+- `lambda:CreateFunction20150331` -- new Lambda function created; inspect the `role` field in request parameters to identify the role being passed — a privileged role ARN here is the CloudTrail signal for PassRole; critical when the role has admin permissions
+- `lambda:CreateEventSourceMapping` -- Lambda function linked to a DynamoDB stream trigger; suspicious when the function was recently created by a low-privilege user
+- `dynamodb:PutItem` -- record inserted into the trigger table; may indicate attacker-initiated Lambda execution
+- `iam:AttachUserPolicy` -- AdministratorAccess policy attached to a user; confirms successful privilege escalation
 
 #### Detonation logs
 

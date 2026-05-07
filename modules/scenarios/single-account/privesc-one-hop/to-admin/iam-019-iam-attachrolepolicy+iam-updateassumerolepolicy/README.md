@@ -162,9 +162,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when the attached policy is `AdministratorAccess` or another highly privileged policy
-- `IAM: UpdateAssumeRolePolicy` -- Role trust policy modified; high severity when the change adds a new trusted principal, especially a user or role not previously trusted
-- `STS: AssumeRole` -- Role assumption event; correlate with preceding `AttachRolePolicy` and `UpdateAssumeRolePolicy` events to identify the full escalation chain
+- `iam:AttachRolePolicy` -- Managed policy attached to a role; critical when the attached policy is `AdministratorAccess` or another highly privileged policy
+- `iam:UpdateAssumeRolePolicy` -- Role trust policy modified; high severity when the change adds a new trusted principal, especially a user or role not previously trusted
+- `sts:AssumeRole` -- Role assumption event; correlate with preceding `AttachRolePolicy` and `UpdateAssumeRolePolicy` events to identify the full escalation chain
 
 #### Detonation logs
 

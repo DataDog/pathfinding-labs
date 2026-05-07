@@ -149,7 +149,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- `pl-prod-role-with-multiple-privesc-paths` has `iam:PassRole` combined with `ec2:RunInstances`, `lambda:CreateFunction`, and `cloudformation:CreateStack` — each pairing independently constitutes a privilege escalation path
+- `pl-prod-role-with-multiple-privesc-paths` has `iam:PassRole` combined with `ec2:RunInstances`, `lambda:CreateFunction`, and `cloudformation:CreateStack` -- each pairing independently constitutes a privilege escalation path
 - Three service-linked admin roles (`pl-prod-ec2-admin-role`, `pl-prod-lambda-admin-role`, `pl-prod-cloudformation-admin-role`) each carry `AdministratorAccess`, making them high-value targets if any role with `iam:PassRole` can reference them
 - The starting role can be assumed by a non-privileged IAM user, creating a multi-hop path from a low-privilege identity to full administrative control via three different compute services
 
@@ -166,14 +166,14 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — initial role assumption from starting user into the escalation role; alert when a low-privilege user assumes a role with PassRole + compute creation permissions
-- `EC2: RunInstances` — EC2 instance launched with an IAM instance profile attached; high severity when the profile role carries AdministratorAccess
-- `Lambda: CreateFunction20150331` — Lambda function created with an execution role; alert when the role has AdministratorAccess
-- `Lambda: Invoke` — Lambda function invoked shortly after creation; escalation payload likely executing
-- `CloudFormation: CreateStack` — stack created with an explicit role ARN; alert when the role has AdministratorAccess and `CAPABILITY_NAMED_IAM` is used
-- `IAM: CreateRole` — new IAM role created from within an EC2 instance, Lambda function, or CloudFormation stack execution context; strong indicator of payload success
-- `IAM: AttachRolePolicy` — AdministratorAccess or similar managed policy attached to a newly created role
-- `STS: AssumeRole` — assumption of the newly created admin role by the original starting user identity; confirms successful escalation
+- `sts:AssumeRole` -- initial role assumption from starting user into the escalation role; alert when a low-privilege user assumes a role with PassRole + compute creation permissions
+- `ec2:RunInstances` -- EC2 instance launched with an IAM instance profile attached; high severity when the profile role carries AdministratorAccess
+- `lambda:CreateFunction20150331` -- Lambda function created with an execution role; alert when the role has AdministratorAccess
+- `lambda:Invoke` -- Lambda function invoked shortly after creation; escalation payload likely executing
+- `cloudformation:CreateStack` -- stack created with an explicit role ARN; alert when the role has AdministratorAccess and `CAPABILITY_NAMED_IAM` is used
+- `iam:CreateRole` -- new IAM role created from within an EC2 instance, Lambda function, or CloudFormation stack execution context; strong indicator of payload success
+- `iam:AttachRolePolicy` -- AdministratorAccess or similar managed policy attached to a newly created role
+- `sts:AssumeRole` -- assumption of the newly created admin role by the original starting user identity; confirms successful escalation
 
 #### Detonation logs
 

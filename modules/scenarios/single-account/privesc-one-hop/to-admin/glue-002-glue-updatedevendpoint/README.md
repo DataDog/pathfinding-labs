@@ -189,9 +189,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Glue: UpdateDevEndpoint` -- Glue dev endpoint updated; critical when `addPublicKeys` parameter is present, indicating SSH key injection
-- `Glue: GetDevEndpoint` -- Dev endpoint details retrieved; may indicate reconnaissance to obtain the SSH address after key injection
-- `Glue: GetDevEndpoints` -- All dev endpoints listed; may indicate reconnaissance to identify privileged targets
+- `glue:UpdateDevEndpoint` -- Glue dev endpoint updated; critical when `addPublicKeys` parameter is present, indicating SSH key injection
+- `glue:GetDevEndpoint` -- Dev endpoint details retrieved; may indicate reconnaissance to obtain the SSH address after key injection
+- `glue:GetDevEndpoints` -- All dev endpoints listed; may indicate reconnaissance to identify privileged targets
 
 #### Detonation logs
 

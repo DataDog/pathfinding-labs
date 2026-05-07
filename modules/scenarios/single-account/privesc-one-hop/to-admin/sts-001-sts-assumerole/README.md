@@ -157,7 +157,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption call; high severity when the target role has administrative permissions attached
+- `sts:AssumeRole` -- Role assumption call; high severity when the target role has administrative permissions attached
 
 #### Detonation logs
 

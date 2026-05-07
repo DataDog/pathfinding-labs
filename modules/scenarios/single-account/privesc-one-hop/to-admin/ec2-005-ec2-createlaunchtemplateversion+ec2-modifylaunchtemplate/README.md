@@ -176,9 +176,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `EC2: CreateLaunchTemplateVersion` -- new launch template version created; high severity when the template contains a privileged instance profile or when user data contains IAM-modification commands
-- `EC2: ModifyLaunchTemplate` -- launch template default version changed; critical when the new default version was recently created and references an admin role
-- `EC2: RunInstances` -- EC2 instance launched using a launch template; monitor for instances launched with administrative instance profiles shortly after template modification
+- `ec2:CreateLaunchTemplateVersion` -- new launch template version created; high severity when the template contains a privileged instance profile or when user data contains IAM-modification commands
+- `ec2:ModifyLaunchTemplate` -- launch template default version changed; critical when the new default version was recently created and references an admin role
+- `ec2:RunInstances` -- EC2 instance launched using a launch template; monitor for instances launched with administrative instance profiles shortly after template modification
 
 #### Detonation logs
 

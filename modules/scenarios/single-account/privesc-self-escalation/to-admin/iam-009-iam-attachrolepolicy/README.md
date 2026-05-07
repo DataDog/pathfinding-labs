@@ -158,8 +158,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when the role is the same principal making the call (self-escalation)
-- `STS: AssumeRole` -- Role assumption by the starting user to obtain the escalation-capable role credentials
+- `iam:AttachRolePolicy` -- Managed policy attached to a role; critical when the role is the same principal making the call (self-escalation)
+- `sts:AssumeRole` -- Role assumption by the starting user to obtain the escalation-capable role credentials
 
 #### Detonation logs
 

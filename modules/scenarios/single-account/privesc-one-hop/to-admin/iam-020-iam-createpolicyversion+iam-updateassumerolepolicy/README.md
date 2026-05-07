@@ -231,9 +231,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreatePolicyVersion` -- New policy version created; critical when the new version contains significantly elevated permissions (`*:*`) and the requestor is not a trusted admin principal
-- `IAM: UpdateAssumeRolePolicy` -- Role trust policy modified; high severity when the requestor is the same principal being added to the trust policy and the modified role has administrative permissions
-- `STS: AssumeRole` -- Role assumption; suspicious when it occurs shortly after `CreatePolicyVersion` and `UpdateAssumeRolePolicy` by the same principal; monitor for sequential activity within a short time window
+- `iam:CreatePolicyVersion` -- New policy version created; critical when the new version contains significantly elevated permissions (`*:*`) and the requestor is not a trusted admin principal
+- `iam:UpdateAssumeRolePolicy` -- Role trust policy modified; high severity when the requestor is the same principal being added to the trust policy and the modified role has administrative permissions
+- `sts:AssumeRole` -- Role assumption; suspicious when it occurs shortly after `CreatePolicyVersion` and `UpdateAssumeRolePolicy` by the same principal; monitor for sequential activity within a short time window
 
 #### Detonation logs
 

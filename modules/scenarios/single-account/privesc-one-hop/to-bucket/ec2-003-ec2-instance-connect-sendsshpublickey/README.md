@@ -176,11 +176,11 @@ plabs apply
 #### CloudTrail Events to Monitor
 
 - `EC2InstanceConnect: SendSSHPublicKey` -- SSH public key pushed to an instance via EC2 Instance Connect; critical when the target instance has a privileged IAM role attached
-- `EC2: DescribeInstances` -- reconnaissance call to list instances; suspicious when followed immediately by `SendSSHPublicKey`
-- `IAM: GetInstanceProfile` -- retrieval of instance profile details; used to identify roles attached to EC2 instances
-- `IAM: GetRole` -- role permission lookup; used to confirm the instance role has S3 or other privileged access
-- `S3: ListBucket` -- bucket listing from EC2 instance role credentials; suspicious when the instance does not normally access that bucket
-- `S3: GetObject` -- object download from the sensitive data bucket; high severity when accessed via extracted IMDS credentials
+- `ec2:DescribeInstances` -- reconnaissance call to list instances; suspicious when followed immediately by `SendSSHPublicKey`
+- `iam:GetInstanceProfile` -- retrieval of instance profile details; used to identify roles attached to EC2 instances
+- `iam:GetRole` -- role permission lookup; used to confirm the instance role has S3 or other privileged access
+- `s3:ListBucket` -- bucket listing from EC2 instance role credentials; suspicious when the instance does not normally access that bucket
+- `s3:GetObject` -- object download from the sensitive data bucket; high severity when accessed via extracted IMDS credentials
 
 #### Detonation logs
 

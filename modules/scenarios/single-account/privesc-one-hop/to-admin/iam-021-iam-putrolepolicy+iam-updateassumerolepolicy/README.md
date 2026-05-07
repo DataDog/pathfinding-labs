@@ -161,9 +161,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PutRolePolicy` -- Inline policy added or modified on a role; critical when targeting roles with elevated permissions or when the policy grants broad access
-- `IAM: UpdateAssumeRolePolicy` -- Trust policy updated on a role; high severity when a new principal is added as trusted, especially after a PutRolePolicy call on the same role
-- `STS: AssumeRole` -- Role assumption; correlate with preceding PutRolePolicy and UpdateAssumeRolePolicy calls on the same role to identify this attack pattern
+- `iam:PutRolePolicy` -- Inline policy added or modified on a role; critical when targeting roles with elevated permissions or when the policy grants broad access
+- `iam:UpdateAssumeRolePolicy` -- Trust policy updated on a role; high severity when a new principal is added as trusted, especially after a PutRolePolicy call on the same role
+- `sts:AssumeRole` -- Role assumption; correlate with preceding PutRolePolicy and UpdateAssumeRolePolicy calls on the same role to identify this attack pattern
 
 #### Detonation logs
 

@@ -162,9 +162,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to an EC2 instance; high severity when the target role has administrative permissions
-- `EC2: RunInstances` -- EC2 instance launched; correlate with `PassRole` events to detect privilege escalation via user-data
-- `IAM: AttachUserPolicy` -- managed policy attached to a user; critical when the policy is `AdministratorAccess` and the call originates from an EC2 instance metadata role
+- `ec2:RunInstances` -- EC2 instance launched; inspect `iamInstanceProfile` in request parameters to identify the role being passed — a privileged role ARN here is the CloudTrail signal for PassRole; high severity when combined with user-data containing IAM commands
+- `iam:AttachUserPolicy` -- managed policy attached to a user; critical when the policy is `AdministratorAccess` and the call originates from an EC2 instance metadata role
 
 #### Detonation logs
 

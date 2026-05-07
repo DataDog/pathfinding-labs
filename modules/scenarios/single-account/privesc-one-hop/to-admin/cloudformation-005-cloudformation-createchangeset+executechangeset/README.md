@@ -165,10 +165,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `CloudFormation: CreateChangeSet` — Change set created against an existing stack; high severity when the stack has a privileged service role attached
-- `CloudFormation: ExecuteChangeSet` — Change set executed; critical when the stack's service role has administrative permissions, as all resource changes are performed under that role
-- `IAM: CreateRole` — New IAM role created; investigate when the caller is CloudFormation and the assumed role has administrative permissions
-- `STS: AssumeRole` — Role assumption following change set execution; watch for the newly created escalated role being assumed shortly after stack update completes
+- `cloudformation:CreateChangeSet` -- Change set created against an existing stack; high severity when the stack has a privileged service role attached
+- `cloudformation:ExecuteChangeSet` -- Change set executed; critical when the stack's service role has administrative permissions, as all resource changes are performed under that role
+- `iam:CreateRole` -- New IAM role created; investigate when the caller is CloudFormation and the assumed role has administrative permissions
+- `sts:AssumeRole` -- Role assumption following change set execution; watch for the newly created escalated role being assumed shortly after stack update completes
 
 #### Detonation logs
 

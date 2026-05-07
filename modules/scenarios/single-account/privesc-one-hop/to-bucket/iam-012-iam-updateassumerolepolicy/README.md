@@ -166,10 +166,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: UpdateAssumeRolePolicy` -- Trust policy of a role was modified; critical when performed by a non-admin principal on a role with elevated permissions
-- `STS: AssumeRole` -- Role assumption event; suspicious when the assuming principal recently modified the target role's trust policy
-- `S3: GetObject` -- Object retrieved from S3; high severity when the accessing role was recently assumed via a modified trust policy
-- `STS: GetCallerIdentity` -- Identity check often performed by attackers to verify successful role assumption
+- `iam:UpdateAssumeRolePolicy` -- Trust policy of a role was modified; critical when performed by a non-admin principal on a role with elevated permissions
+- `sts:AssumeRole` -- Role assumption event; suspicious when the assuming principal recently modified the target role's trust policy
+- `s3:GetObject` -- Object retrieved from S3; high severity when the accessing role was recently assumed via a modified trust policy
+- `sts:GetCallerIdentity` -- Identity check often performed by attackers to verify successful role assumption
 
 #### Detonation logs
 

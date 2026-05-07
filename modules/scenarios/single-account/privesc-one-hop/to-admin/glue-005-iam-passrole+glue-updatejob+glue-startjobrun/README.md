@@ -232,11 +232,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- Starting user passes the admin role to the Glue service; critical when the target role has elevated permissions
-- `Glue: UpdateJob` -- Existing Glue job configuration modified; high severity when the `Role` or `ScriptLocation` parameter changes to a privileged value
-- `Glue: StartJobRun` -- Job execution triggered; suspicious when immediately following an `UpdateJob` event (< 5 minutes)
-- `IAM: AttachUserPolicy` -- AdministratorAccess policy attached to the starting user by the Glue job execution role; indicates successful privilege escalation
-- `IAM: PutUserPolicy` -- Inline admin policy added to user from Glue service principal; alternative escalation method to watch
+- `glue:UpdateJob` -- existing Glue job configuration modified; inspect the `role` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to Glue; high severity when `ScriptLocation` also changes to an attacker-controlled value
+- `glue:StartJobRun` -- job execution triggered; suspicious when immediately following an `UpdateJob` event (< 5 minutes)
+- `iam:AttachUserPolicy` -- AdministratorAccess policy attached to the starting user by the Glue job execution role; indicates successful privilege escalation
+- `iam:PutUserPolicy` -- inline admin policy added to user from Glue service principal; alternative escalation method to watch
 
 #### Detonation logs
 

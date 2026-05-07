@@ -156,7 +156,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachGroupPolicy` — Managed policy attached to an IAM group; critical when the policy is `AdministratorAccess` or otherwise grants elevated permissions
+- `iam:AttachGroupPolicy` -- Managed policy attached to an IAM group; critical when the policy is `AdministratorAccess` or otherwise grants elevated permissions
 
 #### Detonation logs
 

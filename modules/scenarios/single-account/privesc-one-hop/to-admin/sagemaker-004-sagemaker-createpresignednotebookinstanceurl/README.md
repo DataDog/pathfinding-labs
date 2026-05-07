@@ -225,9 +225,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `SageMaker: CreatePresignedNotebookInstanceUrl` — Presigned URL generated for a notebook instance; critical when the target notebook has an execution role with elevated permissions
-- `SageMaker: DescribeNotebookInstance` — Notebook details retrieved; may indicate reconnaissance to identify notebooks with privileged execution roles
-- `SageMaker: ListNotebookInstances` — Enumeration of available notebook instances; commonly precedes presigned URL generation
+- `sagemaker:CreatePresignedNotebookInstanceUrl` -- Presigned URL generated for a notebook instance; critical when the target notebook has an execution role with elevated permissions
+- `sagemaker:DescribeNotebookInstance` -- Notebook details retrieved; may indicate reconnaissance to identify notebooks with privileged execution roles
+- `sagemaker:ListNotebookInstances` -- Enumeration of available notebook instances; commonly precedes presigned URL generation
 
 #### Detonation logs
 

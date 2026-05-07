@@ -160,10 +160,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreateAccessKey` -- New access keys created for an IAM user; critical when the target user has S3 bucket access permissions
-- `S3: GetObject` -- Object retrieved from S3 bucket; high severity when accessed using newly created credentials
-- `S3: PutObject` -- Object written to S3 bucket; high severity when performed with freshly minted access keys
-- `STS: GetCallerIdentity` -- Identity verification call; commonly seen at the start of an attack after credential theft
+- `iam:CreateAccessKey` -- New access keys created for an IAM user; critical when the target user has S3 bucket access permissions
+- `s3:GetObject` -- Object retrieved from S3 bucket; high severity when accessed using newly created credentials
+- `s3:PutObject` -- Object written to S3 bucket; high severity when performed with freshly minted access keys
+- `sts:GetCallerIdentity` -- Identity verification call; commonly seen at the start of an attack after credential theft
 
 #### Detonation logs
 

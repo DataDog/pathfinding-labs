@@ -197,11 +197,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- Role assumption (initial escalation step); monitor for assumption of roles with ECS management permissions
-- `ECS: CreateCluster` -- New ECS cluster created; suspicious when not part of a normal deployment workflow
-- `ECS: RegisterTaskDefinition` -- Task definition registered; critical when `taskRoleArn` points to a privileged role
-- `ECS: RunTask` -- Task execution initiated; high severity when combined with a recently registered task definition bearing an admin role
-- `IAM: PassRole` -- Role passed to ECS service (implicit in RegisterTaskDefinition); critical when the passed role has AdministratorAccess
+- `sts:AssumeRole` -- role assumption (initial escalation step); monitor for assumption of roles with ECS management permissions
+- `ecs:CreateCluster` -- new ECS cluster created; suspicious when not part of a normal deployment workflow
+- `ecs:RegisterTaskDefinition` -- task definition registered; critical when `taskRoleArn` points to a privileged role — this field is the CloudTrail signal for PassRole to ECS; inspect `executionRoleArn` as well
+- `ecs:RunTask` -- task execution initiated; high severity when combined with a recently registered task definition bearing an admin role
 
 #### Detonation logs
 

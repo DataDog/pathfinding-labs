@@ -169,10 +169,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to ECS task; critical when the passed role has administrative permissions
-- `ECS: CreateCluster` -- new ECS cluster created; high severity when followed by task definition registration and service creation
-- `ECS: RegisterTaskDefinition` -- new task definition registered; high severity when it references a privileged IAM role
-- `ECS: CreateService` -- ECS service created; high severity when service uses a task definition with a privileged role and Fargate launch type
+- `ecs:CreateCluster` -- new ECS cluster created; high severity when followed by task definition registration and service creation
+- `ecs:RegisterTaskDefinition` -- new task definition registered; inspect `taskRoleArn` and `executionRoleArn` in request parameters — a privileged role ARN in either field is the CloudTrail signal for PassRole to ECS; high severity when the role has administrative permissions
+- `ecs:CreateService` -- ECS service created; high severity when service uses a task definition with a privileged role and Fargate launch type
 
 #### Detonation logs
 

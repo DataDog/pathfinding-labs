@@ -211,10 +211,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `EC2: StopInstances` -- instance stopped; suspicious when followed immediately by ModifyInstanceAttribute and StartInstances on the same instance
-- `EC2: ModifyInstanceAttribute` -- instance attribute modified; critical when `attribute=userData` on an instance with a privileged role attached
-- `EC2: StartInstances` -- instance started; high severity when preceded by a ModifyInstanceAttribute (userData) event
-- `STS: AssumeRole` -- role assumed from EC2 instance metadata; look for the target role ARN being assumed by the EC2 instance principal
+- `ec2:StopInstances` -- instance stopped; suspicious when followed immediately by ModifyInstanceAttribute and StartInstances on the same instance
+- `ec2:ModifyInstanceAttribute` -- instance attribute modified; critical when `attribute=userData` on an instance with a privileged role attached
+- `ec2:StartInstances` -- instance started; high severity when preceded by a ModifyInstanceAttribute (userData) event
+- `sts:AssumeRole` -- role assumed from EC2 instance metadata; look for the target role ARN being assumed by the EC2 instance principal
 
 #### Detonation logs
 

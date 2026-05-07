@@ -167,10 +167,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` -- role passed to an ECS task; critical when the passed role has administrative permissions
-- `ECS: CreateCluster` -- new ECS cluster created; suspicious when created by non-infrastructure principals
-- `ECS: RegisterTaskDefinition` -- new task definition registered; high severity when combined with a privileged role ARN in the task role field
-- `ECS: RunTask` -- ECS task executed; correlate with prior cluster creation and task definition registration events to identify attack chains
+- `ecs:CreateCluster` -- new ECS cluster created; suspicious when created by non-infrastructure principals
+- `ecs:RegisterTaskDefinition` -- new task definition registered; inspect `taskRoleArn` and `executionRoleArn` in request parameters — a privileged role ARN in either field is the CloudTrail signal for PassRole to ECS; high severity when the role has administrative permissions
+- `ecs:RunTask` -- ECS task executed; correlate with prior cluster creation and task definition registration events to identify attack chains
 
 #### Detonation logs
 

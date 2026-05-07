@@ -158,9 +158,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: ListAccessKeys` — Enumeration of existing access keys on a target user; baseline behavior for this attack pattern
-- `IAM: DeleteAccessKey` — Access key deleted for an IAM user; critical when the target has elevated permissions and precedes a CreateAccessKey call
-- `IAM: CreateAccessKey` — New access keys created for an IAM user; critical when the target has elevated permissions; correlate with preceding DeleteAccessKey on the same user
+- `iam:ListAccessKeys` -- Enumeration of existing access keys on a target user; baseline behavior for this attack pattern
+- `iam:DeleteAccessKey` -- Access key deleted for an IAM user; critical when the target has elevated permissions and precedes a CreateAccessKey call
+- `iam:CreateAccessKey` -- New access keys created for an IAM user; critical when the target has elevated permissions; correlate with preceding DeleteAccessKey on the same user
 
 #### Detonation logs
 

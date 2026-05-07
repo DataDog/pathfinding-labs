@@ -157,8 +157,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreateLoginProfile` — Console password created for an IAM user; critical when the target user has elevated permissions such as `AdministratorAccess`
-- `STS: AssumeRole` — Role assumption by the starting user to gain the vulnerable role's permissions
+- `iam:CreateLoginProfile` -- Console password created for an IAM user; critical when the target user has elevated permissions such as `AdministratorAccess`
+- `sts:AssumeRole` -- Role assumption by the starting user to gain the vulnerable role's permissions
 
 #### Detonation logs
 

@@ -157,8 +157,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: AttachRolePolicy` -- Managed policy attached to a role; critical when the attached policy is `AdministratorAccess` or similarly broad, especially when followed by a role assumption
-- `STS: AssumeRole` -- Role assumption event; high severity when the assumed role was recently modified via `AttachRolePolicy` within the same session or time window
+- `iam:AttachRolePolicy` -- Managed policy attached to a role; critical when the attached policy is `AdministratorAccess` or similarly broad, especially when followed by a role assumption
+- `sts:AssumeRole` -- Role assumption event; high severity when the assumed role was recently modified via `AttachRolePolicy` within the same session or time window
 
 #### Detonation logs
 

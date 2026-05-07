@@ -89,7 +89,7 @@ The script will:
 #### Resources Created by Attack Script
 
 - A CloudFormation stack containing a malicious template
-- `pl-prod-cloudformation-001-to-admin-escalated-role` — new IAM role with AdministratorAccess created by the stack
+- `pl-prod-cloudformation-001-to-admin-escalated-role` -- new IAM role with AdministratorAccess created by the stack
 
 #### With plabs non-interactive
 
@@ -166,10 +166,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: PassRole` — Role passed to CloudFormation as a service role; critical when the passed role has elevated IAM permissions
-- `CloudFormation: CreateStack` — New CloudFormation stack created; high severity when a privileged service role is specified
-- `CloudFormation: UpdateStack` — Existing stack updated; monitor for IAM resource additions with privileged policies
-- `STS: AssumeRole` — Role assumption following stack creation; suspicious when the assumed role was recently created via CloudFormation
+- `cloudformation:CreateStack` -- new CloudFormation stack created; inspect the `roleARN` field in request parameters — a privileged role ARN here is the CloudTrail signal for PassRole to CloudFormation; high severity when the role has elevated IAM permissions
+- `cloudformation:UpdateStack` -- existing stack updated; monitor for IAM resource additions with privileged policies
+- `sts:AssumeRole` -- role assumption following stack creation; suspicious when the assumed role was recently created via CloudFormation
 
 #### Detonation logs
 

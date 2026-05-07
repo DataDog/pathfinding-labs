@@ -154,9 +154,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `IAM: CreatePolicyVersion` — New policy version created; critical when the creating principal is also attached to the modified policy, indicating self-escalation
-- `IAM: ListPolicyVersions` — Reconnaissance to enumerate existing policy versions before creating a new one
-- `STS: AssumeRole` — Role assumption from starting user; monitor for assumption of roles with policy modification capabilities
+- `iam:CreatePolicyVersion` -- New policy version created; critical when the creating principal is also attached to the modified policy, indicating self-escalation
+- `iam:ListPolicyVersions` -- Reconnaissance to enumerate existing policy versions before creating a new one
+- `sts:AssumeRole` -- Role assumption from starting user; monitor for assumption of roles with policy modification capabilities
 
 #### Detonation logs
 

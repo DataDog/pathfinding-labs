@@ -164,8 +164,8 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `ECS: ExecuteCommand` -- Interactive shell session established in a running ECS container; critical when the target task has an elevated task role attached
-- `ECS: DescribeTasks` -- Task details retrieved; required internally by the AWS CLI to establish the SSM session for ECS Exec; correlate with subsequent ExecuteCommand calls
+- `ecs:ExecuteCommand` -- Interactive shell session established in a running ECS container; critical when the target task has an elevated task role attached
+- `ecs:DescribeTasks` -- Task details retrieved; required internally by the AWS CLI to establish the SSM session for ECS Exec; correlate with subsequent ExecuteCommand calls
 
 #### Detonation logs
 

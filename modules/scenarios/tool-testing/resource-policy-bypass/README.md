@@ -156,10 +156,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` -- starting user assumes `pl-bucket-access-role`; watch for cross-role chains leading to S3 data events
-- `S3: ListBucket` -- bucket enumeration using `s3:ListAllMyBuckets`; precursor to targeted data access
-- `S3: GetObject` -- object read from the sensitive bucket; critical when the caller assumed a role with no direct IAM bucket permissions
-- `S3: PutObject` -- object write to the sensitive bucket; high severity from a role with minimal IAM policy
+- `sts:AssumeRole` -- starting user assumes `pl-bucket-access-role`; watch for cross-role chains leading to S3 data events
+- `s3:ListBucket` -- bucket enumeration using `s3:ListAllMyBuckets`; precursor to targeted data access
+- `s3:GetObject` -- object read from the sensitive bucket; critical when the caller assumed a role with no direct IAM bucket permissions
+- `s3:PutObject` -- object write to the sensitive bucket; high severity from a role with minimal IAM policy
 
 #### Detonation logs
 

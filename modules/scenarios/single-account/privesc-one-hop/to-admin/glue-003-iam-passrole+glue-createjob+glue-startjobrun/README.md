@@ -214,10 +214,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Glue: CreateJob` -- New Glue job created; high severity when the job role is administrative or when inline commands are used instead of S3-stored scripts; the embedded iam:PassRole authorization check also appears in this event
-- `Glue: StartJobRun` -- Glue job execution triggered; suspicious when immediately following job creation by a user who does not regularly use Glue
-- `IAM: AttachUserPolicy` -- Policy attached to an IAM user; critical when the caller is the Glue service principal and the policy grants admin access
-- `IAM: PutUserPolicy` -- Inline policy added to an IAM user; critical when executed by the Glue service principal
+- `glue:CreateJob` -- New Glue job created; high severity when the job role is administrative or when inline commands are used instead of S3-stored scripts; the embedded iam:PassRole authorization check also appears in this event
+- `glue:StartJobRun` -- Glue job execution triggered; suspicious when immediately following job creation by a user who does not regularly use Glue
+- `iam:AttachUserPolicy` -- Policy attached to an IAM user; critical when the caller is the Glue service principal and the policy grants admin access
+- `iam:PutUserPolicy` -- Inline policy added to an IAM user; critical when executed by the Glue service principal
 
 #### Detonation logs
 

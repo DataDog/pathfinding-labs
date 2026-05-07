@@ -189,9 +189,9 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `Lambda: UpdateFunctionCode20150331v2` -- Lambda function code was modified; high severity when followed by an invocation
-- `Lambda: Invoke` -- Lambda function was invoked; correlate with preceding code changes to detect credential exfiltration
-- `IAM: CreateAccessKey` -- New access keys created for an IAM user; critical when the target user has elevated permissions
+- `lambda:UpdateFunctionCode20150331v2` -- Lambda function code was modified; high severity when followed by an invocation
+- `lambda:Invoke` -- Lambda function was invoked; correlate with preceding code changes to detect credential exfiltration
+- `iam:CreateAccessKey` -- New access keys created for an IAM user; critical when the target user has elevated permissions
 
 #### Detonation logs
 

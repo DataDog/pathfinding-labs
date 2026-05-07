@@ -161,11 +161,10 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `STS: AssumeRole` — Role assumption from the dev starting user into `pl-lambda-prod-updater`; alert when a cross-account assumption chain originates from a dev account principal
-- `STS: AssumeRole` — Cross-account role assumption from `pl-lambda-prod-updater` (dev) into `pl-lambda-updater` (prod); high severity when the source account is a non-prod account
-- `IAM: PassRole` — `pl-Lambda-admin` (admin role) passed to the Lambda service by `pl-lambda-updater`; critical when the passed role has administrative permissions
-- `Lambda: CreateFunction20150331` — New Lambda function created with an admin execution role; high severity when the role ARN resolves to a privileged role
-- `Lambda: Invoke` — Invocation of the newly created Lambda function; correlate with the preceding `CreateFunction` to detect execution-after-creation patterns
+- `sts:AssumeRole` -- role assumption from the dev starting user into `pl-lambda-prod-updater`; alert when a cross-account assumption chain originates from a dev account principal
+- `sts:AssumeRole` -- cross-account role assumption from `pl-lambda-prod-updater` (dev) into `pl-lambda-updater` (prod); high severity when the source account is a non-prod account
+- `lambda:CreateFunction20150331` -- new Lambda function created; inspect the `role` field in request parameters to identify the role being passed — a privileged role ARN here is the CloudTrail signal for PassRole; high severity when the role resolves to a privileged role
+- `lambda:Invoke` -- invocation of the newly created Lambda function; correlate with the preceding `CreateFunction` to detect execution-after-creation patterns
 
 #### Detonation logs
 
