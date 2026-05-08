@@ -77,3 +77,5 @@ Thumbs.db
 .test-results/
 .claude/settings.local.json
 /local/
+
+.oss-readiness/
