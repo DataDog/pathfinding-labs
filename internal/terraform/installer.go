@@ -29,15 +29,11 @@ func NewInstaller(binDir string) *Installer {
 	return &Installer{binDir: binDir}
 }
 
-// GetTerraformPath returns the path to the terraform binary
-// It checks for system terraform first, then falls back to the plabs bin directory
+// GetTerraformPath returns the path to the terraform binary.
+// It prefers the plabs-managed binary in binDir so plabs is isolated from
+// whatever system terraform (e.g. a broken tfenv wrapper) is in PATH.
 func (i *Installer) GetTerraformPath() (string, error) {
-	// Check if terraform is in PATH
-	if path, err := exec.LookPath("terraform"); err == nil {
-		return path, nil
-	}
-
-	// Check in plabs bin directory
+	// Prefer the plabs-managed binary — isolates plabs from system terraform state
 	plabsTf := filepath.Join(i.binDir, "terraform")
 	if runtime.GOOS == "windows" {
 		plabsTf += ".exe"
@@ -45,6 +41,11 @@ func (i *Installer) GetTerraformPath() (string, error) {
 
 	if _, err := os.Stat(plabsTf); err == nil {
 		return plabsTf, nil
+	}
+
+	// Fall back to system terraform in PATH
+	if path, err := exec.LookPath("terraform"); err == nil {
+		return path, nil
 	}
 
 	return "", fmt.Errorf("terraform not found")
