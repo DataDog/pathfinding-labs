@@ -106,7 +106,6 @@ module "prod_environment" {
   create_autoscaling_slr = var.create_autoscaling_slr
   create_spot_slr        = var.create_spot_slr
   create_apprunner_slr   = var.create_apprunner_slr
-  create_mwaa_slr        = var.create_mwaa_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)
@@ -967,30 +966,6 @@ module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_creat
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(var.scenario_flags, "glue-007-to-admin", "flag{MISSING}")
-}
-
-module "single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-001-iam-passrole+airflow-createenvironment"
-  providers = {
-    aws.prod = aws.prod
-  }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "mwaa-001-to-admin", "flag{MISSING}")
-}
-
-module "single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/mwaa-002-airflow-updateenvironment"
-  providers = {
-    aws.prod = aws.prod
-  }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "mwaa-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance" {

@@ -43,7 +43,6 @@ aws_region               = "us-west-2"  # Region where resources will be deploye
 # create_autoscaling_slr = true
 # create_spot_slr        = true
 # create_apprunner_slr   = true
-# create_mwaa_slr        = true
 
 ##############################################################################
 # SCENARIO ENABLEMENT
@@ -109,8 +108,6 @@ enable_single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctionc
 enable_single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction = false
 enable_single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission = false
 enable_single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission = false
-enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment = false
-enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment = false
 enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole              = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN NON-FREE SCENARIOS

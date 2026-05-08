@@ -1165,54 +1165,6 @@ output "single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunction
   sensitive = true
 }
 
-output "single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment" {
-  description = "All outputs for mwaa-001-iam-passrole+airflow-createenvironment one-hop to-admin scenario"
-  value = var.enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].starting_user_secret_access_key
-    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].admin_role_name
-    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].admin_role_arn
-    vpc_id                          = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].vpc_id
-    private_subnet_ids              = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].private_subnet_ids
-    security_group_id               = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].security_group_id
-    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].attacker_bucket_name
-    attacker_bucket_arn             = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].attacker_bucket_arn
-    startup_script_s3_path          = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].startup_script_s3_path
-    dags_s3_path                    = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].dags_s3_path
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment[0].attack_path
-  } : null
-  sensitive = true
-}
-
-output "single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment" {
-  description = "All outputs for mwaa-002-airflow-updateenvironment one-hop to-admin scenario"
-  value = var.enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].starting_user_secret_access_key
-    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].admin_role_arn
-    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].admin_role_name
-    mwaa_environment_name           = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].mwaa_environment_name
-    mwaa_environment_arn            = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].mwaa_environment_arn
-    legitimate_bucket_name          = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].legitimate_bucket_name
-    legitimate_bucket_arn           = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].legitimate_bucket_arn
-    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].attacker_bucket_name
-    attacker_bucket_arn             = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].attacker_bucket_arn
-    attacker_dag_path               = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].attacker_dag_path
-    malicious_dag_name              = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].malicious_dag_name
-    original_bucket_name            = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].original_bucket_name
-    original_dag_path               = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].original_dag_path
-    vpc_id                          = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].vpc_id
-    private_subnet_ids              = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].private_subnet_ids
-    security_group_id               = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].security_group_id
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment[0].attack_path
-  } : null
-  sensitive = true
-}
-
 output "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance" {
   description = "All outputs for sagemaker-001 iam-passrole+sagemaker-createnotebookinstance one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance ? {

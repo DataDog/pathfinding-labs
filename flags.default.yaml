@@ -102,8 +102,6 @@ flags:
   lambda-invoke-update-to-admin: "flag{lambda_invoke_update_cross_account_admin_captured}"
   multi-hop-both-sides-to-admin: "flag{multi_hop_both_sides_admin_captured}"
   multiple-paths-combined-to-admin: "flag{multiple_paths_combined_admin_captured}"
-  mwaa-001-to-admin: "flag{mwaa_001_admin_captured}"
-  mwaa-002-to-admin: "flag{mwaa_002_admin_captured}"
   ops-to-prod-simple-role-assumption-to-admin: "flag{ops_to_prod_simple_role_assumption_admin_captured}"
   passrole-lambda-admin-to-admin: "flag{passrole_lambda_cross_account_admin_captured}"
   public-lambda-with-admin-to-admin: "flag{public_lambda_admin_role_pwned}"

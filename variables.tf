@@ -523,17 +523,6 @@ variable "enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_g
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_mwaa_001_iam_passrole_airflow_createenvironment" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → mwaa-001-iam-passrole+airflow-createenvironment (Infrastructure: ~$37/mo NAT Gateway; DEMO creates MWAA ~$350/mo - cleanup immediately!) (Pathfinding.cloud: mwaa-001)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_single_account_privesc_one_hop_to_admin_mwaa_002_airflow_updateenvironment" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → mwaa-002-airflow-updateenvironment (UpdateEnvironment privilege escalation)"
-  type        = bool
-  default     = false
-}
 
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
@@ -837,12 +826,6 @@ variable "create_spot_slr" {
 
 variable "create_apprunner_slr" {
   description = "Create the App Runner service-linked role (set false if it already exists)"
-  type        = bool
-  default     = true
-}
-
-variable "create_mwaa_slr" {
-  description = "Create the MWAA service-linked role (set false if it already exists)"
   type        = bool
   default     = true
 }

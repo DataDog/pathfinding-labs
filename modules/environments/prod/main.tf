@@ -76,11 +76,6 @@ resource "aws_iam_service_linked_role" "apprunner" {
   aws_service_name = "apprunner.amazonaws.com"
 }
 
-resource "aws_iam_service_linked_role" "mwaa" {
-  count            = var.create_mwaa_slr ? 1 : 0
-  aws_service_name = "airflow.amazonaws.com"
-}
-
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   name = "pl-admin-user-for-cleanup-scripts"

@@ -179,9 +179,3 @@ variable "create_apprunner_slr" {
   type        = bool
   default     = true
 }
-
-variable "create_mwaa_slr" {
-  description = "Create the MWAA service-linked role (set false if it already exists)"
-  type        = bool
-  default     = true
-}
