@@ -38,12 +38,16 @@ Pathfinding Labs helps security teams validate their Cloud Security Posture Mana
 ### Install plabs
 
 ```bash
-# Option A: Download the latest release (recommended)
-curl -fsSL "https://github.com/DataDog/pathfinding-labs/releases/latest/download/plabs_$(uname -s)_$(uname -m)" -o /usr/local/bin/plabs
-chmod +x /usr/local/bin/plabs
+# Option A: Homebrew (recommended)
+brew tap DataDog/pathfinding-labs https://github.com/DataDog/pathfinding-labs
+brew install DataDog/pathfinding-labs/plabs
 
-# Option B: Homebrew
-brew install plabs
+# Option B: Download from GitHub Releases
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m | sed 's/x86_64/amd64/')
+VERSION=$(curl -fsSL https://api.github.com/repos/DataDog/pathfinding-labs/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+curl -fsSL "https://github.com/DataDog/pathfinding-labs/releases/download/v${VERSION}/plabs_${VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz plabs
+sudo mv plabs /usr/local/bin/
 
 # Option C: Build from source
 git clone https://github.com/DataDog/pathfinding-labs.git
