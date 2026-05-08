@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -68,10 +67,4 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("plabs %s (commit: %s)\n", version, commit)
 	},
-}
-
-// exitWithError prints an error message and exits
-func exitWithError(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, "Error: "+format+"\n", args...)
-	os.Exit(1)
 }

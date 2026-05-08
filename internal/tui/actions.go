@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
@@ -201,49 +200,6 @@ func (a *ActionsPane) renderEnvironmentActions(sb *strings.Builder) {
 	sb.WriteString("\n")
 }
 
-func (a *ActionsPane) renderScenarioActions(sb *strings.Builder) {
-	if a.scenario == nil {
-		sb.WriteString(a.styles.ScenarioDisabled.Render(" Select scenario"))
-		sb.WriteString("\n")
-	} else if a.deployed {
-		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" disable scenario"))
-		sb.WriteString("\n")
-		if a.scenario.HasDemo() {
-			sb.WriteString(a.styles.HelpKey.Render(" r"))
-			sb.WriteString(a.styles.HelpDesc.Render("     run attack demo"))
-			sb.WriteString("\n")
-		}
-		if a.scenario.HasCleanup() {
-			sb.WriteString(a.styles.HelpKey.Render(" c"))
-			if a.demoActive {
-				sb.WriteString(a.styles.DemoActiveLabel.Render("     cleanup demo artifacts \u26a0"))
-			} else {
-				sb.WriteString(a.styles.HelpDesc.Render("     cleanup demo artifacts"))
-			}
-			sb.WriteString("\n")
-		}
-		if a.demoActiveCount > 0 {
-			sb.WriteString(a.styles.HelpKey.Render(" C"))
-			sb.WriteString(a.styles.DemoActiveLabel.Render(fmt.Sprintf("     cleanup all demos (%d)", a.demoActiveCount)))
-			sb.WriteString("\n")
-		}
-		sb.WriteString(a.styles.HelpKey.Render(" D"))
-		sb.WriteString(a.styles.HelpDesc.Render("     destroy scenarios or environments"))
-		sb.WriteString("\n")
-	} else if a.enabled {
-		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" disable scenario"))
-		sb.WriteString("\n")
-		sb.WriteString(a.styles.HelpKey.Render(" a"))
-		sb.WriteString(a.styles.HelpDesc.Render("     apply scenario"))
-		sb.WriteString("\n")
-	} else {
-		sb.WriteString(a.styles.HelpKey.Render(" space"))
-		sb.WriteString(a.styles.HelpDesc.Render(" enable scenario"))
-		sb.WriteString("\n")
-	}
-}
 
 func (a *ActionsPane) wrapInPanel(content string) string {
 	panelStyle := a.styles.Panel.Width(a.width - 2)

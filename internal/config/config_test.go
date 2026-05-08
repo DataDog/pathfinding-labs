@@ -149,7 +149,7 @@ func TestGenerateTFVars_ScenarioConfigs(t *testing.T) {
 
 	tfvars := c.GenerateTFVars()
 
-	wantLine := `github-oidc-cross-account-pivot-github_repo = "my-org/my-repo"`
+	wantLine := `github_oidc_cross_account_pivot_github_repo = "my-org/my-repo"`
 	if !strings.Contains(tfvars, wantLine) {
 		t.Errorf("expected tfvars to contain %q\n\nGot:\n%s", wantLine, tfvars)
 	}

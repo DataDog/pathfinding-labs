@@ -578,7 +578,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if key.Matches(msg, m.keys.Esc) {
 			// If command is running, kill it
 			if m.runningCmd != nil && m.runningCmd.Process != nil {
-				m.runningCmd.Process.Kill()
+				_ = m.runningCmd.Process.Kill()
 				m.runningCmd = nil
 			}
 			m.overlay.Hide()
@@ -2764,7 +2764,7 @@ func parseCostString(cost string) float64 {
 
 	// Parse as float
 	var value float64
-	fmt.Sscanf(cost, "%f", &value)
+	_, _ = fmt.Sscanf(cost, "%f", &value)
 	return value
 }
 

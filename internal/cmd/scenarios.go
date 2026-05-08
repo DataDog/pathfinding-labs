@@ -464,7 +464,7 @@ func parseCostString(cost string) float64 {
 	cost = strings.TrimSuffix(cost, "/month")
 
 	var value float64
-	fmt.Sscanf(cost, "%f", &value)
+	_, _ = fmt.Sscanf(cost, "%f", &value)
 	return value
 }
 

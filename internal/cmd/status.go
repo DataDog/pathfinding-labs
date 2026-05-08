@@ -129,13 +129,10 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// Separate enabled and disabled
 	var enabled []*scenarios.Scenario
-	var disabled []*scenarios.Scenario
 
 	for _, s := range allScenarios {
 		if enabledVars[s.Terraform.VariableName] {
 			enabled = append(enabled, s)
-		} else {
-			disabled = append(disabled, s)
 		}
 	}
 

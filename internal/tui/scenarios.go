@@ -277,11 +277,6 @@ func (s *ScenariosPane) MoveDown() {
 		// Move down one
 		s.cursor++
 
-		// If we entered a collapsed category, stay on its first item
-		newCat := s.filtered[s.cursor].Scenario.CategoryShort()
-		if newCat != currentCat && s.collapsed[newCat] {
-			// Already on the first item of the collapsed category, which is fine
-		}
 	}
 
 	s.ensureVisible()
@@ -689,27 +684,6 @@ func (s *ScenariosPane) getVisualRow() int {
 	}
 
 	return visualRow
-}
-
-// getTotalVisualRows returns the total number of visual rows
-func (s *ScenariosPane) getTotalVisualRows() int {
-	visualRows := 0
-	currentCat := ""
-
-	for _, item := range s.filtered {
-		cat := item.Scenario.CategoryShort()
-
-		if cat != currentCat {
-			visualRows += s.categoryHeaderHeight(cat)
-			currentCat = cat
-		}
-
-		if !s.collapsed[cat] {
-			visualRows += s.lineHeight(s.renderScenarioLine(item, false))
-		}
-	}
-
-	return visualRows
 }
 
 func (s *ScenariosPane) ensureVisible() {

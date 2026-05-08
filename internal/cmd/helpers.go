@@ -30,11 +30,6 @@ func getWorkingPaths() (*repo.Paths, error) {
 	return repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
 }
 
-// getConfig loads the configuration from the canonical location
-func getConfig() (*config.Config, error) {
-	return config.Load()
-}
-
 // isDevMode returns true if dev mode is enabled in config
 func isDevMode() bool {
 	cfg, err := config.Load()
@@ -42,18 +37,6 @@ func isDevMode() bool {
 		return false
 	}
 	return cfg.DevMode
-}
-
-// getDevModePath returns the dev mode path if enabled, empty string otherwise
-func getDevModePath() string {
-	cfg, err := config.Load()
-	if err != nil || cfg == nil {
-		return ""
-	}
-	if cfg.DevMode {
-		return cfg.DevModePath
-	}
-	return ""
 }
 
 // containsGlobPattern checks if any of the args contain glob characters
@@ -204,19 +187,4 @@ func newDiscovery(scenariosPath string) *scenarios.Discovery {
 		d.WithIncludeBeta(cfg.IncludeBeta)
 	}
 	return d
-}
-
-// syncTFVars regenerates terraform.tfvars from the config
-func syncTFVars() error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	paths, err := getWorkingPaths()
-	if err != nil {
-		return fmt.Errorf("failed to get paths: %w", err)
-	}
-
-	return cfg.SyncTFVars(paths.TerraformDir)
 }
