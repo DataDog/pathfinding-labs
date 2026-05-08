@@ -142,7 +142,9 @@ type errMsg struct {
 }
 
 type interactiveDemoDoneMsg struct {
-	err error
+	err         error
+	scenarioDir string // directory of the scenario that ran
+	isCleanup   bool   // true when this is a cleanup run, not a demo run
 }
 
 type shellExitMsg struct {
@@ -485,7 +487,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadScenarios
 
 	case interactiveDemoDoneMsg:
-		// Interactive demo finished (TUI was suspended during execution)
+		if msg.scenarioDir != "" {
+			markerPath := filepath.Join(msg.scenarioDir, ".demo_active")
+			if msg.isCleanup {
+				// Cleanup completed: remove the demo-active marker (best effort)
+				_ = os.Remove(markerPath)
+			} else if msg.err == nil {
+				// Demo completed successfully: create the marker so the TUI shows the
+				// "demos active" warning for scripts that don't do their own touch.
+				_ = os.WriteFile(markerPath, []byte{}, 0644)
+			}
+		}
 		// Reload scenarios to refresh deployment state
 		return m, m.loadScenarios
 
@@ -1330,7 +1342,6 @@ func (m *Model) executeDeploy() tea.Cmd {
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1364,7 +1375,6 @@ func (m *Model) executePlan() tea.Cmd {
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1431,8 +1441,9 @@ func (m *Model) executeDemo(scenarioID string) tea.Cmd {
 
 	// Use tea.Exec to suspend TUI and give full terminal control to the script
 	interactiveCmd := &interactiveDemoCmd{cmd: cmd}
+	scenarioDir := scenario.DirPath
 	return tea.Exec(interactiveCmd, func(err error) tea.Msg {
-		return interactiveDemoDoneMsg{err: err}
+		return interactiveDemoDoneMsg{err: err, scenarioDir: scenarioDir}
 	})
 }
 
@@ -1522,8 +1533,9 @@ func (m *Model) executeCleanup(scenarioID string, skipPause bool) tea.Cmd {
 
 	// Use tea.Exec to suspend TUI and give full terminal control to the script
 	interactiveCmd := &interactiveDemoCmd{cmd: cmd}
+	scenarioDir := scenario.DirPath
 	return tea.Exec(interactiveCmd, func(err error) tea.Msg {
-		return interactiveDemoDoneMsg{err: err}
+		return interactiveDemoDoneMsg{err: err, scenarioDir: scenarioDir, isCleanup: true}
 	})
 }
 

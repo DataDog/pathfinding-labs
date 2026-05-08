@@ -458,7 +458,7 @@ echo ""
 echo -e "${YELLOW}Step 12: Capturing the CTF flag${NC}"
 use_starting_creds
 show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-005-to-admin --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/sagemaker-005-to-admin --query 'Parameter.Value' --output text 2>/dev/null)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name /pathfinding-labs/flags/sagemaker-005-to-admin --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -z "$FLAG_VALUE" ]; then
     echo -e "${RED}Error: Could not retrieve CTF flag — admin access may not have propagated yet${NC}"

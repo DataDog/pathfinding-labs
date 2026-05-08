@@ -39,7 +39,7 @@ func init() {
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
-	paths, err := repo.GetPaths()
+	paths, err := getWorkingPaths()
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}

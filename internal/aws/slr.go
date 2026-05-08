@@ -13,7 +13,6 @@ type ServiceLinkedRoleStatus struct {
 	AutoScalingExists bool
 	SpotExists        bool
 	AppRunnerExists   bool
-	MWAAExists        bool
 }
 
 // slrStateAddresses maps each SLR to its canonical Terraform state resource address.
@@ -22,7 +21,6 @@ var slrStateAddresses = map[string]string{
 	"autoscaling": "module.prod_environment[0].aws_iam_service_linked_role.autoscaling[0]",
 	"spot":        "module.prod_environment[0].aws_iam_service_linked_role.spot[0]",
 	"apprunner":   "module.prod_environment[0].aws_iam_service_linked_role.apprunner[0]",
-	"mwaa":        "module.prod_environment[0].aws_iam_service_linked_role.mwaa[0]",
 }
 
 // SLRInState returns which service-linked roles are currently in Terraform state
@@ -36,7 +34,6 @@ func SLRInState(stateResources []string) *ServiceLinkedRoleStatus {
 		AutoScalingExists: inState[slrStateAddresses["autoscaling"]],
 		SpotExists:        inState[slrStateAddresses["spot"]],
 		AppRunnerExists:   inState[slrStateAddresses["apprunner"]],
-		MWAAExists:        inState[slrStateAddresses["mwaa"]],
 	}
 }
 
@@ -45,7 +42,6 @@ var serviceLinkedRoleChecks = map[string]string{
 	"autoscaling": "AWSServiceRoleForAutoScaling",
 	"spot":        "AWSServiceRoleForEC2Spot",
 	"apprunner":   "AWSServiceRoleForAppRunner",
-	"mwaa":        "AWSServiceRoleForAmazonMWAA",
 }
 
 // DetectExistingServiceLinkedRoles checks which service-linked roles already exist
@@ -70,8 +66,6 @@ func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus,
 			status.SpotExists = exists
 		case "apprunner":
 			status.AppRunnerExists = exists
-		case "mwaa":
-			status.MWAAExists = exists
 		}
 	}
 

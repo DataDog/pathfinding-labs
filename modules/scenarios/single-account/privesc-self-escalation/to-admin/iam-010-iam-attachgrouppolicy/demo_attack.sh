@@ -194,7 +194,7 @@ echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 echo -e "${YELLOW}Step 8: Capturing the CTF flag${NC}"
 use_starting_creds
 show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name /pathfinding-labs/flags/iam-010-to-admin --query 'Parameter.Value' --output text)
 
 if [ -z "$FLAG_VALUE" ]; then
     echo -e "${RED}Error: Could not retrieve CTF flag — ensure privilege escalation completed successfully${NC}"

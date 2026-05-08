@@ -228,7 +228,7 @@ use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text)
 
 if [ -z "$FLAG_VALUE" ]; then
     echo -e "${RED}Error: Could not retrieve CTF flag. Ensure the escalation is complete and IAM has propagated.${NC}"

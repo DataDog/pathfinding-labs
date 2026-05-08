@@ -204,7 +204,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-001-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
     echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"

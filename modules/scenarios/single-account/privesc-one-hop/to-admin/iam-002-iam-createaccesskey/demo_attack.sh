@@ -219,7 +219,7 @@ export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
 FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-002-to-admin"
 show_attack_cmd "Attacker (admin user)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
     echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"

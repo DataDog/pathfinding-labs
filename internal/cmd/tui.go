@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
@@ -41,24 +43,18 @@ func init() {
 }
 
 func runTUI(cmd *cobra.Command, args []string) error {
-	paths, err := repo.GetPaths()
+	// Use workspace-aware paths so non-default workspaces check their own repo location.
+	paths, err := getWorkingPaths()
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	// In dev mode the repo lives at the local path, not ~/.plabs/pathfinding-labs/,
-	// so RepoExists() will always be false. Skip the init wizard entirely when
-	// dev mode is active and rely on getWorkingPaths() to resolve the correct dir.
+	// Skip init when dev mode is active — the repo is the local working directory.
+	// For all other cases, check whether this workspace's repo exists and is initialized.
 	if !isDevMode() && (!paths.RepoExists() || !isInitialized()) {
 		if err := runTUIInit(paths); err != nil {
 			return err
 		}
-	}
-
-	// Use working paths (respects dev mode)
-	paths, err = getWorkingPaths()
-	if err != nil {
-		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
 	// Create the TUI model
@@ -96,6 +92,13 @@ func runTUIInit(paths *repo.Paths) error {
 	fmt.Printf("[1/5] Creating directories at %s\n", paths.PlabsRoot)
 	if err := paths.EnsureDirectories(); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
+	}
+	// For non-default workspaces, also create the workspace-specific repo parent directory.
+	cfg, _ := config.Load()
+	if cfg != nil && cfg.ActiveName() != "default" {
+		if err := os.MkdirAll(filepath.Dir(paths.RepoPath), 0755); err != nil {
+			return fmt.Errorf("failed to create workspace directory: %w", err)
+		}
 	}
 	fmt.Println(green("      Directories created"))
 
@@ -147,6 +150,16 @@ func runTUIInit(paths *repo.Paths) error {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}
 	newWS.Initialized = true
+
+	// Load CTF flags from flags.default.yaml if present in the cloned repo
+	candidateFlagFile := filepath.Join(paths.TerraformDir, DefaultFlagFileName)
+	if _, err := os.Stat(candidateFlagFile); err == nil {
+		if err := newWS.LoadFlagsFromFile(candidateFlagFile); err != nil {
+			fmt.Printf(yellow("      Warning: could not load flag file: %v\n"), err)
+		} else {
+			fmt.Printf(green("      Loaded %d CTF flag(s) from %s\n"), len(newWS.Flags), candidateFlagFile)
+		}
+	}
 
 	topCfg, _ := config.Load()
 	if topCfg == nil {

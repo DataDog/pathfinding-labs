@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -138,7 +139,20 @@ func runWorkspaceNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("workspace %q already exists", name)
 	}
 
-	cfg.Workspaces[name] = &config.WorkspaceConfig{}
+	newWS := &config.WorkspaceConfig{}
+
+	// Copy flags from the current active workspace's repo into the new workspace.
+	// All workspaces share the same flag values (they come from the same upstream repo),
+	// so seeding at creation time means the new workspace never deploys flag{MISSING}.
+	activeWS := cfg.Active()
+	if activePaths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), activeWS.DevMode, activeWS.DevModePath); pathErr == nil {
+		candidate := filepath.Join(activePaths.TerraformDir, DefaultFlagFileName)
+		if _, statErr := os.Stat(candidate); statErr == nil {
+			_ = newWS.LoadFlagsFromFile(candidate)
+		}
+	}
+
+	cfg.Workspaces[name] = newWS
 
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -147,6 +161,9 @@ func runWorkspaceNew(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	fmt.Printf("%s Created workspace %q\n", green("OK"), name)
+	if len(newWS.Flags) > 0 {
+		fmt.Printf("  Seeded %d CTF flag(s) from active workspace\n", len(newWS.Flags))
+	}
 	fmt.Println()
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  1. Switch to it:  %s\n", cyan(fmt.Sprintf("plabs workspace switch %s", name)))

@@ -60,10 +60,23 @@ var configSyncCmd = &cobra.Command{
 	RunE:  runConfigSync,
 }
 
+var configLoadFlagsCmd = &cobra.Command{
+	Use:   "load-flags [file]",
+	Short: "Load CTF flag values from flags.default.yaml",
+	Long: `Load CTF flag values into the active workspace configuration.
+
+If no file argument is given, looks for flags.default.yaml in the Terraform directory.
+After loading, syncs terraform.tfvars so that 'plabs deploy' will write the real flag
+values into SSM Parameter Store.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runConfigLoadFlags,
+}
+
 func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configSyncCmd)
+	configCmd.AddCommand(configLoadFlagsCmd)
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
@@ -389,5 +402,52 @@ func runScenarioConfigSet(scenarioName, key, value string) error {
 
 	green := color.New(color.FgGreen).SprintFunc()
 	fmt.Printf("%s Set %s / %s = %s\n", green("OK"), scenarioName, key, value)
+	return nil
+}
+
+func runConfigLoadFlags(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	paths, err := getWorkingPaths()
+	if err != nil {
+		return fmt.Errorf("failed to get paths: %w", err)
+	}
+
+	flagFilePath := ""
+	if len(args) == 1 {
+		flagFilePath = args[0]
+	} else {
+		candidate := filepath.Join(paths.TerraformDir, DefaultFlagFileName)
+		if _, statErr := os.Stat(candidate); statErr == nil {
+			flagFilePath = candidate
+		}
+	}
+
+	if flagFilePath == "" {
+		yellow := color.New(color.FgYellow).SprintFunc()
+		fmt.Printf("%s No flag file found. Expected %s\n", yellow("!"), filepath.Join(paths.TerraformDir, DefaultFlagFileName))
+		fmt.Println("  Provide a path: plabs config load-flags /path/to/flags.yaml")
+		return nil
+	}
+
+	ws := cfg.Active()
+	if err := ws.LoadFlagsFromFile(flagFilePath); err != nil {
+		return fmt.Errorf("failed to load flag file: %w", err)
+	}
+
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	if err := ws.SyncTFVars(paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync tfvars: %w", err)
+	}
+
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Printf("%s Loaded %d CTF flag(s) from %s\n", green("OK"), len(ws.Flags), flagFilePath)
+	fmt.Println("  Run 'plabs deploy' to push the updated flag values to SSM Parameter Store.")
 	return nil
 }

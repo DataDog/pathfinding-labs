@@ -203,12 +203,10 @@ func (i *InfoPane) View() string {
 	sb.WriteString(divider)
 	sb.WriteString("\n")
 
-	// Workspace - only show when multiple workspaces exist
-	if i.workspaceCount > 1 {
-		sb.WriteString(labelStyle.Render("Workspace    "))
-		sb.WriteString(valueStyle.Render(i.activeWorkspace))
-		sb.WriteString("\n")
-	}
+	// Workspace
+	sb.WriteString(labelStyle.Render("Workspace    "))
+	sb.WriteString(valueStyle.Render(i.activeWorkspace))
+	sb.WriteString("\n")
 
 	// Mode - only show when in dev mode
 	if i.devMode {

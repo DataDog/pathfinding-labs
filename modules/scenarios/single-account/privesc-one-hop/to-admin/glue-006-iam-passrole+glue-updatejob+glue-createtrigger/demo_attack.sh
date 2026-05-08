@@ -392,7 +392,7 @@ use_starting_creds
 echo -e "${YELLOW}Step 13: Capturing CTF flag from SSM Parameter Store${NC}"
 FLAG_PARAM_NAME="/pathfinding-labs/flags/glue-006-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
-FLAG_VALUE=$(aws ssm get-parameter --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 
 if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
     echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
