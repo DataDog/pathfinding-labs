@@ -23,6 +23,8 @@ type InfoPane struct {
 	terraformDir        string
 	devMode             bool
 	devModePath         string
+	activeWorkspace     string
+	workspaceCount      int
 	tfInitialized       bool
 	totalScenarios      int
 	deployedCount       int     // Number of deployed scenarios
@@ -44,9 +46,18 @@ func NewInfoPane(styles *Styles) *InfoPane {
 func (i *InfoPane) SetConfig(cfg *config.Config) {
 	i.config = cfg
 	if cfg != nil {
-		i.devMode = cfg.DevMode
-		i.devModePath = cfg.DevModePath
+		i.devMode = cfg.Active().DevMode
+		i.devModePath = cfg.Active().DevModePath
+		i.activeWorkspace = cfg.ActiveName()
+		i.workspaceCount = cfg.WorkspaceCount()
 	}
+}
+
+// SetWorkspace updates the active workspace display fields.
+// Call after config load when workspace state may have changed.
+func (i *InfoPane) SetWorkspace(name string, count int) {
+	i.activeWorkspace = name
+	i.workspaceCount = count
 }
 
 // SetTerraformDir sets the terraform directory path
@@ -191,6 +202,13 @@ func (i *InfoPane) View() string {
 	// ─── CONFIGURATION ────────────────
 	sb.WriteString(divider)
 	sb.WriteString("\n")
+
+	// Workspace - only show when multiple workspaces exist
+	if i.workspaceCount > 1 {
+		sb.WriteString(labelStyle.Render("Workspace    "))
+		sb.WriteString(valueStyle.Render(i.activeWorkspace))
+		sb.WriteString("\n")
+	}
 
 	// Mode - only show when in dev mode
 	if i.devMode {

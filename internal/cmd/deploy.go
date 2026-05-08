@@ -49,7 +49,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		discovery := newDiscovery(paths.ScenariosPath())
 		allScenarios, discoverErr := discovery.DiscoverAll()
 		if discoverErr == nil {
-			enabledVars := cfg.GetEnabledScenarioVars()
+			enabledVars := cfg.Active().GetEnabledScenarioVars()
 			var configErrors []string
 			for _, s := range allScenarios {
 				if !enabledVars[s.Terraform.VariableName] {
@@ -57,7 +57,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 				for _, cfgKey := range s.Config {
 					if cfgKey.Required {
-						val, _ := cfg.GetScenarioConfig(s.Name, cfgKey.Key)
+						val, _ := cfg.Active().GetScenarioConfig(s.Name, cfgKey.Key)
 						if val == "" {
 							configErrors = append(configErrors, fmt.Sprintf(
 								"  %s: key %q is required\n    Set with: plabs config %s set %s <value>",
@@ -94,7 +94,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Inject attacker IAM credentials as TF_VAR_* env vars so they are never
 	// written to terraform.tfvars on disk (mirrors TUI behavior).
 	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
-	runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
+	runner.SetExtraEnv(cfg.Active().GetAttackerTFVarEnv())
 
 	// Detect which service-linked roles already exist in the prod account
 	// so Terraform doesn't try to create duplicates.
@@ -102,7 +102,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
 	// If Terraform already owns the SLR in state, keep create=true — flipping it to
 	// false would make count=0 and cause Terraform to destroy the SLR.
-	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
+	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
 	if err != nil {
 		// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
 		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
@@ -114,7 +114,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				inState = plabsaws.SLRInState(stateResources)
 			}
 		}
-		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
+		cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
 			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
@@ -123,12 +123,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Sync tfvars from config before running terraform
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync tfvars: %w", err)
 	}
 
 	// Bootstrap attacker IAM user if needed
-	if cfg.HasAttackerAccount() && cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.IAMAccessKeyID == "" {
+	if cfg.Active().HasAttackerAccount() && cfg.Active().AWS.Attacker.Mode == "iam-user" && cfg.Active().AWS.Attacker.IAMAccessKeyID == "" {
 		fmt.Println()
 		fmt.Println(cyan("Bootstrapping attacker account IAM admin user..."))
 		fmt.Println()
@@ -138,12 +138,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 
 		// Re-sync tfvars now that bootstrap credentials are stored
-		if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 			return fmt.Errorf("failed to sync tfvars after bootstrap: %w", err)
 		}
 
 		// Re-inject credentials into runner now that they exist
-		runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
+		runner.SetExtraEnv(cfg.Active().GetAttackerTFVarEnv())
 
 		fmt.Println(green("Attacker IAM admin user bootstrapped successfully."))
 		fmt.Println()
@@ -153,14 +153,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	fmt.Println(cyan("Applying Pathfinding Labs..."))
 
 	// Show mode indicator only in dev mode
-	if cfg.DevMode {
+	if cfg.Active().DevMode {
 		fmt.Println()
-		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.Active().DevModePath)
 	}
 	fmt.Println()
 
 	// Show enabled scenarios count from config
-	enabledCount := len(cfg.Scenarios.Enabled)
+	enabledCount := len(cfg.Active().Scenarios.Enabled)
 
 	fmt.Printf("Enabled scenarios: %d\n", enabledCount)
 	if enabledCount == 0 {
@@ -277,8 +277,8 @@ func bootstrapAttackerIAMUser(runner *terraform.Runner, cfg *config.Config) erro
 	}
 
 	// Store credentials in config
-	cfg.AWS.Attacker.IAMAccessKeyID = accessKeyID
-	cfg.AWS.Attacker.IAMSecretKey = secretKey
+	cfg.Active().AWS.Attacker.IAMAccessKeyID = accessKeyID
+	cfg.Active().AWS.Attacker.IAMSecretKey = secretKey
 
 	// Save updated config
 	if err := cfg.Save(); err != nil {

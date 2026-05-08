@@ -37,7 +37,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	cfg, _ := config.Load()
 	enabledVars := make(map[string]bool)
 	if cfg != nil {
-		enabledVars = cfg.GetEnabledScenarioVars()
+		enabledVars = cfg.Active().GetEnabledScenarioVars()
 	}
 
 	// Find scenario by ID

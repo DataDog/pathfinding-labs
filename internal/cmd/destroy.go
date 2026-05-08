@@ -57,9 +57,9 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 	cyan := color.New(color.FgCyan).SprintFunc()
 
 	// Show mode indicator only in dev mode
-	if cfg != nil && cfg.DevMode {
+	if cfg != nil && cfg.Active().DevMode {
 		fmt.Println()
-		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.Active().DevModePath)
 	}
 
 	// Require explicit flag (check before validating credentials)
@@ -100,7 +100,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 	}
 
 	// Get current enabled status from config
-	enabledVars := cfg.GetEnabledScenarioVars()
+	enabledVars := cfg.Active().GetEnabledScenarioVars()
 
 	var toDisable []string
 	for _, s := range allScenarios {
@@ -118,7 +118,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 
 	// Disable all scenarios in config
 	for _, varName := range toDisable {
-		cfg.DisableScenario(varName)
+		cfg.Active().DisableScenario(varName)
 	}
 
 	// Save config
@@ -127,7 +127,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 	}
 
 	// Regenerate terraform.tfvars
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
@@ -201,20 +201,20 @@ func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green
 
 	// If attacker is in IAM user mode, switch to setup profile for destroy
 	// The IAM user can't destroy itself, so we need the original profile
-	if cfg != nil && cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.SetupProfile != "" {
+	if cfg != nil && cfg.Active().AWS.Attacker.Mode == "iam-user" && cfg.Active().AWS.Attacker.SetupProfile != "" {
 		fmt.Println("Switching attacker account to setup profile for teardown...")
-		originalIAMAccessKey := cfg.AWS.Attacker.IAMAccessKeyID
-		originalIAMSecretKey := cfg.AWS.Attacker.IAMSecretKey
+		originalIAMAccessKey := cfg.Active().AWS.Attacker.IAMAccessKeyID
+		originalIAMSecretKey := cfg.Active().AWS.Attacker.IAMSecretKey
 
 		// Temporarily clear IAM creds and set profile for destroy
-		cfg.AWS.Attacker.IAMAccessKeyID = ""
-		cfg.AWS.Attacker.IAMSecretKey = ""
-		cfg.AWS.Attacker.Profile = cfg.AWS.Attacker.SetupProfile
+		cfg.Active().AWS.Attacker.IAMAccessKeyID = ""
+		cfg.Active().AWS.Attacker.IAMSecretKey = ""
+		cfg.Active().AWS.Attacker.Profile = cfg.Active().AWS.Attacker.SetupProfile
 
-		if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+		if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 			// Restore on failure
-			cfg.AWS.Attacker.IAMAccessKeyID = originalIAMAccessKey
-			cfg.AWS.Attacker.IAMSecretKey = originalIAMSecretKey
+			cfg.Active().AWS.Attacker.IAMAccessKeyID = originalIAMAccessKey
+			cfg.Active().AWS.Attacker.IAMSecretKey = originalIAMSecretKey
 			return fmt.Errorf("failed to sync tfvars for destroy: %w", err)
 		}
 	}
@@ -229,9 +229,9 @@ func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green
 	}
 
 	// Clean up attacker IAM user credentials from config after successful destroy
-	if cfg != nil && cfg.AWS.Attacker.Mode == "iam-user" {
-		cfg.AWS.Attacker.IAMAccessKeyID = ""
-		cfg.AWS.Attacker.IAMSecretKey = ""
+	if cfg != nil && cfg.Active().AWS.Attacker.Mode == "iam-user" {
+		cfg.Active().AWS.Attacker.IAMAccessKeyID = ""
+		cfg.Active().AWS.Attacker.IAMSecretKey = ""
 		if err := cfg.Save(); err != nil {
 			fmt.Printf("%s Failed to clean up attacker credentials from config: %v\n", yellow("!"), err)
 		}

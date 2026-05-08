@@ -85,21 +85,35 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Println(cyan("Current Configuration"))
 	fmt.Println()
 
+	ws := cfg.Active()
+
+	// Show workspace context when multiple workspaces are configured
+	if cfg.WorkspaceCount() > 1 {
+		fmt.Printf("Workspace: %s\n", cyan(cfg.ActiveName()))
+		wsNames := make([]string, 0, cfg.WorkspaceCount())
+		for name := range cfg.Workspaces {
+			wsNames = append(wsNames, name)
+		}
+		sort.Strings(wsNames)
+		fmt.Printf("All workspaces: %s\n", strings.Join(wsNames, ", "))
+		fmt.Println()
+	}
+
 	fmt.Println("AWS Accounts:")
-	fmt.Printf("  prod-profile:  %s\n", valueOrNotSet(cfg.AWS.Prod.Profile))
-	fmt.Printf("  prod-region:   %s\n", valueOrNotSet(cfg.AWS.Prod.Region))
-	fmt.Printf("  dev-profile:   %s\n", valueOrNotSet(cfg.AWS.Dev.Profile))
-	fmt.Printf("  dev-region:    %s\n", valueOrNotSet(cfg.AWS.Dev.Region))
-	fmt.Printf("  ops-profile:       %s\n", valueOrNotSet(cfg.AWS.Ops.Profile))
-	fmt.Printf("  ops-region:        %s\n", valueOrNotSet(cfg.AWS.Ops.Region))
-	fmt.Printf("  attacker-profile:  %s\n", valueOrNotSet(cfg.AWS.Attacker.Profile))
-	fmt.Printf("  attacker-region:   %s\n", valueOrNotSet(cfg.AWS.Attacker.Region))
+	fmt.Printf("  prod-profile:  %s\n", valueOrNotSet(ws.AWS.Prod.Profile))
+	fmt.Printf("  prod-region:   %s\n", valueOrNotSet(ws.AWS.Prod.Region))
+	fmt.Printf("  dev-profile:   %s\n", valueOrNotSet(ws.AWS.Dev.Profile))
+	fmt.Printf("  dev-region:    %s\n", valueOrNotSet(ws.AWS.Dev.Region))
+	fmt.Printf("  ops-profile:       %s\n", valueOrNotSet(ws.AWS.Ops.Profile))
+	fmt.Printf("  ops-region:        %s\n", valueOrNotSet(ws.AWS.Ops.Region))
+	fmt.Printf("  attacker-profile:  %s\n", valueOrNotSet(ws.AWS.Attacker.Profile))
+	fmt.Printf("  attacker-region:   %s\n", valueOrNotSet(ws.AWS.Attacker.Region))
 	fmt.Println()
 
 	fmt.Println("Mode:")
-	if cfg.DevMode {
+	if ws.DevMode {
 		fmt.Printf("  dev-mode:      %s\n", green("enabled"))
-		fmt.Printf("  dev-path:      %s\n", cfg.DevModePath)
+		fmt.Printf("  dev-path:      %s\n", ws.DevModePath)
 	} else {
 		fmt.Printf("  dev-mode:      %s\n", "disabled")
 	}
@@ -115,20 +129,18 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  terraform-dir: %s\n", paths.TerraformDir)
 	fmt.Println()
 
-	// Show enabled scenarios count
-	fmt.Printf("Enabled scenarios: %d\n", len(cfg.Scenarios.Enabled))
+	fmt.Printf("Enabled scenarios: %d\n", len(ws.Scenarios.Enabled))
 	fmt.Println()
 
-	// Show per-scenario config values if any exist
-	if len(cfg.ScenarioConfigs) > 0 {
+	if len(ws.ScenarioConfigs) > 0 {
 		fmt.Println("Per-scenario config:")
-		scenarioNames := make([]string, 0, len(cfg.ScenarioConfigs))
-		for name := range cfg.ScenarioConfigs {
+		scenarioNames := make([]string, 0, len(ws.ScenarioConfigs))
+		for name := range ws.ScenarioConfigs {
 			scenarioNames = append(scenarioNames, name)
 		}
 		sort.Strings(scenarioNames)
 		for _, name := range scenarioNames {
-			vals := cfg.ScenarioConfigs[name]
+			vals := ws.ScenarioConfigs[name]
 			keys := make([]string, 0, len(vals))
 			for k := range vals {
 				keys = append(keys, k)
@@ -154,46 +166,47 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 
 	cfg, err := config.Load()
 	if err != nil {
-		cfg = &config.Config{}
+		cfg = &config.Config{
+			ActiveWorkspace: "default",
+			Workspaces:      map[string]*config.WorkspaceConfig{"default": {}},
+		}
 	}
 
 	green := color.New(color.FgGreen).SprintFunc()
+	ws := cfg.Active() // pointer into cfg.Workspaces; mutations propagate on Save()
 
-	// Update the appropriate value
 	switch key {
 	case "prod-profile":
-		cfg.AWS.Prod.Profile = value
+		ws.AWS.Prod.Profile = value
 	case "prod-region":
-		cfg.AWS.Prod.Region = value
+		ws.AWS.Prod.Region = value
 	case "dev-profile":
-		cfg.AWS.Dev.Profile = value
+		ws.AWS.Dev.Profile = value
 	case "dev-region":
-		cfg.AWS.Dev.Region = value
+		ws.AWS.Dev.Region = value
 	case "ops-profile":
-		cfg.AWS.Ops.Profile = value
+		ws.AWS.Ops.Profile = value
 	case "ops-region":
-		cfg.AWS.Ops.Region = value
+		ws.AWS.Ops.Region = value
 	case "attacker-profile":
-		cfg.AWS.Attacker.Profile = value
+		ws.AWS.Attacker.Profile = value
 	case "attacker-region":
-		cfg.AWS.Attacker.Region = value
+		ws.AWS.Attacker.Region = value
 	case "dev-mode":
 		lowerVal := strings.ToLower(value)
 		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
-			// Find the local repo directory
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("failed to get current directory: %w", err)
 			}
-			// Look for modules/scenarios in current or parent directories
 			dir := cwd
 			found := false
 			for i := 0; i < 5; i++ {
 				scenariosPath := filepath.Join(dir, "modules", "scenarios")
 				if _, err := os.Stat(scenariosPath); err == nil {
-					cfg.DevMode = true
-					cfg.DevModePath = dir
-					cfg.Initialized = true
+					ws.DevMode = true
+					ws.DevModePath = dir
+					ws.Initialized = true
 					found = true
 					break
 				}
@@ -207,12 +220,22 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("cannot enable dev mode: not in a pathfinding-labs repository\n\nRun this command from within the cloned pathfinding-labs directory")
 			}
 		} else if lowerVal == "false" || lowerVal == "0" || lowerVal == "no" {
-			cfg.DevMode = false
-			cfg.DevModePath = ""
+			ws.DevMode = false
+			ws.DevModePath = ""
 		} else {
 			return fmt.Errorf("invalid value for dev-mode: %s (use true/false)", value)
 		}
+	case "dev-mode-path":
+		// Explicit dev mode path override — useful when creating workspaces with dev mode pre-set
+		scenariosPath := filepath.Join(value, "modules", "scenarios")
+		if _, err := os.Stat(scenariosPath); err != nil {
+			return fmt.Errorf("path does not appear to be a pathfinding-labs repository: %s", value)
+		}
+		ws.DevMode = true
+		ws.DevModePath = value
+		ws.Initialized = true
 	case "include-beta":
+		// include-beta is a global preference, not workspace-scoped
 		lowerVal := strings.ToLower(value)
 		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
 			cfg.IncludeBeta = true
@@ -222,25 +245,23 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("invalid value for include-beta: %s (use true/false)", value)
 		}
 	default:
-		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode, include-beta", key)
+		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode, dev-mode-path, include-beta", key)
 	}
 
-	// Save config (single source of truth)
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Regenerate terraform.tfvars (best-effort: terraform dir may not exist yet
-	// when setting individual keys before dev-mode is configured)
-	if paths, pathErr := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath); pathErr == nil {
+	// Regenerate terraform.tfvars (best-effort)
+	if paths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath); pathErr == nil {
 		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
-			_ = cfg.SyncTFVars(paths.TerraformDir)
+			_ = ws.SyncTFVars(paths.TerraformDir)
 		}
 	}
 
 	fmt.Printf("%s Set %s = %s\n", green("OK"), key, value)
-	if key == "dev-mode" && cfg.DevMode {
-		fmt.Printf("    Terraform will run in: %s\n", cfg.DevModePath)
+	if key == "dev-mode" && ws.DevMode {
+		fmt.Printf("    Terraform will run in: %s\n", ws.DevModePath)
 	}
 	return nil
 }
@@ -251,12 +272,13 @@ func runConfigSync(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	paths, err := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
+	ws := cfg.Active()
+	paths, err := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
 
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := ws.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
@@ -312,7 +334,7 @@ func runScenarioConfigList(scenarioName string) error {
 	cyan := color.New(color.FgCyan).SprintFunc()
 	dim := color.New(color.Faint).SprintFunc()
 
-	vals := cfg.GetAllScenarioConfigs(scenarioName)
+	vals := cfg.Active().GetAllScenarioConfigs(scenarioName)
 	fmt.Println()
 	fmt.Println(cyan(fmt.Sprintf("Config for scenario: %s", scenarioName)))
 	fmt.Println()
@@ -334,7 +356,7 @@ func runScenarioConfigGet(scenarioName, key string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	val, ok := cfg.GetScenarioConfig(scenarioName, key)
+	val, ok := cfg.Active().GetScenarioConfig(scenarioName, key)
 	if !ok {
 		return fmt.Errorf("no value set for %s / %s", scenarioName, key)
 	}
@@ -345,19 +367,23 @@ func runScenarioConfigGet(scenarioName, key string) error {
 func runScenarioConfigSet(scenarioName, key, value string) error {
 	cfg, err := config.Load()
 	if err != nil {
-		cfg = &config.Config{}
+		cfg = &config.Config{
+			ActiveWorkspace: "default",
+			Workspaces:      map[string]*config.WorkspaceConfig{"default": {}},
+		}
 	}
 
-	cfg.SetScenarioConfig(scenarioName, key, value)
+	ws := cfg.Active()
+	ws.SetScenarioConfig(scenarioName, key, value)
 
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
 	// Sync tfvars (best-effort: dir may not exist yet)
-	if paths, pathErr := repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath); pathErr == nil {
+	if paths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath); pathErr == nil {
 		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
-			_ = cfg.SyncTFVars(paths.TerraformDir)
+			_ = ws.SyncTFVars(paths.TerraformDir)
 		}
 	}
 

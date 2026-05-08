@@ -34,7 +34,23 @@ var initCmd = &cobra.Command{
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
-	paths, err := repo.GetPaths()
+	// Determine the active workspace so init targets the right environment.
+	existingCfg, _ := config.Load()
+	activeWorkspace := "default"
+	var existingWS *config.WorkspaceConfig
+	if existingCfg != nil {
+		activeWorkspace = existingCfg.ActiveName()
+		existingWS = existingCfg.Active()
+	}
+
+	// Compute paths for the active workspace (respects dev mode if already set).
+	var devMode bool
+	var devModePath string
+	if existingWS != nil {
+		devMode = existingWS.DevMode
+		devModePath = existingWS.DevModePath
+	}
+	paths, err := repo.GetPathsForWorkspace(activeWorkspace, devMode, devModePath)
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
@@ -44,13 +60,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 	cyan := color.New(color.FgCyan).SprintFunc()
 
 	fmt.Println()
-	fmt.Println(cyan("Initializing Pathfinding Labs..."))
+	if activeWorkspace != "default" {
+		fmt.Printf("%s (workspace: %s)\n", cyan("Initializing Pathfinding Labs..."), activeWorkspace)
+	} else {
+		fmt.Println(cyan("Initializing Pathfinding Labs..."))
+	}
 	fmt.Println()
 
 	// Step 1: Create directories
 	fmt.Printf("[1/5] Creating directories at %s\n", paths.PlabsRoot)
 	if err := paths.EnsureDirectories(); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
+	}
+	// Also ensure workspace-specific repo directory exists for non-default workspaces
+	if activeWorkspace != "default" {
+		if err := os.MkdirAll(filepath.Dir(paths.RepoPath), 0755); err != nil {
+			return fmt.Errorf("failed to create workspace directory: %w", err)
+		}
 	}
 	fmt.Println(green("      Directories created"))
 
@@ -73,12 +99,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf(green("      Terraform available at %s\n"), tfPath)
 
-	// Step 4: Clone repository if not exists
+	// Step 4: Clone repository (skip for dev mode workspaces)
 	fmt.Println("[4/5] Setting up pathfinding-labs repository...")
-	if paths.RepoExists() {
+	if devMode {
+		fmt.Printf(yellow("      Dev mode: using local repository at %s\n"), devModePath)
+		if _, err := os.Stat(filepath.Join(devModePath, "modules", "scenarios")); err != nil {
+			return fmt.Errorf("dev mode path does not appear to be a pathfinding-labs repository: %s", devModePath)
+		}
+	} else if paths.RepoExists() {
 		fmt.Println(yellow("      Repository already exists, skipping clone"))
 
-		// Check for local changes
 		hasChanges, err := repo.HasLocalChanges(paths.RepoPath)
 		if err != nil {
 			fmt.Printf(yellow("      Warning: could not check for local changes: %v\n"), err)
@@ -97,15 +127,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("[5/5] Running setup wizard...")
 
 	wizard := config.NewWizard()
-	cfg, err := wizard.Run()
+	newWS, err := wizard.Run()
 	if err != nil {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}
 
 	// Load CTF flag values. Explicit --flag-file wins. Otherwise fall back to
-	// flags.default.yaml in the terraform directory if it exists. A missing
-	// default file is not an error — it just means the user is running an
-	// older version of the repo or hasn't created one yet.
+	// flags.default.yaml in the terraform directory if it exists.
 	flagFilePath := initFlagFile
 	if flagFilePath == "" {
 		candidate := filepath.Join(paths.TerraformDir, DefaultFlagFileName)
@@ -114,21 +142,37 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if flagFilePath != "" {
-		if err := cfg.LoadFlagsFromFile(flagFilePath); err != nil {
+		if err := newWS.LoadFlagsFromFile(flagFilePath); err != nil {
 			return fmt.Errorf("failed to load flag file: %w", err)
 		}
-		fmt.Printf(green("      Loaded %d CTF flag(s) from %s\n"), len(cfg.Flags), flagFilePath)
+		fmt.Printf(green("      Loaded %d CTF flag(s) from %s\n"), len(newWS.Flags), flagFilePath)
 	} else {
 		fmt.Println(yellow("      No flag file found; scenarios will deploy with default flag{MISSING}"))
 	}
+	newWS.Initialized = true
 
-	// Save config to ~/.plabs/plabs.yaml (single source of truth)
-	if err := cfg.Save(); err != nil {
+	// Merge the wizard result into the top-level config and save.
+	topCfg := existingCfg
+	if topCfg == nil {
+		topCfg = &config.Config{
+			ActiveWorkspace: activeWorkspace,
+			Workspaces:      make(map[string]*config.WorkspaceConfig),
+		}
+	}
+	if topCfg.Workspaces == nil {
+		topCfg.Workspaces = make(map[string]*config.WorkspaceConfig)
+	}
+	// Preserve dev mode settings from the existing workspace config
+	newWS.DevMode = devMode
+	newWS.DevModePath = devModePath
+	topCfg.Workspaces[activeWorkspace] = newWS
+
+	if err := topCfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Generate terraform.tfvars from config
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	// Generate terraform.tfvars from workspace config
+	if err := newWS.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to create terraform.tfvars: %w", err)
 	}
 	fmt.Println(green("      Configuration saved"))
@@ -178,7 +222,7 @@ func init() {
 		// TUI handles its own initialization flow
 		// CommandPath() returns the full path e.g. "plabs config set", so we check
 		// for " config" to exempt "plabs config" and all its subcommands (set, show, sync).
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || strings.Contains(cmd.CommandPath(), " config") {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || strings.Contains(cmd.CommandPath(), " config") || strings.Contains(cmd.CommandPath(), " workspace") {
 			return nil
 		}
 

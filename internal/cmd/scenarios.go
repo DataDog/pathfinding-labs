@@ -98,7 +98,7 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 
 	// Load config to check if single-account mode
 	cfg, _ := config.Load()
-	singleAccountMode := cfg == nil || !cfg.IsMultiAccountMode()
+	singleAccountMode := cfg == nil || !cfg.Active().IsMultiAccountMode()
 
 	// Discover all scenarios
 	discovery := newDiscovery(paths.ScenariosPath())
@@ -110,7 +110,7 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	// Get enabled status from config (source of truth)
 	enabledVars := make(map[string]bool)
 	if cfg != nil {
-		enabledVars = cfg.GetEnabledScenarioVars()
+		enabledVars = cfg.Active().GetEnabledScenarioVars()
 	}
 
 	// Load deployment state for 4-state indicators and --deployed filter

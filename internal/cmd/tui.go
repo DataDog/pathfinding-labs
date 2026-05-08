@@ -79,7 +79,7 @@ func isInitialized() bool {
 	if err != nil {
 		return false
 	}
-	return cfg.Initialized
+	return cfg.Active().Initialized
 }
 
 // runTUIInit runs the initialization process before launching the TUI
@@ -142,18 +142,29 @@ func runTUIInit(paths *repo.Paths) error {
 	fmt.Println("[5/5] Running setup wizard...")
 
 	wizard := config.NewWizard()
-	cfg, err := wizard.Run()
+	newWS, err := wizard.Run()
 	if err != nil {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}
+	newWS.Initialized = true
 
-	// Save config (single source of truth)
-	if err := cfg.Save(); err != nil {
+	topCfg, _ := config.Load()
+	if topCfg == nil {
+		topCfg = &config.Config{
+			ActiveWorkspace: "default",
+			Workspaces:      make(map[string]*config.WorkspaceConfig),
+		}
+	}
+	if topCfg.Workspaces == nil {
+		topCfg.Workspaces = make(map[string]*config.WorkspaceConfig)
+	}
+	topCfg.Workspaces[topCfg.ActiveName()] = newWS
+
+	if err := topCfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Generate terraform.tfvars from config
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := newWS.SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to create terraform.tfvars: %w", err)
 	}
 	fmt.Println(green("      Configuration saved"))

@@ -42,11 +42,11 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	// Create runner early so we can check state for SLR detection.
 	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
-	runner.SetExtraEnv(cfg.GetAttackerTFVarEnv())
+	runner.SetExtraEnv(cfg.Active().GetAttackerTFVarEnv())
 
 	// Detect existing service-linked roles to avoid creation conflicts.
 	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
-	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.AWS.Prod.Profile)
+	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
 	if err != nil {
 		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
 	} else {
@@ -56,7 +56,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 				inState = plabsaws.SLRInState(stateResources)
 			}
 		}
-		cfg.SLRFlags = &config.ServiceLinkedRoleFlags{
+		cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
 			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
@@ -65,7 +65,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Sync tfvars from config before running terraform
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync tfvars: %w", err)
 	}
 
@@ -73,9 +73,9 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	fmt.Println(cyan("Planning Pathfinding Labs deployment..."))
 
 	// Show mode indicator only in dev mode
-	if cfg.DevMode {
+	if cfg.Active().DevMode {
 		fmt.Println()
-		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.DevModePath)
+		fmt.Printf("%s Running in dev mode: %s\n", yellow("!"), cfg.Active().DevModePath)
 	}
 	fmt.Println()
 

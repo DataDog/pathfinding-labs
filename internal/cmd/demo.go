@@ -57,7 +57,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	cfg, _ := config.Load()
 	enabledVars := make(map[string]bool)
 	if cfg != nil {
-		enabledVars = cfg.GetEnabledScenarioVars()
+		enabledVars = cfg.Active().GetEnabledScenarioVars()
 	}
 
 	// Validate AWS credentials before running demo (skip for --list)

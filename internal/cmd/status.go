@@ -51,9 +51,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// Show dev mode warning and paths only when in dev mode
-	if cfg != nil && cfg.DevMode {
+	if cfg != nil && cfg.Active().DevMode {
 		fmt.Printf("  %s %s\n", yellow("!"), yellow("DEV MODE - Using local repository"))
-		fmt.Printf("  %s %s\n", dim("Repository:"), cfg.DevModePath)
+		fmt.Printf("  %s %s\n", dim("Repository:"), cfg.Active().DevModePath)
 		fmt.Println()
 	}
 
@@ -92,16 +92,16 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if cfg != nil {
-		printEnvStatus("prod", cfg.AWS.Prod.Profile)
-		printEnvStatus("dev", cfg.AWS.Dev.Profile)
-		printEnvStatus("ops", cfg.AWS.Ops.Profile)
+		printEnvStatus("prod", cfg.Active().AWS.Prod.Profile)
+		printEnvStatus("dev", cfg.Active().AWS.Dev.Profile)
+		printEnvStatus("ops", cfg.Active().AWS.Ops.Profile)
 	} else {
 		fmt.Printf("  %s\n", dim("No configuration found. Run 'plabs init' to configure."))
 	}
 
 	// Show account mode
 	fmt.Println()
-	if cfg != nil && cfg.IsMultiAccountMode() {
+	if cfg != nil && cfg.Active().IsMultiAccountMode() {
 		fmt.Printf("  Accounts: %s (cross-account scenarios available)\n", cyan("multi-account"))
 	} else {
 		fmt.Printf("  Accounts: %s (cross-account scenarios unavailable)\n", yellow("single-account"))
@@ -120,7 +120,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	// Get enabled status from config (single source of truth)
 	enabledVars := make(map[string]bool)
 	if cfg != nil {
-		enabledVars = cfg.GetEnabledScenarioVars()
+		enabledVars = cfg.Active().GetEnabledScenarioVars()
 	}
 
 	fmt.Println()

@@ -53,8 +53,8 @@ func NewWizard() *Wizard {
 	return &Wizard{}
 }
 
-// Run executes the setup wizard and returns the configuration
-func (w *Wizard) Run() (*Config, error) {
+// Run executes the setup wizard and returns the workspace configuration
+func (w *Wizard) Run() (*WorkspaceConfig, error) {
 	// Print header
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -99,7 +99,7 @@ func (w *Wizard) Run() (*Config, error) {
 		profileOptions[i] = huh.NewOption(p, p)
 	}
 
-	cfg := &Config{}
+	ws := &WorkspaceConfig{}
 	var numAccounts string
 
 	// Ask how many accounts
@@ -147,14 +147,14 @@ func (w *Wizard) Run() (*Config, error) {
 	if err := prodForm.Run(); err != nil {
 		return nil, err
 	}
-	cfg.AWS.Prod.Profile = prodProfile
+	ws.AWS.Prod.Profile = prodProfile
 
 	// Ask for prod region
 	prodRegion, err := askForRegion("prod", prodProfile)
 	if err != nil {
 		return nil, err
 	}
-	cfg.AWS.Prod.Region = prodRegion
+	ws.AWS.Prod.Region = prodRegion
 
 	// Configure dev account if needed
 	if numAccounts == "2" || numAccounts == "3" {
@@ -179,14 +179,14 @@ func (w *Wizard) Run() (*Config, error) {
 		if err := devForm.Run(); err != nil {
 			return nil, err
 		}
-		cfg.AWS.Dev.Profile = devProfile
+		ws.AWS.Dev.Profile = devProfile
 
 		// Ask for dev region
 		devRegion, err := askForRegion("dev", devProfile)
 		if err != nil {
 			return nil, err
 		}
-		cfg.AWS.Dev.Region = devRegion
+		ws.AWS.Dev.Region = devRegion
 	}
 
 	// Configure ops account if needed
@@ -212,14 +212,14 @@ func (w *Wizard) Run() (*Config, error) {
 		if err := opsForm.Run(); err != nil {
 			return nil, err
 		}
-		cfg.AWS.Ops.Profile = opsProfile
+		ws.AWS.Ops.Profile = opsProfile
 
 		// Ask for ops region
 		opsRegion, err := askForRegion("ops", opsProfile)
 		if err != nil {
 			return nil, err
 		}
-		cfg.AWS.Ops.Region = opsRegion
+		ws.AWS.Ops.Region = opsRegion
 	}
 
 	// Attacker account section (optional, independent of victim account count)
@@ -289,15 +289,15 @@ func (w *Wizard) Run() (*Config, error) {
 			return nil, err
 		}
 
-		cfg.AWS.Attacker.Region = attackerRegion
-		cfg.AWS.Attacker.Mode = attackerAuthMode
+		ws.AWS.Attacker.Region = attackerRegion
+		ws.AWS.Attacker.Mode = attackerAuthMode
 
 		if attackerAuthMode == "iam-user" {
 			// Store profile as setup profile; it will be used for bootstrap and destroy
-			cfg.AWS.Attacker.SetupProfile = attackerProfile
-			cfg.AWS.Attacker.Profile = attackerProfile // temporary, until bootstrap replaces with IAM creds
+			ws.AWS.Attacker.SetupProfile = attackerProfile
+			ws.AWS.Attacker.Profile = attackerProfile // temporary, until bootstrap replaces with IAM creds
 		} else {
-			cfg.AWS.Attacker.Profile = attackerProfile
+			ws.AWS.Attacker.Profile = attackerProfile
 		}
 	}
 
@@ -351,13 +351,13 @@ func (w *Wizard) Run() (*Config, error) {
 			return nil, err
 		}
 
-		cfg.Budget.Enabled = true
-		cfg.Budget.Email = budgetEmail
+		ws.Budget.Enabled = true
+		ws.Budget.Email = budgetEmail
 		// validateBudgetLimit ensures Atoi succeeds and limit > 0
-		cfg.Budget.LimitUSD, _ = strconv.Atoi(strings.TrimSpace(budgetLimit))
+		ws.Budget.LimitUSD, _ = strconv.Atoi(strings.TrimSpace(budgetLimit))
 	}
 
-	cfg.Initialized = true
+	ws.Initialized = true
 
 	// Summary
 	fmt.Println()
@@ -370,33 +370,33 @@ func (w *Wizard) Run() (*Config, error) {
 	labelStyle := lipgloss.NewStyle().Width(25).Foreground(lipgloss.Color("241"))
 	valueStyle := lipgloss.NewStyle().Bold(true)
 
-	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(cfg.AWS.Prod.Profile))
-	fmt.Printf("%s %s\n", labelStyle.Render("Prod region:"), valueStyle.Render(cfg.AWS.Prod.Region))
-	if cfg.AWS.Dev.Profile != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(cfg.AWS.Dev.Profile))
-		fmt.Printf("%s %s\n", labelStyle.Render("Dev region:"), valueStyle.Render(cfg.AWS.Dev.Region))
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod profile:"), valueStyle.Render(ws.AWS.Prod.Profile))
+	fmt.Printf("%s %s\n", labelStyle.Render("Prod region:"), valueStyle.Render(ws.AWS.Prod.Region))
+	if ws.AWS.Dev.Profile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev profile:"), valueStyle.Render(ws.AWS.Dev.Profile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Dev region:"), valueStyle.Render(ws.AWS.Dev.Region))
 	}
-	if cfg.AWS.Ops.Profile != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(cfg.AWS.Ops.Profile))
-		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(cfg.AWS.Ops.Region))
+	if ws.AWS.Ops.Profile != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops profile:"), valueStyle.Render(ws.AWS.Ops.Profile))
+		fmt.Printf("%s %s\n", labelStyle.Render("Ops region:"), valueStyle.Render(ws.AWS.Ops.Region))
 	}
-	if cfg.HasAttackerAccount() {
-		attackerProfile := cfg.AWS.Attacker.Profile
+	if ws.HasAttackerAccount() {
+		attackerProfile := ws.AWS.Attacker.Profile
 		if attackerProfile == "" {
-			attackerProfile = cfg.AWS.Attacker.SetupProfile
+			attackerProfile = ws.AWS.Attacker.SetupProfile
 		}
 		fmt.Printf("%s %s\n", labelStyle.Render("Attacker profile:"), valueStyle.Render(attackerProfile))
-		fmt.Printf("%s %s\n", labelStyle.Render("Attacker region:"), valueStyle.Render(cfg.AWS.Attacker.Region))
-		if cfg.AWS.Attacker.Mode == "iam-user" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Attacker region:"), valueStyle.Render(ws.AWS.Attacker.Region))
+		if ws.AWS.Attacker.Mode == "iam-user" {
 			fmt.Printf("%s %s\n", labelStyle.Render("Attacker auth mode:"), valueStyle.Render("IAM admin user (bootstrapped on first deploy)"))
 		} else {
 			fmt.Printf("%s %s\n", labelStyle.Render("Attacker auth mode:"), valueStyle.Render("AWS profile"))
 		}
 	}
-	if cfg.Budget.Enabled {
+	if ws.Budget.Enabled {
 		fmt.Printf("%s %s\n", labelStyle.Render("Budget alerts:"), valueStyle.Render("Enabled"))
-		fmt.Printf("%s %s\n", labelStyle.Render("Alert email:"), valueStyle.Render(cfg.Budget.Email))
-		fmt.Printf("%s %s\n", labelStyle.Render("Budget limit:"), valueStyle.Render(fmt.Sprintf("$%d/month", cfg.Budget.LimitUSD)))
+		fmt.Printf("%s %s\n", labelStyle.Render("Alert email:"), valueStyle.Render(ws.Budget.Email))
+		fmt.Printf("%s %s\n", labelStyle.Render("Budget limit:"), valueStyle.Render(fmt.Sprintf("$%d/month", ws.Budget.LimitUSD)))
 	}
 
 	// Mode description
@@ -411,7 +411,7 @@ func (w *Wizard) Run() (*Config, error) {
 	}
 	fmt.Println()
 
-	return cfg, nil
+	return ws, nil
 }
 
 // RunForEnvironment runs the wizard for a single environment

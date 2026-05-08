@@ -122,42 +122,42 @@ func (e *EnvironmentPane) rebuildEnvironments() {
 		Name:      "prod",
 		Label:     "Prod",
 		AccountID: getAccountID(e.derivedProdAccountID, ""),
-		Profile:   e.config.AWS.Prod.Profile,
+		Profile:   e.config.Active().AWS.Prod.Profile,
 		Enabled:   e.prodEnabled,
 		Deployed:  e.prodDeployed,
 	})
 
 	// Dev (if configured)
-	if e.config.AWS.Dev.Profile != "" {
+	if e.config.Active().AWS.Dev.Profile != "" {
 		e.environments = append(e.environments, Environment{
 			Name:      "dev",
 			Label:     "Dev",
 			AccountID: getAccountID(e.derivedDevAccountID, ""),
-			Profile:   e.config.AWS.Dev.Profile,
+			Profile:   e.config.Active().AWS.Dev.Profile,
 			Enabled:   e.devEnabled,
 			Deployed:  e.devDeployed,
 		})
 	}
 
 	// Ops (if configured)
-	if e.config.AWS.Ops.Profile != "" {
+	if e.config.Active().AWS.Ops.Profile != "" {
 		e.environments = append(e.environments, Environment{
 			Name:      "ops",
 			Label:     "Ops",
 			AccountID: getAccountID(e.derivedOpsAccountID, ""),
-			Profile:   e.config.AWS.Ops.Profile,
+			Profile:   e.config.Active().AWS.Ops.Profile,
 			Enabled:   e.opsEnabled,
 			Deployed:  e.opsDeployed,
 		})
 	}
 
 	// Attacker (if configured)
-	if e.config.AWS.Attacker.Profile != "" {
+	if e.config.Active().AWS.Attacker.Profile != "" {
 		e.environments = append(e.environments, Environment{
 			Name:      "attacker",
 			Label:     "Attacker",
 			AccountID: getAccountID(e.derivedAttackerAccountID, ""),
-			Profile:   e.config.AWS.Attacker.Profile,
+			Profile:   e.config.Active().AWS.Attacker.Profile,
 			Enabled:   e.attackerEnabled,
 			Deployed:  e.attackerDeployed,
 		})
@@ -276,7 +276,7 @@ func (e *EnvironmentPane) View() string {
 
 	// Determine mode text based on available space
 	var modeText string
-	if e.config != nil && e.config.IsMultiAccountMode() {
+	if e.config != nil && e.config.Active().IsMultiAccountMode() {
 		fullText := " (Multi-account mode)"
 		shortText := " (multi)"
 		if len(baseTitle)+len(fullText) <= availableWidth {

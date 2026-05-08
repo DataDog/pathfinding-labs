@@ -251,7 +251,7 @@ func (m *Model) loadScenarios() tea.Msg {
 	}
 
 	// Get enabled status from config (single source of truth)
-	enabled := cfg.GetEnabledScenarioVars()
+	enabled := cfg.Active().GetEnabledScenarioVars()
 
 	// Get deployed status
 	deployed := make(map[string]bool)
@@ -371,6 +371,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Update info pane
 		m.info.SetConfig(cfg)
+		m.info.SetWorkspace(cfg.ActiveName(), cfg.WorkspaceCount())
 		m.info.SetTotalScenarios(len(msg.scenarios))
 		if m.tfRunner != nil {
 			m.info.SetTerraformInitialized(m.tfRunner.IsInitialized())
@@ -525,9 +526,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Apply budget changes
 		if msg.result != nil {
-			m.config.Budget.Enabled = msg.result.Enabled
-			m.config.Budget.Email = msg.result.Email
-			m.config.Budget.LimitUSD = msg.result.LimitUSD
+			m.config.Active().Budget.Enabled = msg.result.Enabled
+			m.config.Active().Budget.Email = msg.result.Email
+			m.config.Active().Budget.LimitUSD = msg.result.LimitUSD
 
 			// Save config
 			if err := m.config.Save(); err != nil {
@@ -536,7 +537,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Update tfvars
-			if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+			if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 				m.overlay.Show(OverlayError, "Budget Configuration", fmt.Sprintf("Failed to update tfvars: %v", err))
 				return m, nil
 			}
@@ -607,7 +608,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "s", "S", "1":
 			// Validate scenarios exist
-			if len(m.config.Scenarios.Enabled) == 0 {
+			if len(m.config.Active().Scenarios.Enabled) == 0 {
 				m.choosingDestroyType = false
 				m.overlay.Show(OverlayError, "Destroy Scenarios", "No scenarios are currently enabled.")
 				return m, nil
@@ -1088,7 +1089,7 @@ func (m *Model) updateDetails() {
 			}
 		}
 		if m.config != nil {
-			m.details.SetConfigValues(m.config.GetAllScenarioConfigs(selected.Scenario.Name))
+			m.details.SetConfigValues(m.config.Active().GetAllScenarioConfigs(selected.Scenario.Name))
 		} else {
 			m.details.SetConfigValues(nil)
 		}
@@ -1126,7 +1127,7 @@ func (m *Model) copyCredentials() tea.Cmd {
 	creds := m.details.Creds()
 	region := ""
 	if m.config != nil {
-		region = m.config.AWS.Prod.Region
+		region = m.config.Active().AWS.Prod.Region
 	}
 
 	var lines []string
@@ -1167,8 +1168,8 @@ func (m *Model) copyCredentialsProfile() tea.Cmd {
 	if creds.SessionToken != "" {
 		lines = append(lines, "aws_session_token = "+creds.SessionToken)
 	}
-	if m.config != nil && m.config.AWS.Prod.Region != "" {
-		lines = append(lines, "region = "+m.config.AWS.Prod.Region)
+	if m.config != nil && m.config.Active().AWS.Prod.Region != "" {
+		lines = append(lines, "region = "+m.config.Active().AWS.Prod.Region)
 	}
 
 	if err := clipboard.WriteAll(strings.Join(lines, "\n")); err != nil {
@@ -1194,8 +1195,8 @@ func (m *Model) spawnShell() (tea.Model, tea.Cmd) {
 		"AWS_ACCESS_KEY_ID="+creds.AccessKeyID,
 		"AWS_SECRET_ACCESS_KEY="+creds.SecretAccessKey,
 	)
-	if m.config != nil && m.config.AWS.Prod.Region != "" {
-		cmd.Env = append(cmd.Env, "AWS_DEFAULT_REGION="+m.config.AWS.Prod.Region)
+	if m.config != nil && m.config.Active().AWS.Prod.Region != "" {
+		cmd.Env = append(cmd.Env, "AWS_DEFAULT_REGION="+m.config.Active().AWS.Prod.Region)
 	}
 	if creds.SessionToken != "" {
 		cmd.Env = append(cmd.Env, "AWS_SESSION_TOKEN="+creds.SessionToken)
@@ -1213,7 +1214,7 @@ func (m *Model) toggleSelected() tea.Cmd {
 		var missingKeys []string
 		for _, cfgKey := range current.Scenario.Config {
 			if cfgKey.Required {
-				val, _ := m.config.GetScenarioConfig(current.Scenario.Name, cfgKey.Key)
+				val, _ := m.config.Active().GetScenarioConfig(current.Scenario.Name, cfgKey.Key)
 				if val == "" {
 					missingKeys = append(missingKeys, cfgKey.Key)
 				}
@@ -1240,9 +1241,9 @@ func (m *Model) toggleSelected() tea.Cmd {
 
 	// Update config (single source of truth)
 	if selected.Enabled {
-		m.config.EnableScenario(scenario.Terraform.VariableName)
+		m.config.Active().EnableScenario(scenario.Terraform.VariableName)
 	} else {
-		m.config.DisableScenario(scenario.Terraform.VariableName)
+		m.config.Active().DisableScenario(scenario.Terraform.VariableName)
 	}
 
 	// Save config and sync tfvars
@@ -1251,7 +1252,7 @@ func (m *Model) toggleSelected() tea.Cmd {
 		return nil
 	}
 
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 	}
 
@@ -1318,21 +1319,21 @@ func (m *Model) executeDeploy() tea.Cmd {
 		// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
 		// If Terraform already owns the SLR in state, keep create=true — flipping it to
 		// false would make count=0 and cause Terraform to destroy the SLR.
-		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.AWS.Prod.Profile); err == nil {
+		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
 			inState := &aws.ServiceLinkedRoleStatus{}
 			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
 					inState = aws.SLRInState(stateResources)
 				}
 			}
-			m.config.SLRFlags = &config.ServiceLinkedRoleFlags{
+			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
 				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
 			}
 		}
-		_ = m.config.SyncTFVars(m.paths.TerraformDir)
+		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
 	}
 	m.overlay.ShowRunning(OverlayTerraform, "Apply")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", m.paths.TerraformDir))
@@ -1352,21 +1353,21 @@ func (m *Model) executePlan() tea.Cmd {
 		m.config = freshCfg
 	}
 	if m.config != nil {
-		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.AWS.Prod.Profile); err == nil {
+		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
 			inState := &aws.ServiceLinkedRoleStatus{}
 			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
 					inState = aws.SLRInState(stateResources)
 				}
 			}
-			m.config.SLRFlags = &config.ServiceLinkedRoleFlags{
+			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
 				CreateMWAA:        !slrStatus.MWAAExists || inState.MWAAExists,
 			}
 		}
-		_ = m.config.SyncTFVars(m.paths.TerraformDir)
+		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
 	}
 	m.overlay.ShowRunning(OverlayTerraform, "Plan")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && terraform init && terraform plan", m.paths.TerraformDir))
@@ -1528,7 +1529,7 @@ func (m *Model) executeCleanup(scenarioID string, skipPause bool) tea.Cmd {
 
 func (m *Model) showDestroyTypeChoice() tea.Cmd {
 	// Check if there's anything to destroy
-	hasEnabledScenarios := len(m.config.Scenarios.Enabled) > 0
+	hasEnabledScenarios := len(m.config.Active().Scenarios.Enabled) > 0
 	hasDeployedResources := false
 	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		resources, err := m.tfRunner.StateList()
@@ -1547,14 +1548,14 @@ func (m *Model) showDestroyTypeChoice() tea.Cmd {
 
 func (m *Model) executeDestroyScenarios() tea.Cmd {
 	// Disable all enabled scenarios in config
-	m.config.Scenarios.Enabled = nil
+	m.config.Active().Scenarios.Enabled = nil
 
 	// Save config and sync tfvars
 	if err := m.config.Save(); err != nil {
 		m.err = err
 		return nil
 	}
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 		return nil
 	}
@@ -1590,7 +1591,7 @@ func (m *Model) executeEnableAll() tea.Cmd {
 		return nil
 	}
 
-	singleAccountMode := m.config.IsSingleAccountMode()
+	singleAccountMode := m.config.Active().IsSingleAccountMode()
 	enabledCount := 0
 	skippedCrossAccount := 0
 	skippedMissingConfig := 0
@@ -1606,7 +1607,7 @@ func (m *Model) executeEnableAll() tea.Cmd {
 			missingRequired := false
 			for _, cfgKey := range s.Config {
 				if cfgKey.Required {
-					val, _ := m.config.GetScenarioConfig(s.Name, cfgKey.Key)
+					val, _ := m.config.Active().GetScenarioConfig(s.Name, cfgKey.Key)
 					if val == "" {
 						missingRequired = true
 						break
@@ -1618,7 +1619,7 @@ func (m *Model) executeEnableAll() tea.Cmd {
 				continue
 			}
 		}
-		m.config.EnableScenario(s.Terraform.VariableName)
+		m.config.Active().EnableScenario(s.Terraform.VariableName)
 		enabledCount++
 	}
 
@@ -1627,14 +1628,14 @@ func (m *Model) executeEnableAll() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 		return nil
 	}
 
 	// Refresh the scenarios pane
 	items := m.scenariosPane.GetItems()
-	enabledVars := m.config.GetEnabledScenarioVars()
+	enabledVars := m.config.Active().GetEnabledScenarioVars()
 	for i := range items {
 		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
 	}
@@ -1661,7 +1662,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 		return nil
 	}
 
-	singleAccountMode := m.config.IsSingleAccountMode()
+	singleAccountMode := m.config.Active().IsSingleAccountMode()
 	enabledCount := 0
 	skippedCrossAccount := 0
 	skippedMissingConfigPattern := 0
@@ -1684,7 +1685,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 			missingRequired := false
 			for _, cfgKey := range s.Config {
 				if cfgKey.Required {
-					val, _ := m.config.GetScenarioConfig(s.Name, cfgKey.Key)
+					val, _ := m.config.Active().GetScenarioConfig(s.Name, cfgKey.Key)
 					if val == "" {
 						missingRequired = true
 						break
@@ -1697,7 +1698,7 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 			}
 		}
 
-		m.config.EnableScenario(s.Terraform.VariableName)
+		m.config.Active().EnableScenario(s.Terraform.VariableName)
 		enabledCount++
 		enabledNames = append(enabledNames, s.UniqueID())
 	}
@@ -1712,14 +1713,14 @@ func (m *Model) executeEnablePattern(pattern string) tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 		return nil
 	}
 
 	// Refresh the scenarios pane
 	items := m.scenariosPane.GetItems()
-	enabledVars := m.config.GetEnabledScenarioVars()
+	enabledVars := m.config.Active().GetEnabledScenarioVars()
 	for i := range items {
 		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
 	}
@@ -1763,8 +1764,8 @@ func (m *Model) executeDisableAll() tea.Cmd {
 
 	disabledCount := 0
 	for _, s := range m.allScenarios {
-		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
-			m.config.DisableScenario(s.Terraform.VariableName)
+		if m.config.Active().IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.Active().DisableScenario(s.Terraform.VariableName)
 			disabledCount++
 		}
 	}
@@ -1774,14 +1775,14 @@ func (m *Model) executeDisableAll() tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 		return nil
 	}
 
 	// Refresh the scenarios pane
 	items := m.scenariosPane.GetItems()
-	enabledVars := m.config.GetEnabledScenarioVars()
+	enabledVars := m.config.Active().GetEnabledScenarioVars()
 	for i := range items {
 		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
 	}
@@ -1807,8 +1808,8 @@ func (m *Model) executeDisablePattern(pattern string) tea.Cmd {
 		if !m.matchesPattern(s.UniqueID(), pattern) && !m.matchesPattern(s.ID(), pattern) {
 			continue
 		}
-		if m.config.IsScenarioEnabled(s.Terraform.VariableName) {
-			m.config.DisableScenario(s.Terraform.VariableName)
+		if m.config.Active().IsScenarioEnabled(s.Terraform.VariableName) {
+			m.config.Active().DisableScenario(s.Terraform.VariableName)
 			disabledCount++
 			disabledNames = append(disabledNames, s.UniqueID())
 		}
@@ -1824,14 +1825,14 @@ func (m *Model) executeDisablePattern(pattern string) tea.Cmd {
 		m.err = err
 		return nil
 	}
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		m.err = err
 		return nil
 	}
 
 	// Refresh the scenarios pane
 	items := m.scenariosPane.GetItems()
-	enabledVars := m.config.GetEnabledScenarioVars()
+	enabledVars := m.config.Active().GetEnabledScenarioVars()
 	for i := range items {
 		items[i].Enabled = enabledVars[items[i].Scenario.Terraform.VariableName]
 	}
@@ -1885,23 +1886,23 @@ func (m *Model) renderSettingsMenu() string {
 	sb.WriteString("----------------------------------------\n\n")
 
 	// Prod
-	sb.WriteString(fmt.Sprintf("  [1] prod:      %s", m.valueOrNotSet(m.config.AWS.Prod.Profile)))
+	sb.WriteString(fmt.Sprintf("  [1] prod:      %s", m.valueOrNotSet(m.config.Active().AWS.Prod.Profile)))
 	sb.WriteString(m.envStatusSuffix(prodEnabled, prodDeployed))
 	sb.WriteString("\n")
 
 	// Dev
-	sb.WriteString(fmt.Sprintf("  [2] dev:       %s", m.valueOrNotSet(m.config.AWS.Dev.Profile)))
+	sb.WriteString(fmt.Sprintf("  [2] dev:       %s", m.valueOrNotSet(m.config.Active().AWS.Dev.Profile)))
 	sb.WriteString(m.envStatusSuffix(devEnabled, devDeployed))
 	sb.WriteString("\n")
 
 	// Ops
-	sb.WriteString(fmt.Sprintf("  [3] ops:       %s", m.valueOrNotSet(m.config.AWS.Ops.Profile)))
+	sb.WriteString(fmt.Sprintf("  [3] ops:       %s", m.valueOrNotSet(m.config.Active().AWS.Ops.Profile)))
 	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
 	sb.WriteString("\n")
 
 	// Attacker
-	sb.WriteString(fmt.Sprintf("  [4] attacker:  %s", m.valueOrNotSet(m.config.AWS.Attacker.Profile)))
-	if m.config.AWS.Attacker.Profile == "" {
+	sb.WriteString(fmt.Sprintf("  [4] attacker:  %s", m.valueOrNotSet(m.config.Active().AWS.Attacker.Profile)))
+	if m.config.Active().AWS.Attacker.Profile == "" {
 		sb.WriteString("  (optional, for adversary-side infrastructure)")
 	} else {
 		sb.WriteString(m.envStatusSuffix(attackerEnabled, attackerDeployed))
@@ -1912,10 +1913,10 @@ func (m *Model) renderSettingsMenu() string {
 	sb.WriteString("\n\nBudget Alerts (Cost Protection)\n")
 	sb.WriteString("----------------------------------------\n\n")
 
-	if m.config.Budget.Enabled {
+	if m.config.Active().Budget.Enabled {
 		sb.WriteString("  [b] Status:  Enabled\n")
-		sb.WriteString(fmt.Sprintf("      Email:   %s\n", m.config.Budget.Email))
-		sb.WriteString(fmt.Sprintf("      Limit:   $%d/month\n", m.config.Budget.LimitUSD))
+		sb.WriteString(fmt.Sprintf("      Email:   %s\n", m.config.Active().Budget.Email))
+		sb.WriteString(fmt.Sprintf("      Limit:   $%d/month\n", m.config.Active().Budget.LimitUSD))
 	} else {
 		sb.WriteString("  [b] Status:  Disabled\n")
 		sb.WriteString("      (alerts at 50%, 80%, 100% spend)\n")
@@ -2001,13 +2002,13 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 	var currentProfile string
 	switch envName {
 	case "prod":
-		currentProfile = m.config.AWS.Prod.Profile
+		currentProfile = m.config.Active().AWS.Prod.Profile
 	case "dev":
-		currentProfile = m.config.AWS.Dev.Profile
+		currentProfile = m.config.Active().AWS.Dev.Profile
 	case "ops":
-		currentProfile = m.config.AWS.Ops.Profile
+		currentProfile = m.config.Active().AWS.Ops.Profile
 	case "attacker":
-		currentProfile = m.config.AWS.Attacker.Profile
+		currentProfile = m.config.Active().AWS.Attacker.Profile
 	}
 
 	resultChan := make(chan profileWizardMsg, 1)
@@ -2057,7 +2058,7 @@ func (b *budgetWizardCmd) SetStderr(wr io.Writer) {}
 func (m *Model) runBudgetWizard() tea.Cmd {
 	resultChan := make(chan budgetWizardMsg, 1)
 	cmd := &budgetWizardCmd{
-		currentBudget: m.config.Budget,
+		currentBudget: m.config.Active().Budget,
 		result:        resultChan,
 	}
 
@@ -2088,16 +2089,16 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 
 	switch envName {
 	case "prod":
-		currentProfile = m.config.AWS.Prod.Profile
+		currentProfile = m.config.Active().AWS.Prod.Profile
 		isEnabled = prodEnabled
 	case "dev":
-		currentProfile = m.config.AWS.Dev.Profile
+		currentProfile = m.config.Active().AWS.Dev.Profile
 		isEnabled = devEnabled
 	case "ops":
-		currentProfile = m.config.AWS.Ops.Profile
+		currentProfile = m.config.Active().AWS.Ops.Profile
 		isEnabled = opsEnabled
 	case "attacker":
-		currentProfile = m.config.AWS.Attacker.Profile
+		currentProfile = m.config.Active().AWS.Attacker.Profile
 		isEnabled = attackerEnabled
 	}
 
@@ -2123,13 +2124,13 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	// All checks passed - update the config
 	switch envName {
 	case "prod":
-		m.config.AWS.Prod.Profile = newProfile
+		m.config.Active().AWS.Prod.Profile = newProfile
 	case "dev":
-		m.config.AWS.Dev.Profile = newProfile
+		m.config.Active().AWS.Dev.Profile = newProfile
 	case "ops":
-		m.config.AWS.Ops.Profile = newProfile
+		m.config.Active().AWS.Ops.Profile = newProfile
 	case "attacker":
-		m.config.AWS.Attacker.Profile = newProfile
+		m.config.Active().AWS.Attacker.Profile = newProfile
 	}
 
 	// Save config (single source of truth)
@@ -2138,7 +2139,7 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	}
 
 	// Regenerate tfvars
-	if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+	if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync tfvars: %v", err)
 	}
 
@@ -2162,7 +2163,7 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 			return credentialsValidatedMsg{valid: false, err: fmt.Errorf("configuration not loaded")}
 		}
 
-		profile := m.config.AWS.Prod.Profile
+		profile := m.config.Active().AWS.Prod.Profile
 		if profile == "" {
 			return credentialsValidatedMsg{valid: false, err: fmt.Errorf("no AWS profile configured")}
 		}
@@ -2178,7 +2179,7 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 func (m *Model) buildTerraformEnv() []string {
 	env := terraform.CleanEnv()
 	if m.config != nil {
-		env = append(env, m.config.GetAttackerTFVarEnv()...)
+		env = append(env, m.config.Active().GetAttackerTFVarEnv()...)
 	}
 	return env
 }
@@ -2277,7 +2278,7 @@ func (m *Model) updateLayout() {
 
 	// Environment pane height (fixed, compact)
 	envHeight := 8
-	if m.config != nil && m.config.IsMultiAccountMode() {
+	if m.config != nil && m.config.Active().IsMultiAccountMode() {
 		envHeight = 12
 	}
 
@@ -2639,7 +2640,7 @@ func (m *Model) getMissingRequiredConfigs() []string {
 			if !cfgKey.Required {
 				continue
 			}
-			val, _ := m.config.GetScenarioConfig(item.Scenario.Name, cfgKey.Key)
+			val, _ := m.config.Active().GetScenarioConfig(item.Scenario.Name, cfgKey.Key)
 			if val == "" {
 				missing = append(missing, fmt.Sprintf("%s: %q", item.Scenario.Name, cfgKey.Key))
 			}
@@ -2662,7 +2663,7 @@ func (m *Model) startEditScenarioConfig(s *scenarios.Scenario) (tea.Model, tea.C
 	// Pre-fill with the current value so the user can see and edit it
 	currentVal := ""
 	if m.config != nil {
-		currentVal, _ = m.config.GetScenarioConfig(s.Name, s.Config[0].Key)
+		currentVal, _ = m.config.Active().GetScenarioConfig(s.Name, s.Config[0].Key)
 	}
 	m.scenarioConfigInput.SetValue(currentVal)
 	m.scenarioConfigInput.CursorEnd()
@@ -2684,14 +2685,14 @@ func (m *Model) saveScenarioConfigValue() (tea.Model, tea.Cmd) {
 	value := m.scenarioConfigInput.Value()
 
 	if m.config != nil {
-		m.config.SetScenarioConfig(m.editingConfigScenarioName, cfgKey, value)
+		m.config.Active().SetScenarioConfig(m.editingConfigScenarioName, cfgKey, value)
 		if err := m.config.Save(); err != nil {
 			m.editingScenarioConfig = false
 			m.scenarioConfigInput.Blur()
 			m.overlay.Show(OverlayError, "Config Error", fmt.Sprintf("Failed to save config: %v", err))
 			return m, nil
 		}
-		if err := m.config.SyncTFVars(m.paths.TerraformDir); err != nil {
+		if err := m.config.Active().SyncTFVars(m.paths.TerraformDir); err != nil {
 			m.editingScenarioConfig = false
 			m.scenarioConfigInput.Blur()
 			m.overlay.Show(OverlayError, "Config Error", fmt.Sprintf("Failed to sync tfvars: %v", err))
@@ -2713,7 +2714,7 @@ func (m *Model) saveScenarioConfigValue() (tea.Model, tea.Cmd) {
 	nextKey := s.Config[m.editingConfigKeyIndex].Key
 	nextVal := ""
 	if m.config != nil {
-		nextVal, _ = m.config.GetScenarioConfig(m.editingConfigScenarioName, nextKey)
+		nextVal, _ = m.config.Active().GetScenarioConfig(m.editingConfigScenarioName, nextKey)
 	}
 	m.scenarioConfigInput.SetValue(nextVal)
 	m.scenarioConfigInput.CursorEnd()

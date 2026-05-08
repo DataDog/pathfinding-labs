@@ -98,20 +98,20 @@ func runFlagsImport(cmd *cobra.Command, args []string) error {
 	}
 
 	path := args[0]
-	prevCount := len(cfg.Flags)
-	if err := cfg.LoadFlagsFromFile(path); err != nil {
+	prevCount := len(cfg.Active().Flags)
+	if err := cfg.Active().LoadFlagsFromFile(path); err != nil {
 		return err
 	}
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
 	green := color.New(color.FgGreen).SprintFunc()
 	fmt.Println()
-	fmt.Printf("%s Imported %d flag(s) from %s (replaced %d previous)\n", green("OK"), len(cfg.Flags), path, prevCount)
+	fmt.Printf("%s Imported %d flag(s) from %s (replaced %d previous)\n", green("OK"), len(cfg.Active().Flags), path, prevCount)
 	fmt.Println("Run 'plabs apply' to update the deployed flag resources.")
 	return nil
 }
@@ -121,20 +121,20 @@ func runFlagsList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-	if len(cfg.Flags) == 0 {
+	if len(cfg.Active().Flags) == 0 {
 		fmt.Println("No flags configured. Run 'plabs flags import <file>' or 'plabs flags set <id> <value>'.")
 		return nil
 	}
 
-	ids := make([]string, 0, len(cfg.Flags))
-	for id := range cfg.Flags {
+	ids := make([]string, 0, len(cfg.Active().Flags))
+	for id := range cfg.Active().Flags {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 
-	fmt.Printf("%d flag(s) configured:\n\n", len(cfg.Flags))
+	fmt.Printf("%d flag(s) configured:\n\n", len(cfg.Active().Flags))
 	for _, id := range ids {
-		value := cfg.Flags[id]
+		value := cfg.Active().Flags[id]
 		if !flagsListReveal {
 			value = truncateFlag(value)
 		}
@@ -157,11 +157,11 @@ func runFlagsSet(cmd *cobra.Command, args []string) error {
 	}
 
 	id, value := args[0], args[1]
-	cfg.SetFlag(id, value)
+	cfg.Active().SetFlag(id, value)
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
@@ -176,11 +176,11 @@ func runFlagsExport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-	if len(cfg.Flags) == 0 {
+	if len(cfg.Active().Flags) == 0 {
 		return fmt.Errorf("no flags configured to export")
 	}
 
-	out := config.FlagSetFile{Flags: cfg.Flags}
+	out := config.FlagSetFile{Flags: cfg.Active().Flags}
 	data, err := yaml.Marshal(out)
 	if err != nil {
 		return fmt.Errorf("failed to marshal flag set: %w", err)
@@ -191,7 +191,7 @@ func runFlagsExport(cmd *cobra.Command, args []string) error {
 	}
 
 	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Printf("%s Exported %d flag(s) to %s\n", green("OK"), len(cfg.Flags), args[0])
+	fmt.Printf("%s Exported %d flag(s) to %s\n", green("OK"), len(cfg.Active().Flags), args[0])
 	return nil
 }
 

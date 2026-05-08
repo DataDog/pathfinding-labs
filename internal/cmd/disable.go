@@ -76,7 +76,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 	var notFound []string
 
 	// Get current enabled status from config
-	enabledVars := cfg.GetEnabledScenarioVars()
+	enabledVars := cfg.Active().GetEnabledScenarioVars()
 
 	// Get all scenarios for filtering
 	allScenarios, err := discovery.DiscoverAll()
@@ -152,7 +152,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 
 	// Update config with disabled scenarios
 	for _, s := range actuallyDisabling {
-		cfg.DisableScenario(s.Terraform.VariableName)
+		cfg.Active().DisableScenario(s.Terraform.VariableName)
 	}
 
 	// Save config (single source of truth)
@@ -161,7 +161,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 	}
 
 	// Regenerate terraform.tfvars
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 

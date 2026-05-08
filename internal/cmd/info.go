@@ -99,21 +99,21 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Printf("  Status: %s\n", yellow("Not configured"))
-	} else if cfg.AWS.Prod.Profile == "" {
+	} else if cfg.Active().AWS.Prod.Profile == "" {
 		fmt.Printf("  Status: %s\n", yellow("Not configured (run 'plabs init')"))
 	} else {
-		fmt.Printf("  Production: %s\n", dim("profile: "+cfg.AWS.Prod.Profile))
-		if cfg.AWS.Dev.Profile != "" {
-			fmt.Printf("  Development: %s\n", dim("profile: "+cfg.AWS.Dev.Profile))
+		fmt.Printf("  Production: %s\n", dim("profile: "+cfg.Active().AWS.Prod.Profile))
+		if cfg.Active().AWS.Dev.Profile != "" {
+			fmt.Printf("  Development: %s\n", dim("profile: "+cfg.Active().AWS.Dev.Profile))
 		}
-		if cfg.AWS.Ops.Profile != "" {
-			fmt.Printf("  Operations: %s\n", dim("profile: "+cfg.AWS.Ops.Profile))
+		if cfg.Active().AWS.Ops.Profile != "" {
+			fmt.Printf("  Operations: %s\n", dim("profile: "+cfg.Active().AWS.Ops.Profile))
 		}
-		if cfg.AWS.Attacker.Profile != "" {
-			fmt.Printf("  Attacker:    %s\n", dim("profile: "+cfg.AWS.Attacker.Profile))
+		if cfg.Active().AWS.Attacker.Profile != "" {
+			fmt.Printf("  Attacker:    %s\n", dim("profile: "+cfg.Active().AWS.Attacker.Profile))
 		}
 
-		if !cfg.IsMultiAccountMode() {
+		if !cfg.Active().IsMultiAccountMode() {
 			fmt.Printf("  Mode: %s\n", "Single-account")
 		} else {
 			fmt.Printf("  Mode: %s\n", "Multi-account")
@@ -139,7 +139,7 @@ func runInfo(cmd *cobra.Command, args []string) error {
 
 			// Count enabled from config (source of truth)
 			if cfg != nil {
-				enabledVars := cfg.GetEnabledScenarioVars()
+				enabledVars := cfg.Active().GetEnabledScenarioVars()
 				enabledCount := 0
 				for _, enabled := range enabledVars {
 					if enabled {

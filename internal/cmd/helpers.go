@@ -16,27 +16,24 @@ import (
 )
 
 // getWorkingPaths returns the paths to use for the current operation.
-// Loads config from ~/.plabs/plabs.yaml and uses dev_mode settings to determine
-// which terraform directory to use.
+// Loads config from ~/.plabs/plabs.yaml and uses the active workspace's
+// dev_mode settings to determine which terraform directory to use.
 func getWorkingPaths() (*repo.Paths, error) {
-	// Load config from the canonical location
 	cfg, err := config.Load()
 	if err != nil {
-		// Config might not exist yet, return default paths
 		return repo.GetPaths()
 	}
-
-	// Get paths with mode awareness
-	return repo.GetPathsForMode(cfg.DevMode, cfg.DevModePath)
+	ws := cfg.Active()
+	return repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
 }
 
-// isDevMode returns true if dev mode is enabled in config
+// isDevMode returns true if the active workspace has dev mode enabled
 func isDevMode() bool {
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
 		return false
 	}
-	return cfg.DevMode
+	return cfg.Active().DevMode
 }
 
 // containsGlobPattern checks if any of the args contain glob characters
@@ -121,7 +118,8 @@ func validateAWSCredentials(cfg *config.Config) error {
 		return fmt.Errorf("configuration not loaded — run 'plabs init' to configure")
 	}
 
-	profile := cfg.AWS.Prod.Profile
+	ws := cfg.Active()
+	profile := ws.AWS.Prod.Profile
 	if profile == "" {
 		red := color.New(color.FgRed).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
@@ -134,17 +132,16 @@ func validateAWSCredentials(cfg *config.Config) error {
 		return fmt.Errorf("no AWS profile configured")
 	}
 
-	// Collect all unique profiles that need validation
 	// For attacker in IAM user mode (bootstrapped), skip profile validation
-	attackerProfile := cfg.AWS.Attacker.Profile
-	if cfg.AWS.Attacker.Mode == "iam-user" && cfg.AWS.Attacker.IAMAccessKeyID != "" {
+	attackerProfile := ws.AWS.Attacker.Profile
+	if ws.AWS.Attacker.Mode == "iam-user" && ws.AWS.Attacker.IAMAccessKeyID != "" {
 		attackerProfile = "" // skip profile validation; using IAM creds
 	}
 
 	profiles := plabsaws.GetUniqueProfiles(
-		cfg.AWS.Prod.Profile,
-		cfg.AWS.Dev.Profile,
-		cfg.AWS.Ops.Profile,
+		ws.AWS.Prod.Profile,
+		ws.AWS.Dev.Profile,
+		ws.AWS.Ops.Profile,
 		attackerProfile,
 	)
 

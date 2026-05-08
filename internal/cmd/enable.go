@@ -68,7 +68,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	singleAccountMode := cfg.IsSingleAccountMode()
+	singleAccountMode := cfg.Active().IsSingleAccountMode()
 
 	// Discover scenarios
 	discovery := newDiscovery(paths.ScenariosPath())
@@ -92,7 +92,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	hasGlobPatterns := containsGlobPattern(args)
 
 	// Get currently enabled scenarios for filtering
-	enabledVars := cfg.GetEnabledScenarioVars()
+	enabledVars := cfg.Active().GetEnabledScenarioVars()
 
 	if hasFilters || hasGlobPatterns {
 		// Apply category/target filters first
@@ -161,7 +161,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	for _, s := range toEnable {
 		for _, cfgKey := range s.Config {
 			if cfgKey.Required {
-				val, _ := cfg.GetScenarioConfig(s.Name, cfgKey.Key)
+				val, _ := cfg.Active().GetScenarioConfig(s.Name, cfgKey.Key)
 				if val == "" {
 					configErrors = append(configErrors, fmt.Sprintf(
 						"  %s: key %q is required\n    Set with: plabs config %s set %s <value>",
@@ -190,7 +190,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		if s.CategoryShort() == "tool-testing" {
 			continue
 		}
-		if _, ok := cfg.GetFlag(s.UniqueID()); !ok {
+		if _, ok := cfg.Active().GetFlag(s.UniqueID()); !ok {
 			missingFlags = append(missingFlags, s.UniqueID())
 		}
 	}
@@ -209,7 +209,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 
 	// Update config with enabled scenarios
 	for _, s := range toEnable {
-		cfg.EnableScenario(s.Terraform.VariableName)
+		cfg.Active().EnableScenario(s.Terraform.VariableName)
 	}
 
 	// Save config (single source of truth)
@@ -218,7 +218,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	}
 
 	// Regenerate terraform.tfvars
-	if err := cfg.SyncTFVars(paths.TerraformDir); err != nil {
+	if err := cfg.Active().SyncTFVars(paths.TerraformDir); err != nil {
 		return fmt.Errorf("failed to sync terraform.tfvars: %w", err)
 	}
 
