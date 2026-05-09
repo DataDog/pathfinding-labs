@@ -13,6 +13,7 @@ import (
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 	"github.com/DataDog/pathfinding-labs/internal/tui"
+	"github.com/DataDog/pathfinding-labs/internal/updater"
 )
 
 var tuiCmd = &cobra.Command{
@@ -57,8 +58,16 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Check for a binary update to surface in the TUI info header.
+	// Skipped in dev mode since devs don't need update prompts.
+	var updateNotice string
+	if !isDevMode() {
+		syncInstallMethod()
+		updateNotice = updater.Check(version)
+	}
+
 	// Create the TUI model
-	model := tui.NewModel(paths)
+	model := tui.NewModel(paths, version, updateNotice)
 
 	// Run the TUI program
 	p := tea.NewProgram(model, tea.WithAltScreen())

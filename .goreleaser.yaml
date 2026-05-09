@@ -29,6 +29,7 @@ builds:
       - -s -w
       - -X github.com/DataDog/pathfinding-labs/internal/cmd.version={{.Version}}
       - -X github.com/DataDog/pathfinding-labs/internal/cmd.commit={{.Commit}}
+      - -X github.com/DataDog/pathfinding-labs/internal/cmd.installMethod=release
 
 archives:
   - id: default

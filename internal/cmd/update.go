@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
+	"github.com/DataDog/pathfinding-labs/internal/updater"
 )
 
 var updateCmd = &cobra.Command{
@@ -108,6 +109,15 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Println(green("✓ Already up to date"))
 		fmt.Printf("  Current version: %s\n", afterCommit)
+	}
+
+	// Check if the plabs binary itself has an update available.
+	if !isDevMode() {
+		syncInstallMethod()
+		if notice := updater.Check(version); notice != "" {
+			fmt.Println()
+			fmt.Println(yellow(notice))
+		}
 	}
 
 	return nil

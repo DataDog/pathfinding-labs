@@ -8,9 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Version can be set at build time via ldflags
-var Version = "0.0.1"
-
 // hyperlink creates a clickable terminal hyperlink using OSC 8 escape sequence
 func infoHyperlink(url, text string) string {
 	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, text)
@@ -33,6 +30,8 @@ type InfoPane struct {
 	runningCostPerMonth float64 // Aggregate cost of enabled+deployed scenarios
 	width               int
 	height              int
+	version             string // injected from ldflags via NewModel
+	updateNotice        string // non-empty when a newer binary release is available
 }
 
 // NewInfoPane creates a new info pane
@@ -97,6 +96,21 @@ func (i *InfoPane) SetSize(width, height int) {
 	i.height = height
 }
 
+// SetVersion sets the binary version displayed in the title box
+func (i *InfoPane) SetVersion(v string) {
+	i.version = v
+}
+
+// SetUpdateNotice sets the update notice string shown below the config section
+func (i *InfoPane) SetUpdateNotice(notice string) {
+	i.updateNotice = notice
+}
+
+// HasUpdateNotice returns true when a binary update notice is present
+func (i *InfoPane) HasUpdateNotice() bool {
+	return i.updateNotice != ""
+}
+
 // View renders the info pane
 func (i *InfoPane) View() string {
 	var sb strings.Builder
@@ -116,7 +130,7 @@ func (i *InfoPane) View() string {
 
 	// Build the box content - now just title and version
 	titleText := "PATHFINDING LABS"
-	versionText := fmt.Sprintf("v%s", Version)
+	versionText := fmt.Sprintf("v%s", strings.TrimPrefix(i.version, "v"))
 
 	// Find the widest line for box width
 	boxWidth := len(titleText)
@@ -229,6 +243,18 @@ func (i *InfoPane) View() string {
 		sb.WriteString(labelStyle.Render("Path         "))
 		wrapped := i.wordWrap(i.devModePath, contentWidth-13, 13) // 13 = len("Path         ")
 		sb.WriteString(dimStyle.Render(wrapped))
+	}
+
+	// ─── UPDATE NOTICE ────────────────
+	if i.updateNotice != "" {
+		sb.WriteString("\n")
+		sb.WriteString(divider)
+		sb.WriteString("\n")
+		updateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
+		for _, line := range strings.Split(i.updateNotice, "\n") {
+			sb.WriteString(updateStyle.Render(line))
+			sb.WriteString("\n")
+		}
 	}
 
 	return i.wrapInPanel(sb.String())

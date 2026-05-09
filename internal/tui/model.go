@@ -175,7 +175,7 @@ func (c *interactiveDemoCmd) SetStderr(w io.Writer) {
 }
 
 // NewModel creates a new TUI model
-func NewModel(paths *repo.Paths) *Model {
+func NewModel(paths *repo.Paths, version string, updateNotice string) *Model {
 	styles := DefaultStyles(lipgloss.HasDarkBackground())
 	keys := DefaultKeyMap()
 
@@ -204,11 +204,15 @@ func NewModel(paths *repo.Paths) *Model {
 	sci.Placeholder = "Enter value..."
 	sci.CharLimit = 200
 
+	infoPane := NewInfoPane(styles)
+	infoPane.SetVersion(version)
+	infoPane.SetUpdateNotice(updateNotice)
+
 	m := &Model{
 		paths:               paths,
 		styles:              styles,
 		keys:                keys,
-		info:                NewInfoPane(styles),
+		info:                infoPane,
 		environment:         NewEnvironmentPane(styles),
 		scenariosPane:       NewScenariosPane(styles),
 		details:             NewDetailsPane(styles),
@@ -2285,8 +2289,11 @@ func (m *Model) updateLayout() {
 		mainHeight = 1
 	}
 
-	// Info pane height (allows for wrapped directory path)
+	// Info pane height (allows for wrapped directory path and optional update notice)
 	infoHeight := 12
+	if m.info.HasUpdateNotice() {
+		infoHeight += 4
+	}
 
 	// Environment pane height (fixed, compact)
 	envHeight := 8

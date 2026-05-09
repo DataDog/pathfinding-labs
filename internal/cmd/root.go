@@ -3,12 +3,16 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/DataDog/pathfinding-labs/internal/updater"
 )
 
 var (
-	version = "0.0.1"
-	commit  = "unknown"
+	version       = "0.0.1"
+	commit        = "unknown"
+	installMethod = "unknown" // overridden via ldflags: "source" (Makefile) or "release" (goreleaser)
 )
 
 var rootCmd = &cobra.Command{
@@ -67,5 +71,19 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("plabs %s (commit: %s)\n", version, commit)
+		if !isDevMode() {
+			syncInstallMethod()
+			if notice := updater.Check(version); notice != "" {
+				yellow := color.New(color.FgYellow).SprintFunc()
+				fmt.Println()
+				fmt.Println(yellow(notice))
+			}
+		}
 	},
+}
+
+// syncInstallMethod propagates the installMethod ldflag into the updater package
+// before any update check is performed. Called once per surface that uses updater.Check.
+func syncInstallMethod() {
+	updater.InstallMethod = installMethod
 }

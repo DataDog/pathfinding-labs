@@ -4,7 +4,7 @@ BINARY_NAME=plabs
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-LDFLAGS=-ldflags "-X github.com/DataDog/pathfinding-labs/internal/cmd.version=$(VERSION) -X github.com/DataDog/pathfinding-labs/internal/cmd.commit=$(COMMIT)"
+LDFLAGS=-ldflags "-X github.com/DataDog/pathfinding-labs/internal/cmd.version=$(VERSION) -X github.com/DataDog/pathfinding-labs/internal/cmd.commit=$(COMMIT) -X github.com/DataDog/pathfinding-labs/internal/cmd.installMethod=source"
 
 # Go parameters
 GOCMD=go
