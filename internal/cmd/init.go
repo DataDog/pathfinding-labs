@@ -222,7 +222,7 @@ func init() {
 		// TUI handles its own initialization flow
 		// CommandPath() returns the full path e.g. "plabs config set", so we check
 		// for " config" to exempt "plabs config" and all its subcommands (set, show, sync).
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || strings.Contains(cmd.CommandPath(), " config") || strings.Contains(cmd.CommandPath(), " workspace") {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "help" || cmd.Name() == "tui" || strings.Contains(cmd.CommandPath(), " config") || strings.Contains(cmd.CommandPath(), " workspace") || strings.Contains(cmd.CommandPath(), " completion") {
 			return nil
 		}
 
