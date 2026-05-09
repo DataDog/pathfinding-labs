@@ -71,13 +71,11 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("plabs %s (commit: %s)\n", version, commit)
-		if !isDevMode() {
-			syncInstallMethod()
-			if notice := updater.Check(version); notice != "" {
-				yellow := color.New(color.FgYellow).SprintFunc()
-				fmt.Println()
-				fmt.Println(yellow(notice))
-			}
+		syncInstallMethod()
+		if notice := updater.Check(version); notice != "" {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Println()
+			fmt.Println(yellow(notice))
 		}
 	},
 }

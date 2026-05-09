@@ -112,12 +112,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if the plabs binary itself has an update available.
-	if !isDevMode() {
-		syncInstallMethod()
-		if notice := updater.Check(version); notice != "" {
-			fmt.Println()
-			fmt.Println(yellow(notice))
-		}
+	syncInstallMethod()
+	if notice := updater.Check(version); notice != "" {
+		fmt.Println()
+		fmt.Println(yellow(notice))
 	}
 
 	return nil
