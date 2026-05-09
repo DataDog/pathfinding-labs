@@ -11,7 +11,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/term v0.41.0
-	gopkg.in/ini.v1 v1.67.1
+	gopkg.in/ini.v1 v1.67.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
