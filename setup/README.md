@@ -1,25 +1,34 @@
-# Pathfinding Labs Deployment Script
+# Pathfinding Labs Setup
 
-This directory will contain an interactive setup script that will ask the user information about their environment and guide them through the steps needed to get Pathfinding Labs working. 
+Before deploying, you need one or more AWS accounts with named CLI profiles. Which path you take depends on what you already have.
 
-Here is the outline for the script: 
+---
 
-Ask the user if they have 3 accounts ready to use already
+## Option A: One account (single-account scenarios only)
 
+If you only have one AWS account and want to keep it simple, that works. The majority of Pathfinding Labs scenarios are single-account and will run fine with just `pl-prod`.
 
-### If you already have 3 accounts that you can use for this lab
+You just need a named AWS CLI profile pointing at that account. Once you have that, you're ready to run `plabs init`.
 
-* **Step 1:** Configure Pathfinding Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops (the script can ask for the three profiles and grab the account ids when it is testing to see if they all work.)
-* **Step 2:** Deploy Pathfinding Labs
-* **Step 3:** Run `create_pathfinding_profiles.sh` to create the remaining profiles. 
+---
 
-### If you don't yet have 3 accounts that you can use for this lab
+## Option B: Two or three accounts, already set up
 
-* **Step 1, Option A:** If you don't have anything you consider a production workload in your personal playground/testing account, enable AWS Organizations in this account
-* **Step 1, Option B:** If you do have what you consider production workloads in your personal playground/test account, create a new AWS account and enable AWS Organizations in this new account
-* **Step 2:** From within the Organization management account, create 3 accounts dedicated for pathfinding-labs pl-prod, pl-dev, pl-ops (creating accounts is free, and they will all roll up their billing to the mgmt account). 
-* **Step 4:** Set up AWS IAM Identity Center in your org management account
-* **Step 5:** Configure profiles using aws-vault, aws-sso-util 
-* **Step 6:** Configure Pathfinding Labs' terraform.tfvars with the three AWS profiles to use for prod, dev, and ops
-* **Step 7:** Deploy Pathfinding Labs
-* **Step 8:** Run `create_pathfinding_profiles.sh` to create the remaining profiles. 
+If you already have three AWS accounts you want to use as `prod`, `dev`, and `ops`, you just need named CLI profiles for each. Once those are in place, run `plabs init`.
+
+---
+
+## Option C: Two or three accounts, starting from a single account
+
+For this option to work, your initial account can not already be managed by an organization. 
+
+If you want the full multi-account setup but don't have the accounts yet, we have step-by-step guides:
+
+1. [Create an AWS Organization and three child accounts](create-org/README.md) — converts an existing account into an org management account and creates `pl-prod`, `pl-dev`, `pl-ops` as children.
+2. [Configure IAM Identity Center with SSO profiles](configure-identity-center/README.md) — sets up a local Identity Center user with admin access to all three accounts and configures named AWS CLI profiles.
+
+---
+
+## Once prerequisites are met
+
+Run `plabs init` — it will walk you through connecting your profiles and deploying scenarios.

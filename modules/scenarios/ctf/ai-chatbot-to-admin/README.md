@@ -36,7 +36,12 @@ Acme Corp has deployed an AI-powered customer assistant at a public Lambda Funct
 
 1. Install the `plabs` CLI:
    ```bash
-   brew install pathfinding-labs/tap/plabs
+   brew tap DataDog/pathfinding-labs https://github.com/DataDog/pathfinding-labs
+   brew install DataDog/pathfinding-labs/plabs
+   ```
+   Or with Go 1.25+ installed:
+   ```bash
+   go install github.com/DataDog/pathfinding-labs/cmd/plabs@latest
    ```
 2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 

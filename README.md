@@ -31,8 +31,12 @@ Pathfinding Labs helps security teams learn how to atttack and defend exploitabl
 ## Quick Start
 
 ### Prerequisites
-- One or more AWS accounts (playground/sandbox accounts recommended)
-- AWS CLI configured with appropriate profiles
+- One or more AWS accounts (playground/sandbox accounts only — never use production)
+- AWS CLI configured with named profiles for each account
+
+Not sure how to set this up? See the [setup guides](setup/README.md) — whether you're starting from a single account, already have accounts ready, or want to create a full multi-account AWS org. 
+
+> **Note:** Creating your own [AWS organization](setup/create-org/README.md) is a great opportunity to learn org level features, like SCPs and [IAM Identity Center](setup/configure-identity-center/README.md). 
 
 ### Install plabs
 
@@ -138,7 +142,7 @@ plabs config set prod-region us-east-1
 | `ops-profile` | No | Ops account profile (cross-account labs only) |
 | `ops-region` | No | Ops account region |
 
-**You only need ONE AWS account to use most of Pathfinding Labs.** All single-account labs deploy to `prod`. Dev and ops are only required for cross-account labs.
+**You only need ONE AWS account to use most of Pathfinding Labs.** All single-account labs deploy to `prod`. Dev and ops are only required for cross-account labs. See the [setup guides](setup/README.md) if you need help getting accounts and profiles configured.
 
 
 ### Dev Mode
