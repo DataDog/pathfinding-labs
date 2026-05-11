@@ -5,25 +5,24 @@
 
 **A modular platform for deploying intentionally vulnerable AWS configurations**
 
-![Scenarios](https://img.shields.io/badge/Scenarios-95%2B-blue?style=for-the-badge)
-![AWS](https://img.shields.io/badge/AWS-Support-orange?style=for-the-badge&logo=amazon-aws)
+![Labs](https://img.shields.io/badge/Labs-100%2B-blue?style=for-the-badge)
 
-[Quick Start](#quick-start) • [Scenarios](https://pathfinding.cloud/labs) • [How It Works](#how-it-works) • [Security](#what-gets-deployed) • [Contributing](#contributing)
+[Quick Start](#quick-start) • [Lab Catalog](https://pathfinding.cloud/labs) • [How It Works](#how-it-works) • [Security](#what-gets-deployed) • [Contributing](#contributing)
 
 </div>
 
 ---
 
-Pathfinding Labs helps security teams validate their Cloud Security Posture Management (CSPM) tools by deploying intentionally vulnerable cloud resources to sandbox environments.
+Pathfinding Labs helps security teams learn how to atttack and defend exploitable identity misconfigurations by deploying intentionally vulnerable cloud resources to sandbox environments.
 
-> **Full scenario catalog, individual lab docs, and guided installation:** [pathfinding.cloud/labs](https://pathfinding.cloud/labs)
+> **Full lab catalog, individual lab docs, and guided installation:** [pathfinding.cloud/labs](https://pathfinding.cloud/labs)
 > This README is a quick-start guide and command reference for users working directly from the repository.
 
 <img width="1440" height="1174" alt="pathfinding-labs-overview (1)" src="https://github.com/user-attachments/assets/41b74df4-c1a5-440d-aec1-d09ea0f57bec" />
 
 
 
-## What types of scenarios are supported?
+## What types of labs are supported?
 
 <img width="1280" height="1284" alt="pathfinding-lab-types (2)" src="https://github.com/user-attachments/assets/34bc2fdc-ed15-4135-bc21-9712f32c91e2" />
 
@@ -37,19 +36,28 @@ Pathfinding Labs helps security teams validate their Cloud Security Posture Mana
 
 ### Install plabs
 
+##### Direct Install
+Requires Go 1.25+
+```
+go install -v github.com/DataDog/pathfinding-labs/cmd/plabs@latest
+```
+
+##### Homebrew 
 ```bash
-# Option A: Homebrew (recommended)
 brew tap DataDog/pathfinding-labs https://github.com/DataDog/pathfinding-labs
 brew install DataDog/pathfinding-labs/plabs
-
-# Option B: Download from GitHub Releases
+```
+#### Download from GitHub Releases
+```bash
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m | sed 's/x86_64/amd64/')
 VERSION=$(curl -fsSL https://api.github.com/repos/DataDog/pathfinding-labs/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
 curl -fsSL "https://github.com/DataDog/pathfinding-labs/releases/download/v${VERSION}/plabs_${VERSION}_${OS}_${ARCH}.tar.gz" | tar -xz plabs
 sudo mv plabs /usr/local/bin/
+```
 
-# Option C: Build from source
+#### Build from source
+```
 git clone https://github.com/DataDog/pathfinding-labs.git
 cd pathfinding-labs
 go build -o plabs ./cmd/plabs
@@ -59,33 +67,30 @@ chmod +x /usr/local/bin/plabs
 
 ### Setup
 
+#### Initialize: 
+Downloads terraform, clones repo, runs AWS profile setup wizard
 ```bash
-# 1. Initialize: downloads terraform, clones repo, runs AWS profile setup wizard
 plabs init
-
-# 2. Open the TUI dashboard
+```
+#### Open the TUI dashboard
+```
 plabs
-
-# 3. In the TUI: use ↑↓ to browse scenarios, space to toggle, a to deploy
 ```
 
 <img width="1559" height="987" alt="plabs" src="https://github.com/user-attachments/assets/76a9f5d4-70fa-4645-a61b-e8a7ed4cc2dd" />
 
----
 
-# Available Scenarios
+**In the TUI: use ↑↓ to browse labs, space to enable/disable labs, a to apply changes (deploy the enabled labs, tear down the disabled labs)**
 
-The full catalog of labs — with descriptions, attack maps, difficulty levels, and filtering by category — is at **[pathfinding.cloud/labs](https://pathfinding.cloud/labs)**.
 
----
 
-## How It Works
+# How It Works
 
-**Modular Architecture**: Each attack scenario is a self-contained, independently deployable module that can be enabled or disabled via `plabs`.
+**Modular Architecture**: Each attack lab is a self-contained, independently deployable module that can be enabled or disabled via `plabs`.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  1. Select Scenarios      (plabs TUI or plabs enable)   │
+│  1. Select labs      (plabs TUI or plabs enable)        │
 │     space to toggle in TUI, or: plabs enable <id>       │
 ├─────────────────────────────────────────────────────────┤
 │  2. Deploy                (plabs apply)                 │
@@ -99,9 +104,9 @@ The full catalog of labs — with descriptions, attack maps, difficulty levels, 
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Scenario Outputs
+### Lab Outputs
 
-All scenarios expose credentials and resource information via grouped Terraform outputs. Demo scripts read these automatically — no manual credential setup needed.
+All labs expose credentials and resource information via grouped Terraform outputs. Demo scripts read these automatically — no manual credential setup needed.
 
 ---
 
@@ -120,20 +125,20 @@ plabs init
 Or set values directly (useful for CI/automation):
 
 ```bash
-plabs config set prod-profile   my-prod-profile
-plabs config set prod-region    us-east-1
+plabs config set prod-profile my-prod-profile
+plabs config set prod-region us-east-1
 ```
 
 | Key | Required | Description |
 |-----|----------|-------------|
 | `prod-profile` | Yes | AWS CLI profile for the prod account |
 | `prod-region` | Yes | AWS region for the prod account |
-| `dev-profile` | No | Dev account profile (cross-account scenarios only) |
+| `dev-profile` | No | Dev account profile (cross-account labs only) |
 | `dev-region` | No | Dev account region |
-| `ops-profile` | No | Ops account profile (cross-account scenarios only) |
+| `ops-profile` | No | Ops account profile (cross-account labs only) |
 | `ops-region` | No | Ops account region |
 
-**You only need ONE AWS account to use most of Pathfinding Labs.** All single-account scenarios deploy to `prod`. Dev and ops are only required for cross-account scenarios.
+**You only need ONE AWS account to use most of Pathfinding Labs.** All single-account labs deploy to `prod`. Dev and ops are only required for cross-account labs.
 
 
 ### Dev Mode
@@ -149,7 +154,7 @@ plabs config set dev-mode false  # revert to the managed copy
 ```
 
 
-### Enabling and Disabling Scenarios
+### Enabling and Disabling labs
 
 **Interactive (TUI):**
 
@@ -161,7 +166,7 @@ plabs       # open the dashboard
 **CLI:**
 
 ```bash
-# Enable by scenario ID
+# Enable by lab ID
 plabs enable iam-002-iam-createaccesskey
 
 # Enable multiple at once
@@ -179,13 +184,11 @@ plabs apply -y     # skip confirmation
 plabs plan         # preview changes without deploying
 ```
 
-
-
 ---
 
 ## Running Attack Demonstrations
 
-Each scenario includes a demonstration script that shows how to exploit the vulnerability.
+Each lab includes a demonstration script that shows how to exploit the vulnerability.
 
 **Using plabs (recommended):**
 
@@ -194,7 +197,7 @@ plabs demo    iam-002-iam-createaccesskey
 plabs cleanup iam-002-iam-createaccesskey
 ```
 
-**Directly from the scenario directory:**
+**Directly from the lab directory:**
 
 ```bash
 cd modules/scenarios/single-account/privesc-one-hop/to-admin/iam-002-iam-createaccesskey
@@ -219,7 +222,7 @@ Understanding exactly what Pathfinding Labs creates in your account helps you as
 
 ### IAM Resources
 
-Every scenario creates IAM principals (users, roles) and policies with deliberate misconfigurations. **No existing resources in your account are modified.** All created resources use the `pl-` prefix so they are easy to identify and audit.
+Every lab creates IAM principals (users, roles) and policies with deliberate misconfigurations. **No existing resources in your account are modified.** All created resources use the `pl-` prefix so they are easy to identify and audit.
 
 ### Starting Users
 
@@ -257,24 +260,23 @@ Each environment also includes one admin-level user used exclusively by cleanup 
 
 This user has broad permissions. It exists so cleanup scripts can undo changes made during attack demonstrations (e.g., deleting access keys that were created, reverting modified policies). **This is another reason to keep your lab environment isolated from production.**
 
-### Network Exposure by Scenario Type
+### Network Exposure by Lab Type
 
-Not all scenarios expose resources to the internet:
+Not all labs expose resources to the internet:
 
 | Category | Network Exposure |
 |----------|-----------------|
 | Privilege escalation (all hops) | None — IAM-only, no network resources |
-| CSPM Misconfig / Toxic Combo | Some scenarios intentionally create public S3 buckets, Lambda function URLs, or open security groups |
-| CTF | May include internet-facing endpoints as part of the challenge |
-| Attack Simulation | May include internet-accessible resources mirroring the original breach |
+| CSPM Misconfig / Toxic Combo | Some labs intentionally create public S3 buckets, Lambda function URLs, or open security groups |
+
 
 Each scenario's README documents what it creates and any public-facing resources.
 
 ### Cost Guidance
 
-Most scenarios are IAM-only and incur no AWS charges. Scenarios that deploy compute or storage resources (EC2, Lambda, ECS, S3 with data) incur small charges while deployed. Recommended: set a billing alert at $10–20/month as a safety net.
+Most labs are IAM-only and incur no AWS charges. Labs that deploy compute or storage resources (EC2, Lambda, ECS) incur small charges while deployed. Recommended: set a billing alert at $10–20/month as a safety net.
 
-Tear down scenarios when not actively testing:
+Tear down labs when not actively testing:
 
 ```bash
 plabs disable <id> && plabs apply   # disable a specific scenario
@@ -311,9 +313,9 @@ Example:
 ---
 
 
-## Scenario Taxonomy
+## Lab Taxonomy
 
-Pathfinding Labs organizes scenarios into five categories:
+Pathfinding Labs organizes labs into five categories:
 
 ### **Self-Escalation**
 Principal directly modifies itself to gain elevated privileges without traversing to another principal. This is the most direct form of privilege escalation where an entity grants itself additional permissions.
@@ -325,7 +327,7 @@ Principal directly modifies itself to gain elevated privileges without traversin
 - `Role → iam:AttachRolePolicy (on self) → S3 Bucket Access`
 
 ### **One-Hop Privilege Escalation**
-Single principal traversal scenarios where one principal gains access to another principal's privileges. These are single-account scenarios within the prod environment.
+Single principal traversal labs where one principal gains access to another principal's privileges. These are single-account labs within the prod environment.
 
 **Examples:**
 - `Role → iam:CreateAccessKey → AdminUser → Admin`
@@ -334,14 +336,14 @@ Single principal traversal scenarios where one principal gains access to another
 - `Role → ssm:SendCommand → EC2 with Admin Role → Admin`
 
 ### **Multi-Hop Privilege Escalation**
-Multiple privilege escalation steps chaining through multiple principals. These are single-account scenarios within the prod environment.
+Multiple privilege escalation steps chaining through multiple principals. These are single-account labs within the prod environment.
 
 **Examples:**
 - `User → sts:AssumeRole → RoleA → iam:CreateAccessKey → UserB → AssumeRole → AdminRole`
 - `RoleA → iam:PutRolePolicy → RoleB → AssumeRole → RoleC → Sensitive Bucket`
 
 ### **CSPM: Misconfig**
-Single-condition security misconfigurations that CSPM tools should detect. These are single-account scenarios within the prod environment.
+Single-condition security misconfigurations that CSPM tools should detect. These are single-account labs within the prod environment.
 
 **Examples:**
 - `EC2 Instance with Admin Role` - Overly permissive instance profile
@@ -349,7 +351,7 @@ Single-condition security misconfigurations that CSPM tools should detect. These
 - `Security Group (0.0.0.0/0)` - Unrestricted network access
 
 ### **CSPM: Toxic Combinations**
-Multiple compounding misconfigurations that together create critical security risks. These are single-account scenarios within the prod environment.
+Multiple compounding misconfigurations that together create critical security risks. These are single-account labs within the prod environment.
 
 **Examples:**
 - `Lambda Function (publicly accessible) + Admin Role`
@@ -357,7 +359,7 @@ Multiple compounding misconfigurations that together create critical security ri
 - `S3 Bucket (public) + Sensitive Data + No Encryption`
 
 ### **Cross-Account Privilege Escalation**
-Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). These scenarios demonstrate how compromise in one account can lead to access in another.
+Privilege escalation paths that span multiple AWS accounts (dev, ops, prod). These labs demonstrate how compromise in one account can lead to access in another.
 
 **Examples:**
 - `Dev:User → AssumeRole → Prod:Role → Admin`
@@ -379,7 +381,7 @@ pathfinding-labs/
 │   │   ├── dev/              # Development environment base resources
 │   │   └── operations/       # Operations environment base resources
 │   │
-│   └── scenarios/            # Attack scenarios (opt-in via flags)
+│   └── scenarios/            # Attack labs (opt-in via flags)
 │       ├── single-account/
 │       │   ├── privesc-self-escalation/
 │       │   │   ├── to-admin/    # Principal modifies itself to gain admin
@@ -410,7 +412,7 @@ pathfinding-labs/
 
 ### Module Structure
 
-Each scenario follows a standard structure:
+Each lab follows a standard structure:
 
 ```
 scenario-name/
@@ -424,75 +426,9 @@ scenario-name/
 
 ---
 
-## Use Cases
-
-### 1. CSPM Validation
-```bash
-# Deploy a known vulnerability
-plabs enable public-lambda-with-admin
-plabs apply -y
-
-# Check if your CSPM detects it
-# Expected alerts:
-# - Lambda function publicly accessible
-# - Lambda function has administrative permissions
-# - Critical risk: Toxic combination detected
-```
-
-### 2. Red Team Training
-```bash
-# Deploy a privilege escalation path
-plabs enable iam-005-iam-putrolepolicy
-plabs apply -y
-
-# Practice exploitation
-plabs demo iam-005-iam-putrolepolicy
-```
-
-### 3. Security Tool Testing
-```bash
-# Deploy multiple scenarios at once
-plabs enable iam-005-iam-putrolepolicy iam-002-iam-createaccesskey multiple-paths-combined
-plabs apply -y
-
-# Test if your tooling finds all paths
-# Compare results across different security tools
-```
-
-### 4. Incident Response Practice
-```bash
-# Create a realistic compromise scenario
-plabs enable lambda-invoke-update
-plabs apply -y
-
-# Practice detection, investigation, and response
-# Use CloudTrail, GuardDuty, and other AWS security services
-```
-
-### 5. CTF Challenges
-```bash
-# Deploy a CTF scenario — no demo script, the exploit is the challenge
-plabs enable ai-chatbot-to-admin
-plabs apply -y
-
-# Browse to pathfinding.cloud/labs for hints and difficulty ratings
-```
-
-### 6. Attack Simulation / Breach Recreations
-```bash
-# Recreate a documented real-world breach
-plabs enable sysdig-8-minutes-to-admin
-plabs apply -y
-
-# Run the simulation — includes failed recon steps mirroring the original attack
-plabs demo sysdig-8-minutes-to-admin
-```
-
----
-
 ## CSPM Detection Examples
 
-Each scenario documents what a properly configured CSPM should detect:
+Each lab documents what a properly configured CSPM should detect:
 
 ### Example: iam-createaccesskey Scenario
 
@@ -512,7 +448,7 @@ Each scenario documents what a properly configured CSPM should detect:
 
 We welcome contributions! To add a new scenario:
 
-1. **Create the scenario directory** following the standard structure
+1. **Create the lab directory** following the standard structure
 2. **Implement resources** with proper provider configuration
 3. **Write documentation** including mermaid diagrams and CSPM detection notes
 4. **Create demo scripts** showing the exploitation technique
@@ -551,6 +487,7 @@ See our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 - [IAM Vulnerable Project](https://github.com/bishopfox/iam-vulnerable) - Inspiration for single-account paths
 - [MITRE ATT&CK Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)
+- [Stratus Red Team](https://github.com/DataDog/stratus-red-team) by Datadog
 
 ---
 
@@ -560,8 +497,4 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-## Acknowledgments
 
-Built with inspiration from:
-- [IAM Vulnerable](https://github.com/bishopfox/iam-vulnerable) by Bishop Fox
-- [Stratus Red Team](https://github.com/DataDog/stratus-red-team) by Datadog
