@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+braket-createjob"
+title: "AWS Braket Hybrid Job to Admin"
 description: "User with iam:PassRole and braket:CreateJob can escalate privileges by creating a Braket Hybrid Job with an admin role that grants starting user admin access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "braket-001"
 
 # =============================================================================
@@ -32,33 +34,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-braket-001-to-admin-admin-role"
+    - principal: "pl-prod-braket-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-braket-001-to-admin-admin-role"
 
-    - permission: "braket:CreateJob"
-      resource: "*"
-
-    - permission: "s3:PutObject"
-      resource: "arn:aws:s3:::amazon-braket-*/exploit/*"
+        - permission: "braket:CreateJob"
+          resource: "*"
 
   helpful:
-    - permission: "braket:GetJob"
-      purpose: "Monitor job execution status and verify job completion"
+    - principal: "pl-prod-braket-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "braket:GetJob"
+          purpose: "Monitor job execution status and verify job completion"
 
-    - permission: "braket:SearchJobs"
-      purpose: "List existing Braket jobs"
+        - permission: "braket:SearchJobs"
+          purpose: "List existing Braket jobs to discover job ARN"
 
-    - permission: "braket:CancelJob"
-      purpose: "Cancel a running job if needed"
+        - permission: "s3:GetObject"
+          purpose: "Retrieve job output results from S3"
 
-    - permission: "s3:GetObject"
-      purpose: "Retrieve job output results from S3"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

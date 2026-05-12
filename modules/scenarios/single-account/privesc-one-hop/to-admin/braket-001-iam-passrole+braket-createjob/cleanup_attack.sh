@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + braket:CreateJob privilege escalation demo
 # This script detaches the AdministratorAccess policy from the starting user
@@ -28,7 +29,7 @@ cd ../../../../../..  # Navigate to root of terraform project
 # Get admin cleanup user credentials from root terraform output
 ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
 ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
-CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
+CURRENT_REGION=$(terraform output -raw aws_region 2>/dev/null)
 
 if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
@@ -36,9 +37,9 @@ if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
-if [ -z "$CURRENT_REGION" ]; then
-    echo -e "${YELLOW}Warning: Could not retrieve region from Terraform, defaulting to us-east-1${NC}"
-    CURRENT_REGION="us-east-1"
+if [ -z "$CURRENT_REGION" ] || [ "$CURRENT_REGION" == "null" ]; then
+    echo -e "${RED}Error: Could not retrieve region from Terraform output${NC}"
+    exit 1
 fi
 
 # Set admin credentials
@@ -52,6 +53,13 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies from an interrupted demo run
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)

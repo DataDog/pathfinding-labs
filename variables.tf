@@ -367,6 +367,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → braket-001-iam-passrole+braket-createjob"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset" {
   description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-005-cloudformation-createchangeset+executechangeset"
   type        = bool
@@ -487,6 +493,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinsta
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → emr-001-iam-passrole+elasticmapreduce-runjobflow"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "Enable: single-account → privesc-one-hop → to-admin → glue-001-iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool
@@ -560,6 +572,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker
 
 variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config" {
   description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-005-sagemaker-updatenotebook-lifecycle-config ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
   type        = bool
   default     = false
 }

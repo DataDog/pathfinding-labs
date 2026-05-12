@@ -1,101 +1,178 @@
-# Privilege Escalation via iam:PassRole + states:CreateStateMachine + states:StartExecution
+# Step Functions State Machine Execution to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
+* **Technique:** Pass an admin role to a Step Functions state machine that calls IAM APIs via SDK service integration to attach AdministratorAccess to the starting user
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution`
+* **Schema Version:** 4.6.1
 * **Pathfinding.cloud ID:** stepfunctions-001
-* **Technique:** Passing an admin role to a Step Functions state machine that calls IAM APIs to grant the attacker administrative access
+* **CTF Flag Location:** ssm-parameter
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation path where a user with `iam:PassRole`, `states:CreateStateMachine`, and `states:StartExecution` permissions can escalate to full administrative access through AWS Step Functions. The attacker creates a state machine with a JSON definition that uses the Step Functions AWS SDK service integration to call IAM APIs directly, attaching `AdministratorAccess` to themselves using the credentials of a passed admin role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-stepfunctions-001-to-admin-starting-user` IAM user to the `pl-prod-stepfunctions-001-to-admin-admin-role` administrative role by creating a Step Functions state machine with the admin role as the execution role and a definition that calls `iam:AttachUserPolicy` via the AWS SDK service integration, then starting execution to attach `AdministratorAccess` to the starting user.
 
-AWS Step Functions supports direct SDK service integrations for over 9,000 AWS API actions, including every IAM API action with zero unsupported operations. Unlike Lambda-based privilege escalation paths that require writing and deploying code, Step Functions state machines are defined entirely in JSON using Amazon States Language (ASL). No compute infrastructure, containers, S3 buckets, or VPC configuration is needed -- just IAM resources and a JSON definition. This makes the attack extremely lightweight and fast to execute, completing in seconds.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-stepfunctions-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-001-to-admin-admin-role`
 
-This path is architecturally similar to CloudFormation's `CreateStack` privilege escalation but arguably more dangerous. CloudFormation is limited to resources that have CloudFormation resource type support, while Step Functions can call any supported AWS API action directly. This means an attacker can perform operations through Step Functions that have no CloudFormation equivalent, significantly expanding the attack surface. Organizations that restrict Lambda or CloudFormation but overlook Step Functions leave a wide-open escalation path.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required** (`pl-prod-stepfunctions-001-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-stepfunctions-001-to-admin-admin-role` -- allows passing the admin role to the Step Functions service as the state machine execution role
+- `states:CreateStateMachine` on `*` -- allows creating a new state machine with a definition that calls IAM APIs via SDK service integration
+- `states:StartExecution` on `*` -- allows starting execution of the created state machine, triggering the IAM API call under the admin role's credentials
 
-### Principals in the attack path
+**Helpful** (`pl-prod-stepfunctions-001-to-admin-starting-user`):
+- `states:DescribeExecution` -- poll execution status to verify the state machine completed successfully
+- `states:DescribeStateMachine` -- verify the state machine was created with the correct definition and role
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies on the starting user
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-stepfunctions-001-to-admin-starting-user` (Scenario-specific starting user with PassRole and Step Functions permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-stepfunctions-001-to-admin-admin-role` (Admin role that trusts states.amazonaws.com, used as the state machine execution role)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-stepfunctions-001-to-admin-starting-user] -->|iam:PassRole + states:CreateStateMachine| B[State Machine with Admin Role]
-    B -->|states:StartExecution| C[iam:AttachUserPolicy via SDK Integration]
-    C -->|AdministratorAccess attached to starting user| D[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable stepfunctions-001-to-admin
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-stepfunctions-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create State Machine**: Use `states:CreateStateMachine` to create a new state machine, passing `pl-prod-stepfunctions-001-to-admin-admin-role` as the execution role via `iam:PassRole`. The state machine definition contains a single task state that calls `arn:aws:states:::aws-sdk:iam:attachUserPolicy` with parameters specifying the starting user's ARN and the `AdministratorAccess` policy ARN.
-3. **Start Execution**: Use `states:StartExecution` to run the state machine. Step Functions assumes the admin role and executes the IAM API call, attaching `AdministratorAccess` to the starting user. Execution completes in seconds.
-4. **Verification**: Verify administrator access by calling `iam:ListUsers` or other admin-level actions as the starting user, confirming the `AdministratorAccess` policy is now attached.
+1. Launch the TUI: `plabs`
+2. Navigate to `stepfunctions-001-to-admin` in the scenarios list
+3. Press `space` to enable it
+4. Press `a` to apply
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-stepfunctions-001-to-admin-starting-user` | Scenario-specific starting user with iam:PassRole, states:CreateStateMachine, and states:StartExecution permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-stepfunctions-001-to-admin-admin-role` | Admin role trusting states.amazonaws.com with AdministratorAccess policy attached |
-| `arn:aws:iam::PROD_ACCOUNT:policy/pl-prod-stepfunctions-001-to-admin-starting-user-policy` | Policy granting the starting user PassRole and Step Functions permissions |
+| `arn:aws:iam::{account_id}:user/pl-prod-stepfunctions-001-to-admin-starting-user` | Scenario-specific starting user with access keys, PassRole, and Step Functions permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-001-to-admin-admin-role` | Administrative role (trusts `states.amazonaws.com`) passed as the execution role to the state machine |
+| `arn:aws:iam::{account_id}:policy/pl-prod-stepfunctions-001-to-admin-starting-user-policy` | Policy granting the starting user PassRole and Step Functions permissions |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/stepfunctions-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
-## Executing the attack
+### Solution
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Solution](solution.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+3. Create a Step Functions state machine with the admin role as the execution role and a definition that calls `iam:AttachUserPolicy` via SDK service integration
+4. Start execution of the state machine
+5. Wait for the execution to complete
+6. Verify successful privilege escalation by demonstrating admin access
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the state machine and attached policy created during the demo:
+- Step Functions state machine with the admin role as the execution role
+- `AdministratorAccess` managed policy attached to `pl-prod-stepfunctions-001-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution
-./cleanup_attack.sh
+plabs demo --list
+plabs demo stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution
 ```
 
-The cleanup script will delete the state machine created during the demonstration and detach the `AdministratorAccess` policy from the starting user, restoring the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
+```bash
+plabs cleanup --list
+plabs cleanup stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-- Restrict `iam:PassRole` scope to specific roles and use the `iam:PassedToService` condition key to limit which services can receive roles: `"Condition": {"StringEquals": {"iam:PassedToService": "states.amazonaws.com"}}` -- and further restrict which roles can be passed
-- Avoid granting `states:CreateStateMachine` and `states:StartExecution` together unless absolutely necessary, as this combination enables arbitrary AWS API execution when paired with `iam:PassRole`
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable stepfunctions-001-to-admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to `stepfunctions-001-to-admin` in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user with `iam:PassRole` permission on a role that has administrative permissions
+- IAM user with `states:CreateStateMachine` and `states:StartExecution` permissions combined with `iam:PassRole`, forming a privilege escalation path
+- IAM role with `AdministratorAccess` or equivalent permissions that trusts `states.amazonaws.com` and can be passed to Step Functions state machines
+- Privilege escalation path from IAM user to admin via Step Functions state machine execution
+
+#### Prevention Recommendations
+
+- Restrict `iam:PassRole` using the `iam:PassedToService` condition key to limit which services a role can be passed to (e.g., `"iam:PassedToService": "states.amazonaws.com"`), and further restrict which roles can be passed using resource constraints
+- Avoid granting `states:CreateStateMachine` and `states:StartExecution` together unless absolutely necessary; this combination enables arbitrary AWS API execution when paired with `iam:PassRole`
 - Audit all IAM roles with trust policies allowing `states.amazonaws.com` and ensure they follow least privilege -- admin roles should never trust the Step Functions service principal
-- Monitor CloudTrail for `CreateStateMachine` events where the state machine definition contains `aws-sdk:iam:` resource ARNs, which indicates potential IAM manipulation via Step Functions
-- Implement Service Control Policies (SCPs) to prevent creation of state machines that reference sensitive IAM API actions in their definitions, or restrict `states:CreateStateMachine` to authorized automation principals only
-- Alert on rapid create-execute-delete patterns for state machines, as this is a strong indicator of privilege escalation attempts that aim to minimize forensic evidence
-- Use IAM Access Analyzer to identify and remediate privilege escalation paths where users can pass privileged roles to Step Functions
-- Monitor for IAM policy attachment events (`AttachUserPolicy`, `AttachRolePolicy`) where the source principal is a Step Functions execution role, as legitimate automation rarely modifies IAM permissions this way
+- Implement SCPs that deny `states:CreateStateMachine` when the request includes `aws-sdk:iam:` actions in the state machine definition, or restrict `states:CreateStateMachine` to authorized automation principals only
+- Use IAM Access Analyzer to automatically detect privilege escalation paths where users can pass privileged roles to Step Functions
+- Enable AWS Config rules to alert when state machines are created with execution roles that carry administrative permissions
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `states:CreateStateMachine` -- new state machine created; inspect `requestParameters.roleArn` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via Step Functions; high severity when the role has administrative permissions and the definition contains `aws-sdk:iam:` resource ARNs indicating IAM manipulation
+- `states:StartExecution` -- state machine execution started; correlate with a preceding `CreateStateMachine` call from the same principal to identify abuse of newly created state machines
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user; critical when the policy is `AdministratorAccess` and the caller is a Step Functions execution role assumed by the `states.amazonaws.com` service principal
+- `iam:PutUserPolicy` -- inline policy added to an IAM user; monitor for policies granting broad permissions where the caller context is a Step Functions execution role
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+- [AWS Step Functions SDK Service Integrations](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html) -- explains how state machines call AWS APIs directly via `arn:aws:states:::aws-sdk:{service}:{action}` resource ARNs
+- [AWS IAM PassRole Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html) -- explains PassRole mechanics and how to restrict it with `iam:PassedToService`
+- [Rhino Security Labs - AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) -- comprehensive overview of IAM privilege escalation techniques including PassRole patterns
+- [pathfinding.cloud/paths/stepfunctions-001](https://pathfinding.cloud/paths/stepfunctions-001) -- documented attack path for this scenario

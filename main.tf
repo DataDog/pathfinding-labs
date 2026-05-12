@@ -714,6 +714,20 @@ module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_reg
   flag_value      = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "braket-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
@@ -890,6 +904,18 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   flag_value      = lookup(var.scenario_flags, "ec2-002-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/emr-001-iam-passrole+elasticmapreduce-runjobflow"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "emr-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint"
@@ -1040,6 +1066,18 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updateno
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(var.scenario_flags, "sagemaker-005-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "stepfunctions-001-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################

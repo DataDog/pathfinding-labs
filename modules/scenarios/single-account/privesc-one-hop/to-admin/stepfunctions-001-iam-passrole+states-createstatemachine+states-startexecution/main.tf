@@ -18,10 +18,15 @@ terraform {
 # Resource naming convention: pl-prod-stepfunctions-001-to-admin-{resource-type}
 # Provider: aws.prod (single account scenario)
 
+# =============================================================================
+# STARTING USER (Initial Access Point)
+# =============================================================================
+
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-stepfunctions-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-stepfunctions-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-stepfunctions-001-to-admin-starting-user"
@@ -62,17 +67,32 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "states:StartExecution"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "states:DescribeExecution",
+          "states:DescribeStateMachine",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
 }
 
-# Admin role that will be passed to Step Functions
+# =============================================================================
+# TARGET ADMIN ROLE (Privilege Escalation Target)
+# =============================================================================
+
+# Admin role that will be passed to Step Functions.
 # Step Functions assumes this role to execute state machine tasks (AWS SDK integrations),
 # which means the state machine can call any AWS API that this role has permissions for.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-stepfunctions-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-stepfunctions-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -100,4 +120,26 @@ resource "aws_iam_role_policy_attachment" "admin_role_policy" {
   provider   = aws.prod
   role       = aws_iam_role.admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# =============================================================================
+# CTF FLAG
+# =============================================================================
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/stepfunctions-001-to-admin"
+  description = "CTF flag for the stepfunctions-001-to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-stepfunctions-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
+    Purpose     = "ctf-flag"
+  }
 }

@@ -1,101 +1,175 @@
-# Privilege Escalation via iam:PassRole + braket:CreateJob
+# AWS Braket Hybrid Job to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
+* **Technique:** Pass an admin role to an Amazon Braket Hybrid Job running a pre-staged malicious Python script that grants the starting user administrative access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob`
+* **Schema Version:** 4.6.1
 * **Pathfinding.cloud ID:** braket-001
-* **Technique:** Passing an admin role to an Amazon Braket Hybrid Job that executes a malicious script to grant the starting user administrative access
+* **CTF Flag Location:** ssm-parameter
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation path where a user with `iam:PassRole` and `braket:CreateJob` permissions can escalate to full administrative access by creating an Amazon Braket Hybrid Job that runs with a privileged IAM role. The attacker crafts a malicious Python script, packages it as a tar.gz archive, uploads it to an S3 bucket with the required `amazon-braket-` prefix, and then creates a Braket Hybrid Job that passes the admin role as the `roleArn`. When the job executes, the script runs with the admin role's credentials and attaches `AdministratorAccess` to the starting user.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-braket-001-to-admin-starting-user` IAM user to the `pl-prod-braket-001-to-admin-admin-role` administrative role by creating an Amazon Braket Hybrid Job that passes the admin role as the execution role and runs a pre-staged malicious Python script that attaches `AdministratorAccess` to the starting user.
 
-Amazon Braket Hybrid Jobs run containerized Python workloads on managed ML instances (EC2-backed) using the SageMaker Training Toolkit under the hood for credential injection. The Braket service automatically injects the passed role's temporary credentials into the container environment, making them available to any code running inside the job -- including attacker-controlled scripts. Because boto3 comes pre-installed in the Braket container image, the malicious script can immediately make IAM API calls without any additional setup.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-braket-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-braket-001-to-admin-admin-role`
 
-This attack vector is particularly stealthy because Amazon Braket is a niche quantum computing service that most organizations do not actively monitor. Security teams rarely include `braket:*` API calls in their CloudTrail alerting rules, and CSPM tools may not evaluate privilege escalation paths through Braket. The attack uses the SV1 simulator device (which is free) and does not actually execute any quantum tasks -- the quantum device ARN is simply a required API parameter. Braket is only available in five AWS regions (us-east-1, us-west-1, us-west-2, eu-west-2, eu-north-1), which is worth noting for both attackers and defenders.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required** (`pl-prod-braket-001-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-braket-001-to-admin-admin-role` -- allows passing the admin role to the Braket service as the job execution role ARN when creating the Hybrid Job
+- `braket:CreateJob` on `*` -- allows creating a Braket Hybrid Job that specifies the admin role as `roleArn` and the pre-staged malicious script as the algorithm source
 
-### Principals in the attack path
+**Helpful** (`pl-prod-braket-001-to-admin-starting-user`):
+- `braket:GetJob` -- monitor job execution status and verify job completion
+- `braket:SearchJobs` -- list existing Braket jobs to discover job ARN
+- `s3:GetObject` -- retrieve job output results from S3
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-braket-001-to-admin-starting-user` (Scenario-specific starting user with iam:PassRole, braket:CreateJob, and s3:PutObject permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-braket-001-to-admin-admin-role` (Admin role trusting braket.amazonaws.com, with AdministratorAccess)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-braket-001-to-admin-starting-user] -->|iam:PassRole + braket:CreateJob| B[Braket Hybrid Job with admin role]
-    B -->|iam:AttachUserPolicy| C[Starting user with AdministratorAccess]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable braket-001-to-admin
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-braket-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Prepare Malicious Script**: Create a Python script that uses boto3 to attach `AdministratorAccess` to the starting user. Package the script as a tar.gz archive.
-3. **Upload to S3**: Upload the tar.gz archive to the Braket S3 bucket (must have the `amazon-braket-` prefix) under an exploit path
-4. **Create Braket Hybrid Job**: Call `braket:CreateJob` with the admin role ARN as `roleArn`, pointing to the uploaded script as the algorithm source, and specifying the SV1 simulator as the device
-5. **Job Execution**: Braket spins up an ML instance, injects the admin role's credentials into the container, and executes the malicious Python script. The script attaches `AdministratorAccess` to the starting user.
-6. **Verification**: Verify administrator access by performing admin-level actions such as listing IAM users
+1. Launch the TUI: `plabs`
+2. Navigate to `braket-001-to-admin` in the scenarios list
+3. Press `space` to enable it
+4. Press `a` to apply
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-braket-001-to-admin-starting-user` | Scenario-specific starting user with iam:PassRole, braket:CreateJob, and s3:PutObject permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-braket-001-to-admin-admin-role` | Admin role trusting braket.amazonaws.com with AdministratorAccess policy |
-| `arn:aws:s3:::amazon-braket-pl-prod-braket-001-{account_id}-{suffix}` | S3 bucket with required amazon-braket- prefix for job input/output |
+| `arn:aws:iam::{account_id}:user/pl-prod-braket-001-to-admin-starting-user` | Scenario-specific starting user with access keys, `iam:PassRole`, and `braket:CreateJob` permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-braket-001-to-admin-admin-role` | Administrative role (trusts `braket.amazonaws.com`) passed as `roleArn` to the Braket Hybrid Job |
+| `arn:aws:s3:::amazon-braket-pl-prod-braket-001-{attacker_account_id}-{suffix}` | Attacker-account S3 bucket (created via `aws.attacker` provider) with the required `amazon-braket-` prefix; holds the pre-staged malicious Python exploit script |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/braket-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
-## Executing the attack
+### Solution
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Solution](solution.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+3. Retrieve the attacker bucket name from Terraform outputs
+4. Create a Braket Hybrid Job with the admin role as `roleArn` and the pre-staged exploit script as the algorithm source
+5. Poll until the Braket job reaches `COMPLETED` status
+6. Verify successful privilege escalation by demonstrating admin access
+7. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the AdministratorAccess policy attached to the starting user and any Braket job artifacts:
+- `AdministratorAccess` managed policy attached to `pl-prod-braket-001-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob
-./cleanup_attack.sh
+plabs demo --list
+plabs demo braket-001-iam-passrole+braket-createjob
 ```
 
-The cleanup script will detach the AdministratorAccess policy from the starting user and remove any temporary S3 objects created during the demonstration, restoring the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts, T1578 - Modify Cloud Compute Infrastructure
+```bash
+plabs cleanup --list
+plabs cleanup braket-001-iam-passrole+braket-createjob
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-- Restrict `iam:PassRole` scope to specific roles and use the `iam:PassedToService` condition key to limit which services can receive roles: `"Condition": {"StringEquals": {"iam:PassedToService": "braket.amazonaws.com"}}` -- or better yet, exclude `braket.amazonaws.com` entirely if Braket is not used
-- Implement Service Control Policies (SCPs) to deny `braket:*` actions in accounts and regions where Amazon Braket is not required, reducing the attack surface from unused services
-- Audit all IAM roles with trust policies that allow `braket.amazonaws.com` to assume them, and ensure none have overly permissive policies like AdministratorAccess
-- Monitor CloudTrail for `braket:CreateJob` API calls, particularly when the `roleArn` parameter references roles with administrative or highly privileged policies
-- Monitor for `iam:PassRole` events where the target service is `braket.amazonaws.com`, as this is an uncommon and potentially suspicious combination
-- Use IAM Access Analyzer to identify privilege escalation paths through Braket, including users with `iam:PassRole` combined with `braket:CreateJob`
-- Apply the principle of least privilege to Braket execution roles -- avoid attaching broad policies and scope permissions to only the quantum devices and S3 paths the job actually needs
-- Implement alerting on IAM policy attachment events (AttachUserPolicy, AttachRolePolicy) originating from Braket execution roles or SageMaker-backed compute instances
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable braket-001-to-admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to `braket-001-to-admin` in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user with `iam:PassRole` permission on a role that has administrative permissions
+- IAM user with `braket:CreateJob` combined with `iam:PassRole`, forming a privilege escalation path through Amazon Braket Hybrid Jobs
+- IAM role with `AdministratorAccess` or equivalent permissions that trusts `braket.amazonaws.com` and can be passed to Braket jobs
+- Privilege escalation path from IAM user to admin via Amazon Braket Hybrid Job submission
+
+#### Prevention Recommendations
+
+- Restrict `iam:PassRole` using the `iam:PassedToService` condition key to limit which services a role can be passed to; if Braket is not used, deny `"iam:PassedToService": "braket.amazonaws.com"` entirely
+- Implement Service Control Policies (SCPs) to deny `braket:CreateJob` in accounts and regions where Amazon Braket is not required, eliminating this attack surface from unused services
+- Audit all IAM roles with trust policies allowing `braket.amazonaws.com` and ensure none carry `AdministratorAccess` or broad IAM permissions
+- Scope `iam:PassRole` resource constraints to non-privileged roles only; deny passing roles with `AdministratorAccess` or broad IAM write permissions to Braket
+- Use IAM Access Analyzer to automatically detect privilege escalation paths involving `iam:PassRole` and `braket:CreateJob`
+- Apply least-privilege to Braket execution roles and scope permissions to only the quantum devices and S3 paths the job legitimately needs
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `braket:CreateJob` -- new Braket Hybrid Job created; inspect `requestParameters.roleArn` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via Braket; high severity when the role has administrative permissions
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within a Braket job context; critical when the policy is `AdministratorAccess` and the caller is a Braket execution role
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+- [AWS Braket Hybrid Jobs Documentation](https://docs.aws.amazon.com/braket/latest/developerguide/braket-jobs.html) -- explains how Hybrid Jobs work and why the execution role's credentials are injected into the container environment
+- [AWS IAM PassRole Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html) -- explains PassRole mechanics and how to restrict it with `iam:PassedToService`
+- [Rhino Security Labs - AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) -- comprehensive overview of IAM privilege escalation techniques including PassRole patterns
+- [pathfinding.cloud/paths/braket-001](https://pathfinding.cloud/paths/braket-001) -- documented attack path for this scenario

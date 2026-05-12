@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + states:CreateStateMachine + states:StartExecution demo
 # This script detaches the AdministratorAccess policy from the starting user
@@ -60,10 +61,15 @@ unset AWS_SESSION_TOKEN
 
 echo "Region from Terraform: $CURRENT_REGION"
 echo "Starting user: $STARTING_USER_NAME"
-echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+echo -e "${GREEN}Retrieved admin credentials${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+
+# Source demo permissions library and remove any orphaned restriction policies
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Verify credentials
 IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)

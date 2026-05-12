@@ -45,7 +45,17 @@ output "attacker_bucket_name" {
   value       = aws_s3_bucket.braket_bucket.id
 }
 
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-braket-001-to-admin-starting-user) -> PassRole + CreateJob -> Braket Hybrid Job runs with Admin Role (pl-prod-braket-001-to-admin-admin-role) -> Malicious script attaches AdministratorAccess to starting user -> Admin Access"
+  value       = "User (pl-prod-braket-001-to-admin-starting-user) -> PassRole + CreateJob -> Braket Hybrid Job runs with Admin Role (pl-prod-braket-001-to-admin-admin-role) -> Malicious script attaches AdministratorAccess to starting user -> Admin Access -> ssm:GetParameter -> CTF flag"
 }
