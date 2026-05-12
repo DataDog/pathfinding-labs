@@ -8,8 +8,9 @@
 # only a principal that has already obtained credentials for the ops deployer role
 # can assume this role. This models a tightly-scoped cross-account CI/CD trust.
 resource "aws_iam_role" "prod_deployer" {
-  provider = aws.prod
-  name     = "pl-prod-goidc-pivot-deployer-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-goidc-pivot-deployer-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -74,9 +75,9 @@ resource "aws_iam_role_policy" "prod_deployer_policy" {
         Resource = "*"
       },
       {
-        Sid    = "PassRoleToECSTask"
-        Effect = "Allow"
-        Action = "iam:PassRole"
+        Sid      = "PassRoleToECSTask"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
         Resource = "*"
         Condition = {
           StringEquals = {
@@ -110,9 +111,9 @@ resource "aws_iam_role_policy" "prod_deployer_policy" {
         ]
       },
       {
-        Sid    = "S3BucketDiscovery"
-        Effect = "Allow"
-        Action = ["s3:ListAllMyBuckets"]
+        Sid      = "S3BucketDiscovery"
+        Effect   = "Allow"
+        Action   = ["s3:ListAllMyBuckets"]
         Resource = "*"
       }
     ]

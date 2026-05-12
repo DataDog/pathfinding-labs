@@ -23,8 +23,9 @@ terraform {
 
 # Scenario-specific starting user in dev account
 resource "aws_iam_user" "starting_user" {
-  provider = aws.dev
-  name     = "pl-dev-xsarrt-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.dev
+  name          = "pl-dev-xsarrt-to-admin-starting-user"
 
   tags = {
     Name        = "pl-dev-xsarrt-to-admin-starting-user"
@@ -77,8 +78,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # Target admin role in prod account with root trust
 # CRITICAL: This role trusts the entire dev account via :root principal
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-xsarrt-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-xsarrt-to-admin-target-role"
 
   # MISCONFIGURATION: Trusts the entire dev account (:root)
   # This allows ANY principal in the dev account to assume this role

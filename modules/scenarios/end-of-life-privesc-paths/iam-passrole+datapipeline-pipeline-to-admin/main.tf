@@ -19,8 +19,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-datapipeline-001-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-datapipeline-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-datapipeline-001-to-admin-starting-user"
@@ -80,8 +81,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Admin role that will be passed to Data Pipeline
 resource "aws_iam_role" "pipeline_role" {
-  provider = aws.prod
-  name     = "pl-prod-datapipeline-001-to-admin-pipeline-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-datapipeline-001-to-admin-pipeline-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

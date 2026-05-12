@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-009-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-009-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-009-to-bucket-starting-user"
@@ -104,8 +105,9 @@ resource "aws_iam_policy" "bucket_access_policy" {
 
 # Starting role with AttachRolePolicy permission on itself
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-009-to-bucket-starting-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-009-to-bucket-starting-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

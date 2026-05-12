@@ -17,8 +17,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-003-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-003-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-003-to-bucket-starting-user"
@@ -83,8 +84,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Target user with S3 bucket access
 resource "aws_iam_user" "target_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-003-to-bucket-target-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-003-to-bucket-target-user"
 
   tags = {
     Name        = "pl-prod-iam-003-to-bucket-target-user"

@@ -27,8 +27,9 @@ data "aws_ami" "amazon_linux_2023" {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ec2-004-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ec2-004-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-ec2-004-to-admin-starting-user"
@@ -94,8 +95,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # Admin role (target of privilege escalation)
 # Initially only trusts ec2.amazonaws.com
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-ec2-004-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ec2-004-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

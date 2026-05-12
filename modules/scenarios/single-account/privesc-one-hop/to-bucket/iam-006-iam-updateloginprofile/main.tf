@@ -63,8 +63,9 @@ resource "aws_s3_object" "flag" {
 # Target user with S3 bucket access and an existing login profile
 # This user has console access and can read from the sensitive bucket
 resource "aws_iam_user" "target_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-006-to-bucket-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-006-to-bucket-user"
 
   tags = {
     Name        = "pl-prod-iam-006-to-bucket-user"
@@ -126,8 +127,9 @@ resource "aws_iam_user_policy" "target_user_s3_policy" {
 
 # Starting user that can update login profiles (privilege escalation vector)
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-006-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-006-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-006-to-bucket-starting-user"

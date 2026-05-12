@@ -1,6 +1,7 @@
 resource "aws_iam_role" "prod_role_trusts_operations" {
-  provider = aws.prod
-  name     = "pl-x-account-prod-role-trusts-operations"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-x-account-prod-role-trusts-operations"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -23,8 +24,9 @@ resource "aws_iam_role_policy_attachment" "prod_role_trusts_operations" {
 }
 
 resource "aws_iam_role" "prod_admin_role_trusts_operations" {
-  provider = aws.prod
-  name     = "pl-x-account-prod-admin-role-trusts-operations"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-x-account-prod-admin-role-trusts-operations"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -50,8 +52,9 @@ resource "aws_iam_role_policy_attachment" "prod_admin_role_trusts_operations" {
 // create a prod_privesc_role that will have iam:putrolepolicy permissions
 
 resource "aws_iam_role" "prod_admin_role" {
-  provider = aws.prod
-  name     = "pl-x-account-prod-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-x-account-prod-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",

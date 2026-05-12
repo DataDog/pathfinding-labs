@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-001-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-001-to-admin-starting-user"
 }
 
 # Access key for the starting user
@@ -52,8 +53,9 @@ resource "aws_iam_user_policy" "starting_user_basic" {
 
 # Role that can escalate its own privileges by creating new policy versions
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-001-to-admin-starting-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-001-to-admin-starting-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

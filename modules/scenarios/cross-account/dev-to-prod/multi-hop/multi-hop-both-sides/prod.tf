@@ -1,7 +1,8 @@
 # Jeremy user in prod environment (admin user with initial login profile)
 resource "aws_iam_user" "jeremy" {
-  provider = aws.prod
-  name     = "pl-Jeremy"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-Jeremy"
 }
 
 # Admin policy for Jeremy user
@@ -30,8 +31,9 @@ resource "aws_iam_user_login_profile" "jeremy" {
 
 # Trusts dev role in prod environment
 resource "aws_iam_role" "trustsdev" {
-  provider = aws.prod
-  name     = "pl-trustsdev"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-trustsdev"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

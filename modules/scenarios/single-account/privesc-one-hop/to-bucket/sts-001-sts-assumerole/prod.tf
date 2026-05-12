@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-sts-001-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-sts-001-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-sts-001-to-bucket-starting-user"
@@ -65,8 +66,9 @@ resource "aws_s3_bucket" "target_bucket" {
 }
 
 resource "aws_iam_role" "bucket_access_role" {
-  provider = aws.prod
-  name     = "pl-prod-sts-001-to-bucket-access-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-sts-001-to-bucket-access-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

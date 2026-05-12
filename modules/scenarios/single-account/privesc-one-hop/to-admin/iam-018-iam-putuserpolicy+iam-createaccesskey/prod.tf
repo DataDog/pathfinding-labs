@@ -17,8 +17,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-018-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-018-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-018-to-admin-starting-user"
@@ -71,8 +72,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Target user (victim user that will be escalated)
 resource "aws_iam_user" "target_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-018-to-admin-target-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-018-to-admin-target-user"
 
   tags = {
     Name        = "pl-prod-iam-018-to-admin-target-user"

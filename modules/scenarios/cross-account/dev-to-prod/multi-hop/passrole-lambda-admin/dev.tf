@@ -10,8 +10,9 @@ terraform {
 
 # Lambda prod updater role in dev environment that starting user can assume
 resource "aws_iam_role" "lambda_prod_updater" {
-  provider = aws.dev
-  name     = "pl-lambda-prod-updater"
+  force_detach_policies = true
+  provider              = aws.dev
+  name                  = "pl-lambda-prod-updater"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

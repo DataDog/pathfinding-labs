@@ -29,8 +29,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-009-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ecs-009-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-ecs-009-to-admin-starting-user"
@@ -114,8 +115,9 @@ resource "aws_iam_user_policy" "starting_user_helpful" {
 
 # Target admin role that will be passed to ECS tasks via --overrides
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-009-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-009-to-admin-target-role"
 
   # Trust policy allowing ECS tasks to assume this role
   assume_role_policy = jsonencode({
@@ -169,8 +171,9 @@ resource "aws_ecs_cluster" "cluster" {
 
 # Execution role used by ECS to pull images and write logs
 resource "aws_iam_role" "execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-009-to-admin-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-009-to-admin-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -290,8 +293,9 @@ resource "aws_security_group" "container_instance" {
 
 # IAM role for EC2 instance (allows ECS agent to function)
 resource "aws_iam_role" "container_instance" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-009-to-admin-instance-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-009-to-admin-instance-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

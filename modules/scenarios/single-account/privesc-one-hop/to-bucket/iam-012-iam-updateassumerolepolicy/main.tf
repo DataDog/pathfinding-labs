@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-012-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-012-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-012-to-bucket-starting-user"
@@ -72,8 +73,9 @@ resource "aws_s3_bucket" "target_bucket" {
 
 # Target role with S3 bucket access
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-012-to-bucket-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-012-to-bucket-target-role"
 
   # Initially trusts :root (will be modified during attack to trust starting role)
   assume_role_policy = jsonencode({
@@ -111,8 +113,9 @@ resource "aws_iam_role_policy" "target_role_policy" {
 
 # Starting role with UpdateAssumeRolePolicy permission on target role
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-012-to-bucket-starting-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-012-to-bucket-starting-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

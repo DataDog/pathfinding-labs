@@ -61,8 +61,9 @@ resource "aws_s3_object" "sensitive_data" {
 
 # User1 with direct S3 access to the bucket
 resource "aws_iam_user" "user1" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-di-user1"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-rbr-di-user1"
 
   tags = {
     Name        = "pl-prod-rbr-di-user1"
@@ -118,8 +119,9 @@ resource "aws_iam_user_policy" "user1_policy" {
 
 # User2 with ability to assume role3
 resource "aws_iam_user" "user2" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-di-user2"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-rbr-di-user2"
 
   tags = {
     Name        = "pl-prod-rbr-di-user2"
@@ -158,8 +160,9 @@ resource "aws_iam_user_policy" "user2_policy" {
 
 # Role3 with S3 access (trust policy allows user2 to assume it)
 resource "aws_iam_role" "role3" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-di-role3"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-rbr-di-role3"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

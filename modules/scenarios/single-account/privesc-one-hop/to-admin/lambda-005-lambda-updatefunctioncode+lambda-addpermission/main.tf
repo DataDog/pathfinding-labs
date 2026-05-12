@@ -22,8 +22,9 @@ data "aws_region" "current" {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-005-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-lambda-005-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-lambda-005-to-admin-starting-user"
@@ -74,8 +75,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Lambda execution role with admin access (the target role to exploit)
 resource "aws_iam_role" "lambda_exec_role" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-005-to-admin-lambda-exec-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-lambda-005-to-admin-lambda-exec-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

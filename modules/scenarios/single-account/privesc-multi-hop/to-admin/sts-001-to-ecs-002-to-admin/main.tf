@@ -27,8 +27,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-sts001-ecs002-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-sts001-ecs002-starting-user"
 
   tags = {
     Name        = "pl-prod-sts001-ecs002-starting-user"
@@ -84,8 +85,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # This role has the ECS permissions needed for the privilege escalation
 # The starting user can assume this role to gain ECS capabilities
 resource "aws_iam_role" "intermediate_role" {
-  provider = aws.prod
-  name     = "pl-prod-sts001-ecs002-intermediate-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-sts001-ecs002-intermediate-role"
 
   # Trust policy allows the starting user to assume this role
   assume_role_policy = jsonencode({
@@ -147,8 +149,9 @@ resource "aws_iam_role_policy" "intermediate_role_policy" {
 # This is the privileged role that the ECS task will use
 # The task can then attach the AdministratorAccess policy to the starting user
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-sts001-ecs002-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-sts001-ecs002-admin-role"
 
   # Trust policy allows ECS tasks to assume this role
   # Note: The intermediate role CANNOT assume this directly - must go through ECS

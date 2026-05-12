@@ -10,8 +10,9 @@ terraform {
 
 # Josh user in dev environment (admin user)
 resource "aws_iam_user" "josh" {
-  provider = aws.dev
-  name     = "pl-Josh"
+  force_destroy = true
+  provider      = aws.dev
+  name          = "pl-Josh"
 }
 
 # Admin policy for Josh user
@@ -34,8 +35,9 @@ resource "aws_iam_user_policy" "josh_admin" {
 
 # Helpdesk role in dev environment
 resource "aws_iam_role" "helpdesk" {
-  provider = aws.dev
-  name     = "pl-helpdesk"
+  force_detach_policies = true
+  provider              = aws.dev
+  name                  = "pl-helpdesk"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

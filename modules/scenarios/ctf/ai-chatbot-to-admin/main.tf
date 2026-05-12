@@ -22,8 +22,9 @@ terraform {
 # Lambda execution role - AdministratorAccess
 # This is the misconfiguration: a chatbot role with full admin permissions.
 resource "aws_iam_role" "chatbot_role" {
-  provider = aws.prod
-  name     = "pl-prod-ctf-001-chatbot-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ctf-001-chatbot-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -117,8 +118,9 @@ resource "aws_ssm_parameter" "flag" {
 
 # Starting user - CLI-based participants use these credentials to enumerate the account
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ctf-001-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ctf-001-starting-user"
 
   tags = {
     Name        = "pl-prod-ctf-001-starting-user"

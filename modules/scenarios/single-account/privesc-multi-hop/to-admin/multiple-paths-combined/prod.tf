@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-mpc-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-mpc-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-mpc-to-admin-starting-user"
@@ -61,8 +62,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Role with multiple privilege escalation paths
 resource "aws_iam_role" "prod_role_with_multiple_privesc_paths" {
-  provider = aws.prod
-  name     = "pl-prod-role-with-multiple-privesc-paths"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-role-with-multiple-privesc-paths"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -130,8 +132,9 @@ resource "aws_iam_role_policy_attachment" "prod_privesc_policy_with_multiple_pat
 
 # EC2 service role for privilege escalation
 resource "aws_iam_role" "prod_ec2_admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-ec2-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ec2-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -163,8 +166,9 @@ resource "aws_iam_instance_profile" "prod_ec2_admin_profile" {
 
 # Lambda service role for privilege escalation
 resource "aws_iam_role" "prod_lambda_admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-lambda-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -189,8 +193,9 @@ resource "aws_iam_role_policy_attachment" "prod_lambda_admin_role" {
 
 # CloudFormation service role for privilege escalation
 resource "aws_iam_role" "prod_cloudformation_admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-cloudformation-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

@@ -18,8 +18,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-${var.environment}-sagemaker-004-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-${var.environment}-sagemaker-004-to-admin-starting-user"
 
   tags = {
     Name        = "pl-${var.environment}-sagemaker-004-to-admin-starting-user"
@@ -68,8 +69,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Admin execution role for the notebook instance (target)
 resource "aws_iam_role" "notebook_execution_role" {
-  provider = aws.prod
-  name     = "pl-${var.environment}-sagemaker-004-to-admin-notebook-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-${var.environment}-sagemaker-004-to-admin-notebook-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

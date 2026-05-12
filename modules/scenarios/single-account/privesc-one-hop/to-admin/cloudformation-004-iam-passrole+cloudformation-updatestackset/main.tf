@@ -18,8 +18,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-004-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-cloudformation-004-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-cloudformation-004-to-admin-starting-user"
@@ -79,8 +80,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # StackSet Execution Role (with admin permissions - this is what makes the attack possible)
 resource "aws_iam_role" "stackset_execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-004-to-admin-stackset-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-cloudformation-004-to-admin-stackset-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -119,8 +121,9 @@ resource "aws_iam_role_policy_attachment" "stackset_execution_role_admin" {
 
 # StackSet Administration Role
 resource "aws_iam_role" "stackset_admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-004-to-admin-stackset-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-cloudformation-004-to-admin-stackset-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

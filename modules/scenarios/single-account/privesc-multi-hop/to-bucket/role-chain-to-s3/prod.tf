@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-rcs-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-rcs-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-rcs-to-bucket-starting-user"
@@ -75,8 +76,9 @@ resource "aws_s3_object" "flag_file" {
 
 # Role 3: Final role with S3 access (can be assumed by Role 2)
 resource "aws_iam_role" "prod_s3_access_role" {
-  provider = aws.prod
-  name     = "pl-prod-s3-access-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-s3-access-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -146,8 +148,9 @@ resource "aws_iam_role_policy_attachment" "prod_s3_access_policy" {
 
 # Role 2: Intermediate role (can be assumed by Role 1 and IAM User)
 resource "aws_iam_role" "prod_intermediate_role" {
-  provider = aws.prod
-  name     = "pl-prod-intermediate-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-intermediate-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -205,8 +208,9 @@ resource "aws_iam_role_policy_attachment" "prod_intermediate_policy" {
 
 # Role 1: Initial role (can be assumed by the scenario-specific starting user)
 resource "aws_iam_role" "prod_initial_role" {
-  provider = aws.prod
-  name     = "pl-prod-initial-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-initial-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -256,8 +260,9 @@ resource "aws_iam_role" "prod_initial_role" {
 
 # IAM User that can assume the intermediate role
 resource "aws_iam_user" "prod_chain_user" {
-  provider = aws.prod
-  name     = "pl-prod-role-chain-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-role-chain-user"
 }
 
 # # Policy for the IAM user to assume the intermediate role

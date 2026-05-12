@@ -631,11 +631,21 @@ CTF scenarios omit `demo_attack.sh` (finding the path is the challenge) and add 
    ```hcl
    # For single-account (prod) scenarios
    resource "aws_iam_role" "example" {
-     provider = aws.prod
-     name     = "pl-${var.scenario_name}-role"
+     provider              = aws.prod
+     force_detach_policies = true
+     name                  = "pl-${var.scenario_name}-role"
+     # ...
+   }
+
+   resource "aws_iam_user" "starting_user" {
+     provider      = aws.prod
+     force_destroy = true
+     name          = "pl-${var.scenario_name}-starting-user"
      # ...
    }
    ```
+
+   **MANDATORY**: Every `aws_iam_user` must set `force_destroy = true` and every `aws_iam_role` must set `force_detach_policies = true`. Demo scripts attach managed policies, group memberships, access keys, login profiles, etc. to these principals out-of-band as the proof of escalation. Without these flags, disabling the scenario before running `cleanup_attack.sh` causes `terraform destroy` to fail with `DeleteConflict: Cannot delete entity, must detach all policies first`. The flags only affect destroy behavior — apply/update are unchanged. No exceptions; `scenario-validator` rejects modules missing them.
 
 3. **Add variables** in `variables.tf`:
    ```hcl

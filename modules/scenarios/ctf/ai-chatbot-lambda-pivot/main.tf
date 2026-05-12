@@ -29,8 +29,9 @@ terraform {
 
 # Chatbot execution role - LIMITED permissions only (not admin)
 resource "aws_iam_role" "chatbot_role" {
-  provider = aws.prod
-  name     = "pl-prod-ctf-002-chatbot-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ctf-002-chatbot-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -144,8 +145,9 @@ resource "aws_lambda_function_url" "chatbot_url" {
 # Target Lambda execution role - AdministratorAccess
 # This is the escalation target: a production data processor with admin rights.
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-ctf-002-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ctf-002-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -226,8 +228,9 @@ resource "aws_ssm_parameter" "flag" {
 
 # Starting user for CLI-based participants
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ctf-002-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ctf-002-starting-user"
 
   tags = {
     Name        = "pl-prod-ctf-002-starting-user"

@@ -18,8 +18,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-003-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-cloudformation-003-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-cloudformation-003-to-admin-starting-user"
@@ -85,8 +86,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # StackSet execution role - this is the role that CloudFormation will use to create resources
 # It needs admin access to be able to create IAM roles
 resource "aws_iam_role" "execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-003-to-admin-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-cloudformation-003-to-admin-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -125,8 +127,9 @@ resource "aws_iam_role_policy_attachment" "execution_role_admin_access" {
 
 # StackSet administration role - required for StackSet operations
 resource "aws_iam_role" "administration_role" {
-  provider = aws.prod
-  name     = "pl-prod-cloudformation-003-to-admin-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-cloudformation-003-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

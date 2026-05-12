@@ -71,9 +71,14 @@ Additionally, the orchestrator will provide:
 # For cross-account, use appropriate providers (aws.dev, aws.prod, aws.operations)
 
 # Scenario-specific starting user
+# force_destroy = true lets Terraform clean up any policies, access keys,
+# login profiles, or group memberships the demo attaches out-of-band so
+# destroy still succeeds if the user disables the scenario without first
+# running cleanup_attack.sh.
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-{environment}-{scenario-shorthand}-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-{environment}-{scenario-shorthand}-starting-user"
 
   tags = {
     Name        = "pl-{environment}-{scenario-shorthand}-starting-user"
@@ -112,9 +117,13 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 }
 
 # Vulnerable role (for role-based scenarios)
+# force_detach_policies = true is the role equivalent of force_destroy on
+# aws_iam_user: it lets Terraform detach managed policies the demo may
+# attach out-of-band so destroy succeeds without a prior cleanup run.
 resource "aws_iam_role" "vulnerable_role" {
-  provider = aws.prod
-  name     = "pl-{environment}-{scenario-shorthand}-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-{environment}-{scenario-shorthand}-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -176,8 +185,9 @@ Add an admin role as the target:
 ```hcl
 # Admin role (target of privilege escalation)
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-{environment}-{scenario-shorthand}-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-{environment}-{scenario-shorthand}-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -492,7 +502,8 @@ terraform {
 **Then use `provider = aws.prod` on all resources:**
 ```hcl
 resource "aws_iam_role" "example" {
-  provider = aws.prod
+  provider              = aws.prod
+  force_detach_policies = true
   # ...
 }
 ```
@@ -516,13 +527,15 @@ terraform {
 ```hcl
 # Resource in dev account
 resource "aws_iam_role" "dev_role" {
-  provider = aws.dev
+  provider              = aws.dev
+  force_detach_policies = true
   # ...
 }
 
 # Resource in prod account
 resource "aws_iam_role" "prod_role" {
-  provider = aws.prod
+  provider              = aws.prod
+  force_detach_policies = true
   # ...
 }
 ```
@@ -530,6 +543,35 @@ resource "aws_iam_role" "prod_role" {
 **Why this matters:** The `configuration_aliases` declaration tells Terraform that this module expects to receive aliased providers. The root main.tf must then pass `aws.prod = aws.prod` (not `aws = aws.prod`) when calling the module.
 
 ## Common Patterns
+
+### MANDATORY: Destroy hygiene on IAM users and roles
+
+Every `aws_iam_user` resource in a scenario module **must** set `force_destroy = true`, and every `aws_iam_role` resource **must** set `force_detach_policies = true`. No exceptions.
+
+**Why:** Most demo_attack.sh scripts mutate IAM out-of-band as the proof of escalation — e.g. `iam attach-user-policy ... AdministratorAccess`, `iam put-user-policy`, `iam add-user-to-group`, `iam create-login-profile`, `iam create-access-key --user-name`, or the role-side equivalents. Terraform's state doesn't know about those out-of-band attachments. If the user disables the scenario before running cleanup_attack.sh, `terraform destroy` will fail with `DeleteConflict: must detach all policies first` and the destroy is wedged until a human manually cleans up in the AWS console / CLI.
+
+cleanup_attack.sh is a *first* line of defense; these flags are the *second*. Do not omit either.
+
+**Required form:**
+
+```hcl
+resource "aws_iam_user" "any_user" {
+  provider      = aws.prod   # or aws.dev / aws.operations / aws.attacker
+  force_destroy = true
+  name          = "pl-..."
+  # ...
+}
+
+resource "aws_iam_role" "any_role" {
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-..."
+  assume_role_policy    = jsonencode({ ... })
+  # ...
+}
+```
+
+This applies to every IAM principal in the module: starting users, admin users, vulnerable roles, admin/target roles, intermediate hop roles, attacker-account users — every single one. scenario-validator will fail the scenario if any `aws_iam_user` / `aws_iam_role` resource omits the flag.
 
 ### Self-Modification Scenarios
 For scenarios where a role modifies itself (iam:PutRolePolicy, iam:AttachRolePolicy):
@@ -590,8 +632,9 @@ For scenarios creating access keys for users:
 
 ```hcl
 resource "aws_iam_user" "admin_user" {
-  provider = aws.prod
-  name     = "pl-prod-{scenario}-admin-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-{scenario}-admin-user"
 
   tags = {
     Name        = "pl-prod-{scenario}-admin-user"
@@ -634,22 +677,25 @@ For multi-hop paths, create intermediate roles:
 ```hcl
 # Starting role (hop 1)
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-multi-hop-{scenario}-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-multi-hop-{scenario}-role"
   # ... trust policy for pathfinding user
 }
 
 # Intermediate role (hop 2)
 resource "aws_iam_role" "intermediate_role" {
-  provider = aws.prod
-  name     = "pl-prod-multi-hop-{scenario}-intermediate-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-multi-hop-{scenario}-intermediate-role"
   # ... trust policy allowing starting role
 }
 
 # Target role (hop 3)
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-multi-hop-{scenario}-target-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-multi-hop-{scenario}-target-role"
   # ... trust policy allowing intermediate role
 }
 ```

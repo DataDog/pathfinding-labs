@@ -26,8 +26,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-004-to-iam-002-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-lambda-004-to-iam-002-starting-user"
 
   tags = {
     Name        = "pl-prod-lambda-004-to-iam-002-starting-user"
@@ -132,8 +133,9 @@ data "archive_file" "lambda_zip" {
 # Lambda execution role with iam:CreateAccessKey permission
 # This role can create access keys for the admin user
 resource "aws_iam_role" "lambda_role" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-004-to-iam-002-lambda-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-lambda-004-to-iam-002-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -191,8 +193,9 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 # Admin user that will be the ultimate target of privilege escalation
 # The attacker will create access keys for this user using the Lambda role's credentials
 resource "aws_iam_user" "admin_user" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-004-to-iam-002-admin-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-lambda-004-to-iam-002-admin-user"
 
   tags = {
     Name        = "pl-prod-lambda-004-to-iam-002-admin-user"

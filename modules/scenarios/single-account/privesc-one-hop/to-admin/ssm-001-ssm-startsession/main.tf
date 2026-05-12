@@ -44,8 +44,9 @@ data "aws_ami" "amazon_linux_2023" {
 # ==============================================================================
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ssm-001-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ssm-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-ssm-001-to-admin-starting-user"
@@ -112,8 +113,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Admin role that will be attached to the EC2 instance
 resource "aws_iam_role" "ec2_admin" {
-  provider = aws.prod
-  name     = "pl-prod-ssm-001-to-admin-ec2-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ssm-001-to-admin-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -219,8 +221,9 @@ resource "aws_instance" "target" {
 
 # Admin role that can be assumed to verify credentials work
 resource "aws_iam_role" "target_admin" {
-  provider = aws.prod
-  name     = "pl-prod-ssm-001-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ssm-001-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

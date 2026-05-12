@@ -16,8 +16,9 @@ resource "aws_s3_bucket" "target_bucket" {
 
 # Privileged user with S3 access
 resource "aws_iam_user" "bucket_access_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-002-to-bucket-access-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-002-to-bucket-access-user"
 }
 
 # Policy granting S3 access
@@ -47,8 +48,9 @@ resource "aws_iam_user_policy" "bucket_access_policy" {
 
 # Starting user with CreateAccessKey permission
 resource "aws_iam_user" "privesc_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-002-to-bucket-privesc-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-002-to-bucket-privesc-user"
 }
 
 # Create access keys for the starting user

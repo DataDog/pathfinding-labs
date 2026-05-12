@@ -18,8 +18,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-glue-006-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-glue-006-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-glue-006-to-admin-starting-user"
@@ -129,8 +130,9 @@ resource "aws_s3_bucket_policy" "script_bucket_policy" {
 
 # Initial non-privileged role for the Glue job
 resource "aws_iam_role" "initial_role" {
-  provider = aws.prod
-  name     = "pl-prod-glue-006-to-admin-initial-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-glue-006-to-admin-initial-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -162,8 +164,9 @@ resource "aws_iam_role_policy_attachment" "initial_role_glue_service" {
 
 # Target admin role that will be passed to the Glue job during update
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-glue-006-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-glue-006-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

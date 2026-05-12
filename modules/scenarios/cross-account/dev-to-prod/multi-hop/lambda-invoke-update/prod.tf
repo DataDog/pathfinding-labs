@@ -1,7 +1,8 @@
 # Lambda execution role with admin permissions (this is what we'll extract)
 resource "aws_iam_role" "prod_lambda_execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-lambda-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

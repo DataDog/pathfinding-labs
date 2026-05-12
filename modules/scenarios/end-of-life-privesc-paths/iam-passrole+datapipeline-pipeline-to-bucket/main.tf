@@ -20,8 +20,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-datapipeline-001-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-datapipeline-001-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-datapipeline-001-to-bucket-starting-user"
@@ -39,8 +40,9 @@ resource "aws_iam_access_key" "starting_user_key" {
 
 # Pipeline role - trusted by DataPipeline service, has read-only S3 access
 resource "aws_iam_role" "pipeline_role" {
-  provider = aws.prod
-  name     = "pl-prod-datapipeline-001-to-bucket-pipeline-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-datapipeline-001-to-bucket-pipeline-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

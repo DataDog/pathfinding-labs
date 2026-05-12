@@ -72,8 +72,9 @@ data "archive_file" "lambda_zip" {
 # =============================================================================
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-8min-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-starting-user"
 
   tags = {
     Name        = "pl-prod-8min-starting-user"
@@ -119,8 +120,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # =============================================================================
 
 resource "aws_iam_user" "compromised_user" {
-  provider = aws.prod
-  name     = "pl-prod-8min-compromised-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-compromised-user"
 
   tags = {
     Name        = "pl-prod-8min-compromised-user"
@@ -237,8 +239,9 @@ resource "aws_iam_user_policy" "compromised_user_policy" {
 # =============================================================================
 
 resource "aws_iam_user" "admingh" {
-  provider = aws.prod
-  name     = "pl-prod-8min-admingh"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-admingh"
 
   tags = {
     Name        = "pl-prod-8min-admingh"
@@ -257,8 +260,9 @@ resource "aws_iam_user" "admingh" {
 # =============================================================================
 
 resource "aws_iam_user" "frick" {
-  provider = aws.prod
-  name     = "pl-prod-8min-frick"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-frick"
 
   tags = {
     Name        = "pl-prod-8min-frick"
@@ -280,8 +284,9 @@ resource "aws_iam_user_policy_attachment" "frick_admin_access" {
 # =============================================================================
 
 resource "aws_iam_user" "rocker" {
-  provider = aws.prod
-  name     = "pl-prod-8min-rocker"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-rocker"
 
   tags = {
     Name        = "pl-prod-8min-rocker"
@@ -303,8 +308,9 @@ resource "aws_iam_user_policy_attachment" "rocker_bedrock_access" {
 # =============================================================================
 
 resource "aws_iam_user" "azureadmanager" {
-  provider = aws.prod
-  name     = "pl-prod-8min-azureadmanager"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-azureadmanager"
 
   tags = {
     Name        = "pl-prod-8min-azureadmanager"
@@ -342,8 +348,9 @@ resource "aws_iam_user_policy" "azureadmanager_policy" {
 # =============================================================================
 
 resource "aws_iam_user" "deploy_svc" {
-  provider = aws.prod
-  name     = "pl-prod-8min-deploy-svc"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-deploy-svc"
 
   tags = {
     Name        = "pl-prod-8min-deploy-svc"
@@ -380,8 +387,9 @@ resource "aws_iam_user_policy" "deploy_svc_policy" {
 # =============================================================================
 
 resource "aws_iam_user" "monitoring" {
-  provider = aws.prod
-  name     = "pl-prod-8min-monitoring"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-monitoring"
 
   tags = {
     Name        = "pl-prod-8min-monitoring"
@@ -418,8 +426,9 @@ resource "aws_iam_user_policy" "monitoring_policy" {
 # =============================================================================
 
 resource "aws_iam_user" "ci_runner" {
-  provider = aws.prod
-  name     = "pl-prod-8min-ci-runner"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-8min-ci-runner"
 
   tags = {
     Name        = "pl-prod-8min-ci-runner"
@@ -456,8 +465,9 @@ resource "aws_iam_user_policy" "ci_runner_policy" {
 # =============================================================================
 
 resource "aws_iam_role" "sysadmin_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-sysadmin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-sysadmin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -500,8 +510,9 @@ resource "aws_iam_role_policy" "sysadmin_role_policy" {
 }
 
 resource "aws_iam_role" "developer_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-developer-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-developer-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -544,8 +555,9 @@ resource "aws_iam_role_policy" "developer_role_policy" {
 }
 
 resource "aws_iam_role" "account_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-account-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-account-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -588,8 +600,9 @@ resource "aws_iam_role_policy" "account_role_policy" {
 }
 
 resource "aws_iam_role" "netadmin_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-netadmin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-netadmin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -633,8 +646,9 @@ resource "aws_iam_role_policy" "netadmin_role_policy" {
 }
 
 resource "aws_iam_role" "external_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-external-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-external-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -680,8 +694,9 @@ resource "aws_iam_role_policy" "external_role_policy" {
 # =============================================================================
 
 resource "aws_iam_role" "ec2_init_role" {
-  provider = aws.prod
-  name     = "pl-prod-8min-ec2-init-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-8min-ec2-init-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

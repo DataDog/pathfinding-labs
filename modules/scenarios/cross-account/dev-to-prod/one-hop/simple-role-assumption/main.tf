@@ -23,8 +23,9 @@ terraform {
 
 # Scenario-specific starting user in dev account
 resource "aws_iam_user" "starting_user" {
-  provider = aws.dev
-  name     = "pl-dev-xsare-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.dev
+  name          = "pl-dev-xsare-to-admin-starting-user"
 
   tags = {
     Name        = "pl-dev-xsare-to-admin-starting-user"
@@ -76,8 +77,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Target admin role in prod account
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-xsare-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-xsare-to-admin-target-role"
 
   # Trust policy explicitly allows the dev user to assume this role
   assume_role_policy = jsonencode({

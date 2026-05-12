@@ -29,8 +29,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-008-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ecs-008-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-ecs-008-to-admin-starting-user"
@@ -99,8 +100,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 
 # Target admin role that will be passed to ECS tasks via --overrides
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-008-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-008-to-admin-target-role"
 
   # Trust policy allowing ECS tasks to assume this role
   assume_role_policy = jsonencode({
@@ -137,8 +139,9 @@ resource "aws_iam_role_policy_attachment" "target_role_admin" {
 
 # Execution role allows ECS Fargate to pull container images and write logs
 resource "aws_iam_role" "execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-008-to-admin-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-008-to-admin-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

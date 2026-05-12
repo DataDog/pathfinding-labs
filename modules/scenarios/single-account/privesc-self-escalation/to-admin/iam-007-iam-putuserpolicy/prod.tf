@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user with PutUserPolicy permission on itself
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-007-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-007-to-admin-starting-user"
 }
 
 # Create access key for the user

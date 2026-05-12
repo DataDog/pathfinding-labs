@@ -17,8 +17,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-002-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-002-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-002-to-admin-starting-user"
@@ -68,8 +69,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Admin user that will be the target of privilege escalation
 resource "aws_iam_user" "admin_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-002-to-admin-target-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-002-to-admin-target-user"
 
   tags = {
     Name        = "pl-prod-iam-002-to-admin-target-user"

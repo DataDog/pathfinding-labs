@@ -10,8 +10,9 @@ terraform {
 
 # Dev role that can invoke and update the prod Lambda function
 resource "aws_iam_role" "dev_lambda_invoke_role" {
-  provider = aws.dev
-  name     = "pl-dev-lambda-invoke-role"
+  force_detach_policies = true
+  provider              = aws.dev
+  name                  = "pl-dev-lambda-invoke-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

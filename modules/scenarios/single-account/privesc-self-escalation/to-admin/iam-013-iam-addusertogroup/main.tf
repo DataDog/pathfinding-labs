@@ -23,8 +23,9 @@ resource "aws_iam_group_policy_attachment" "admin_policy" {
 
 # Create the user that will perform self-escalation (NOT initially in the admin group)
 resource "aws_iam_user" "start_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-013-to-admin-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-013-to-admin-user"
 
   tags = {
     Name        = "pl-prod-iam-013-to-admin-user"

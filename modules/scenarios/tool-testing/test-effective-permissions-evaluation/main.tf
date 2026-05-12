@@ -348,8 +348,9 @@ resource "aws_iam_group_policy" "admin_inline" {
 # =============================================================================
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-epe-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-starting-user"
 
   tags = {
     Name        = "pl-prod-epe-starting-user"
@@ -396,8 +397,9 @@ resource "aws_iam_user_policy" "starting_user" {
 
 # 1. User with AWS managed admin policy
 resource "aws_iam_user" "isadmin_awsmanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-awsmanaged"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-awsmanaged"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-awsmanaged"
@@ -420,8 +422,9 @@ resource "aws_iam_user_policy_attachment" "isadmin_awsmanaged" {
 
 # 2. User with customer managed admin policy
 resource "aws_iam_user" "isadmin_customermanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-customermanaged"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-customermanaged"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-customermanaged"
@@ -444,8 +447,9 @@ resource "aws_iam_user_policy_attachment" "isadmin_customermanaged" {
 
 # 3. User with inline admin policy
 resource "aws_iam_user" "isadmin_inline" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-inline"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-inline"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-inline"
@@ -483,8 +487,9 @@ resource "aws_iam_user_policy" "isadmin_inline" {
 
 # 4. User in group with AWS managed admin policy
 resource "aws_iam_user" "isadmin_via_group_awsmanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-via-group-awsmanaged"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-via-group-awsmanaged"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-via-group-awsmanaged"
@@ -507,8 +512,9 @@ resource "aws_iam_user_group_membership" "isadmin_via_group_awsmanaged" {
 
 # 5. User in group with customer managed admin policy
 resource "aws_iam_user" "isadmin_via_group_customermanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-via-group-customermanaged"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-via-group-customermanaged"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-via-group-customermanaged"
@@ -531,8 +537,9 @@ resource "aws_iam_user_group_membership" "isadmin_via_group_customermanaged" {
 
 # 6. User in group with inline admin policy
 resource "aws_iam_user" "isadmin_via_group_inline" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-via-group-inline"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-via-group-inline"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-via-group-inline"
@@ -559,8 +566,9 @@ resource "aws_iam_user_group_membership" "isadmin_via_group_inline" {
 
 # 7. User with split IAM and NotIAM policies
 resource "aws_iam_user" "isadmin_split_iam_and_notiam" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-split-iam-and-notiam"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-split-iam-and-notiam"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-split-iam-and-notiam"
@@ -589,8 +597,9 @@ resource "aws_iam_user_policy_attachment" "isadmin_split_notiam" {
 
 # 8. User with split S3 and NotS3 policies
 resource "aws_iam_user" "isadmin_split_s3_and_nots3" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-split-s3-and-nots3"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-split-s3-and-nots3"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-split-s3-and-nots3"
@@ -619,8 +628,9 @@ resource "aws_iam_user_policy_attachment" "isadmin_split_nots3" {
 
 # 9. User with many services combined
 resource "aws_iam_user" "isadmin_many_services_combined" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-isAdmin-many-services-combined"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-isAdmin-many-services-combined"
 
   tags = {
     Name        = "pl-prod-epe-user-isAdmin-many-services-combined"
@@ -647,8 +657,9 @@ resource "aws_iam_user_policy_attachment" "isadmin_many_services" {
 
 # 10. User with admin policy + deny all
 resource "aws_iam_user" "notadmin_adminpolicy_plus_denyall" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall"
@@ -688,8 +699,9 @@ resource "aws_iam_user_policy" "notadmin_denyall" {
 
 # 11. User with admin policy + deny with NotAction []
 resource "aws_iam_user" "notadmin_adminpolicy_plus_denynotaction" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction"
@@ -729,8 +741,9 @@ resource "aws_iam_user_policy" "notadmin_denynotaction" {
 
 # 12. User with admin policy + deny NotAction [ec2:DescribeInstances]
 resource "aws_iam_user" "notadmin_adminpolicy_plus_denynotaction_ec2only" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-admin-plus-denynotaction-ec2only"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-admin-plus-denynotaction-ec2only"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction-ec2only"
@@ -774,8 +787,9 @@ resource "aws_iam_user_policy" "notadmin_denynotaction_ec2only" {
 
 # 13. User with admin policy + deny split iam/notiam
 resource "aws_iam_user" "notadmin_adminpolicy_plus_deny_split_iam_notiam" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
@@ -832,8 +846,9 @@ resource "aws_iam_user_policy" "notadmin_deny_notiam" {
 
 # 14. User with admin policy + deny incremental (multiple denies)
 resource "aws_iam_user" "notadmin_adminpolicy_plus_deny_incremental" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental"
@@ -883,8 +898,9 @@ resource "aws_iam_user_policy" "notadmin_deny_incremental" {
 
 # 15. User with split allow + deny all
 resource "aws_iam_user" "notadmin_split_allow_plus_denyall" {
-  provider = aws.prod
-  name     = "pl-prod-epe-user-notAdmin-split-allow-plus-denyall"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-epe-user-notAdmin-split-allow-plus-denyall"
 
   tags = {
     Name        = "pl-prod-epe-user-notAdmin-split-allow-plus-denyall"
@@ -934,6 +950,7 @@ resource "aws_iam_user_policy" "notadmin_split_denyall" {
 
 # 16. User with admin policy + boundary allows nothing
 resource "aws_iam_user" "notadmin_adminpolicy_plus_boundary_allows_nothing" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-admin-plus-boundary-allows-nothing"
   permissions_boundary = aws_iam_policy.boundary_allows_nothing.arn
@@ -959,6 +976,7 @@ resource "aws_iam_user_policy_attachment" "notadmin_boundary_nothing_admin" {
 
 # 17. User with admin policy + boundary ec2only
 resource "aws_iam_user" "notadmin_adminpolicy_plus_boundary_ec2only" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-ec2only"
   permissions_boundary = aws_iam_policy.boundary_ec2only.arn
@@ -984,6 +1002,7 @@ resource "aws_iam_user_policy_attachment" "notadmin_boundary_ec2only_admin" {
 
 # 18. User with admin policy + boundary NotAction edge case (NotAction "*" = allows nothing)
 resource "aws_iam_user" "notadmin_adminpolicy_plus_boundary_notaction_ec2only" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-admin-plus-boundary-na-ec2only"
   permissions_boundary = aws_iam_policy.boundary_notaction_ec2only.arn
@@ -1013,6 +1032,7 @@ resource "aws_iam_user_policy_attachment" "notadmin_boundary_notaction_ec2only_a
 
 # 19. User with split allow + boundary allows nothing
 resource "aws_iam_user" "notadmin_split_allow_boundary_allows_nothing" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-split-allow-boundary-allows-nothing"
   permissions_boundary = aws_iam_policy.boundary_allows_nothing.arn
@@ -1044,6 +1064,7 @@ resource "aws_iam_user_policy_attachment" "notadmin_split_boundary_nothing_notia
 
 # 20. User with split allow + boundary ec2only
 resource "aws_iam_user" "notadmin_split_allow_boundary_ec2only" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-split-allow-boundary-ec2only"
   permissions_boundary = aws_iam_policy.boundary_ec2only.arn
@@ -1075,6 +1096,7 @@ resource "aws_iam_user_policy_attachment" "notadmin_split_boundary_ec2_notiam" {
 
 # 21. User with split boundary mismatch
 resource "aws_iam_user" "notadmin_split_boundary_mismatch" {
+  force_destroy        = true
   provider             = aws.prod
   name                 = "pl-prod-epe-user-notAdmin-split-boundary-mismatch"
   permissions_boundary = aws_iam_policy.boundary_iam_only.arn
@@ -1104,8 +1126,9 @@ resource "aws_iam_user_policy_attachment" "notadmin_boundary_mismatch" {
 
 # 22. Role with AWS managed admin policy
 resource "aws_iam_role" "isadmin_awsmanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-awsmanaged"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-awsmanaged"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1136,8 +1159,9 @@ resource "aws_iam_role_policy_attachment" "isadmin_role_awsmanaged" {
 
 # 23. Role with customer managed admin policy
 resource "aws_iam_role" "isadmin_customermanaged" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-customermanaged"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-customermanaged"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1168,8 +1192,9 @@ resource "aws_iam_role_policy_attachment" "isadmin_role_customermanaged" {
 
 # 24. Role with inline admin policy
 resource "aws_iam_role" "isadmin_inline" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-inline"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-inline"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1215,8 +1240,9 @@ resource "aws_iam_role_policy" "isadmin_role_inline" {
 
 # 25. Role with split IAM and NotIAM policies
 resource "aws_iam_role" "isadmin_split_iam_and_notiam" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-split-iam-and-notiam"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-split-iam-and-notiam"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1253,8 +1279,9 @@ resource "aws_iam_role_policy_attachment" "isadmin_role_split_notiam" {
 
 # 26. Role with split S3 and NotS3 policies
 resource "aws_iam_role" "isadmin_split_s3_and_nots3" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-split-s3-and-nots3"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-split-s3-and-nots3"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1291,8 +1318,9 @@ resource "aws_iam_role_policy_attachment" "isadmin_role_split_nots3" {
 
 # 27. Role with many services combined
 resource "aws_iam_role" "isadmin_many_services_combined" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-isAdmin-many-services-combined"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-isAdmin-many-services-combined"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1327,8 +1355,9 @@ resource "aws_iam_role_policy_attachment" "isadmin_role_many_services" {
 
 # 28. Role with admin policy + deny all
 resource "aws_iam_role" "notadmin_adminpolicy_plus_denyall" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1376,8 +1405,9 @@ resource "aws_iam_role_policy" "notadmin_role_denyall" {
 
 # 29. Role with admin policy + deny with NotAction []
 resource "aws_iam_role" "notadmin_adminpolicy_plus_denynotaction" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1425,8 +1455,9 @@ resource "aws_iam_role_policy" "notadmin_role_denynotaction" {
 
 # 30. Role with admin policy + deny NotAction [ec2:DescribeInstances]
 resource "aws_iam_role" "notadmin_adminpolicy_plus_denynotaction_ec2only" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction-ec2only"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction-ec2only"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1478,8 +1509,9 @@ resource "aws_iam_role_policy" "notadmin_role_denynotaction_ec2only" {
 
 # 31. Role with admin policy + deny split iam/notiam
 resource "aws_iam_role" "notadmin_adminpolicy_plus_deny_split_iam_notiam" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-split-iam-notiam"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1544,8 +1576,9 @@ resource "aws_iam_role_policy" "notadmin_role_deny_notiam" {
 
 # 32. Role with admin policy + deny incremental (multiple denies)
 resource "aws_iam_role" "notadmin_adminpolicy_plus_deny_incremental" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-incremental"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-incremental"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1603,8 +1636,9 @@ resource "aws_iam_role_policy" "notadmin_role_deny_incremental" {
 
 # 33. Role with split allow + deny all
 resource "aws_iam_role" "notadmin_split_allow_plus_denyall" {
-  provider = aws.prod
-  name     = "pl-prod-epe-role-notAdmin-split-allow-plus-denyall"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-split-allow-plus-denyall"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1662,9 +1696,10 @@ resource "aws_iam_role_policy" "notadmin_role_split_denyall" {
 
 # 34. Role with admin policy + boundary allows nothing
 resource "aws_iam_role" "notadmin_adminpolicy_plus_boundary_allows_nothing" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-admin-plus-boundary-allows-nothing"
-  permissions_boundary = aws_iam_policy.boundary_allows_nothing.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-admin-plus-boundary-allows-nothing"
+  permissions_boundary  = aws_iam_policy.boundary_allows_nothing.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1695,9 +1730,10 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_boundary_nothing_admin"
 
 # 35. Role with admin policy + boundary ec2only
 resource "aws_iam_role" "notadmin_adminpolicy_plus_boundary_ec2only" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-ec2only"
-  permissions_boundary = aws_iam_policy.boundary_ec2only.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-ec2only"
+  permissions_boundary  = aws_iam_policy.boundary_ec2only.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1728,9 +1764,10 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_boundary_ec2only_admin"
 
 # 36. Role with admin policy + boundary NotAction edge case (NotAction "*" = allows nothing)
 resource "aws_iam_role" "notadmin_adminpolicy_plus_boundary_notaction_ec2only" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only"
-  permissions_boundary = aws_iam_policy.boundary_notaction_ec2only.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only"
+  permissions_boundary  = aws_iam_policy.boundary_notaction_ec2only.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1765,9 +1802,10 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_boundary_notaction_ec2o
 
 # 37. Role with split allow + boundary allows nothing
 resource "aws_iam_role" "notadmin_split_allow_boundary_allows_nothing" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-split-allow-boundary-allows-nothing"
-  permissions_boundary = aws_iam_policy.boundary_allows_nothing.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-split-allow-boundary-allows-nothing"
+  permissions_boundary  = aws_iam_policy.boundary_allows_nothing.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1804,9 +1842,10 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_split_boundary_nothing_
 
 # 38. Role with split allow + boundary ec2only
 resource "aws_iam_role" "notadmin_split_allow_boundary_ec2only" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-split-allow-boundary-ec2only"
-  permissions_boundary = aws_iam_policy.boundary_ec2only.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-split-allow-boundary-ec2only"
+  permissions_boundary  = aws_iam_policy.boundary_ec2only.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -1843,9 +1882,10 @@ resource "aws_iam_role_policy_attachment" "notadmin_role_split_boundary_ec2_noti
 
 # 39. Role with split boundary mismatch
 resource "aws_iam_role" "notadmin_split_boundary_mismatch" {
-  provider             = aws.prod
-  name                 = "pl-prod-epe-role-notAdmin-split-boundary-mismatch"
-  permissions_boundary = aws_iam_policy.boundary_iam_only.arn
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-epe-role-notAdmin-split-boundary-mismatch"
+  permissions_boundary  = aws_iam_policy.boundary_iam_only.arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

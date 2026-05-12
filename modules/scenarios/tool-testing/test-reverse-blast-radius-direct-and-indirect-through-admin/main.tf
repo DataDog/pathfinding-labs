@@ -29,8 +29,9 @@ terraform {
 
 # User with direct S3 access to the target bucket
 resource "aws_iam_user" "user1" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-admin-user1"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-rbr-admin-user1"
 
   tags = {
     Name        = "pl-prod-rbr-admin-user1"
@@ -86,8 +87,9 @@ resource "aws_iam_user_policy" "user1_policy" {
 
 # User with ability to assume the admin role
 resource "aws_iam_user" "user2" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-admin-user2"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-rbr-admin-user2"
 
   tags = {
     Name        = "pl-prod-rbr-admin-user2"
@@ -130,8 +132,9 @@ resource "aws_iam_user_policy" "user2_policy" {
 
 # Admin role that user2 can assume
 resource "aws_iam_role" "role3" {
-  provider = aws.prod
-  name     = "pl-prod-rbr-admin-role3"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-rbr-admin-role3"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

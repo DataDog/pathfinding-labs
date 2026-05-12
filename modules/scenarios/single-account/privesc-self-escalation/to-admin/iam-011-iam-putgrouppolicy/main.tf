@@ -16,8 +16,9 @@ resource "aws_iam_group" "target_group" {
 
 # Create the user that will perform self-escalation
 resource "aws_iam_user" "privesc_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-011-to-admin-paul"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-011-to-admin-paul"
 
   tags = {
     Name        = "pl-prod-iam-011-to-admin-paul"

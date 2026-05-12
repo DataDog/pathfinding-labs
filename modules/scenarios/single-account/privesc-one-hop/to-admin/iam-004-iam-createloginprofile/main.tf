@@ -16,8 +16,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-004-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-004-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-004-to-admin-starting-user"
@@ -67,8 +68,9 @@ resource "aws_iam_user_policy" "starting_user_basic" {
 # Admin user that will be the target of privilege escalation
 # This user has AdministratorAccess but no console password (login profile)
 resource "aws_iam_user" "admin_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-004-to-admin-target-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-004-to-admin-target-user"
 
   tags = {
     Name        = "pl-prod-iam-004-to-admin-target-user"
@@ -87,8 +89,9 @@ resource "aws_iam_user_policy_attachment" "admin_access" {
 
 # Starting role that can create login profiles (privilege escalation vector)
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-004-to-admin-starting-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-004-to-admin-starting-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

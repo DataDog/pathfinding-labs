@@ -9,7 +9,8 @@ terraform {
 
 # Admin user for attacker account operations (analogous to prod's admin_user_for_cleanup)
 resource "aws_iam_user" "admin_user" {
-  name = "pl-attacker-admin-user"
+  force_destroy = true
+  name          = "pl-attacker-admin-user"
 
   tags = {
     Name        = "pl-attacker-admin-user"

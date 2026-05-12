@@ -24,8 +24,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-019-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-019-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-019-to-admin-starting-user"
@@ -81,8 +82,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # Target role with NO permissions initially
 # Trust policy does NOT trust the starting user (this is key to the attack)
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-019-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-019-to-admin-target-role"
 
   # Initial trust policy - trusts root but NOT the starting user
   # The attack will modify this to allow the starting user

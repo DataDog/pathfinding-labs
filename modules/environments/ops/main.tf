@@ -61,7 +61,8 @@ resource "aws_budgets_budget" "monthly_cost" {
 
 # Pathfinding starting user for operations environment
 resource "aws_iam_user" "pathfinding_starting_user" {
-  name = "pl-pathfinding-starting-user-operations"
+  force_destroy = true
+  name          = "pl-pathfinding-starting-user-operations"
 }
 
 # Access key for the pathfinding starting user
@@ -71,7 +72,8 @@ resource "aws_iam_access_key" "pathfinding_starting_user" {
 
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
-  name = "pl-admin-user-for-cleanup-scripts"
+  force_destroy = true
+  name          = "pl-admin-user-for-cleanup-scripts"
 }
 
 # Access key for the admin cleanup user
@@ -87,7 +89,8 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
 
 # Create readonly user for demo script observation steps
 resource "aws_iam_user" "readonly_user" {
-  name = "pl-readonly-user-ops"
+  force_destroy = true
+  name          = "pl-readonly-user-ops"
   tags = {
     Name        = "pl-readonly-user-ops"
     Environment = "ops"

@@ -10,8 +10,9 @@ terraform {
 
 # IAM role for Lambda with AdministratorAccess
 resource "aws_iam_role" "lambda_admin_role" {
-  provider = aws.dev
-  name     = "pl-lambda-admin-role"
+  force_detach_policies = true
+  provider              = aws.dev
+  name                  = "pl-lambda-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

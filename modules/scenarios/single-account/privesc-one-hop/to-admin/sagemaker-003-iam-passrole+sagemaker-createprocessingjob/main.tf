@@ -18,8 +18,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-sagemaker-003-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-sagemaker-003-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-sagemaker-003-to-admin-starting-user"
@@ -110,8 +111,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Passable admin role (to be passed to SageMaker processing job)
 resource "aws_iam_role" "passable_role" {
-  provider = aws.prod
-  name     = "pl-prod-sagemaker-003-to-admin-passable-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-sagemaker-003-to-admin-passable-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

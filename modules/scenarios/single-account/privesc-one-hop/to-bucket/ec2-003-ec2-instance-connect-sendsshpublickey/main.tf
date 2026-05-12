@@ -115,8 +115,9 @@ resource "aws_s3_object" "flag" {
 
 # EC2 bucket role - trust policy for EC2 service
 resource "aws_iam_role" "ec2_bucket_role" {
-  provider = aws.prod
-  name     = "pl-prod-ec2-003-to-bucket-ec2-bucket-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ec2-003-to-bucket-ec2-bucket-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -248,8 +249,9 @@ resource "aws_instance" "target" {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ec2-003-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ec2-003-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-ec2-003-to-bucket-starting-user"

@@ -1,7 +1,8 @@
 # Lambda updater role in prod environment
 resource "aws_iam_role" "lambda_updater" {
-  provider = aws.prod
-  name     = "pl-lambda-updater"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-lambda-updater"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -61,8 +62,9 @@ resource "aws_iam_role_policy_attachment" "lambda_updater" {
 
 # Lambda admin role that can be passed via PassRole
 resource "aws_iam_role" "lambda_admin" {
-  provider = aws.prod
-  name     = "pl-Lambda-admin"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-Lambda-admin"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

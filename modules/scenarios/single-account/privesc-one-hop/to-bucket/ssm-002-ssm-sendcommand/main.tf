@@ -102,8 +102,9 @@ resource "aws_s3_object" "sensitive_data" {
 # ==============================================================================
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ssm-002-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ssm-002-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-ssm-002-to-bucket-starting-user"
@@ -164,8 +165,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 
 # Role with S3 bucket access that will be attached to the EC2 instance
 resource "aws_iam_role" "ec2_bucket_role" {
-  provider = aws.prod
-  name     = "pl-prod-ssm-002-to-bucket-ec2-bucket-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ssm-002-to-bucket-ec2-bucket-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

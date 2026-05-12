@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-erp-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-erp-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-erp-to-bucket-starting-user"
@@ -77,8 +78,9 @@ data "aws_iam_role" "terraform_role" {
 
 # Role that can be assumed by the scenario-specific starting user
 resource "aws_iam_role" "exclusive_bucket_access_role" {
-  provider = aws.prod
-  name     = "pl-exclusive-bucket-access-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-exclusive-bucket-access-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

@@ -48,8 +48,9 @@ data "aws_ami" "amazon_linux_2023" {
 
 # Admin role attached to the EC2 instance - this is what CSPM should detect
 resource "aws_iam_role" "ec2_admin" {
-  provider = aws.prod
-  name     = "pl-cspm-ec2-001-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-cspm-ec2-001-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -157,8 +158,9 @@ resource "aws_instance" "target" {
 
 # User with SSM access - represents anyone who could access the instance
 resource "aws_iam_user" "demo_user" {
-  provider = aws.prod
-  name     = "pl-cspm-ec2-001-demo-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-cspm-ec2-001-demo-user"
 
   tags = {
     Name        = "pl-cspm-ec2-001-demo-user"

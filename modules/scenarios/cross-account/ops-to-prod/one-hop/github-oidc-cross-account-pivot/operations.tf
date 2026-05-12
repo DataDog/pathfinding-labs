@@ -22,8 +22,9 @@ resource "aws_iam_openid_connect_provider" "github" {
 # Ops deployer role — trusted by GitHub Actions via OIDC for the configured repo.
 # This is the initial foothold; it can only assume the specific prod deployer role.
 resource "aws_iam_role" "ops_deployer" {
-  provider = aws.operations
-  name     = "pl-ops-goidc-pivot-deployer-role"
+  force_detach_policies = true
+  provider              = aws.operations
+  name                  = "pl-ops-goidc-pivot-deployer-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

@@ -11,8 +11,9 @@ terraform {
 # Scenario-specific starting user with AttachUserPolicy permission on itself
 # This user can attach any managed policy to itself, including AdministratorAccess
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-008-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-008-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-008-to-admin-starting-user"

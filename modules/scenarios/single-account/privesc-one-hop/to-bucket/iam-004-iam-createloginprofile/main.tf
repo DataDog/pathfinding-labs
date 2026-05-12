@@ -20,8 +20,9 @@ terraform {
 # ==============================================================================
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-004-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-004-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-004-bucket-starting-user"
@@ -73,8 +74,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # ==============================================================================
 
 resource "aws_iam_user" "hop1_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-004-bucket-hop1"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-004-bucket-hop1"
 
   tags = {
     Name        = "pl-prod-iam-004-bucket-hop1"

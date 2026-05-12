@@ -746,6 +746,12 @@ echo ""
 
 ## cleanup_attack.sh Template
 
+### Cleanup is the first line of defense — not the only one
+
+`cleanup_attack.sh` must reverse every out-of-band IAM mutation the demo makes against the scenario's users/roles: detach managed policies, delete inline policies, remove group memberships, delete access keys created on a user, delete login profiles. If you skip any of these, the user is forced to run cleanup before they can `terraform destroy` the scenario — which they may forget.
+
+The scenario's Terraform now sets `force_destroy = true` on every `aws_iam_user` and `force_detach_policies = true` on every `aws_iam_role` as a second line of defense, so destroy will still succeed even if cleanup was skipped. **Do not treat that as a license to write a lazy cleanup script.** The flags only protect the destroy path; in normal use the scenario stays deployed across many demo runs and cleanup is what restores it to the starting state between runs. A demo that leaves AdministratorAccess attached to the starting user after cleanup is broken even if `terraform destroy` would clean it up later.
+
 ### Standard Structure with Region Handling
 
 ```bash

@@ -128,6 +128,20 @@ Read `main.tf` and verify:
 - IAM policies have proper permissions
 - Tags are complete (Name, Environment, Scenario, Purpose)
 
+#### Check IAM destroy hygiene (MANDATORY)
+Every `aws_iam_user` resource in `main.tf` (and `prod.tf` / `dev.tf` / `attacker.tf`) **must** set `force_destroy = true`. Every `aws_iam_role` resource **must** set `force_detach_policies = true`. Flag any block missing the relevant flag as an error.
+
+**Why this is required:** demo_attack.sh scripts attach managed policies, inline policies, group memberships, login profiles, and access keys to the scenario's IAM principals out-of-band as the proof of escalation. Without these flags, if a user disables the scenario before running cleanup_attack.sh, `terraform destroy` fails with `DeleteConflict: must detach all policies first` and the destroy is wedged. These flags are the second line of defense behind cleanup_attack.sh.
+
+Suggested grep to surface violations:
+```bash
+# Roles missing force_detach_policies
+grep -L 'force_detach_policies' <(grep -l 'resource "aws_iam_role"' {scenario-dir}/*.tf)
+# Users missing force_destroy
+grep -L 'force_destroy' <(grep -l 'resource "aws_iam_user"' {scenario-dir}/*.tf)
+```
+(But verify per-block, not per-file — a file may contain multiple IAM resources where only some have the flag.)
+
 #### Check Variables
 Read `variables.tf` and verify:
 - **Non-tool-testing scenarios**: contains four variables: `account_id`, `environment`, `resource_suffix`, and `flag_value` (with `type = string` and `default = "flag{MISSING}"`)

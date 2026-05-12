@@ -30,8 +30,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-006-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ecs-006-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-ecs-006-to-admin-starting-user"
@@ -117,8 +118,9 @@ resource "aws_iam_user_policy" "starting_user_helpful" {
 
 # Target admin role that the ECS task runs with
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-006-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-006-to-admin-target-role"
 
   # Trust policy allowing ECS tasks to assume this role
   assume_role_policy = jsonencode({
@@ -180,8 +182,9 @@ resource "aws_iam_role_policy" "target_role_ssm" {
 
 # Execution role for pulling images and logging
 resource "aws_iam_role" "execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-ecs-006-to-admin-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-ecs-006-to-admin-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

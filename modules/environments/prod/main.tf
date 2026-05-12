@@ -78,7 +78,8 @@ resource "aws_iam_service_linked_role" "apprunner" {
 
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
-  name = "pl-admin-user-for-cleanup-scripts"
+  force_destroy = true
+  name          = "pl-admin-user-for-cleanup-scripts"
 }
 
 # Access key for the admin cleanup user
@@ -94,7 +95,8 @@ resource "aws_iam_user_policy_attachment" "admin_user_for_cleanup_admin_access" 
 
 # Create readonly user for demo script observation steps
 resource "aws_iam_user" "readonly_user" {
-  name = "pl-readonly-user-prod"
+  force_destroy = true
+  name          = "pl-readonly-user-prod"
   tags = {
     Name        = "pl-readonly-user-prod"
     Environment = "prod"

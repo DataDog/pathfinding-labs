@@ -195,6 +195,39 @@ When in doubt, check the demo_attack.sh:
 - If the command is categorized as `# [EXPLOIT]` or `show_attack_cmd`, the permission is required
 - If the command is categorized as `# [OBSERVATION]` or `show_cmd "ReadOnly"`, the permission is helpful
 
+## Phase 1.5: IAM Destroy Hygiene (main.tf, prod.tf, dev.tf, attacker.tf)
+
+### Goal
+
+Every `aws_iam_user` resource must have `force_destroy = true` and every `aws_iam_role` resource must have `force_detach_policies = true`.
+
+### Why
+
+Demo scripts attach managed policies, inline policies, group memberships, access keys, and login profiles to IAM principals out-of-band as the proof of escalation. Terraform's state doesn't track those mutations. Without these flags, disabling the scenario without first running `cleanup_attack.sh` causes `terraform destroy` to fail with `DeleteConflict: Cannot delete entity, must detach all policies first`, wedging the destroy until manual remediation.
+
+### Step
+
+For each `*.tf` file in the scenario directory, find every `resource "aws_iam_user"` block and ensure it contains `force_destroy = true`. Find every `resource "aws_iam_role"` block and ensure it contains `force_detach_policies = true`. Add the missing flag as the first attribute inside the block.
+
+```hcl
+resource "aws_iam_user" "starting_user" {
+  provider      = aws.prod
+  force_destroy = true
+  name          = "..."
+  # ...
+}
+
+resource "aws_iam_role" "vulnerable_role" {
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "..."
+  assume_role_policy    = jsonencode({ ... })
+  # ...
+}
+```
+
+Run `terraform fmt -recursive` afterward to normalize attribute alignment. The flag has no effect on apply/update behavior — only on destroy — so this is safe to add to any scenario.
+
 ## Phase 2: Demo Script Readonly Pattern (demo_attack.sh)
 
 Skip this phase if the scenario has no `demo_attack.sh`.

@@ -19,8 +19,9 @@ terraform {
 
 # Scenario-specific starting user with privilege escalation permissions
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-001-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-lambda-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-lambda-001-to-admin-starting-user"
@@ -39,8 +40,9 @@ resource "aws_iam_access_key" "starting_user_key" {
 # Admin role (target of privilege escalation)
 # This role trusts lambda.amazonaws.com so it can be passed to Lambda functions
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-lambda-001-to-admin-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-lambda-001-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

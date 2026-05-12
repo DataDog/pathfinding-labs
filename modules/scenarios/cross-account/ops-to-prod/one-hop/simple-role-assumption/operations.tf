@@ -1,6 +1,7 @@
 resource "aws_iam_role" "ops_role_with_assumeRole_star" {
-  provider = aws.operations
-  name     = "pl-x-account-ops-role-with-assume-role-star"
+  force_detach_policies = true
+  provider              = aws.operations
+  name                  = "pl-x-account-ops-role-with-assume-role-star"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",

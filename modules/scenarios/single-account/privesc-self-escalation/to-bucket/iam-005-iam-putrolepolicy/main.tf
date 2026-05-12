@@ -10,8 +10,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-iam-005-to-bucket-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-iam-005-to-bucket-starting-user"
 
   tags = {
     Name        = "pl-prod-iam-005-to-bucket-starting-user"
@@ -65,8 +66,9 @@ resource "aws_s3_bucket" "target_bucket" {
 
 # Target role with S3 bucket access (will be modified via PutRolePolicy)
 resource "aws_iam_role" "target_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-005-to-bucket-target-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-005-to-bucket-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -123,8 +125,9 @@ resource "aws_iam_role_policy_attachment" "bucket_access_attachment" {
 
 # Starting role with PutRolePolicy permission on itself
 resource "aws_iam_role" "starting_role" {
-  provider = aws.prod
-  name     = "pl-prod-iam-005-to-bucket-starting-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-iam-005-to-bucket-starting-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
