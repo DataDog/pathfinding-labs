@@ -106,6 +106,7 @@ module "prod_environment" {
   create_autoscaling_slr = var.create_autoscaling_slr
   create_spot_slr        = var.create_spot_slr
   create_apprunner_slr   = var.create_apprunner_slr
+  create_emr_slr         = var.create_emr_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)

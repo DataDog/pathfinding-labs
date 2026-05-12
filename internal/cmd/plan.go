@@ -60,6 +60,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+			CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
 		}
 	}
 

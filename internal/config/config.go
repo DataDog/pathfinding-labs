@@ -177,6 +177,7 @@ type ServiceLinkedRoleFlags struct {
 	CreateAutoScaling bool
 	CreateSpot        bool
 	CreateAppRunner   bool
+	CreateEMR         bool
 }
 
 // GetConfigPath returns the path to the config file.
@@ -611,6 +612,7 @@ func (w *WorkspaceConfig) GenerateTFVars() string {
 		lines = append(lines, fmt.Sprintf("create_autoscaling_slr = %t", w.SLRFlags.CreateAutoScaling))
 		lines = append(lines, fmt.Sprintf("create_spot_slr        = %t", w.SLRFlags.CreateSpot))
 		lines = append(lines, fmt.Sprintf("create_apprunner_slr   = %t", w.SLRFlags.CreateAppRunner))
+		lines = append(lines, fmt.Sprintf("create_emr_slr         = %t", w.SLRFlags.CreateEMR))
 		lines = append(lines, "")
 	}
 

@@ -76,6 +76,14 @@ resource "aws_iam_service_linked_role" "apprunner" {
   aws_service_name = "apprunner.amazonaws.com"
 }
 
+# AWSServiceRoleForEMRCleanup — EMR uses this to clean up VPC endpoints and
+# EC2 resources after a cluster terminates. Required for any RunJobFlow call;
+# clusters fail with VALIDATION_ERROR if the SLR is missing.
+resource "aws_iam_service_linked_role" "emr" {
+  count            = var.create_emr_slr ? 1 : 0
+  aws_service_name = "elasticmapreduce.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   force_destroy = true

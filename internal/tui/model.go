@@ -1346,6 +1346,7 @@ func (m *Model) executeDeploy() tea.Cmd {
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1379,6 +1380,7 @@ func (m *Model) executePlan() tea.Cmd {
 				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
 				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
 				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
