@@ -670,10 +670,10 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_arn
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_arn
-    ecs_service_name        = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
-    flag_ssm_parameter_name = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
-    flag_ssm_parameter_arn  = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
-    attack_path             = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
+    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
   } : null
   sensitive = true
 }
@@ -1036,6 +1036,26 @@ output "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
     flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].flag_ssm_parameter_name
     flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  description = "All outputs for batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].admin_role_name
+    execution_role_arn              = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].execution_role_arn
+    job_queue_arn                   = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].job_queue_arn
+    job_queue_name                  = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].job_queue_name
+    compute_environment_arn         = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].compute_environment_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].attack_path
   } : null
   sensitive = true
 }

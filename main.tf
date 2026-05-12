@@ -455,7 +455,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
+  count      = var.enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
   source     = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-003-iam-passrole+ecs-registertaskdefinition+ecs-createservice"
   flag_value = lookup(var.scenario_flags, "ecs-003-to-admin", "flag{MISSING}")
   providers = {
@@ -698,6 +698,20 @@ module "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(var.scenario_flags, "codebuild-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {

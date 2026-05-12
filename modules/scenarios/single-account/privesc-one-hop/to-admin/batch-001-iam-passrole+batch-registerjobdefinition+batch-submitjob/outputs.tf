@@ -67,10 +67,24 @@ output "compute_environment_arn" {
 }
 
 # =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
+# =============================================================================
 # ATTACK PATH DESCRIPTION
 # =============================================================================
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (batch:RegisterJobDefinition with admin role as jobRoleArn) -> (batch:SubmitJob to ${aws_batch_job_queue.queue.name}) -> Batch job container (${aws_iam_role.admin_role.name}) attaches admin policy to starting user -> admin access"
+  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (batch:RegisterJobDefinition with admin role as jobRoleArn) -> (batch:SubmitJob to ${aws_batch_job_queue.queue.name}) -> Batch job container (${aws_iam_role.admin_role.name}) attaches admin policy to starting user -> admin access -> ssm:GetParameter -> CTF flag"
 }

@@ -24,6 +24,7 @@ flags:
   apprunner-001-to-admin: "flag{apprunner_001_admin_captured}"
   apprunner-002-to-admin: "flag{apprunner_002_admin_captured}"
   bedrock-001-to-admin: "flag{bedrock_001_admin_captured}"
+  batch-001-to-admin: "flag{batch_001_admin_captured}"
   bedrock-002-to-admin: "flag{bedrock_002_admin_captured}"
   cloudformation-001-to-admin: "flag{cloudformation_001_admin_captured}"
   cloudformation-002-to-admin: "flag{cloudformation_002_admin_captured}"

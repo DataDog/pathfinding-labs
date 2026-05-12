@@ -361,6 +361,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset" {
   description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-005-cloudformation-createchangeset+executechangeset"
   type        = bool

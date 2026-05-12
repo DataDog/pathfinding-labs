@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + batch:RegisterJobDefinition + batch:SubmitJob privilege escalation demo
 # This script detaches AdministratorAccess from the starting user and deregisters the job definition
@@ -51,6 +52,11 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+
+# Source demo permissions library and remove any orphaned restriction policies
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)

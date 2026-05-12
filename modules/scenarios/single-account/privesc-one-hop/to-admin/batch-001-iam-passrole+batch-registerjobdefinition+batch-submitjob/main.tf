@@ -53,8 +53,9 @@ resource "aws_security_group" "batch" {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-batch-001-to-admin-starting-user"
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-batch-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-batch-001-to-admin-starting-user"
@@ -98,6 +99,18 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "batch:SubmitJob"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "batch:DescribeJobs",
+          "batch:DescribeJobQueues",
+          "batch:DescribeComputeEnvironments",
+          "batch:DeregisterJobDefinition",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -110,8 +123,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 # Admin role that will be passed as jobRoleArn in the Batch job definition.
 # This role trusts ecs-tasks.amazonaws.com because Batch runs containers as ECS tasks.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-batch-001-to-admin-admin-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-batch-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -147,8 +161,9 @@ resource "aws_iam_role_policy_attachment" "admin_role_admin_access" {
 
 # Execution role for Batch/ECS Fargate tasks - handles container image pulls and log writing
 resource "aws_iam_role" "execution_role" {
-  provider = aws.prod
-  name     = "pl-prod-batch-001-to-admin-execution-role"
+  force_detach_policies = true
+  provider              = aws.prod
+  name                  = "pl-prod-batch-001-to-admin-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -239,5 +254,27 @@ resource "aws_batch_job_queue" "queue" {
     Environment = var.environment
     Scenario    = "iam-passrole+batch-registerjobdefinition+batch-submitjob"
     Purpose     = "batch-job-queue"
+  }
+}
+
+# =============================================================================
+# CTF FLAG
+# =============================================================================
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/batch-001-to-admin"
+  description = "CTF flag for the batch-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-batch-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+batch-registerjobdefinition+batch-submitjob"
+    Purpose     = "ctf-flag"
   }
 }
