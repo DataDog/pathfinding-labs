@@ -244,10 +244,6 @@ echo "- Downloaded file: $DOWNLOAD_FILE"
 
 echo ""
 
-# Standardized test results output
-echo "TEST_RESULT:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:SUCCESS"
-echo "TEST_DETAILS:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:Successfully accessed S3 bucket via CreateAccessKey escalation"
-echo "TEST_METRICS:prod_one_hop_to_bucket_iam_002_iam_createaccesskey:access_key_created=true,bucket_accessed=true,data_exfiltrated=true,flag_captured=true"
 echo ""
 
 echo -e "${RED}IMPORTANT: Run cleanup_attack.sh to delete the created access keys${NC}"

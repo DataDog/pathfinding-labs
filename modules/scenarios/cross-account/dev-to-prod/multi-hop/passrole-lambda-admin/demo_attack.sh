@@ -330,10 +330,6 @@ if [ "$ATTACK_SUCCESS" = "true" ]; then
     echo -e "  → pl-Lambda-admin → (lambda:InvokeFunction)"
     echo -e "  → Lambda as admin → (ssm:GetParameter) → CTF Flag"
 
-    # Output standardized test results
-    echo "TEST_RESULT:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:SUCCESS"
-    echo "TEST_DETAILS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:Successfully demonstrated multi-hop cross-account PassRole privilege escalation to Lambda admin and captured CTF flag"
-    echo "TEST_METRICS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:dev_role_assumed=true,prod_role_assumed=true,lambda_created=true,admin_access_confirmed=true,flag_captured=true"
 else
     echo "❌ ATTACK FAILED!"
     echo "=================="
@@ -345,10 +341,6 @@ else
     echo ""
     echo "The Lambda function was created successfully but failed to execute properly or demonstrate admin access."
 
-    # Output standardized test results
-    echo "TEST_RESULT:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:FAILURE"
-    echo "TEST_DETAILS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:Lambda function created but failed to demonstrate admin access"
-    echo "TEST_METRICS:x-account-from-dev-to-prod-role-assumption-passrole-to-lambda-admin:dev_role_assumed=true,prod_role_assumed=true,lambda_created=true,admin_access_confirmed=false"
     exit 1
 fi
 

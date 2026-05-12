@@ -596,13 +596,19 @@ Each scenario module follows a standard structure:
 
 ```
 scenario-name/
-├── main.tf              # Terraform resources (uses provider alias)
-├── variables.tf         # Required: account_id, resource_suffix, environment
-├── outputs.tf           # Credentials, ARNs, attack path info
-├── README.md            # Documentation with mermaid diagrams
-├── demo_attack.sh       # Exploitation demonstration
-└── cleanup_attack.sh    # Artifact cleanup script
+├── main.tf                  # Terraform resources (uses provider alias)
+├── variables.tf             # Required: account_id, resource_suffix, environment
+├── outputs.tf               # Credentials, ARNs, attack path info
+├── scenario.yaml            # Scenario metadata (schema versioned)
+├── attack_map.yaml          # Machine-readable attack graph (nodes + edges)
+├── README.md                # Documentation with mermaid diagrams
+├── solution.md              # Step-by-step solution walkthrough
+├── demo_attack.sh           # Exploitation demonstration (privesc/cspm scenarios)
+├── cleanup_attack.sh        # Artifact cleanup script
+└── print_starting_info.sh   # Prints credentials and starting context
 ```
+
+CTF scenarios omit `demo_attack.sh` (finding the path is the challenge) and add `hints.md`.
 
 ### Adding a New Scenario (Step-by-Step)
 
@@ -976,7 +982,6 @@ Never modify the schema without completing all three steps.
 ## Additional Resources
 
 - [README.md](README.md) - Complete project documentation
-- [RESTRUCTURE_PLAN.md](RESTRUCTURE_PLAN.md) - Architecture evolution details
 - [IAM Vulnerable Project](https://github.com/bishopfox/iam-vulnerable) - Inspiration for single-account paths
 - [Stratus Red Team](https://github.com/DataDog/stratus-red-team) - Similar approach for adversary emulation
 - [MITRE ATT&CK Cloud Matrix](https://attack.mitre.org/matrices/enterprise/cloud/)

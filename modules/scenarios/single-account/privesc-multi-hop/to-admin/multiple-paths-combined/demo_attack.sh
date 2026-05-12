@@ -471,10 +471,6 @@ echo ""
 echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
 echo "./cleanup_attack.sh or use the plabs TUI/CLI"
 
-# Standardized test results output
-echo "TEST_RESULT:multiple_paths_combined:SUCCESS"
-echo "TEST_DETAILS:multiple_paths_combined:Successfully demonstrated EC2, Lambda, and CloudFormation privilege escalation paths and captured CTF flag"
-echo "TEST_METRICS:multiple_paths_combined:paths_tested=3,admin_roles_created=3,flag_captured=true"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

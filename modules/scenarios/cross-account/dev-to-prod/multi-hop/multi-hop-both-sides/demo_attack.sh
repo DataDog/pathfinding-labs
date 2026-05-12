@@ -273,10 +273,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo "     Or read the parameter directly via Systems Manager > Parameter Store."
                 echo ""
 
-                # Output standardized test results
-                echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:SUCCESS"
-                echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Successfully demonstrated multi-hop cross-account privilege escalation using login profiles"
-                echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumed=true,jeremy_profile_updated=true,admin_access_confirmed=true"
 
             else
                 echo -e "${RED}✗ Failed to update Jeremy's login profile${NC}"
@@ -285,9 +281,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                 echo "2. Jeremy's login profile doesn't exist or can't be updated"
                 echo "3. There are other policy restrictions"
                 echo ""
-                echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:FAILURE"
-                echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Failed to update Jeremy's login profile"
-                echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumed=true,jeremy_profile_update_failed=true"
                 exit 1
             fi
 
@@ -300,9 +293,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
             echo "2. The trustsdev role doesn't exist in the prod account"
             echo "3. There's a trust policy issue"
             echo ""
-            echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:FAILURE"
-            echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Failed to assume trustsdev role in prod"
-            echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_created=true,trustsdev_assumption_failed=true"
             exit 1
         fi
 
@@ -313,9 +303,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
         echo "2. Josh user doesn't exist or already has a login profile"
         echo "3. There are other policy restrictions"
         echo ""
-        echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:FAILURE"
-        echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Failed to create login profile for Josh"
-        echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumed=true,josh_profile_creation_failed=true"
         exit 1
     fi
 
@@ -328,9 +315,6 @@ else
     echo "2. The helpdesk role doesn't exist in the dev account"
     echo "3. There's a trust policy issue"
     echo ""
-    echo "TEST_RESULT:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:FAILURE"
-    echo "TEST_DETAILS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:Failed to assume helpdesk role"
-    echo "TEST_METRICS:x-account-from-dev-to-prod-multi-hop-privesc-both-sides:helpdesk_assumption_failed=true"
     exit 1
 fi
 

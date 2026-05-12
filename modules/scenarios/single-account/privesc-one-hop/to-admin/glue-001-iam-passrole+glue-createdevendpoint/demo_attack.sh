@@ -386,9 +386,6 @@ echo -e "${YELLOW}To clean up and stop charges:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
-# Standardized test results output
-echo "TEST_RESULT:glue_001:SUCCESS"
-echo "TEST_DETAILS:glue_001:Successfully created Glue Dev Endpoint with admin role and captured CTF flag via SSH"
 
 # Demo completed successfully — disarm the best-effort-delete trap.
 DEMO_COMPLETED=1

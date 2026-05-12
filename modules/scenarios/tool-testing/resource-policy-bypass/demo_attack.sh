@@ -308,10 +308,6 @@ if BUCKET_ACCESS_CREDENTIALS=$(aws sts assume-role --role-arn "$BUCKET_ACCESS_RO
         done
     fi
 
-    # Output standardized test results
-    echo "TEST_RESULT:prod_role_has_access_to_bucket_through_resource_policy:SUCCESS"
-    echo "TEST_DETAILS:prod_role_has_access_to_bucket_through_resource_policy:Successfully demonstrated S3 bucket access through resource policy bypassing IAM restrictions"
-    echo "TEST_METRICS:prod_role_has_access_to_bucket_through_resource_policy:role_assumed=true,bucket_found=true,objects_listed=true,files_downloaded=true,write_access_confirmed=true"
 
 else
     echo -e "${RED}✗ Failed to assume bucket access role${NC}"
@@ -322,9 +318,6 @@ else
     echo "2. The role doesn't exist"
     echo "3. There's a trust policy issue"
     echo ""
-    echo "TEST_RESULT:prod_role_has_access_to_bucket_through_resource_policy:FAILURE"
-    echo "TEST_DETAILS:prod_role_has_access_to_bucket_through_resource_policy:Failed to assume bucket access role"
-    echo "TEST_METRICS:prod_role_has_access_to_bucket_through_resource_policy:role_assumption_failed=true"
     exit 1
 fi
 

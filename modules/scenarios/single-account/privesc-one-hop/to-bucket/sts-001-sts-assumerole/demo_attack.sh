@@ -223,10 +223,6 @@ echo ""
 echo -e "${GREEN}Downloaded file location: $DOWNLOAD_FILE${NC}"
 echo ""
 
-# Standardized test results output
-echo "TEST_RESULT:prod_one_hop_to_bucket_sts_001_sts_assumerole:SUCCESS"
-echo "TEST_DETAILS:prod_one_hop_to_bucket_sts_001_sts_assumerole:Successfully accessed S3 bucket via role assumption"
-echo "TEST_METRICS:prod_one_hop_to_bucket_sts_001_sts_assumerole:role_assumed=true,bucket_accessed=true,data_exfiltrated=true"
 echo ""
 
 # Cleanup instructions

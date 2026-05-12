@@ -310,10 +310,6 @@ echo ""
 echo -e "${GREEN}=== Demo Complete ===${NC}"
 echo "This demonstrates the dangers of overly permissive cross-account role assumptions."
 
-# Standardized test results output
-echo "TEST_RESULT:x-account-from-operations-to-prod-simple-role-assumption:SUCCESS"
-echo "TEST_DETAILS:x-account-from-operations-to-prod-simple-role-assumption:Successfully demonstrated dangerous cross-account role assumption with sts:AssumeRole on *"
-echo "TEST_METRICS:x-account-from-operations-to-prod-simple-role-assumption:ops_role_assumed=true,prod_roles_assumed=3,sts_assume_role_star_demonstrated=true,security_audit_access_gained=true,flag_captured=true"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

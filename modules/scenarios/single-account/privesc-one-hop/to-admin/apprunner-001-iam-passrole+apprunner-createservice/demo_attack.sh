@@ -353,9 +353,6 @@ echo -e "${YELLOW}To clean up and restore the original state:${NC}"
 echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
 echo ""
 
-# Standardized test results output
-echo "TEST_RESULT:apprunner_001:SUCCESS"
-echo "TEST_DETAILS:apprunner_001:Successfully created App Runner service with admin role and captured CTF flag"
 
 # Mark demo as active for plabs tracking
 touch "$(dirname "$0")/.demo_active"

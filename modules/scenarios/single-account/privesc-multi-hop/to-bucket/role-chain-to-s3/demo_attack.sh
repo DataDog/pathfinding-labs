@@ -225,10 +225,6 @@ echo "   by exploiting the trust relationships between roles."
 unset INITIAL_ACCESS_KEY INITIAL_SECRET_KEY INITIAL_SESSION_TOKEN
 unset INTERMEDIATE_ACCESS_KEY INTERMEDIATE_SECRET_KEY INTERMEDIATE_SESSION_TOKEN
 
-# Standardized test results output
-echo "TEST_RESULT:prod_simple_explicit_role_assumption_chain:SUCCESS"
-echo "TEST_DETAILS:prod_simple_explicit_role_assumption_chain:Successfully demonstrated role assumption chain with S3 access"
-echo "TEST_METRICS:prod_simple_explicit_role_assumption_chain:roles_assumed=3,s3_access_gained=true,flag_retrieved=true"
 unset S3_ACCESS_KEY S3_SECRET_KEY S3_SESSION_TOKEN
 
 # Restore helpful permissions for manual exploration

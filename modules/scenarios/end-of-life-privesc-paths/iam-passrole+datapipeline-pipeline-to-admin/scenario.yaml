@@ -57,4 +57,4 @@ mitre_attack:
 
 terraform:
   variable_name: "enable_single_account_privesc_one_hop_to_admin_iam_passrole_datapipeline_pipeline"
-  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/iam-passrole+datapipeline-pipeline"
+  module_path: "modules/scenarios/end-of-life-privesc-paths/iam-passrole+datapipeline-pipeline-to-admin"
