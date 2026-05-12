@@ -26,8 +26,9 @@ terraform {
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-emr-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-emr-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-emr-001-to-admin-starting-user"
@@ -69,6 +70,18 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "elasticmapreduce:RunJobFlow"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "elasticmapreduce:DescribeCluster",
+          "elasticmapreduce:DescribeStep",
+          "elasticmapreduce:ListClusters",
+          "elasticmapreduce:ListSteps",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -79,8 +92,9 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-emr-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-emr-001-to-admin-admin-role"
 
   # Trusts ec2.amazonaws.com because this role is used as an EC2 instance profile
   assume_role_policy = jsonencode({
@@ -129,8 +143,9 @@ resource "aws_iam_instance_profile" "admin_instance_profile" {
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_role" "service_role" {
-  provider = aws.prod
-  name     = "pl-prod-emr-001-to-admin-service-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-emr-001-to-admin-service-role"
 
   # Trusts elasticmapreduce.amazonaws.com because this is the EMR service role
   assume_role_policy = jsonencode({
@@ -158,4 +173,24 @@ resource "aws_iam_role_policy_attachment" "service_role_policy" {
   provider   = aws.prod
   role       = aws_iam_role.service_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole"
+}
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/emr-001-to-admin"
+  description = "CTF flag for the emr-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-emr-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+elasticmapreduce-runjobflow"
+    Purpose     = "ctf-flag"
+  }
 }

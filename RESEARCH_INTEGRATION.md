@@ -25,9 +25,9 @@ Eleven scenarios pulled from research's `modules/scenarios/single-account/prives
 | Scenario | Picked | Migrator | README | Wired | Validator | tf validate | AWS demo | Cleanup | Committed | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
 | batch-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] | Canary scenario. Validated 2026-05-12. |
-| stepfunctions-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | [ ] | Demo confirmed working 2026-05-12. |
-| braket-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | [ ] | Uses `prod.tf` + attacker-account pattern. Demo confirmed working 2026-05-12. |
-| emr-001 | [x] | [x] | [x] | [x] | [x] | [x] | FAIL | [ ] | [ ] | 2026-05-12: cluster TERMINATED_WITH_ERRORS in 30s, step CANCELLED before running. Likely cluster launch failure (subnet/VPC, service role permissions, or instance profile). Investigating. |
+| stepfunctions-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | [x] | Demo confirmed working 2026-05-12. |
+| braket-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | [x] | Uses `prod.tf` + attacker-account pattern. Demo confirmed working 2026-05-12. |
+| emr-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | [ ] | Cluster originally failed with `VALIDATION_ERROR: Service-linked role 'AWSServiceRoleForEMRCleanup' for EMR is required`. Fixed by adding EMR SLR (`elasticmapreduce.amazonaws.com`) to `modules/environments/prod/` + matching plabs SLR detection (`create_emr_slr`). Demo also now self-diagnoses by printing `StateChangeReason` on `TERMINATED_WITH_ERRORS`. Demo confirmed working 2026-05-12. |
 | emr-serverless-001 | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Research status: Created, untested. |
 | kinesisanalytics-001 | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Research status: Created, untested. Likely quick win (inline code, no S3). |
 | synthetics-001 | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | Research status: Created, untested. May need helpful→required reclassification (cwsyn-* / cw-syn-results-*). |
@@ -49,16 +49,14 @@ Reserved for the next batch of research scenarios the user mentioned wanting to 
 
 ---
 
-## Active investigations
+## Resolved investigations
 
-### emr-001 (2026-05-12)
+### emr-001 missing SLR (2026-05-12)
 
 **Symptom:** Cluster transitioned `STARTING -> TERMINATING -> TERMINATED_WITH_ERRORS` in ~30 seconds. Step "Escalate" was `CANCELLED`, never executed. `AdministratorAccess` was not attached.
 
-**Hypotheses to investigate:**
-1. EMR couldn't launch EC2 instances -- missing/invalid subnet, security group, or instance profile.
-2. Service role policy is `AmazonElasticMapReduceRole` (in main.tf) but should be the newer `AmazonEMRServicePolicy_v2` (deprecated managed policy on certain release labels).
-3. Release label `emr-7.0.0` may have a minimum subnet/network requirement that isn't met when no subnet is passed.
-4. Default VPC doesn't have a subnet with auto-assign-public-IPv4 enabled (EMR EC2 instances need outbound access).
+**Root cause:** `aws emr describe-cluster --query 'Cluster.Status.StateChangeReason'` returned `VALIDATION_ERROR: Service-linked role 'AWSServiceRoleForEMRCleanup' for EMR is required.` The EMR SLR (created on first use of the service, but absent in fresh playground accounts) is validated by `RunJobFlow` before the cluster API call returns.
 
-**Next steps:** read emr-001/main.tf and demo_attack.sh to confirm what's being passed, then either pass an explicit subnet or update the service role policy.
+**Fix:** Added the EMR SLR to the prod environment module and wired it through plabs SLR detection, mirroring the existing autoscaling/spot/apprunner pattern (one entry in each of: `ServiceLinkedRoleStatus`, `slrStateAddresses`, `serviceLinkedRoleChecks`, `ServiceLinkedRoleFlags`, the four `SLRFlags` literal sites in `plan.go` / `deploy.go` / `tui/model.go`, root `variables.tf`, root `main.tf` pass-through, env-module `main.tf`/`variables.tf`). EMR is unusual in that the *only* SLR is named `AWSServiceRoleForEMRCleanup` -- it's not paired with a separate "creation" SLR; the customer-managed EMR service role (with `AmazonElasticMapReduceRole`) handles cluster operations, and the SLR handles post-termination VPC-endpoint cleanup. EMR validates the SLR exists before accepting any `RunJobFlow` call.
+
+**Defensive change:** demo_attack.sh now prints `Cluster.Status.StateChangeReason` automatically on `TERMINATED_WITH_ERRORS` so future cluster-launch failures self-diagnose.

@@ -56,5 +56,15 @@ output "service_role_name" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "User (pl-prod-emr-001-to-admin-starting-user) -> [iam:PassRole + elasticmapreduce:RunJobFlow] -> EMR cluster with admin instance profile + service role -> [step via command-runner.jar calls iam:attach-user-policy] -> AdministratorAccess attached to starting user -> Admin access"
+  value       = "User (pl-prod-emr-001-to-admin-starting-user) -> [iam:PassRole + elasticmapreduce:RunJobFlow] -> EMR cluster with admin instance profile + service role -> [step via command-runner.jar calls iam:attach-user-policy] -> AdministratorAccess attached to starting user -> Admin access -> CTF flag"
+}
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }

