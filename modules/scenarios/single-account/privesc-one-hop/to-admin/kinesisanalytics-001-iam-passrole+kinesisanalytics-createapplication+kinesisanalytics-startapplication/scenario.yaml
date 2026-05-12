@@ -1,0 +1,79 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+description: "User with iam:PassRole, kinesisanalytics:CreateApplication, and kinesisanalytics:StartApplication can escalate privileges by creating a Managed Apache Flink application that runs with an admin service execution role"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "kinesisanalytics-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-kinesisanalytics-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-kinesisanalytics-001-to-admin-admin-role"
+
+  summary: "starting_user → (kinesisanalytics:CreateApplication referencing malicious JAR in S3) → (iam:PassRole + kinesisanalytics:StartApplication with admin service execution role) → Flink app uses service execution role credentials to attach AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-kinesisanalytics-001-to-admin-admin-role"
+
+    - permission: "kinesisanalytics:CreateApplication"
+      resource: "*"
+
+    - permission: "kinesisanalytics:StartApplication"
+      resource: "*"
+
+  helpful:
+    - permission: "kinesisanalytics:DescribeApplication"
+      purpose: "Check application status and verify it is running"
+
+    - permission: "kinesisanalytics:ListApplications"
+      purpose: "List existing Flink applications"
+
+    - permission: "kinesisanalytics:StopApplication"
+      purpose: "Stop the application after demonstration"
+
+    - permission: "kinesisanalytics:DeleteApplication"
+      purpose: "Clean up application after demonstration"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"

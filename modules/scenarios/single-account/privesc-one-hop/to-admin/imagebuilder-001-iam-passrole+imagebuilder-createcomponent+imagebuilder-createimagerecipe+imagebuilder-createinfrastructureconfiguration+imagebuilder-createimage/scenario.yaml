@@ -1,0 +1,119 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+description: "User with iam:PassRole and EC2 Image Builder permissions can escalate privileges by creating a build pipeline whose component shell commands execute on an EC2 instance with an admin instance profile"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "imagebuilder-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-imagebuilder-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-imagebuilder-001-to-admin-admin-role"
+
+  summary: "starting_user → (imagebuilder:CreateComponent with malicious shell commands) → (imagebuilder:CreateImageRecipe + imagebuilder:CreateInfrastructureConfiguration) → (iam:PassRole + imagebuilder:CreateImage with admin instance profile) → EC2 build instance runs component commands with admin role credentials → attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-imagebuilder-001-to-admin-admin-role"
+
+    - permission: "imagebuilder:CreateComponent"
+      resource: "*"
+
+    - permission: "imagebuilder:CreateImageRecipe"
+      resource: "*"
+
+    - permission: "imagebuilder:CreateInfrastructureConfiguration"
+      resource: "*"
+
+    - permission: "imagebuilder:CreateImage"
+      resource: "*"
+
+    # AWS-enforced dependent actions for the Create* APIs above.
+    # CreateImageRecipe requires GetComponent, GetImage, ec2:DescribeImages.
+    # CreateImage requires GetImageRecipe, GetInfrastructureConfiguration.
+    # All Create* actions require TagResource.
+    - permission: "imagebuilder:GetComponent"
+      resource: "*"
+
+    - permission: "imagebuilder:GetImage"
+      resource: "*"
+
+    - permission: "imagebuilder:GetImageRecipe"
+      resource: "*"
+
+    - permission: "imagebuilder:GetInfrastructureConfiguration"
+      resource: "*"
+
+    - permission: "imagebuilder:TagResource"
+      resource: "*"
+
+    - permission: "ec2:DescribeImages"
+      resource: "*"
+
+  helpful:
+    - permission: "imagebuilder:ListImages"
+      purpose: "List existing image builds"
+
+    - permission: "imagebuilder:DeleteImage"
+      purpose: "Clean up image after demonstration"
+
+    - permission: "imagebuilder:DeleteComponent"
+      purpose: "Clean up component after demonstration"
+
+    - permission: "imagebuilder:DeleteImageRecipe"
+      purpose: "Clean up recipe after demonstration"
+
+    - permission: "imagebuilder:DeleteInfrastructureConfiguration"
+      purpose: "Clean up infrastructure configuration after demonstration"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# PREREQUISITES
+# =============================================================================
+# The following must exist in the account (not part of attacker's permissions):
+# - VPC with a subnet that has outbound internet access
+# - Security group allowing outbound traffic (for SSM agent, IMDS, and AWS API calls)
+# - EC2 Image Builder Service-Linked Role (AWSServiceRoleForImageBuilder)
+# - Instance profile with admin role trusting ec2.amazonaws.com
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"

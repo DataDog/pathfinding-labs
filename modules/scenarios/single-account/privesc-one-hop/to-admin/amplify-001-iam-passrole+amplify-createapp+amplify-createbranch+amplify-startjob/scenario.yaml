@@ -1,0 +1,91 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob"
+description: "User with iam:PassRole and Amplify permissions can escalate privileges by creating an Amplify app connected to a CodeCommit repo containing malicious build commands that execute with an admin service role"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "amplify-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-amplify-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-amplify-001-to-admin-admin-role"
+
+  summary: "starting_user → (codecommit:CreateRepository + push malicious amplify.yml with exploit commands) → (amplify:CreateApp with admin service role via iam:PassRole) → (amplify:CreateBranch + amplify:StartJob) → Amplify build executes shell commands with admin role credentials → attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-amplify-001-to-admin-admin-role"
+
+    - permission: "amplify:CreateApp"
+      resource: "*"
+
+    - permission: "amplify:CreateBranch"
+      resource: "*"
+
+    - permission: "amplify:StartJob"
+      resource: "*"
+
+  helpful:
+    - permission: "codecommit:CreateRepository"
+      purpose: "Create a CodeCommit repository to host the malicious build spec"
+
+    - permission: "codecommit:GitPush"
+      purpose: "Push malicious amplify.yml to the CodeCommit repository"
+
+    - permission: "amplify:GetJob"
+      purpose: "Monitor build job status and verify completion"
+
+    - permission: "amplify:ListApps"
+      purpose: "List existing Amplify applications"
+
+    - permission: "amplify:DeleteApp"
+      purpose: "Clean up Amplify app after demonstration"
+
+    - permission: "amplify:DeleteBranch"
+      purpose: "Clean up branch after demonstration"
+
+    - permission: "codecommit:DeleteRepository"
+      purpose: "Clean up CodeCommit repository after demonstration"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob"

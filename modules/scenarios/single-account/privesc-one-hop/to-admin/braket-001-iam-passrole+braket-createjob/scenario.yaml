@@ -1,0 +1,79 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+braket-createjob"
+description: "User with iam:PassRole and braket:CreateJob can escalate privileges by creating a Braket Hybrid Job with an admin role that grants starting user admin access"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "braket-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-braket-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-braket-001-to-admin-admin-role"
+
+  summary: "starting_user → (braket:CreateJob with admin role as roleArn, malicious Python script in S3) → Braket Hybrid Job container attaches admin policy to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-braket-001-to-admin-admin-role"
+
+    - permission: "braket:CreateJob"
+      resource: "*"
+
+    - permission: "s3:PutObject"
+      resource: "arn:aws:s3:::amazon-braket-*/exploit/*"
+
+  helpful:
+    - permission: "braket:GetJob"
+      purpose: "Monitor job execution status and verify job completion"
+
+    - permission: "braket:SearchJobs"
+      purpose: "List existing Braket jobs"
+
+    - permission: "braket:CancelJob"
+      purpose: "Cancel a running job if needed"
+
+    - permission: "s3:GetObject"
+      purpose: "Retrieve job output results from S3"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob"

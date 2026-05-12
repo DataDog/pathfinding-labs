@@ -1,0 +1,88 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+omics-createworkflow+omics-startrun"
+description: "User with iam:PassRole, omics:CreateWorkflow, and omics:StartRun can escalate privileges by creating a HealthOmics WDL workflow that exfiltrates admin execution role credentials to S3, which the attacker retrieves and uses to attach AdministratorAccess"
+cost_estimate: "$0/mo"
+pathfinding-cloud-id: "omics-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-omics-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-omics-001-to-admin-admin-role"
+
+  summary: "starting_user → (omics:CreateWorkflow with WDL workflow containing credential exfiltration) → (iam:PassRole + omics:StartRun with admin execution role) → workflow task exfiltrates admin role credentials to S3 (network-isolated, no direct IAM access) → attacker retrieves stolen credentials from S3 → uses admin credentials to attach AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - permission: "iam:PassRole"
+      resource: "arn:aws:iam::*:role/pl-prod-omics-001-to-admin-admin-role"
+
+    - permission: "omics:CreateWorkflow"
+      resource: "*"
+
+    - permission: "omics:StartRun"
+      resource: "*"
+
+  helpful:
+    - permission: "s3:PutObject"
+      purpose: "Upload WDL workflow definition to S3 (alternative to inline definition)"
+
+    - permission: "s3:GetObject"
+      purpose: "Retrieve exfiltrated credentials from S3"
+
+    - permission: "omics:GetWorkflow"
+      purpose: "Check workflow status"
+
+    - permission: "omics:GetRun"
+      purpose: "Monitor run status and verify completion"
+
+    - permission: "omics:ListRuns"
+      purpose: "List existing workflow runs"
+
+    - permission: "omics:DeleteWorkflow"
+      purpose: "Clean up workflow after demonstration"
+
+    - permission: "omics:DeleteRun"
+      purpose: "Clean up run after demonstration"
+
+    - permission: "iam:DetachUserPolicy"
+      purpose: "Remove admin policy from starting user during cleanup"
+
+    - permission: "iam:ListAttachedUserPolicies"
+      purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/omics-001-iam-passrole+omics-createworkflow+omics-startrun"
