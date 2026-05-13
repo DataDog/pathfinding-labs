@@ -97,7 +97,7 @@ If `required_preconditions` is present in scenario.yaml, validate each entry:
 - `aws-resource` entries should also have a non-empty `resource` field (e.g., `"IAM Role"`, `"Lambda Function"`)
 - Non-`aws-resource` entries should NOT have a `resource` field
 - Descriptions should not start with "must" or "should" — write the constraint directly (e.g., `"with admin privileges"` not `"must have admin privileges"`)
-- **Flag a warning (not error)** if `sub_category` is `"existing-passrole"` or `"credential-access"` and `required_preconditions` is absent — these sub-categories almost always have preconditions
+- **Flag a warning (not error)** if `sub_category` is `"new-passrole"`, `"existing-passrole"`, or `"credential-access"` and `required_preconditions` is absent — these sub-categories almost always have preconditions (`new-passrole` requires the passed role to pre-exist; `existing-passrole` requires a pre-existing resource with a privileged role; `credential-access` requires credentials to be embedded in a pre-existing resource)
 - **Flag a warning** if `category` is `"Attack Simulation"` and `required_preconditions` is absent — real-world breaches typically exploit a pre-existing misconfiguration
 - Preconditions should NOT describe resources that the scenario's own Terraform creates (those are scenario setup, not preconditions). Cross-check: if a precondition mentions a resource type (e.g., `"Lambda Function"`), verify the module's `main.tf` creates a resource of that type as part of the *baseline* scenario infrastructure — if it does, that is correct (the Terraform provisions the precondition state). If the `main.tf` does NOT create a matching resource, flag it as a potential mismatch.
 

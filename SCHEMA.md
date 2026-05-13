@@ -442,15 +442,16 @@ Each entry in `required_preconditions`:
 #### When to Set Required Preconditions
 
 **Set `required_preconditions` when:**
+- `sub_category` is `"new-passrole"` — the attacker creates a new compute resource but passes an *existing* IAM role to it. That role must already exist with the right trust policy and privileges. Some services also require a service-linked role to exist before any resource can be created at all (e.g., ECS, Elastic Beanstalk, AWS Batch).
 - `sub_category` is `"existing-passrole"` — the attack targets an existing resource that already has a privileged role attached
 - `sub_category` is `"credential-access"` — credentials must already be embedded in an existing resource
 - `category` is `"Attack Simulation"` — real-world breaches typically find a pre-existing misconfiguration
 - The attack is only viable because of infrastructure that pre-dates the attacker's access
 
 **Omit `required_preconditions` when:**
-- `sub_category` is `"self-escalation"` or `"new-passrole"` — the attacker modifies themselves or creates new resources
+- `sub_category` is `"self-escalation"` — the attacker modifies only themselves, no pre-existing resources required
 - `category` is `"CTF"` — the challenge environment is fully self-contained
-- The attacker creates every resource they need using their granted permissions
+- The attacker creates every resource they need AND supplies their own role (no PassRole involved)
 
 **Rule of thumb:** If the attack path summary contains "existing" or references a resource that the Terraform module creates as part of the scenario setup (not as a demo artifact), document it as a precondition.
 
@@ -1466,7 +1467,7 @@ Before submitting a scenario, verify all required fields are present:
 - [ ] `environments`
 - [ ] `attack_path.principals`
 - [ ] `attack_path.summary`
-- [ ] `required_preconditions` (optional — but required for `existing-passrole` and `credential-access` sub_categories and `Attack Simulation` scenarios; omit for `self-escalation`, `new-passrole`, and CTF)
+- [ ] `required_preconditions` (optional — but expected for `new-passrole`, `existing-passrole`, and `credential-access` sub_categories and `Attack Simulation` scenarios; omit for `self-escalation` and CTF)
 - [ ] `permissions.required` (at least one principal entry with at least one permission)
 - [ ] `mitre_attack.tactics` (at least one entry)
 - [ ] `mitre_attack.techniques` (at least one entry)
