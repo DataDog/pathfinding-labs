@@ -68,5 +68,19 @@ output "build_security_group_id" {
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> imagebuilder:CreateComponent (malicious shell commands) -> imagebuilder:CreateImageRecipe + imagebuilder:CreateInfrastructureConfiguration (iam:PassRole ${aws_iam_instance_profile.admin_profile.name}) -> imagebuilder:CreateImage (launches EC2 build instance) -> component commands execute with admin credentials via IMDS -> attaches AdministratorAccess to starting user -> admin access"
+  value       = "starting_user (${aws_iam_user.starting_user.name}) -> imagebuilder:CreateComponent (malicious shell commands) -> imagebuilder:CreateImageRecipe + imagebuilder:CreateInfrastructureConfiguration (iam:PassRole ${aws_iam_instance_profile.admin_profile.name}) -> imagebuilder:CreateImage (launches EC2 build instance) -> component commands execute with admin credentials via IMDS -> attaches AdministratorAccess to starting user -> admin access -> ssm:GetParameter -> CTF flag"
+}
+
+# =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
 }

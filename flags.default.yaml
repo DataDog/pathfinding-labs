@@ -97,6 +97,7 @@ flags:
   iam-019-to-admin: "flag{iam_019_admin_captured}"
   iam-020-to-admin: "flag{iam_020_admin_captured}"
   iam-021-to-admin: "flag{iam_021_admin_captured}"
+  imagebuilder-001-to-admin: "flag{imagebuilder_001_admin_captured}"
   lambda-001-to-admin: "flag{lambda_001_admin_captured}"
   lambda-002-to-admin: "flag{lambda_002_admin_captured}"
   lambda-003-to-admin: "flag{lambda_003_admin_captured}"

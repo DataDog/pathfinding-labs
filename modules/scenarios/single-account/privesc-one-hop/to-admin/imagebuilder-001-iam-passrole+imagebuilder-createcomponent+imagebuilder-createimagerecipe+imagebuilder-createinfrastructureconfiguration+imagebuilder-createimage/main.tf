@@ -31,8 +31,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-imagebuilder-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-imagebuilder-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-imagebuilder-001-to-admin-starting-user"
@@ -48,10 +49,10 @@ resource "aws_iam_access_key" "starting_user" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Required permissions policy for exploitation
-resource "aws_iam_user_policy" "starting_user_required" {
+# Permissions policy for the starting user
+resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-imagebuilder-001-to-admin-required-permissions"
+  name     = "pl-prod-imagebuilder-001-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
@@ -87,7 +88,7 @@ resource "aws_iam_user_policy" "starting_user_required" {
         # CreateImage requires: GetImageRecipe, GetInfrastructureConfiguration
         # All Create* actions require: TagResource
         # See: https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonec2imagebuilder.html
-        Sid    = "RequiredDependentActionsForImageBuilder"
+        Sid    = "RequiredForExploitationImageBuilderDependentActions"
         Effect = "Allow"
         Action = [
           "imagebuilder:GetComponent",
@@ -96,6 +97,18 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "imagebuilder:GetInfrastructureConfiguration",
           "imagebuilder:TagResource",
           "ec2:DescribeImages"
+        ]
+        Resource = "*"
+      },
+      {
+        # Helpful permissions: used for observation and monitoring during the demo.
+        # These are temporarily denied by demo_permissions.sh during validation runs
+        # to confirm only the Required permissions above are needed for the attack.
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "imagebuilder:ListImages",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }
@@ -111,8 +124,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 # build instance. The role trusts ec2.amazonaws.com because Image Builder launches
 # an EC2 instance that assumes this role via the instance metadata service (IMDS).
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-imagebuilder-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-imagebuilder-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -162,6 +176,25 @@ resource "aws_security_group" "build_instance" {
     Environment = var.environment
     Scenario    = "iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
     Purpose     = "build-instance-security-group"
+  }
+}
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they reach
+# administrator-equivalent permissions. AdministratorAccess grants ssm:GetParameter
+# implicitly, so no extra IAM wiring is needed beyond the admin access gained from
+# this scenario's privilege escalation path.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/imagebuilder-001-to-admin"
+  description = "CTF flag for the imagebuilder-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-imagebuilder-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+    Purpose     = "ctf-flag"
   }
 }
 

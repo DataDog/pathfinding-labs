@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+title: "EC2 Image Builder Pipeline to Admin"
 description: "User with iam:PassRole and EC2 Image Builder permissions can escalate privileges by creating a build pipeline whose component shell commands execute on an EC2 instance with an admin instance profile"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "imagebuilder-001"
 
 # =============================================================================
@@ -32,64 +34,55 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-imagebuilder-001-to-admin-admin-role"
+    - principal: "pl-prod-imagebuilder-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-imagebuilder-001-to-admin-admin-role"
 
-    - permission: "imagebuilder:CreateComponent"
-      resource: "*"
+        - permission: "imagebuilder:CreateComponent"
+          resource: "*"
 
-    - permission: "imagebuilder:CreateImageRecipe"
-      resource: "*"
+        - permission: "imagebuilder:CreateImageRecipe"
+          resource: "*"
 
-    - permission: "imagebuilder:CreateInfrastructureConfiguration"
-      resource: "*"
+        - permission: "imagebuilder:CreateInfrastructureConfiguration"
+          resource: "*"
 
-    - permission: "imagebuilder:CreateImage"
-      resource: "*"
+        - permission: "imagebuilder:CreateImage"
+          resource: "*"
 
-    # AWS-enforced dependent actions for the Create* APIs above.
-    # CreateImageRecipe requires GetComponent, GetImage, ec2:DescribeImages.
-    # CreateImage requires GetImageRecipe, GetInfrastructureConfiguration.
-    # All Create* actions require TagResource.
-    - permission: "imagebuilder:GetComponent"
-      resource: "*"
+        # AWS-enforced dependent actions for the Create* APIs above.
+        # CreateImageRecipe requires GetComponent, GetImage, ec2:DescribeImages.
+        # CreateImage requires GetImageRecipe, GetInfrastructureConfiguration.
+        # All Create* actions require TagResource.
+        - permission: "imagebuilder:GetComponent"
+          resource: "*"
 
-    - permission: "imagebuilder:GetImage"
-      resource: "*"
+        - permission: "imagebuilder:GetImage"
+          resource: "*"
 
-    - permission: "imagebuilder:GetImageRecipe"
-      resource: "*"
+        - permission: "imagebuilder:GetImageRecipe"
+          resource: "*"
 
-    - permission: "imagebuilder:GetInfrastructureConfiguration"
-      resource: "*"
+        - permission: "imagebuilder:GetInfrastructureConfiguration"
+          resource: "*"
 
-    - permission: "imagebuilder:TagResource"
-      resource: "*"
+        - permission: "imagebuilder:TagResource"
+          resource: "*"
 
-    - permission: "ec2:DescribeImages"
-      resource: "*"
+        - permission: "ec2:DescribeImages"
+          resource: "*"
 
   helpful:
-    - permission: "imagebuilder:ListImages"
-      purpose: "List existing image builds"
+    - principal: "pl-prod-imagebuilder-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "imagebuilder:ListImages"
+          purpose: "List existing image builds to monitor build status"
 
-    - permission: "imagebuilder:DeleteImage"
-      purpose: "Clean up image after demonstration"
-
-    - permission: "imagebuilder:DeleteComponent"
-      purpose: "Clean up component after demonstration"
-
-    - permission: "imagebuilder:DeleteImageRecipe"
-      purpose: "Clean up recipe after demonstration"
-
-    - permission: "imagebuilder:DeleteInfrastructureConfiguration"
-      purpose: "Clean up infrastructure configuration after demonstration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # PREREQUISITES

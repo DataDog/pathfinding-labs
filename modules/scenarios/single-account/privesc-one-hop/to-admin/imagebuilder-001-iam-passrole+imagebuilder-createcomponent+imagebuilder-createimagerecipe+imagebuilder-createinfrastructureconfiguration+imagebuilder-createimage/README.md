@@ -1,120 +1,198 @@
-# Privilege Escalation via iam:PassRole + imagebuilder:CreateComponent + imagebuilder:CreateImageRecipe + imagebuilder:CreateInfrastructureConfiguration + imagebuilder:CreateImage
+# EC2 Image Builder Pipeline to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
+* **Technique:** Pass privileged instance profile to EC2 Image Builder infrastructure configuration and trigger a build whose component shell commands execute with admin credentials from IMDS to grant the starting user administrative access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage`
+* **Schema Version:** 4.6.1
 * **Pathfinding.cloud ID:** imagebuilder-001
-* **Technique:** Creating an EC2 Image Builder pipeline with malicious component shell commands that execute on an EC2 build instance running with an admin instance profile
+* **CTF Flag Location:** ssm-parameter
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation path where a user with `iam:PassRole` and EC2 Image Builder permissions can gain administrative access by abusing the Image Builder build pipeline. The attacker creates a component containing malicious shell commands, assembles an image recipe and infrastructure configuration specifying an admin instance profile, then triggers an image build. The EC2 build instance executes the component commands with the admin role's credentials available via the Instance Metadata Service (IMDS), allowing the attacker's code to attach `AdministratorAccess` to the starting user.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-imagebuilder-001-to-admin-starting-user` IAM user to the `pl-prod-imagebuilder-001-to-admin-admin-role` administrative role by creating an EC2 Image Builder pipeline with a malicious component whose shell commands execute on a build instance running the admin instance profile, using IMDS credentials to attach `AdministratorAccess` to the starting user.
 
-EC2 Image Builder components define shell commands that run during the image build process. Image Builder does not restrict what commands can be included in components -- any valid shell command will execute on the build instance. When the infrastructure configuration specifies an instance profile with an administrative role, the build instance has full admin credentials accessible through IMDS. The malicious component simply uses the AWS CLI (pre-installed on Amazon Linux and most base AMIs) to call IAM APIs and escalate privileges.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-imagebuilder-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-imagebuilder-001-to-admin-admin-role`
 
-This attack requires multiple Image Builder API calls to set up the pipeline (CreateComponent, CreateImageRecipe, CreateInfrastructureConfiguration, CreateImage), making it more involved than some other PassRole attacks. However, each step is straightforward. The build process takes 10-30+ minutes since it involves launching an EC2 instance, running the build, and creating an AMI. Organizations that allow users to create Image Builder pipelines without restricting which instance profiles can be used are vulnerable. The cost impact is $0/mo at rest, but EC2 charges accrue during the build process.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required** (`pl-prod-imagebuilder-001-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-imagebuilder-001-to-admin-admin-role` -- allows passing the admin role's instance profile to the Image Builder infrastructure configuration (`requestParameters.instanceProfileName` in `imagebuilder:CreateInfrastructureConfiguration`)
+- `imagebuilder:CreateComponent` on `*` -- allows creating a component with arbitrary shell commands that will execute on the build instance
+- `imagebuilder:CreateImageRecipe` on `*` -- allows creating an image recipe that references the malicious component
+- `imagebuilder:CreateInfrastructureConfiguration` on `*` -- allows creating an infrastructure configuration that specifies the admin instance profile
+- `imagebuilder:CreateImage` on `*` -- allows triggering a build that launches an EC2 instance with the admin instance profile
+- `imagebuilder:GetComponent` on `*` -- AWS-enforced dependent action required by `CreateImageRecipe`
+- `imagebuilder:GetImage` on `*` -- AWS-enforced dependent action required by `CreateImageRecipe`
+- `imagebuilder:GetImageRecipe` on `*` -- AWS-enforced dependent action required by `CreateImage`
+- `imagebuilder:GetInfrastructureConfiguration` on `*` -- AWS-enforced dependent action required by `CreateImage`
+- `imagebuilder:TagResource` on `*` -- AWS-enforced dependent action required by all `Create*` calls
+- `ec2:DescribeImages` on `*` -- AWS-enforced dependent action required by `CreateImageRecipe`
 
-### Principals in the attack path
+**Helpful** (`pl-prod-imagebuilder-001-to-admin-starting-user`):
+- `imagebuilder:ListImages` -- list existing image builds to monitor build status
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies on the starting user
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-imagebuilder-001-to-admin-starting-user` (Scenario-specific starting user with PassRole and Image Builder permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-imagebuilder-001-to-admin-admin-role` (Admin role that trusts ec2.amazonaws.com, attached via instance profile to the build instance)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-imagebuilder-001-to-admin-starting-user] -->|imagebuilder:Create* + iam:PassRole| B[EC2 Build Instance with Admin Role]
-    B -->|Component commands use IMDS credentials| C[Attaches AdministratorAccess to starting user]
-    C -->|Administrator Access| D[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew tap DataDog/pathfinding-labs https://github.com/DataDog/pathfinding-labs
+   brew install DataDog/pathfinding-labs/plabs
+   ```
+   Or with Go 1.25+ installed:
+   ```bash
+   go install github.com/DataDog/pathfinding-labs/cmd/plabs@latest
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable imagebuilder-001-to-admin
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-imagebuilder-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create Malicious Component**: Use `imagebuilder:CreateComponent` to create a component with shell commands that use the AWS CLI to attach `AdministratorAccess` to the starting user.
-3. **Create Image Recipe**: Use `imagebuilder:CreateImageRecipe` to create a recipe referencing the malicious component and a base AMI (e.g., Amazon Linux 2).
-4. **Create Infrastructure Configuration**: Use `imagebuilder:CreateInfrastructureConfiguration` to create an infrastructure configuration specifying the admin instance profile via `iam:PassRole`.
-5. **Start Image Build**: Use `imagebuilder:CreateImage` to start a build using the recipe and infrastructure configuration. An EC2 instance launches with the admin instance profile.
-6. **Wait for Build Execution**: The build process takes 10-30+ minutes. During the build phase, the component shell commands execute with admin role credentials from IMDS.
-7. **Automatic Escalation**: The component commands attach `AdministratorAccess` to the starting user.
-8. **Verification**: Verify administrator access by listing IAM users or performing other admin-level actions as the starting user.
+1. Launch the TUI: `plabs`
+2. Navigate to `imagebuilder-001-to-admin` in the scenarios list
+3. Press `space` to enable it
+4. Press `a` to apply
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-imagebuilder-001-to-admin-starting-user` | Scenario-specific starting user with access keys, iam:PassRole, and Image Builder permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-imagebuilder-001-to-admin-admin-role` | Admin role trusting ec2.amazonaws.com, attached to the build instance via instance profile |
-| `arn:aws:iam::PROD_ACCOUNT:instance-profile/pl-prod-imagebuilder-001-to-admin-admin-profile` | Instance profile for the admin role, used by Image Builder infrastructure configuration |
-| Security Group `pl-prod-imagebuilder-001-to-admin-build-sg` | Egress-only security group for the Image Builder build instance |
-| Inline policy `pl-prod-imagebuilder-001-to-admin-required-permissions` on `pl-prod-imagebuilder-001-to-admin-starting-user` | Inline user policy granting required iam:PassRole, Image Builder, and dependent permissions |
+| `arn:aws:iam::{account_id}:user/pl-prod-imagebuilder-001-to-admin-starting-user` | Scenario-specific starting user with access keys, `iam:PassRole`, and EC2 Image Builder permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-imagebuilder-001-to-admin-admin-role` | Administrative role (trusts `ec2.amazonaws.com`) passed as the instance profile to the build instance |
+| `arn:aws:iam::{account_id}:instance-profile/pl-prod-imagebuilder-001-to-admin-admin-profile` | Instance profile wrapping the admin role; passed via `--instance-profile-name` in `CreateInfrastructureConfiguration` |
+| Security group `pl-prod-imagebuilder-001-to-admin-build-sg` | Egress-only security group for the Image Builder build instance (outbound required for SSM agent and IMDS) |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/imagebuilder-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
-### Prerequisites (provisioned by Terraform)
+### Solution
 
-The following must exist in the account before the attack can succeed. These are not part of the attacker's permissions -- they are pre-existing infrastructure:
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-- **VPC with subnet** that has outbound internet access (for the build instance to reach AWS APIs and SSM)
-- **Security group** allowing outbound traffic (egress-only; no inbound required)
-- **EC2 Image Builder Service-Linked Role** (`AWSServiceRoleForImageBuilder`) -- created in the prod environment module
-- **Instance profile** with an admin role trusting `ec2.amazonaws.com` -- the target of the `iam:PassRole` escalation
+[Solution](solution.md)
 
-## Executing the attack
+### Automated Demo
 
-### Using the automated demo_attack.sh
-
-To demonstrate the privilege escalation path, run the provided demo script:
-
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage
-./demo_attack.sh
-```
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Wait for the image build to complete (10-30+ minutes)
-4. Verify successful privilege escalation
-5. Output standardized test results for automation
+3. Create a malicious Image Builder component with shell commands that retrieve admin credentials from IMDS
+4. Create an image recipe referencing the malicious component and a base Amazon Linux 2023 AMI
+5. Create an infrastructure configuration passing the admin instance profile
+6. Trigger an image build that launches an EC2 build instance with admin role credentials
+7. Wait for the build phase to execute (10-30+ minutes) and the component to run
+8. Verify successful privilege escalation by listing policies attached to the starting user
+9. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
-**Note:** This scenario incurs EC2 costs while the build instance is running. The build process takes 10-30+ minutes. Be sure to clean up promptly after the demonstration.
+**Note:** This scenario incurs EC2 costs while the build instance is running. The build process takes 10-30+ minutes. Clean up promptly after the demonstration.
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the Image Builder resources and attached admin policy:
+- EC2 Image Builder component containing malicious shell commands
+- EC2 Image Builder image recipe referencing the malicious component
+- EC2 Image Builder infrastructure configuration specifying the admin instance profile
+- EC2 Image Builder image build (launches a temporary EC2 build instance)
+- `AdministratorAccess` managed policy attached to `pl-prod-imagebuilder-001-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage
-./cleanup_attack.sh
+plabs demo --list
+plabs demo imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage
 ```
 
-The cleanup script will delete the Image Builder image, recipe, component, infrastructure configuration, and any AMIs created during the demonstration, detach the `AdministratorAccess` policy from the starting user, and restore the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to `imagebuilder-001-to-admin` in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+```bash
+plabs cleanup --list
+plabs cleanup imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to `imagebuilder-001-to-admin` in the scenarios list
+3. Press `c` to run the cleanup script
 
-- Restrict `iam:PassRole` with resource conditions to limit which roles can be passed: `"Resource": "arn:aws:iam::*:role/specific-imagebuilder-role"` rather than allowing all roles
-- Implement Service Control Policies (SCPs) to prevent passing administrative roles to EC2 or Image Builder infrastructure configurations
-- Monitor CloudTrail for `imagebuilder:CreateComponent`, `imagebuilder:CreateInfrastructureConfiguration`, and `imagebuilder:CreateImage` API calls, especially when combined with `iam:PassRole` to high-privilege roles
-- Use IAM Access Analyzer to identify principals with `iam:PassRole` permissions on administrative roles
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable imagebuilder-001-to-admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to `imagebuilder-001-to-admin` in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user with `iam:PassRole` permission on a role that has `AdministratorAccess` or equivalent permissions
+- IAM user with `imagebuilder:CreateComponent`, `imagebuilder:CreateInfrastructureConfiguration`, and `iam:PassRole` in combination, forming a privilege escalation path via EC2 Image Builder
+- IAM role with `AdministratorAccess` attached that trusts `ec2.amazonaws.com` and can be passed to Image Builder infrastructure configurations by unprivileged users
+- Privilege escalation path from IAM user to admin via EC2 Image Builder pipeline creation
+
+#### Prevention Recommendations
+
+- Restrict `iam:PassRole` using the `iam:PassedToService` condition key; for Image Builder, scope to `ec2.amazonaws.com` combined with a resource condition limiting which roles can be passed (e.g., deny passing roles with `AdministratorAccess`)
+- Implement SCPs that deny `imagebuilder:CreateInfrastructureConfiguration` when the request includes an `instanceProfileName` referencing a privileged instance profile
+- Use IAM Access Analyzer to automatically detect privilege escalation paths involving `iam:PassRole` and Image Builder component creation
+- Grant `imagebuilder:CreateComponent` and `imagebuilder:CreateInfrastructureConfiguration` only to principals with a demonstrated need; treat these as high-risk permissions in any policy that also includes `iam:PassRole`
 - Apply permission boundaries to instance profile roles used with Image Builder to cap the maximum privileges available to build instances
-- Require specific IAM conditions on `iam:PassRole` such as `iam:PassedToService` restricted to `imagebuilder.amazonaws.com` combined with role name restrictions to prevent passing admin roles
-- Enable GuardDuty and configure alerts for unexpected Image Builder pipeline creation and IAM policy attachment events
-- Audit all instance profiles with administrative permissions to ensure they are not accessible to Image Builder pipelines controlled by unprivileged users
+- Enable AWS Config rules to alert when Image Builder infrastructure configurations are created with instance profiles that carry administrative permissions
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `imagebuilder:CreateComponent` -- new Image Builder component created; inspect the component document for shell commands that call IAM APIs (`iam:AttachUserPolicy`, `iam:PutRolePolicy`) or make IMDS requests; high severity when the creator also holds `iam:PassRole` on a privileged role
+- `imagebuilder:CreateInfrastructureConfiguration` -- new infrastructure configuration created; inspect `requestParameters.instanceProfileName` for a privileged instance profile name — this is the CloudTrail signal that `iam:PassRole` was exercised to hand an admin role to Image Builder
+- `imagebuilder:CreateImage` -- image build triggered; correlate with a preceding `CreateComponent` and `CreateInfrastructureConfiguration` from the same principal to identify a malicious pipeline setup
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within an EC2 instance context (via IMDS credentials); critical when the policy is `AdministratorAccess` and the caller is an EC2 instance role
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+- [AWS EC2 Image Builder Documentation](https://docs.aws.amazon.com/imagebuilder/latest/userguide/what-is-image-builder.html) -- explains how components, recipes, infrastructure configurations, and image builds work
+- [AWS IAM PassRole Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html) -- explains PassRole mechanics and how to restrict it with `iam:PassedToService`
+- [Rhino Security Labs - AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) -- comprehensive overview of IAM privilege escalation techniques including PassRole patterns
+- [pathfinding.cloud/paths/imagebuilder-001](https://pathfinding.cloud/paths/imagebuilder-001) -- documented attack path for this scenario

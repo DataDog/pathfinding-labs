@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + EC2 Image Builder privilege escalation demo
 # This script detaches AdministratorAccess from the starting user, cancels in-progress
@@ -55,6 +56,13 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 
 # Navigate back to scenario directory
 cd - > /dev/null
+
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)

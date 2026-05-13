@@ -511,6 +511,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passro
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "Enable: single-account → privesc-one-hop → to-admin → glue-001-iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool

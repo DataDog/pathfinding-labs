@@ -945,6 +945,20 @@ module "single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gameli
   flag_value      = lookup(var.scenario_flags, "gamelift-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(var.scenario_flags, "imagebuilder-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint"
