@@ -185,3 +185,15 @@ variable "create_emr_slr" {
   type        = bool
   default     = true
 }
+
+variable "create_emr_serverless_slr" {
+  description = "Create the EMR Serverless service-linked role AWSServiceRoleForAmazonEMRServerless (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_imagebuilder_slr" {
+  description = "Create the EC2 Image Builder service-linked role AWSServiceRoleForImageBuilder (set false if it already exists)"
+  type        = bool
+  default     = true
+}

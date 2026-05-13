@@ -1343,10 +1343,12 @@ func (m *Model) executeDeploy() tea.Cmd {
 				}
 			}
 			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
-				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
+				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1377,10 +1379,12 @@ func (m *Model) executePlan() tea.Cmd {
 				}
 			}
 			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-				CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-				CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
-				CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
+				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)

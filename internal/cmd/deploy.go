@@ -115,10 +115,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 		}
 		cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-			CreateAutoScaling: !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-			CreateSpot:        !slrStatus.SpotExists || inState.SpotExists,
-			CreateAppRunner:   !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-			CreateEMR:         !slrStatus.EMRExists || inState.EMRExists,
+			CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+			CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+			CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+			CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+			CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+			CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
 		}
 	}
 

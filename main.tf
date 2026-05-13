@@ -103,10 +103,12 @@ module "prod_environment" {
   budget_limit_usd     = var.budget_limit_usd
 
   # Service-linked role creation flags (plabs auto-detects existing SLRs)
-  create_autoscaling_slr = var.create_autoscaling_slr
-  create_spot_slr        = var.create_spot_slr
-  create_apprunner_slr   = var.create_apprunner_slr
-  create_emr_slr         = var.create_emr_slr
+  create_autoscaling_slr    = var.create_autoscaling_slr
+  create_spot_slr           = var.create_spot_slr
+  create_apprunner_slr      = var.create_apprunner_slr
+  create_emr_slr            = var.create_emr_slr
+  create_emr_serverless_slr = var.create_emr_serverless_slr
+  create_imagebuilder_slr   = var.create_imagebuilder_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)

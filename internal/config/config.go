@@ -174,10 +174,12 @@ type BudgetConfig struct {
 // These are NOT persisted to config -- they're detected at deploy time and
 // written directly into terraform.tfvars.
 type ServiceLinkedRoleFlags struct {
-	CreateAutoScaling bool
-	CreateSpot        bool
-	CreateAppRunner   bool
-	CreateEMR         bool
+	CreateAutoScaling   bool
+	CreateSpot          bool
+	CreateAppRunner     bool
+	CreateEMR           bool
+	CreateEMRServerless bool
+	CreateImageBuilder  bool
 }
 
 // GetConfigPath returns the path to the config file.
@@ -609,10 +611,12 @@ func (w *WorkspaceConfig) GenerateTFVars() string {
 
 	if w.SLRFlags != nil {
 		lines = append(lines, "# Service-Linked Role Creation (auto-detected by plabs)")
-		lines = append(lines, fmt.Sprintf("create_autoscaling_slr = %t", w.SLRFlags.CreateAutoScaling))
-		lines = append(lines, fmt.Sprintf("create_spot_slr        = %t", w.SLRFlags.CreateSpot))
-		lines = append(lines, fmt.Sprintf("create_apprunner_slr   = %t", w.SLRFlags.CreateAppRunner))
-		lines = append(lines, fmt.Sprintf("create_emr_slr         = %t", w.SLRFlags.CreateEMR))
+		lines = append(lines, fmt.Sprintf("create_autoscaling_slr     = %t", w.SLRFlags.CreateAutoScaling))
+		lines = append(lines, fmt.Sprintf("create_spot_slr            = %t", w.SLRFlags.CreateSpot))
+		lines = append(lines, fmt.Sprintf("create_apprunner_slr       = %t", w.SLRFlags.CreateAppRunner))
+		lines = append(lines, fmt.Sprintf("create_emr_slr             = %t", w.SLRFlags.CreateEMR))
+		lines = append(lines, fmt.Sprintf("create_emr_serverless_slr  = %t", w.SLRFlags.CreateEMRServerless))
+		lines = append(lines, fmt.Sprintf("create_imagebuilder_slr    = %t", w.SLRFlags.CreateImageBuilder))
 		lines = append(lines, "")
 	}
 

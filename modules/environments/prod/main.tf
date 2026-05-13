@@ -84,6 +84,25 @@ resource "aws_iam_service_linked_role" "emr" {
   aws_service_name = "elasticmapreduce.amazonaws.com"
 }
 
+# AWSServiceRoleForAmazonEMRServerless — EMR Serverless validates this SLR
+# exists before accepting any CreateApplication call. Without it, the service
+# attempts to create it on first use and fails with ValidationException:
+# "Access denied when calling CreateServiceLinkedRole operation" when the
+# caller lacks iam:CreateServiceLinkedRole.
+resource "aws_iam_service_linked_role" "emr_serverless" {
+  count            = var.create_emr_serverless_slr ? 1 : 0
+  aws_service_name = "ops.emr-serverless.amazonaws.com"
+}
+
+# AWSServiceRoleForImageBuilder — EC2 Image Builder requires this SLR to
+# manage build instances on the caller's behalf. CreateImage fails with
+# AccessDenied on iam:CreateServiceLinkedRole when the SLR is missing and
+# the caller lacks that permission.
+resource "aws_iam_service_linked_role" "imagebuilder" {
+  count            = var.create_imagebuilder_slr ? 1 : 0
+  aws_service_name = "imagebuilder.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   force_destroy = true
