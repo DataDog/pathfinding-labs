@@ -49,6 +49,7 @@ Verify the scenario.yaml file contains all required fields from `/SCHEMA.md`:
 
 **Optional Core Metadata:**
 - `pathfinding-cloud-id`: Pathfinding.cloud path ID if one exists (e.g., "IAM-005", "IAM-002")
+- `required_preconditions`: Array of precondition entries (optional globally, but expected for `existing-passrole`, `credential-access` sub_categories and `Attack Simulation` category)
 
 **Required Classification:**
 - `category`: "Privilege Escalation", "CSPM: Misconfig", "CSPM: Toxic Combination", "Tool Testing", "CTF", or "Attack Simulation"
@@ -88,6 +89,17 @@ Check that the classification makes sense:
 - If `category` is "Attack Simulation", a `source` block should be present with `url`, `title`, `author`, and `date` fields
 - If `category` is "Attack Simulation" and `modifications` is a non-empty list, the README must have a `### Modifications from Original Attack` section under `## Attack`. The metadata block must NOT contain a `**Lab Modifications:**` field — that was removed in schema 4.3.1.
 - CSPM, Tool Testing, CTF, and Attack Simulation categories do not require sub_category
+
+#### Validate required_preconditions (if present)
+If `required_preconditions` is present in scenario.yaml, validate each entry:
+- Each entry must have a `type` field with one of: `"aws-resource"`, `"network"`, `"external"`, `"configuration"`
+- Each entry must have a non-empty `description` field
+- `aws-resource` entries should also have a non-empty `resource` field (e.g., `"IAM Role"`, `"Lambda Function"`)
+- Non-`aws-resource` entries should NOT have a `resource` field
+- Descriptions should not start with "must" or "should" — write the constraint directly (e.g., `"with admin privileges"` not `"must have admin privileges"`)
+- **Flag a warning (not error)** if `sub_category` is `"existing-passrole"` or `"credential-access"` and `required_preconditions` is absent — these sub-categories almost always have preconditions
+- **Flag a warning** if `category` is `"Attack Simulation"` and `required_preconditions` is absent — real-world breaches typically exploit a pre-existing misconfiguration
+- Preconditions should NOT describe resources that the scenario's own Terraform creates (those are scenario setup, not preconditions). Cross-check: if a precondition mentions a resource type (e.g., `"Lambda Function"`), verify the module's `main.tf` creates a resource of that type as part of the *baseline* scenario infrastructure — if it does, that is correct (the Terraform provisions the precondition state). If the `main.tf` does NOT create a matching resource, flag it as a potential mismatch.
 
 ### 1. Terraform Validation
 

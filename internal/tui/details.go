@@ -286,6 +286,30 @@ func (d *DetailsPane) buildContent() []string {
 		}
 	}
 
+	// Required Preconditions
+	if len(d.scenario.RequiredPreconditions) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, sectionStyle.Render("Required Preconditions"))
+		for _, precond := range d.scenario.RequiredPreconditions {
+			var label string
+			if precond.Resource != "" {
+				label = precond.Resource + ": " + precond.Description
+			} else {
+				label = "[" + precond.Type + "] " + precond.Description
+			}
+			wrapped := d.wordWrap(label, contentWidth-4)
+			first := true
+			for _, wl := range strings.Split(wrapped, "\n") {
+				if first {
+					lines = append(lines, d.styles.DetailValue.Render("  • "+wl))
+					first = false
+				} else {
+					lines = append(lines, d.styles.DetailValue.Render("    "+wl))
+				}
+			}
+		}
+	}
+
 	// Per-scenario configuration (if declared in scenario.yaml)
 	if d.scenario.HasConfig() {
 		lines = append(lines, "")

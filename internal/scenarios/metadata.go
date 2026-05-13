@@ -52,6 +52,15 @@ type Scenario struct {
 		Summary    string   `yaml:"summary"`
 	} `yaml:"attack_path"`
 
+	// Required preconditions — what must already exist in the account for this attack to be viable.
+	// Each entry has a type (aws-resource, network, external, configuration), an optional resource
+	// name for aws-resource entries, and a description of the specific requirement.
+	RequiredPreconditions []struct {
+		Type        string `yaml:"type"`
+		Resource    string `yaml:"resource,omitempty"`
+		Description string `yaml:"description"`
+	} `yaml:"required_preconditions,omitempty"`
+
 	// Permissions
 	Permissions struct {
 		Required []struct {
