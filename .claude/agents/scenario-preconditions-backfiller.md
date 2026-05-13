@@ -22,17 +22,18 @@ Read `{scenario_dir}/scenario.yaml` in full.
 
 **Exit immediately (no changes) if any of these are true:**
 - `required_preconditions` already exists and is non-empty → report "already set, nothing to do"
-- `sub_category` is `"self-escalation"` or `"new-passrole"` → report "no preconditions needed for this sub_category"
+- `sub_category` is `"self-escalation"` → report "no preconditions needed for self-escalation"
 - `path_type` is `"ctf"` → report "CTF scenarios are self-contained, no preconditions needed"
 
-**Proceed but note a warning if:**
-- `sub_category` is `"principal-access"` → preconditions are usually absent but may exist (e.g., a role that must trust the starting principal). Proceed and infer carefully.
-
 **Expect preconditions for:**
+- `sub_category: "new-passrole"` — the attacker passes an existing IAM role to a new compute resource. The role must already exist with: (a) a trust policy allowing the target service principal, (b) the privileged permissions the attack leverages. Some services also require a service-linked role (SLR) to exist before any resources can be created (see inference rules below).
 - `sub_category: "existing-passrole"` — the attack exploits a resource that already has a privileged role attached
 - `sub_category: "credential-access"` — credentials must already be embedded in an existing resource
 - `category: "Attack Simulation"` — real breaches exploit a pre-existing misconfiguration
 - `path_type: "multi-hop"` — may have preconditions depending on attack chain
+
+**Proceed but note a warning if:**
+- `sub_category` is `"principal-access"` → preconditions are usually absent but may exist (e.g., a role that must trust the starting principal). Proceed and infer carefully.
 
 ## Step 1: Source Priority
 
@@ -93,6 +94,44 @@ Use these fields to infer:
 - `source` block (Attack Simulation scenarios)
 
 **Inference rules by sub_category:**
+
+**`new-passrole`**:
+The attacker creates a new compute resource (Lambda function, EC2 instance, Glue job, etc.) and passes an existing IAM role to it. Two categories of preconditions apply:
+
+*1. The passable role:*
+The IAM role being passed must already exist with the right trust policy and sufficient privileges. Look at `attack_path.principals` or `permissions.required` to identify the role ARN (it will be the `resource` constraint on the `iam:PassRole` permission). Produce:
+```yaml
+- type: "aws-resource"
+  resource: "IAM Role"
+  description: "with {privilege level} permissions and a trust policy allowing {service}.amazonaws.com to assume it"
+```
+Where `{service}` is derived from the create permission (e.g., `lambda:CreateFunction` → `lambda`, `ec2:RunInstances` → `ec2`, `glue:CreateJob` → `glue`, `ecs:RegisterTaskDefinition` → `ecs-tasks`, `codebuild:CreateProject` → `codebuild`, `sagemaker:CreateTrainingJob` → `sagemaker`).
+
+*2. Service-linked roles (SLRs):*
+Some AWS services require their own service-linked role before ANY resource can be created. Check if the service used in the attack requires an SLR using the table below. If it does, add a precondition for it.
+
+| Service (create permission) | SLR required | SLR name |
+|---|---|---|
+| `ec2:RunInstances` | No (EC2 itself has no SLR requirement for basic usage) | — |
+| `ecs:RegisterTaskDefinition` + `ecs:RunTask` | Yes — ECS needs its SLR to manage tasks | `AWSServiceRoleForECS` |
+| `elasticbeanstalk:CreateApplication` | Yes | `AWSServiceRoleForElasticBeanstalk` |
+| `autoscaling:CreateAutoScalingGroup` | Yes | `AWSServiceRoleForAutoScaling` |
+| `glue:CreateJob` | No | — |
+| `lambda:CreateFunction` | No | — |
+| `sagemaker:CreateTrainingJob` | Yes | `AWSServiceRoleForAmazonSageMakerNotebooks` (for notebooks) — not required for training jobs |
+| `codebuild:CreateProject` | No | — |
+| `batch:SubmitJob` | Yes — AWS Batch requires its SLR | `AWSServiceRoleForBatch` |
+| `eks:CreateCluster` | Yes | `AWSServiceRoleForAmazonEKS` |
+| `rds:CreateDBInstance` | No (uses instance role, not SLR) | — |
+
+For services that require an SLR, add:
+```yaml
+- type: "aws-resource"
+  resource: "Service-Linked Role"
+  description: "{SLR name} must exist (required for {Service} to manage resources in the account)"
+```
+
+If you are unsure whether the target service requires an SLR and it is not in the table above, do not add an SLR precondition — omission is safer than a false entry.
 
 **`existing-passrole`**:
 The attack exploits an existing resource that already has a privileged role attached. Look at `attack_path.principals` — the non-IAM-user resource (Lambda function, CodeBuild project, SageMaker resource, etc.) is the pre-existing resource. The IAM role at the end of the chain is what makes it privileged.
