@@ -919,6 +919,20 @@ module "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapr
   flag_value      = lookup(var.scenario_flags, "emr-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "emr-serverless-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet"

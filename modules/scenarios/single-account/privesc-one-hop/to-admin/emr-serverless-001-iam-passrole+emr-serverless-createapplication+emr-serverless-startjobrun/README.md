@@ -1,108 +1,179 @@
-# Privilege Escalation via iam:PassRole + emr-serverless:CreateApplication + emr-serverless:StartJobRun
+# EMR Serverless Application Job to Admin
 
 * **Category:** Privilege Escalation
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** emr-serverless-001
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating an EMR Serverless Spark application and running a job with an admin execution role to grant the starting user administrative access
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun`
+* **Schema Version:** 4.6.1
+* **Pathfinding.cloud ID:** emr-serverless-001
+* **CTF Flag Location:** ssm-parameter
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation vulnerability where a user has permissions to pass an IAM role to EMR Serverless, create applications, and start job runs. The attacker creates an EMR Serverless Spark application, uploads a malicious PySpark script to S3, and submits a job run that executes with an administrative execution role. The Spark job uses the admin role's credentials to attach AdministratorAccess to the starting user, achieving persistent privilege escalation.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-emr-serverless-001-to-admin-starting-user` IAM user to the `pl-prod-emr-serverless-001-to-admin-admin-role` administrative role by creating an EMR Serverless Spark application and submitting a pre-staged PySpark job run that passes the admin role as the execution role and attaches `AdministratorAccess` to the starting user.
 
-EMR Serverless is a fully managed compute environment that runs Spark and Hive workloads without requiring cluster or infrastructure management. When a job run is started, EMR Serverless assumes the specified execution role to perform all operations on behalf of the job. By passing an administrative role as the execution role, an attacker can execute arbitrary code with full admin privileges in the AWS account.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-emr-serverless-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-emr-serverless-001-to-admin-admin-role`
 
-This attack is particularly notable because it requires no VPC or network infrastructure -- EMR Serverless handles all compute provisioning internally. The attacker only needs to upload a PySpark script to an S3 bucket and submit a job run. The Spark runtime environment may or may not include boto3 pre-installed, so the exploit script should include a fallback to AWS CLI subprocess calls. Job execution typically takes 2-5 minutes, after which the starting user has persistent admin access via the attached policy.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required** (`pl-prod-emr-serverless-001-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-emr-serverless-001-to-admin-admin-role` -- allows passing the admin role to the EMR Serverless service as the job execution role ARN (`requestParameters.executionRoleArn`) when starting a job run
+- `emr-serverless:CreateApplication` on `*` -- allows creating an EMR Serverless Spark application that serves as the compute environment for the exploit job
+- `emr-serverless:StartJobRun` on `*` -- allows submitting a job run that specifies the admin role as `executionRoleArn` and the pre-staged exploit script as the entry point
 
-### Principals in the attack path
+**Helpful** (`pl-prod-emr-serverless-001-to-admin-starting-user`):
+- `emr-serverless:GetApplication` -- check application state before submitting job
+- `emr-serverless:GetJobRun` -- monitor job run status and verify completion
+- `emr-serverless:ListApplications` -- discover existing applications
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-emr-serverless-001-to-admin-starting-user` (Scenario-specific starting user with PassRole and EMR Serverless permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-emr-serverless-001-to-admin-admin-role` (Admin execution role trusted by emr-serverless.amazonaws.com)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-emr-serverless-001-to-admin-starting-user] -->|s3:PutObject| B[S3 Bucket: Exploit Script]
-    A -->|emr-serverless:CreateApplication| C[EMR Serverless App]
-    C -->|iam:PassRole + emr-serverless:StartJobRun| D[Spark Job with Admin Role]
-    D -->|iam:AttachUserPolicy| E[Starting User + AdministratorAccess]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#ffcc99,stroke:#333,stroke-width:2px
-    style E fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable emr-serverless-001-to-admin
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-emr-serverless-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Upload Exploit Script**: Upload a malicious PySpark script to the scenario's S3 bucket. The script uses boto3 (with a fallback to AWS CLI subprocess) to call `iam:AttachUserPolicy`, attaching AdministratorAccess to the starting user.
-3. **Create Application**: Use `emr-serverless:CreateApplication` to create a new Spark application in EMR Serverless
-4. **Start Job Run**: Use `iam:PassRole` and `emr-serverless:StartJobRun` to submit the PySpark script as a job run, specifying the admin execution role. The job takes approximately 2-5 minutes to complete.
-5. **Verification**: Verify that AdministratorAccess has been attached to the starting user by listing attached policies or performing admin-level actions
+1. Launch the TUI: `plabs`
+2. Navigate to `emr-serverless-001-to-admin` in the scenarios list
+3. Press `space` to enable it
+4. Press `a` to apply
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-emr-serverless-001-to-admin-starting-user` | Scenario-specific starting user with access keys and permissions for PassRole, EMR Serverless, and S3 |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-emr-serverless-001-to-admin-admin-role` | Admin execution role with AdministratorAccess, trusted by emr-serverless.amazonaws.com |
-| S3 bucket for script staging | Bucket used to upload the PySpark exploit script for the EMR Serverless job |
-| Policy attached to starting user | Grants `iam:PassRole` on admin role, `emr-serverless:CreateApplication`, `emr-serverless:StartJobRun`, and `s3:PutObject` |
+| `arn:aws:iam::{account_id}:user/pl-prod-emr-serverless-001-to-admin-starting-user` | Scenario-specific starting user with access keys, `iam:PassRole`, `emr-serverless:CreateApplication`, and `emr-serverless:StartJobRun` permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-emr-serverless-001-to-admin-admin-role` | Administrative role (trusts `emr-serverless.amazonaws.com`) passed as `executionRoleArn` to the EMR Serverless job run |
+| `arn:aws:s3:::pl-prod-emr-serverless-001-to-admin-scripts-{attacker_account_id}-{suffix}` | Attacker-account S3 bucket (created via `aws.attacker` provider); holds the pre-staged PySpark exploit script that attaches `AdministratorAccess` to the starting user |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/emr-serverless-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
-## Executing the attack
+### Solution
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Solution](solution.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Verify successful privilege escalation
-4. Output standardized test results for automation
+3. Retrieve the attacker bucket name and admin role ARN from Terraform outputs
+4. Create an EMR Serverless Spark application and wait for it to reach `CREATED` state
+5. Submit a job run passing the admin role as `executionRoleArn` and the pre-staged PySpark exploit script as the entry point
+6. Poll until the EMR Serverless job reaches `SUCCESS` status (typically 1-2 minutes)
+7. Verify successful privilege escalation by confirming `AdministratorAccess` is attached to the starting user
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
-**Note:** The EMR Serverless job run takes approximately 2-5 minutes to complete. The demo script will poll the job status until it finishes. Cost per demo run is approximately $0.01-0.05.
+#### Resources Created by Attack Script
 
-### Cleaning up the attack artifacts
+- `AdministratorAccess` managed policy attached to `pl-prod-emr-serverless-001-to-admin-starting-user`
+- EMR Serverless application created in the prod account (deleted by cleanup script)
 
-After demonstrating the attack, clean up the EMR Serverless application, S3 objects, and the AdministratorAccess policy attached to the starting user:
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun
-./cleanup_attack.sh
+plabs demo --list
+plabs demo emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun
 ```
 
-The cleanup script will stop and delete the EMR Serverless application, remove the uploaded exploit script from S3, and detach the AdministratorAccess policy from the starting user, restoring the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+```bash
+plabs cleanup --list
+plabs cleanup emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to this scenario in the scenarios list
+3. Press `c` to run the cleanup script
 
-- Restrict `iam:PassRole` permissions using strict resource conditions to limit which roles can be passed to EMR Serverless
-- Implement the `iam:PassedToService` condition key to ensure roles can only be passed to `emr-serverless.amazonaws.com` when explicitly intended
-- Avoid granting `emr-serverless:CreateApplication` and `emr-serverless:StartJobRun` together with `iam:PassRole` unless absolutely necessary for the user's job function
-- Monitor CloudTrail for `CreateApplication` and `StartJobRun` events in EMR Serverless, especially when the execution role has administrative privileges
-- Implement Service Control Policies (SCPs) that prevent passing roles with AdministratorAccess or other high-privilege policies to EMR Serverless
-- Use IAM Access Analyzer to identify privilege escalation paths involving PassRole to compute services like EMR Serverless
-- Enable AWS Config rules to detect IAM roles with administrative permissions that trust emr-serverless.amazonaws.com
-- Restrict which S3 buckets can be used for EMR Serverless job scripts to prevent arbitrary code execution
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable emr-serverless-001-to-admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to `emr-serverless-001-to-admin` in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user with `iam:PassRole` permission on a role that has administrative permissions
+- IAM user with `emr-serverless:CreateApplication` and `emr-serverless:StartJobRun` combined with `iam:PassRole`, forming a privilege escalation path through EMR Serverless
+- IAM role with `AdministratorAccess` or equivalent permissions that trusts `emr-serverless.amazonaws.com` and can be passed to EMR Serverless job runs
+- Privilege escalation path from IAM user to admin via EMR Serverless job submission
+
+#### Prevention Recommendations
+
+- Restrict `iam:PassRole` using the `iam:PassedToService` condition key to limit which services a role can be passed to; if EMR Serverless is not used, deny `"iam:PassedToService": "emr-serverless.amazonaws.com"` entirely
+- Implement Service Control Policies (SCPs) to deny `emr-serverless:CreateApplication` and `emr-serverless:StartJobRun` in accounts and regions where EMR Serverless is not required
+- Audit all IAM roles with trust policies allowing `emr-serverless.amazonaws.com` and ensure none carry `AdministratorAccess` or broad IAM write permissions
+- Scope `iam:PassRole` resource constraints to non-privileged roles only; deny passing roles with `AdministratorAccess` or broad IAM permissions to EMR Serverless
+- Use IAM Access Analyzer to automatically detect privilege escalation paths involving `iam:PassRole` and `emr-serverless:StartJobRun`
+- Restrict which S3 buckets can be used as EMR Serverless job entry points to prevent arbitrary code execution via attacker-controlled scripts
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `emr-serverless:CreateApplication` -- new EMR Serverless application created; inspect subsequent `StartJobRun` calls from the same principal for privileged execution roles
+- `emr-serverless:StartJobRun` -- job run submitted; inspect `requestParameters.executionRoleArn` -- a privileged role ARN here is the CloudTrail signal for PassRole abuse via EMR Serverless; high severity when the execution role has administrative permissions
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within an EMR Serverless job context; critical when the policy is `AdministratorAccess` and the caller is an EMR Serverless execution role
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+- [AWS EMR Serverless Documentation](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/getting-started.html) -- explains how EMR Serverless job runs work and why the execution role's credentials are injected into the Spark worker environment
+- [AWS IAM PassRole Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html) -- explains PassRole mechanics and how to restrict it with `iam:PassedToService`
+- [Rhino Security Labs - AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) -- comprehensive overview of IAM privilege escalation techniques including PassRole patterns
+- [pathfinding.cloud/paths/emr-serverless-001](https://pathfinding.cloud/paths/emr-serverless-001) -- documented attack path for this scenario

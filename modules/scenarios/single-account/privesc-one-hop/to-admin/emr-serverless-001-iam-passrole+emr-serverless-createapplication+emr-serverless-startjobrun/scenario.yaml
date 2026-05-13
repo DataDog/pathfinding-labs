@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+title: "EMR Serverless Application Job to Admin"
 description: "User with iam:PassRole, emr-serverless:CreateApplication, and emr-serverless:StartJobRun can escalate privileges by creating an EMR Serverless Spark application and running a job with an admin execution role that grants starting user admin access"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "emr-serverless-001"
 
 # =============================================================================
@@ -25,46 +27,35 @@ attack_path:
     - "arn:aws:iam::{account_id}:user/pl-prod-emr-serverless-001-to-admin-starting-user"
     - "arn:aws:iam::{account_id}:role/pl-prod-emr-serverless-001-to-admin-admin-role"
 
-  summary: "starting_user → (s3:PutObject to upload exploit PySpark script) → (emr-serverless:CreateApplication) → (iam:PassRole + emr-serverless:StartJobRun with admin execution role) → Spark job attaches AdministratorAccess to starting user → admin access"
+  summary: "starting_user → (emr-serverless:CreateApplication) → (iam:PassRole + emr-serverless:StartJobRun with admin execution role + pre-staged exploit script) → Spark job exfiltrates admin role creds to S3 → attacker retrieves creds → attaches AdministratorAccess to starting user → admin access"
 
 # =============================================================================
 # PERMISSIONS
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-emr-serverless-001-to-admin-admin-role"
-
-    - permission: "emr-serverless:CreateApplication"
-      resource: "*"
-
-    - permission: "emr-serverless:StartJobRun"
-      resource: "*"
+    - principal: "pl-prod-emr-serverless-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-serverless-001-to-admin-admin-role"
+        - permission: "emr-serverless:CreateApplication"
+          resource: "*"
+        - permission: "emr-serverless:StartJobRun"
+          resource: "*"
 
   helpful:
-    - permission: "s3:PutObject"
-      purpose: "Upload exploit PySpark script to S3 (attacker could use external bucket instead)"
-
-    - permission: "emr-serverless:GetApplication"
-      purpose: "Check application state before submitting job"
-
-    - permission: "emr-serverless:GetJobRun"
-      purpose: "Monitor job run status and verify completion"
-
-    - permission: "emr-serverless:ListApplications"
-      purpose: "Discover existing applications"
-
-    - permission: "emr-serverless:StopApplication"
-      purpose: "Clean up application after demonstration"
-
-    - permission: "emr-serverless:DeleteApplication"
-      purpose: "Remove application during cleanup"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+    - principal: "pl-prod-emr-serverless-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "emr-serverless:GetApplication"
+          purpose: "Check application state before submitting job"
+        - permission: "emr-serverless:GetJobRun"
+          purpose: "Monitor job run status and verify completion"
+        - permission: "emr-serverless:ListApplications"
+          purpose: "Discover existing applications"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

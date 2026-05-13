@@ -1418,6 +1418,25 @@ output "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapr
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun" {
+  description = "All outputs for emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].admin_role_name
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].attacker_bucket_name
+    s3_bucket_name                  = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].s3_bucket_name
+    s3_bucket_arn                   = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].s3_bucket_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
   description = "All outputs for gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet ? {

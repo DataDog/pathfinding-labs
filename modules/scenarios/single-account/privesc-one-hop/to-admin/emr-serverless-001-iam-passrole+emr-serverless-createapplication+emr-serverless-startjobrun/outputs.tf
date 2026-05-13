@@ -58,10 +58,24 @@ output "s3_bucket_arn" {
 }
 
 # =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}
+
+# =============================================================================
 # ATTACK PATH DESCRIPTION
 # =============================================================================
 
 output "attack_path" {
   description = "Description of the attack path"
-  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (emr-serverless:CreateApplication) -> (iam:PassRole + emr-serverless:StartJobRun with ${aws_iam_role.admin_role.name} as execution role, referencing pre-staged exploit script in attacker bucket ${aws_s3_bucket.scripts.id}) -> Spark job exfiltrates admin creds to S3 -> attacker retrieves creds -> attaches AdministratorAccess to starting user -> admin access"
+  value       = "starting_user (${aws_iam_user.starting_user.name}) -> (emr-serverless:CreateApplication) -> (iam:PassRole + emr-serverless:StartJobRun with ${aws_iam_role.admin_role.name} as execution role, referencing pre-staged exploit script in attacker bucket ${aws_s3_bucket.scripts.id}) -> Spark job exfiltrates admin creds to S3 -> attacker retrieves creds -> attaches AdministratorAccess to starting user -> admin access -> ssm:GetParameter -> CTF flag"
 }

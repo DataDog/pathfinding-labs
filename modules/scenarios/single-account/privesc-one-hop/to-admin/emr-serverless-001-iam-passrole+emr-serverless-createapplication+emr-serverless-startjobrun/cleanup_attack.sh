@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + emr-serverless:CreateApplication + emr-serverless:StartJobRun privilege escalation demo
 # This script detaches AdministratorAccess from the starting user, stops and deletes the EMR Serverless
@@ -12,6 +13,13 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Configuration
 STARTING_USER="pl-prod-emr-serverless-001-to-admin-starting-user"

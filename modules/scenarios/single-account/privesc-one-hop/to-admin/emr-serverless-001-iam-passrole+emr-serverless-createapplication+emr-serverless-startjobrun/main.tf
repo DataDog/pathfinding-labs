@@ -33,8 +33,9 @@ terraform {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-emr-serverless-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-emr-serverless-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-emr-serverless-001-to-admin-starting-user"
@@ -75,6 +76,17 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "emr-serverless:StartJobRun"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "emr-serverless:GetApplication",
+          "emr-serverless:GetJobRun",
+          "emr-serverless:ListApplications",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -87,8 +99,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 # Admin role that will be passed as the execution role for the EMR Serverless job run.
 # This role trusts emr-serverless.amazonaws.com because EMR Serverless assumes it to run Spark jobs.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-emr-serverless-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-emr-serverless-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -194,7 +207,8 @@ resource "aws_s3_bucket_policy" "scripts_policy" {
         }
         Action = [
           "s3:GetObject",
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.scripts.arn}/*"
       },
@@ -272,5 +286,27 @@ EOT
     Environment = var.environment
     Scenario    = "iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
     Purpose     = "attack-script"
+  }
+}
+
+# =============================================================================
+# CTF FLAG (SSM Parameter)
+# =============================================================================
+
+# CTF flag stored in SSM Parameter Store. Retrieved by the attacker once they
+# reach administrator-equivalent permissions (AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed).
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/emr-serverless-001-to-admin"
+  description = "CTF flag for the emr-serverless-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-emr-serverless-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+    Purpose     = "ctf-flag"
   }
 }

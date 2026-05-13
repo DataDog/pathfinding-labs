@@ -44,6 +44,7 @@ flags:
   dev-to-prod-simple-role-assumption-to-admin: "flag{cross_account_prod_admin_captured}"
   ec2-001-to-admin: "flag{ec2_001_admin_captured}"
   emr-001-to-admin: "flag{emr_001_admin_captured}"
+  emr-serverless-001-to-admin: "flag{emr_serverless_001_admin_captured}"
   ec2-002-to-admin: "flag{ec2_002_admin_captured}"
   ec2-003-to-admin: "flag{ec2_003_admin_captured}"
   ec2-003-to-bucket: "flag{ec2_003_bucket_accessed}"
