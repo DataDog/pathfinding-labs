@@ -25,8 +25,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Starting Permissions
 
 **Required** (`pl-prod-emr-001-to-admin-starting-user`):
-- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-emr-001-to-admin-admin-role` -- allows passing the admin role to the EMR cluster as the job flow role (instance profile)
-- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-emr-001-to-admin-service-role` -- allows passing the EMR service role trusted by `elasticmapreduce.amazonaws.com`
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-emr-001-to-admin-admin-role` and `arn:aws:iam::*:role/pl-prod-emr-001-to-admin-service-role` -- allows passing the admin role to the EMR cluster as the job flow role (instance profile) and the EMR service role trusted by `elasticmapreduce.amazonaws.com`
 - `elasticmapreduce:RunJobFlow` on `*` -- allows creating an EMR cluster with the admin instance profile and submitting a step
 
 **Helpful** (`pl-prod-emr-001-to-admin-starting-user`):

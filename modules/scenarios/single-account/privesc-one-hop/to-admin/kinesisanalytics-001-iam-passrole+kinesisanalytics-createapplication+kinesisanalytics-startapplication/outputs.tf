@@ -69,3 +69,17 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user (${aws_iam_user.starting_user.name}) -> (kinesisanalytics:CreateApplication with S3 code) -> (iam:PassRole + kinesisanalytics:StartApplication with ${aws_iam_role.admin_role.name} as service execution role) -> Flink app attaches AdministratorAccess to starting user -> admin access"
 }
+
+# =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

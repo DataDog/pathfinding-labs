@@ -517,6 +517,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_pa
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "Enable: single-account → privesc-one-hop → to-admin → glue-001-iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool

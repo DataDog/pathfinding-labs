@@ -1,0 +1,125 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-kinesisanalytics-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer,
+        compromising a workstation, discovering credentials in a public S3 bucket,
+        or finding them hardcoded in source code or a CI/CD pipeline.
+
+        This IAM user has iam:PassRole on the admin target role,
+        kinesisanalytics:CreateApplication, and kinesisanalytics:StartApplication.
+        These permissions together allow you to create a Managed Apache Flink application
+        referencing a malicious JAR in S3 that runs with the admin role's credentials
+        and modifies IAM permissions on your behalf.
+
+    - id: flink-app
+      label: "Managed Apache Flink Application"
+      type: resource
+      subType: kinesisanalytics-application
+      arn: "arn:aws:kinesisanalytics:{region}:{account_id}:application/pl-prod-kinesisanalytics-001-to-admin-app"
+      description: >
+        A Managed Apache Flink (Kinesis Data Analytics v2) application created by the
+        attacker. The application references a malicious JAR in an attacker-controlled
+        S3 bucket and is started with an admin service execution role. When the
+        application starts, the injected code runs with the admin role's credentials
+        and calls iam:AttachUserPolicy to grant AdministratorAccess to the starting user.
+
+    - id: admin-role
+      label: "Admin Target Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-kinesisanalytics-001-to-admin-admin-role"
+      description: >
+        An IAM role with AdministratorAccess attached. This role trusts
+        kinesisanalytics.amazonaws.com, which means it can be assumed by the Managed
+        Apache Flink service when running an application. The attacker passes this
+        role as the service execution role when creating the application. When the
+        application runs, all SDK calls inside the JAR execute with this role's
+        full administrative permissions. The role is a pivot — the real target is the
+        CTF flag accessible once admin-equivalent credentials reach the starting user.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/kinesisanalytics-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: flink-app
+      label: "kinesisanalytics:CreateApplication + iam:PassRole"
+      description: >
+        The starting user creates a Managed Apache Flink application, specifying the
+        malicious JAR in S3 via S3ContentLocation and passing the admin role as the
+        service execution role. The CreateApplication call succeeds because the user
+        holds iam:PassRole on the admin role and kinesisanalytics:CreateApplication.
+      hints:
+        - "Create the Flink application using the kinesisanalyticsv2 API. Set RuntimeEnvironment to FLINK-1_19, set ServiceExecutionRole to the admin role ARN, and configure ApplicationCodeConfiguration with S3ContentLocation pointing at the malicious JAR. The JAR location is available in Terraform outputs."
+        - "Browse to https://pathfinding.cloud/paths/kinesisanalytics-001 for technique details."
+      commands:
+        - description: "Create the Managed Apache Flink application referencing the malicious JAR"
+          command: >
+            aws kinesisanalyticsv2 create-application
+              --application-name pl-prod-kinesisanalytics-001-to-admin-app
+              --runtime-environment FLINK-1_19
+              --service-execution-role arn:aws:iam::{account_id}:role/pl-prod-kinesisanalytics-001-to-admin-admin-role
+              --application-configuration '{"ApplicationCodeConfiguration":{"CodeContent":{"S3ContentLocation":{"BucketARN":"arn:aws:s3:::{code_bucket}","FileKey":"exploit.jar"}},"CodeContentType":"ZIPFILE"},"FlinkApplicationConfiguration":{"ParallelismConfiguration":{"ConfigurationType":"CUSTOM","Parallelism":1,"ParallelismPerKPU":1}}}'
+
+    - from: starting-user
+      to: flink-app
+      label: "kinesisanalytics:StartApplication"
+      description: >
+        The starting user triggers the Flink application. The Managed Apache Flink
+        service assumes the admin role and starts executing the JAR code. The malicious
+        code calls iam:AttachUserPolicy to attach AdministratorAccess to the starting user.
+        The application takes 2-5 minutes to start and execute.
+      hints:
+        - "Use kinesisanalyticsv2:StartApplication to trigger the application. Then poll kinesisanalyticsv2:DescribeApplication until the status transitions from STARTING to RUNNING. Once running, the exploit code executes immediately — allow 2-5 minutes total then check iam:ListAttachedUserPolicies on the starting user."
+      commands:
+        - description: "Start the Flink application (triggers privilege escalation)"
+          command: "aws kinesisanalyticsv2 start-application --application-name pl-prod-kinesisanalytics-001-to-admin-app"
+        - description: "Poll application status until RUNNING"
+          command: "aws kinesisanalyticsv2 describe-application --application-name pl-prod-kinesisanalytics-001-to-admin-app --query 'ApplicationDetail.ApplicationStatus' --output text"
+
+    - from: flink-app
+      to: admin-role
+      label: "assumes role + iam:AttachUserPolicy"
+      description: >
+        The Flink application assumes the admin target role at execution time. All SDK
+        calls within the JAR run with the permissions of that role. The exploit code
+        calls iam:AttachUserPolicy to attach the AdministratorAccess managed policy to
+        the starting user, granting the attacker permanent admin access.
+      hints: []
+      commands:
+        - description: "Check that AdministratorAccess is now attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-kinesisanalytics-001-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user, retrieve the scenario
+        flag from SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the account, so no additional permissions are needed beyond the admin
+        access just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/kinesisanalytics-001-to-admin --query 'Parameter.Value' --output text"

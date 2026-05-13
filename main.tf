@@ -959,6 +959,20 @@ module "single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_im
   flag_value      = lookup(var.scenario_flags, "imagebuilder-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "kinesisanalytics-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint"

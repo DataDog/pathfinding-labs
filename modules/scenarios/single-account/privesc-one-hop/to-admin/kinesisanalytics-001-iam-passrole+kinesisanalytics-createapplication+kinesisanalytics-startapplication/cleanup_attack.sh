@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + kinesisanalytics:CreateApplication + kinesisanalytics:StartApplication privilege escalation demo
 # This script detaches AdministratorAccess from the starting user, stops and deletes the
@@ -12,6 +13,13 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Source demo permissions library for safety restore
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Configuration
 STARTING_USER="pl-prod-kinesisanalytics-001-to-admin-starting-user"
@@ -190,9 +198,9 @@ APP_CHECK=$(aws kinesisanalyticsv2 describe-application \
     --region $CURRENT_REGION \
     --application-name "$APP_NAME" \
     --query 'ApplicationDetail.ApplicationStatus' \
-    --output text 2>/dev/null)
+    --output text 2>/dev/null) || true
 
-if [ $? -ne 0 ] || [ -z "$APP_CHECK" ]; then
+if [ -z "$APP_CHECK" ]; then
     echo -e "${GREEN}✓ Flink application deleted${NC}"
 else
     echo -e "${YELLOW}⚠ Warning: Flink application still exists (status: $APP_CHECK)${NC}"

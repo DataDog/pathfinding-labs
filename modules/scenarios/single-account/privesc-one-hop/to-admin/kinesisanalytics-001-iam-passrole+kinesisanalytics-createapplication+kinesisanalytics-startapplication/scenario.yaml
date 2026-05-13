@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+title: "Kinesis Analytics Application to Admin"
 description: "User with iam:PassRole, kinesisanalytics:CreateApplication, and kinesisanalytics:StartApplication can escalate privileges by creating a Managed Apache Flink application that runs with an admin service execution role"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "kinesisanalytics-001"
 
 # =============================================================================
@@ -32,33 +34,26 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-kinesisanalytics-001-to-admin-admin-role"
-
-    - permission: "kinesisanalytics:CreateApplication"
-      resource: "*"
-
-    - permission: "kinesisanalytics:StartApplication"
-      resource: "*"
+    - principal: "pl-prod-kinesisanalytics-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-kinesisanalytics-001-to-admin-admin-role"
+        - permission: "kinesisanalytics:CreateApplication"
+          resource: "*"
+        - permission: "kinesisanalytics:StartApplication"
+          resource: "*"
 
   helpful:
-    - permission: "kinesisanalytics:DescribeApplication"
-      purpose: "Check application status and verify it is running"
-
-    - permission: "kinesisanalytics:ListApplications"
-      purpose: "List existing Flink applications"
-
-    - permission: "kinesisanalytics:StopApplication"
-      purpose: "Stop the application after demonstration"
-
-    - permission: "kinesisanalytics:DeleteApplication"
-      purpose: "Clean up application after demonstration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+    - principal: "pl-prod-kinesisanalytics-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "kinesisanalytics:DescribeApplication"
+          purpose: "Check application status and verify it is running"
+        - permission: "kinesisanalytics:ListApplications"
+          purpose: "List existing Flink applications"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

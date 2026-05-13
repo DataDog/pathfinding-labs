@@ -123,10 +123,14 @@ resource "aws_iam_access_key" "starting_user" {
   user     = aws_iam_user.starting_user.name
 }
 
-# Required permissions policy for exploitation
-resource "aws_iam_user_policy" "starting_user_required" {
+# Combined permissions policy for the starting user: required + helpful
+# Required permissions enable the attack. Helpful permissions aid reconnaissance
+# and monitoring during manual exploration. During demo_attack.sh validation runs,
+# demo_permissions.sh attaches an explicit deny policy to temporarily block the
+# helpful statement, ensuring the attack succeeds using only required permissions.
+resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-kinesisanalytics-001-to-admin-required-permissions"
+  name     = "pl-prod-kinesisanalytics-001-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
@@ -148,6 +152,19 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "kinesisanalytics:StartApplication"
         ]
         Resource = "*"
+      },
+      {
+        # Helpful permissions: used for observation and monitoring during the demo.
+        # These are temporarily denied by demo_permissions.sh during validation runs
+        # to confirm only the Required permissions above are needed for the attack.
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "kinesisanalytics:DescribeApplication",
+          "kinesisanalytics:ListApplications",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -161,8 +178,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 # This role trusts kinesisanalytics.amazonaws.com because Managed Apache Flink (formerly
 # Kinesis Data Analytics v2) assumes it to run Flink applications.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-kinesisanalytics-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-kinesisanalytics-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -190,4 +208,26 @@ resource "aws_iam_role_policy_attachment" "admin_role_admin_access" {
   provider   = aws.prod
   role       = aws_iam_role.admin_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# =============================================================================
+# CTF FLAG
+# =============================================================================
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after
+# reaching administrator-equivalent permissions. AdministratorAccess grants
+# ssm:GetParameter implicitly, so no extra IAM wiring is needed.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/kinesisanalytics-001-to-admin"
+  description = "CTF flag for the kinesisanalytics-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-kinesisanalytics-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+    Purpose     = "ctf-flag"
+  }
 }
