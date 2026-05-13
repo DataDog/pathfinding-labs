@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.6.1`**
+**Current schema version: `4.7.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -105,6 +105,14 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
      - `ssm-parameter` -- all to-admin scenarios. The flag lives at `/pathfinding-labs/flags/{scenario-id}` in SSM Parameter Store in the target account.
      - `s3-object` -- all to-bucket scenarios. The flag lives as `flag.txt` inside the scenario's target S3 bucket.
      The exact path/key is documented in the scenario's `attack_map.yaml` terminal node ARN and is retrievable via terraform outputs.
+
+* **Required Preconditions:**
+  - {resource}: {description}
+  - [{type}] {description}
+  <- only if required_preconditions is present in scenario.yaml. Render each entry as a bullet.
+     For aws-resource entries: "- {resource}: {description}" (e.g., "- Lambda Function: with admin execution role attached")
+     For all other types: "- [{type}] {description}" (e.g., "- [network] function must be publicly invocable")
+     Place this field after CTF Flag Location and before any blank line ending the metadata block.
 ```
 
 **CTF scenario additional fields** (in place of Sub-Category, after Cost Estimate):

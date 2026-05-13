@@ -4,6 +4,38 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.7.0 — 2026-05-13
+
+Minor: added optional `* **Required Preconditions:**` metadata field.
+
+**Changes:**
+- **`* **Required Preconditions:**`** -- new optional metadata field rendered from `required_preconditions` in `scenario.yaml`. Each precondition entry renders as a bullet nested under the field label:
+  - `aws-resource` entries: `- {resource}: {description}` (e.g., `- Lambda Function: with admin execution role attached`)
+  - all other type entries: `- [{type}] {description}` (e.g., `- [network] function must be publicly invocable`)
+- Field appears after `* **CTF Flag Location:**` and before any blank line ending the metadata block.
+- Field is omitted entirely when `required_preconditions` is absent from `scenario.yaml` -- no change needed for existing scenarios.
+
+**Motivation:**
+- Preconditions are a first-class differentiator in attack path uniqueness. Two paths sharing the same permissions (e.g., `lambda:UpdateFunctionCode`) are fundamentally different attacks if one requires an existing Lambda with a privileged role and the other does not.
+- Aligns pathfinding-labs with pathfinding.cloud, which already expresses `prerequisites` on path entries.
+- Canonical use case: `existing-passrole` and `credential-access` sub_categories, and `Attack Simulation` scenarios.
+
+**Migration rules:**
+- This is a MINOR -- the field is optional and existing READMEs remain compliant. No migration required for existing scenarios.
+- When creating or updating a README for a scenario whose `scenario.yaml` includes `required_preconditions`, add the field to the metadata block.
+- Stamp `Schema Version: 4.7.0` only when making another change that touches the README; do not update the stamp for the preconditions field alone unless the preconditions field is also being added.
+
+```yaml
+migration:
+  tier: none
+  scope: new-scenarios-only
+  affected_sections:
+    - "metadata:Required Preconditions"
+  operations: []
+```
+
+---
+
 ## 4.6.1 — 2026-05-07
 
 Patch: standardized CloudTrail event format in `#### CloudTrail Events to Monitor` sections.

@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.7.0`
+### Current Version: `1.8.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.8.0 | 2026-05-13 | Added `required_preconditions` optional list field: typed objects documenting what must already exist in the account for the attack path to be viable. Each entry has a `type` (`aws-resource`, `network`, `external`, `configuration`), an optional `resource` name (for `aws-resource` entries), and a `description`. This field is the primary differentiator between scenarios that share the same permissions but differ in what pre-existing infrastructure they exploit. Canonical use cases: `existing-passrole` sub_category, `attack-simulation` scenarios, and any path where the attack works because of something that pre-exists rather than something the attacker creates. Optional — omit for `self-escalation`, `new-passrole`, and CTF scenarios. |
 | 1.7.0 | 2026-04-21 | Added `demo_timeout_seconds` and `cleanup_timeout_seconds` optional integer fields: per-scenario overrides of the default harness timeouts in `scripts/run_demos.py` (300s demo, 120s cleanup). Required for any scenario whose demo creates a resource that takes > 2 min to provision (Glue dev endpoints, SageMaker notebooks/processing jobs, CodeBuild projects, EC2 instances, etc.), because the harness uses SIGKILL on timeout — which bash traps cannot catch — leaving the resource orphaned. See "When to Set Timeout Overrides" in Core Metadata for the reference table. Motivated by the glue-001 orphan incident (2026-04-17 to 2026-04-21) that bled ~$55 on an abandoned dev endpoint. |
 | 1.6.0 | 2026-04-18 | Added `supports_online_mode` optional boolean field: indicates whether this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false` (absent = false). Only set to `true` for labs that have been validated and provisioned for online play. |
 | 1.5.0 | 2026-04-10 | Added `cost_estimate_when_demo_executed` required field: estimated monthly cost while a demo script is actively running (e.g., EC2/Lambda instances provisioned by the attack). Initialized to same value as `cost_estimate` for existing scenarios. |
@@ -77,7 +78,7 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.7.0"
+schema_version: "1.8.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
@@ -393,6 +394,93 @@ summary: "starting_user → (ssm:StartSession) → EC2 instance → (cat credent
 
 # Direct access
 summary: "starting_user → (iam:CreateAccessKey) → admin_user credentials → admin access"
+```
+
+---
+
+### Required Preconditions
+
+Documents what must already exist in the AWS account before the attacker's permissions become meaningful. This field is the primary differentiator between scenarios that share the same permissions but differ in what pre-existing infrastructure they exploit.
+
+```yaml
+required_preconditions:
+  - type: "aws-resource"
+    resource: "IAM Role"
+    description: "with administrative privileges that trusts lambda.amazonaws.com"
+  - type: "aws-resource"
+    resource: "Lambda Function"
+    description: "with the privileged IAM role attached as execution role"
+  - type: "network"
+    description: "Lambda function must be invocable by the starting principal"
+```
+
+#### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `required_preconditions` | array | No | Ordered list of precondition entries. Omit entirely when the attack creates everything it needs. |
+
+#### Precondition Entry
+
+Each entry in `required_preconditions`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✅ Yes | Category of precondition. See allowed values below. |
+| `resource` | string | Conditional | The AWS resource type (e.g., `"Lambda Function"`, `"IAM Role"`, `"EC2 Instance"`). Required when `type` is `"aws-resource"`. Omit for all other types. |
+| `description` | string | ✅ Yes | What specifically must be true about this resource or condition. Start with the constraint, not "must" — e.g., `"with admin privileges trusting lambda.amazonaws.com"` rather than `"must have admin privileges"`. |
+
+#### Allowed `type` Values
+
+| Value | When to Use | Example |
+|-------|-------------|---------|
+| `"aws-resource"` | An AWS resource of a specific type must already exist with specific properties | IAM role with admin privs, Lambda function with privileged execution role, EC2 instance with admin instance profile |
+| `"network"` | A network-level condition must hold | Resource must be publicly reachable, VPC endpoint must exist, security group must allow inbound traffic |
+| `"external"` | A condition outside AWS infrastructure | Valid credentials obtained via phishing, access to source code repository, compromised CI/CD pipeline credentials |
+| `"configuration"` | An AWS service configuration setting | Lambda function allows code updates, CodeBuild project allows buildspec override, S3 bucket has versioning disabled |
+
+#### When to Set Required Preconditions
+
+**Set `required_preconditions` when:**
+- `sub_category` is `"existing-passrole"` — the attack targets an existing resource that already has a privileged role attached
+- `sub_category` is `"credential-access"` — credentials must already be embedded in an existing resource
+- `category` is `"Attack Simulation"` — real-world breaches typically find a pre-existing misconfiguration
+- The attack is only viable because of infrastructure that pre-dates the attacker's access
+
+**Omit `required_preconditions` when:**
+- `sub_category` is `"self-escalation"` or `"new-passrole"` — the attacker modifies themselves or creates new resources
+- `category` is `"CTF"` — the challenge environment is fully self-contained
+- The attacker creates every resource they need using their granted permissions
+
+**Rule of thumb:** If the attack path summary contains "existing" or references a resource that the Terraform module creates as part of the scenario setup (not as a demo artifact), document it as a precondition.
+
+#### Examples
+
+```yaml
+# existing-passrole: attacker exploits a Lambda that already has an admin role
+required_preconditions:
+  - type: "aws-resource"
+    resource: "Lambda Function"
+    description: "with an admin-equivalent IAM execution role already attached"
+  - type: "configuration"
+    description: "function allows code updates (default Lambda behavior — no resource policy restricting UpdateFunctionCode)"
+
+# attack-simulation with external entry point
+required_preconditions:
+  - type: "aws-resource"
+    resource: "S3 Bucket"
+    description: "publicly readable and containing embedded IAM access keys in stored files"
+  - type: "aws-resource"
+    resource: "IAM User"
+    description: "whose credentials are embedded in the S3 bucket files"
+
+# network precondition
+required_preconditions:
+  - type: "aws-resource"
+    resource: "EC2 Instance"
+    description: "with an admin IAM instance profile attached and SSM Agent running"
+  - type: "network"
+    description: "instance must be reachable via SSM Session Manager (outbound HTTPS to SSM endpoints allowed)"
 ```
 
 ---
@@ -1378,6 +1466,7 @@ Before submitting a scenario, verify all required fields are present:
 - [ ] `environments`
 - [ ] `attack_path.principals`
 - [ ] `attack_path.summary`
+- [ ] `required_preconditions` (optional — but required for `existing-passrole` and `credential-access` sub_categories and `Attack Simulation` scenarios; omit for `self-escalation`, `new-passrole`, and CTF)
 - [ ] `permissions.required` (at least one principal entry with at least one permission)
 - [ ] `mitre_attack.tactics` (at least one entry)
 - [ ] `mitre_attack.techniques` (at least one entry)
@@ -1485,5 +1574,5 @@ For questions about the schema or suggestions for improvements:
 2. Reference this SCHEMA.md file in your question
 3. Provide examples when possible
 
-**Last Updated:** 2026-04-18
-**Schema Version:** 1.6.0
+**Last Updated:** 2026-05-13
+**Schema Version:** 1.8.0
