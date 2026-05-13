@@ -467,6 +467,25 @@ output "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  description = "All outputs for amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].admin_role_name
+    codecommit_repo_name            = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_name
+    codecommit_repo_arn             = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_arn
+    codecommit_repo_clone_url_http  = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_clone_url_http
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   description = "All outputs for apprunner-001-iam-passrole+apprunner-createservice one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice ? {
@@ -1488,6 +1507,27 @@ output "single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrol
     flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].flag_ssm_parameter_name
     flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].flag_ssm_parameter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  description = "All outputs for omics-001-iam-passrole+omics-createworkflow+omics-startrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].admin_role_name
+    s3_bucket_name                  = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].s3_bucket_name
+    s3_bucket_arn                   = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].s3_bucket_arn
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].attacker_bucket_name
+    ecr_image_uri                   = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].ecr_image_uri
+    ecr_registry                    = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].ecr_registry
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].attack_path
   } : null
   sensitive = true
 }

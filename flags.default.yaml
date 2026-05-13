@@ -21,6 +21,7 @@
 #
 # Tool-testing scenarios are exempt and do not appear in this file.
 flags:
+  amplify-001-to-admin: "flag{amplify_001_admin_captured}"
   apprunner-001-to-admin: "flag{apprunner_001_admin_captured}"
   apprunner-002-to-admin: "flag{apprunner_002_admin_captured}"
   bedrock-001-to-admin: "flag{bedrock_001_admin_captured}"
@@ -109,6 +110,7 @@ flags:
   lambda-invoke-update-to-admin: "flag{lambda_invoke_update_cross_account_admin_captured}"
   multi-hop-both-sides-to-admin: "flag{multi_hop_both_sides_admin_captured}"
   multiple-paths-combined-to-admin: "flag{multiple_paths_combined_admin_captured}"
+  omics-001-to-admin: "flag{omics_001_healthomics_admin_captured}"
   ops-to-prod-simple-role-assumption-to-admin: "flag{ops_to_prod_simple_role_assumption_admin_captured}"
   passrole-lambda-admin-to-admin: "flag{passrole_lambda_cross_account_admin_captured}"
   public-lambda-with-admin-to-admin: "flag{public_lambda_admin_role_pwned}"

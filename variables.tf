@@ -247,6 +247,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updatelogin
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob (Pathfinding.cloud: amplify-001)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-001-iam-passrole+apprunner-createservice (Pathfinding.cloud: apprunner-001)"
   type        = bool
@@ -519,6 +525,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_pa
 
 variable "enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
   description = "Enable: single-account → privesc-one-hop → to-admin → kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → omics-001-iam-passrole+omics-createworkflow+omics-startrun"
   type        = bool
   default     = false
 }

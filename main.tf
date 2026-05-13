@@ -341,6 +341,18 @@ module "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   flag_value      = lookup(var.scenario_flags, "iam-003-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "amplify-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-001-iam-passrole+apprunner-createservice"
@@ -971,6 +983,20 @@ module "single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrol
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
   flag_value          = lookup(var.scenario_flags, "kinesisanalytics-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/omics-001-iam-passrole+omics-createworkflow+omics-startrun"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "omics-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {

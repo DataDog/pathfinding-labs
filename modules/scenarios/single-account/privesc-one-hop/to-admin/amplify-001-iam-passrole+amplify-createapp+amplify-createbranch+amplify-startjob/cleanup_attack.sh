@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + amplify:CreateApp + amplify:CreateBranch + amplify:StartJob privilege escalation demo
 # This script detaches AdministratorAccess from the starting user, deletes the Amplify app,
@@ -54,6 +55,13 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -81,20 +89,18 @@ echo "Looking for apps matching: $APP_NAME"
 
 # List all Amplify apps and find ours by name
 APP_LIST=$(aws amplify list-apps \
-    --region $CURRENT_REGION \
+    --region "$CURRENT_REGION" \
     --query "apps[?name=='$APP_NAME']" \
-    --output json 2>/dev/null)
+    --output json 2>/dev/null || echo "[]")
 
 if [ -n "$APP_LIST" ] && [ "$APP_LIST" != "[]" ] && [ "$APP_LIST" != "null" ]; then
     for APP_ID in $(echo "$APP_LIST" | jq -r '.[].appId'); do
         echo "Found Amplify app: $APP_ID"
         echo "Deleting Amplify app: $APP_ID (this also deletes branches and jobs)"
 
-        aws amplify delete-app \
+        if aws amplify delete-app \
             --app-id "$APP_ID" \
-            --region $CURRENT_REGION 2>/dev/null
-
-        if [ $? -eq 0 ]; then
+            --region "$CURRENT_REGION" 2>/dev/null; then
             echo -e "${GREEN}✓ Deleted Amplify app: $APP_ID${NC}"
         else
             echo -e "${YELLOW}⚠ Could not delete Amplify app $APP_ID (may need manual cleanup)${NC}"
@@ -130,9 +136,9 @@ fi
 
 # Check that Amplify apps are deleted
 REMAINING_APPS=$(aws amplify list-apps \
-    --region $CURRENT_REGION \
+    --region "$CURRENT_REGION" \
     --query "apps[?name=='$APP_NAME'].appId" \
-    --output text 2>/dev/null)
+    --output text 2>/dev/null || echo "")
 
 if [ -z "$REMAINING_APPS" ] || [ "$REMAINING_APPS" == "None" ]; then
     echo -e "${GREEN}✓ All Amplify apps cleaned up${NC}"

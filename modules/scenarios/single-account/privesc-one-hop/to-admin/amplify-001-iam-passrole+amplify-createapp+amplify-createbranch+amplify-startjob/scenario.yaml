@@ -3,8 +3,10 @@
 # =============================================================================
 schema_version: "1.2.1"
 name: "iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob"
+title: "AWS Amplify Build Job to Admin"
 description: "User with iam:PassRole and Amplify permissions can escalate privileges by creating an Amplify app connected to a CodeCommit repo containing malicious build commands that execute with an admin service role"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "amplify-001"
 
 # =============================================================================
@@ -32,45 +34,54 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-amplify-001-to-admin-admin-role"
+    - principal: "pl-prod-amplify-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-amplify-001-to-admin-admin-role"
 
-    - permission: "amplify:CreateApp"
-      resource: "*"
+        - permission: "amplify:CreateApp"
+          resource: "*"
 
-    - permission: "amplify:CreateBranch"
-      resource: "*"
+        - permission: "amplify:CreateBranch"
+          resource: "*"
 
-    - permission: "amplify:StartJob"
-      resource: "*"
+        - permission: "amplify:StartJob"
+          resource: "*"
+
+        - permission: "codecommit:GitPush"
+          resource: "arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo"
+
+        - permission: "codecommit:GitPull"
+          resource: "arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo"
+
+        - permission: "codecommit:GetRepository"
+          resource: "arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo"
+
+        - permission: "sns:CreateTopic"
+          resource: "arn:aws:sns:*:*:amplify_codecommit_topic"
+
+        - permission: "sns:Subscribe"
+          resource: "arn:aws:sns:*:*:amplify_codecommit_topic"
+
+        - permission: "codecommit:GetRepositoryTriggers"
+          resource: "arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo"
+
+        - permission: "codecommit:PutRepositoryTriggers"
+          resource: "arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo"
 
   helpful:
-    - permission: "codecommit:CreateRepository"
-      purpose: "Create a CodeCommit repository to host the malicious build spec"
+    - principal: "pl-prod-amplify-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "amplify:GetJob"
+          purpose: "Monitor build job status and verify completion"
 
-    - permission: "codecommit:GitPush"
-      purpose: "Push malicious amplify.yml to the CodeCommit repository"
+        - permission: "amplify:ListApps"
+          purpose: "List existing Amplify applications"
 
-    - permission: "amplify:GetJob"
-      purpose: "Monitor build job status and verify completion"
-
-    - permission: "amplify:ListApps"
-      purpose: "List existing Amplify applications"
-
-    - permission: "amplify:DeleteApp"
-      purpose: "Clean up Amplify app after demonstration"
-
-    - permission: "amplify:DeleteBranch"
-      purpose: "Clean up branch after demonstration"
-
-    - permission: "codecommit:DeleteRepository"
-      purpose: "Clean up CodeCommit repository after demonstration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

@@ -5,105 +5,185 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Pathfinding.cloud ID:** amplify-001
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating an Amplify app connected to a CodeCommit repository containing a malicious amplify.yml build spec that executes shell commands with an admin service role
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob`
+* **Schema Version:** 4.6.1
+* **Pathfinding.cloud ID:** amplify-001
+* **CTF Flag Location:** ssm-parameter
+* **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
+* **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1578 - Modify Cloud Compute Infrastructure
 
-## Overview
+## Objective
 
-This scenario demonstrates a privilege escalation path where a user with `iam:PassRole` and AWS Amplify permissions can gain administrative access by creating an Amplify application with a malicious build specification. The attacker first creates a CodeCommit repository containing an `amplify.yml` file with exploit commands, then creates an Amplify app connected to that repository with an admin service role. When the build job is triggered, the build commands execute in a container with the admin role's credentials, allowing the attacker's code to attach `AdministratorAccess` to the starting user.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-amplify-001-to-admin-starting-user` IAM user to the `pl-prod-amplify-001-to-admin-admin-role` administrative role by pushing a malicious `amplify.yml` build spec to a CodeCommit repository and creating an Amplify app with the admin role as its service role, causing the build container to execute IAM commands with administrative credentials.
 
-AWS Amplify uses `amplify.yml` (or `buildspec.yml`) to define build commands that run during the CI/CD pipeline. These commands execute in a build container that has the Amplify app's service role credentials available as environment variables. The AWS CLI comes pre-installed in the Amplify build environment, making it trivial to call IAM APIs directly from the build spec. When the service role has administrative permissions, the build commands effectively run with full admin access to the AWS account.
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-amplify-001-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-amplify-001-to-admin-admin-role`
 
-This attack leverages the CI/CD pipeline pattern common in many AWS services. The attacker needs to set up a source code repository (CodeCommit in this case) with the malicious build spec before creating the Amplify app. This adds a prerequisite step but is straightforward since the same user typically has CodeCommit permissions. Organizations that grant Amplify permissions without restricting `iam:PassRole` to specific, least-privilege service roles are vulnerable. The cost impact is $0/mo at rest since no builds run until explicitly triggered.
+### Starting Permissions
 
-## Understanding the attack scenario
+**Required** (`pl-prod-amplify-001-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-amplify-001-to-admin-admin-role` -- allows passing the admin role to the Amplify service as the app's service role; abuse is visible in `requestParameters.iamServiceRoleArn` of the `amplify:CreateApp` CloudTrail event
+- `amplify:CreateApp` on `*` -- allows creating an Amplify application connected to the CodeCommit repository with the admin role as the service role
+- `amplify:CreateBranch` on `*` -- allows creating a branch in the Amplify app pointing to the repository branch containing the malicious build spec
+- `amplify:StartJob` on `*` -- allows triggering a build job that executes the malicious build spec with the admin role's credentials
+- `codecommit:GitPush` on `arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo` -- push the malicious `amplify.yml` build spec to the CodeCommit repository that the Amplify app will clone during builds
+- `codecommit:GitPull` on `arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo` -- required by the git clone operation when authenticating with the CodeCommit credential helper
+- `codecommit:GetRepository` on `arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo` -- `amplify:CreateApp` validates that the caller can read the repository before accepting the app config; without this the create call is rejected with `UnauthorizedException` before any service-role logic runs
+- `codecommit:GetRepositoryTriggers` on `arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo` -- Amplify reads existing repo triggers as the caller during `CreateApp` so it can add its build-notification trigger without clobbering existing ones
+- `codecommit:PutRepositoryTriggers` on `arn:aws:codecommit:*:*:pl-prod-amplify-001-to-admin-repo` -- Amplify writes the CodeCommit→SNS trigger as the caller during `CreateApp` so future pushes auto-trigger builds
+- `sns:CreateTopic` on `arn:aws:sns:*:*:amplify_codecommit_topic` -- Amplify auto-creates the shared `amplify_codecommit_topic` SNS topic (used to fan out CodeCommit push notifications to all Amplify apps in the account) as the caller during `CreateApp`
+- `sns:Subscribe` on `arn:aws:sns:*:*:amplify_codecommit_topic` -- Amplify subscribes itself to the topic as the caller during `CreateApp`; without it the create succeeds partially but the subscription wiring fails
 
-### Principals in the attack path
+**Helpful** (`pl-prod-amplify-001-to-admin-starting-user`):
+- `amplify:GetJob` -- monitor build job status and verify completion
+- `amplify:ListApps` -- list existing Amplify applications
+- `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
 
-- `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-amplify-001-to-admin-starting-user` (Scenario-specific starting user with PassRole, Amplify, and CodeCommit permissions)
-- `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-amplify-001-to-admin-admin-role` (Admin role that trusts amplify.amazonaws.com, passed as the Amplify app service role)
+## Self-hosted Lab Setup
 
-### Attack Path Diagram
+### Prerequisites
 
-```mermaid
-graph LR
-    A[pl-prod-amplify-001-to-admin-starting-user] -->|codecommit:Create + amplify:CreateApp + iam:PassRole| B[Amplify Build with Admin Role]
-    B -->|Build spec commands use admin credentials| C[Attaches AdministratorAccess to starting user]
-    C -->|Administrator Access| D[Effective Administrator]
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
 
-    style A fill:#ff9999,stroke:#333,stroke-width:2px
-    style B fill:#ffcc99,stroke:#333,stroke-width:2px
-    style C fill:#ffcc99,stroke:#333,stroke-width:2px
-    style D fill:#99ff99,stroke:#333,stroke-width:2px
+### Deploy with plabs non-interactive
+
+```bash
+plabs enable amplify-001-to-admin
+plabs apply
 ```
 
-### Attack Steps
+### Deploy with plabs tui
 
-1. **Initial Access**: Start as `pl-prod-amplify-001-to-admin-starting-user` (credentials provided via Terraform outputs)
-2. **Create CodeCommit Repository**: Create a CodeCommit repository and push a malicious `amplify.yml` build spec containing shell commands that use the AWS CLI to attach `AdministratorAccess` to the starting user.
-3. **Create Amplify App**: Use `amplify:CreateApp` with `iam:PassRole` to create an Amplify application connected to the CodeCommit repository, specifying the admin role as the service role.
-4. **Create Branch**: Use `amplify:CreateBranch` to create a branch in the Amplify app pointing to the repository branch containing the malicious build spec.
-5. **Start Build Job**: Use `amplify:StartJob` to trigger a build. The build container executes the `amplify.yml` commands with the admin role's credentials.
-6. **Automatic Escalation**: The build commands execute, using the pre-installed AWS CLI with the admin role credentials to attach `AdministratorAccess` to the starting user.
-7. **Verification**: Verify administrator access by listing IAM users or performing other admin-level actions as the starting user.
+1. Launch the TUI: `plabs`
+2. Navigate to `amplify-001-to-admin` in the scenarios list
+3. Press `space` to enable it
+4. Press `a` to apply
 
-### Scenario specific resources created
+## Attack
+
+### Scenario Specific Resources Created
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::PROD_ACCOUNT:user/pl-prod-amplify-001-to-admin-starting-user` | Scenario-specific starting user with access keys, iam:PassRole, Amplify, and CodeCommit permissions |
-| `arn:aws:iam::PROD_ACCOUNT:role/pl-prod-amplify-001-to-admin-admin-role` | Admin role trusting amplify.amazonaws.com, used as the Amplify app service role |
-| `arn:aws:codecommit:REGION:PROD_ACCOUNT:pl-prod-amplify-001-to-admin-repo` | CodeCommit repository used to host the malicious amplify.yml build spec |
-| Inline policy `pl-prod-amplify-001-to-admin-required-permissions` on `pl-prod-amplify-001-to-admin-starting-user` | Inline user policy granting required iam:PassRole and Amplify permissions |
-| Inline policy `pl-prod-amplify-001-to-admin-helpful-permissions` on `pl-prod-amplify-001-to-admin-starting-user` | Inline user policy granting helpful CodeCommit and Amplify cleanup permissions |
+| `arn:aws:iam::{account_id}:user/pl-prod-amplify-001-to-admin-starting-user` | Scenario-specific starting user with access keys, PassRole, and Amplify permissions |
+| `arn:aws:iam::{account_id}:role/pl-prod-amplify-001-to-admin-admin-role` | Administrative role trusting `amplify.amazonaws.com`; passed as the Amplify app service role |
+| `arn:aws:codecommit:{region}:{account_id}:pl-prod-amplify-001-to-admin-repo` | Empty CodeCommit repository; the attacker pushes the malicious `amplify.yml` here during the demo |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/amplify-001-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
-## Executing the attack
+### Solution
 
-### Using the automated demo_attack.sh
+For a narrative, step-by-step walkthrough of this attack (CTF writeup style), see:
 
-To demonstrate the privilege escalation path, run the provided demo script:
+[Solution](solution.md)
 
-```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob
-./demo_attack.sh
-```
+### Automated Demo
+
+#### Executing the automated demo_attack script
 
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the commands being executed and their results
-3. Create a CodeCommit repository with the malicious build spec
-4. Wait for the Amplify build to complete
-5. Verify successful privilege escalation
-6. Output standardized test results for automation
+3. Clone the CodeCommit repository and push a malicious `amplify.yml` build spec
+4. Create an Amplify app connected to the repository, passing the admin role via `iam:PassRole`
+5. Create a branch and start a build job that executes with admin role credentials
+6. Wait for the Amplify build to complete (typically 2--5 minutes)
+7. Verify successful privilege escalation by confirming `AdministratorAccess` is attached to the starting user
+8. Capture the CTF flag from SSM Parameter Store using the newly gained admin permissions
 
-### Cleaning up the attack artifacts
+#### Resources Created by Attack Script
 
-After demonstrating the attack, clean up the Amplify app, CodeCommit repository, and attached admin policy:
+- Amplify application `pl-prod-amplify-001-to-admin-app` connected to the CodeCommit repository
+- Amplify branch `main` in the above application
+- Amplify build job triggered on the `main` branch
+- `AdministratorAccess` managed policy attached to `pl-prod-amplify-001-to-admin-starting-user`
+
+#### With plabs non-interactive
 
 ```bash
-cd modules/scenarios/single-account/privesc-one-hop/to-admin/amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob
-./cleanup_attack.sh
+plabs demo --list
+plabs demo amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob
 ```
 
-The cleanup script will delete the Amplify app and branches, the CodeCommit repository created during the demonstration, detach the `AdministratorAccess` policy from the starting user, and restore the environment to its original state while preserving the deployed infrastructure.
+#### With plabs tui
 
-## Detection and prevention
+1. Launch the TUI: `plabs`
+2. Navigate to `amplify-001-to-admin` in the scenarios list
+3. Press `r` to run the demo script
 
+### Cleanup
 
-### MITRE ATT&CK Mapping
+#### With plabs non-interactive
 
-- **Tactic**: TA0004 - Privilege Escalation, TA0002 - Execution
-- **Technique**: T1078.004 - Valid Accounts: Cloud Accounts
-- **Technique**: T1578 - Modify Cloud Compute Infrastructure
+```bash
+plabs cleanup --list
+plabs cleanup amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob
+```
 
+#### With plabs tui
 
-## Prevention recommendations
+1. Launch the TUI: `plabs`
+2. Navigate to `amplify-001-to-admin` in the scenarios list
+3. Press `c` to run the cleanup script
 
-- Restrict `iam:PassRole` with resource conditions to limit which roles can be passed: `"Resource": "arn:aws:iam::*:role/specific-amplify-role"` rather than allowing all roles
-- Implement Service Control Policies (SCPs) to prevent passing administrative roles to Amplify or any CI/CD service
-- Monitor CloudTrail for `amplify:CreateApp` and `amplify:StartJob` API calls, especially when combined with `iam:PassRole` to high-privilege roles
-- Use IAM Access Analyzer to identify principals with `iam:PassRole` permissions on administrative roles
-- Apply permission boundaries to Amplify service roles to cap the maximum privileges available to build environments
-- Require specific IAM conditions on `iam:PassRole` such as `iam:PassedToService` restricted to `amplify.amazonaws.com` combined with role name restrictions to prevent passing admin roles
-- Enable GuardDuty and configure alerts for unexpected Amplify application creation, CodeCommit repository creation, and IAM policy attachment events
-- Audit all roles with `amplify.amazonaws.com` in their trust policy to ensure they follow least privilege principles and do not have administrative permissions
+## Teardown
+
+### Teardown with plabs non-interactive
+
+```bash
+plabs disable amplify-001-to-admin
+plabs apply
+```
+
+### Teardown with plabs tui
+
+1. Launch the TUI: `plabs`
+2. Navigate to `amplify-001-to-admin` in the scenarios list
+3. Press `space` to disable it
+4. Press `D` to destroy
+
+## Defend
+
+### Detecting Misconfiguration (CSPM)
+
+#### What CSPM tools should detect
+
+- IAM user with `iam:PassRole` permission on a role that has administrative permissions (`AdministratorAccess` or equivalent) and trusts `amplify.amazonaws.com`
+- IAM user with `amplify:CreateApp` and `amplify:StartJob` permissions combined with `iam:PassRole` on an admin role, forming a privilege escalation path via CI/CD build execution
+- IAM role with `AdministratorAccess` or broad IAM permissions that trusts `amplify.amazonaws.com` as a service principal, making it passable to Amplify applications
+- Privilege escalation path from IAM user to admin via Amplify app creation and build job execution
+
+#### Prevention Recommendations
+
+- Restrict `iam:PassRole` using the `iam:PassedToService` condition key to limit which services a role can be passed to (e.g., `"iam:PassedToService": "amplify.amazonaws.com"`) -- combine this with a resource condition scoped to non-privileged Amplify service roles
+- Scope `iam:PassRole` resource constraints to deny passing roles with `AdministratorAccess` or broad IAM permissions to any CI/CD service including Amplify
+- Implement SCPs that deny `amplify:CreateApp` when the request includes an `iamServiceRoleArn` referencing a privileged role
+- Use IAM Access Analyzer to automatically detect privilege escalation paths involving `iam:PassRole` and Amplify app creation
+- Grant `amplify:CreateApp` and `amplify:StartJob` only to roles or users with a demonstrated need; treat these as high-risk permissions in any IAM policy
+- Audit all roles with `amplify.amazonaws.com` in their trust policy to ensure they follow least privilege and do not carry administrative permissions
+
+### Detecting Abuse (CloudSIEM)
+
+#### CloudTrail Events to Monitor
+
+- `amplify:CreateApp` -- Amplify application created; inspect `requestParameters.iamServiceRoleArn` for a privileged role ARN, which is the CloudTrail signal for PassRole abuse via Amplify; high severity when the role has administrative permissions
+- `amplify:CreateBranch` -- branch added to an Amplify app; correlate with a preceding `CreateApp` call from the same principal to identify the build-setup phase of this attack
+- `amplify:StartJob` -- build job triggered; correlate with a preceding `CreateApp` referencing a privileged service role to identify the execution phase
+- `iam:AttachUserPolicy` -- managed policy attached to an IAM user; critical when the policy is `AdministratorAccess` and the caller credentials belong to an Amplify service role
+
+#### Detonation logs
+
+_Detonation log integration (Stratus Red Team / Grimoire) is planned for a future release._
+
+## References
+
+- [AWS Amplify Service Roles Documentation](https://docs.aws.amazon.com/amplify/latest/userguide/how-to-service-role-amplify-console.html) -- explains how Amplify service roles work and why they must trust `amplify.amazonaws.com`
+- [AWS IAM PassRole Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html) -- explains PassRole mechanics and how to restrict it with `iam:PassedToService`
+- [Rhino Security Labs - AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) -- comprehensive overview of IAM privilege escalation techniques including PassRole patterns
+- [pathfinding.cloud/paths/amplify-001](https://pathfinding.cloud/paths/amplify-001) -- documented attack path for this scenario

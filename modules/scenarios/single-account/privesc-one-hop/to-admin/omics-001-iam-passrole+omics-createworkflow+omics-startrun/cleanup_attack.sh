@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + omics:CreateWorkflow + omics:StartRun privilege escalation demo
 # This script detaches AdministratorAccess from the starting user, deletes HealthOmics runs
@@ -16,6 +17,13 @@ NC='\033[0m' # No Color
 # Configuration
 STARTING_USER="pl-prod-omics-001-to-admin-starting-user"
 WORKFLOW_NAME="pl-prod-omics-001-to-admin-workflow"
+
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup: PassRole + HealthOmics CreateWorkflow + StartRun${NC}"

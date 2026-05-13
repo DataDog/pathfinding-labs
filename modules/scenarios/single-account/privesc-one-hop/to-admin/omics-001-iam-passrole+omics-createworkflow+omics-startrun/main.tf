@@ -37,8 +37,9 @@ data "aws_region" "current" {
 
 # Scenario-specific starting user
 resource "aws_iam_user" "starting_user" {
-  provider = aws.prod
-  name     = "pl-prod-omics-001-to-admin-starting-user"
+  provider      = aws.prod
+  force_destroy = true
+  name          = "pl-prod-omics-001-to-admin-starting-user"
 
   tags = {
     Name        = "pl-prod-omics-001-to-admin-starting-user"
@@ -79,6 +80,18 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "omics:StartRun"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "HelpfulForReconAndMonitoring"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "omics:GetWorkflow",
+          "omics:GetRun",
+          "omics:ListRuns",
+          "iam:ListAttachedUserPolicies"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -91,8 +104,9 @@ resource "aws_iam_user_policy" "starting_user_required" {
 # Admin role that will be passed as the run role for the HealthOmics workflow run.
 # This role trusts omics.amazonaws.com because HealthOmics assumes it to execute workflow tasks.
 resource "aws_iam_role" "admin_role" {
-  provider = aws.prod
-  name     = "pl-prod-omics-001-to-admin-admin-role"
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-omics-001-to-admin-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -204,7 +218,8 @@ resource "aws_s3_bucket_policy" "output_cross_account" {
         }
         Action = [
           "s3:PutObject",
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:DeleteObject"
         ]
         Resource = "${aws_s3_bucket.output.arn}/*"
       },
@@ -243,6 +258,26 @@ resource "aws_ecr_repository" "workflow_image" {
     Environment = var.environment
     Scenario    = "iam-passrole+omics-createworkflow+omics-startrun"
     Purpose     = "healthomics-workflow-container-image"
+  }
+}
+
+# CTF flag stored in SSM Parameter Store. The attacker retrieves this after reaching
+# administrator-equivalent permissions in the account. The flag lives in the victim
+# (prod) account and is readable by any principal with ssm:GetParameter on the
+# parameter ARN — in practice this means any admin-equivalent principal, since
+# AdministratorAccess grants the required permission implicitly.
+resource "aws_ssm_parameter" "flag" {
+  provider    = aws.prod
+  name        = "/pathfinding-labs/flags/omics-001-to-admin"
+  description = "CTF flag for the omics-001 to-admin scenario"
+  type        = "String"
+  value       = var.flag_value
+
+  tags = {
+    Name        = "pl-prod-omics-001-to-admin-flag"
+    Environment = var.environment
+    Scenario    = "iam-passrole+omics-createworkflow+omics-startrun"
+    Purpose     = "ctf-flag"
   }
 }
 

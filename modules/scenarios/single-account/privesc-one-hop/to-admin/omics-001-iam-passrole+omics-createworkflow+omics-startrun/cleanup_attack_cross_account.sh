@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for cross-account variant of iam:PassRole + omics:CreateWorkflow + omics:StartRun
 # This script detaches AdministratorAccess from the starting user, deletes HealthOmics runs
@@ -19,6 +20,13 @@ STARTING_USER="pl-prod-omics-001-to-admin-starting-user"
 WORKFLOW_NAME="pl-prod-omics-001-to-admin-workflow"
 ATTACKER_PROFILE="demo-attacker.AWSAdministratorAccess"
 ATTACKER_ECR_REPO_NAME="pl-attacker-omics-001-aws-cli"
+
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup: PassRole + HealthOmics CreateWorkflow + StartRun${NC}"
