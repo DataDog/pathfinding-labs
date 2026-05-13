@@ -36,14 +36,19 @@ Eleven scenarios pulled from research's `modules/scenarios/single-account/prives
 | gamelift-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | **Demo + Cleanup PASS 2026-05-13** after four fixes: (1) `cleanup_attack.sh` `MAX_WAIT` bumped 300s→600s, fall-through note added when still transitional, `delete-fleet` rewritten as `if cmd; then ... else ... fi` so `set -e` doesn't kill on a transitional-state rejection; (2) AP-4 fix: Step 10 split into `[OBSERVATION]` under readonly (`list-attached-user-policies`) + `[EXPLOIT]` under starting creds (`list-users`) — was previously verifying admin under `[ReadOnly]`; (3) `show_attack_cmd()` aligned to canonical 2-arg form (`identity`, `command`); two call sites at upload-build / create-fleet updated to add `"Attacker"` identity arg — also fixes the cosmetic `$ Attacker (now admin) aws ...` malformed-label bug as a side-effect; (4) flag-capture step backported the imagebuilder 4-attempt retry-with-surfaced-stderr pattern. Initial demo run 2026-05-12 took 333s (no fixes); post-fix run 2026-05-13 clean end-to-end. |
 | omics-001 | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [x] | [ ] | **Demo + Cleanup PASS 2026-05-13.** Attacker-account pattern (S3 + ECR). Preserved + updated cross-account script variants per user direction. Validator auto-fixed 3: admin-verify cred anti-pattern in both canonical and cross-account demos, stale CodeBuild rows in README. The earlier-applied `s3:DeleteObject` bucket-policy fix (added to `AllowProdAccountReadWrite` Sid for cross-account cleanup) held up under live cleanup. Non-blocking note: scenario takes 15+ min; consider `demo_timeout_seconds: 1200` if harness has default timeout. Commit pending. |
 
-## Commit state (2026-05-12)
+## Commit state (2026-05-13)
 
 | Scenario | Commits |
 |---|---|
 | batch-001 | Committed in `ef494b5`. |
 | stepfunctions-001, braket-001 | Committed in `c1f0abe`. |
 | emr-001 (scenario) | Committed in `28ac970`. EMR SLR addition committed separately in `2828df9`. |
-| emr-serverless-001, kinesisanalytics-001, synthetics-001, imagebuilder-001, amplify-001, gamelift-001, omics-001 | **Not yet committed** — staged and ready, awaiting per-scenario AWS validation before commit. |
+| emr-serverless-001 | Committed in `7b0de19`. |
+| kinesisanalytics-001 | Committed in `7e30012`. |
+| imagebuilder-001 | Committed in `b2f73c7`. |
+| gamelift-001 | Committed in `324047d`. |
+| synthetics-001 | Removed from `research-integration` in `8ef5545` (remains on the `research` branch for future re-attempt). |
+| amplify-001, omics-001 | Committed in `326e519`. |
 
 ## Deferred from Wave 1
 
