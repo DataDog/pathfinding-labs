@@ -976,6 +976,61 @@ echo -e "${GREEN}✓ Restored admin role trust policy${NC}"
 echo ""
 ```
 
+#### Removing Runtime Artifacts From an Attacker Bucket (Cross-Account)
+
+When the attack exfiltrates runtime-created artifacts (`creds.json`, `output/`, `results/`, etc.) to an attacker-account S3 bucket — the compute role (Spark job, HealthOmics workflow, etc.) writes to the bucket using its own credentials during exploitation — cleanup must remove those artifacts because they are NOT in Terraform state. The bucket lives in the attacker account; `cleanup_attack.sh` runs under the prod admin-cleanup user; the delete is therefore a cross-account operation.
+
+**Terraform-side prerequisite (verify this exists before writing the cleanup step):**
+
+The attacker bucket's bucket policy MUST grant the prod account `s3:DeleteObject` in the Sid that already grants prod-account access. The canonical form is:
+
+```hcl
+{
+  Sid    = "AllowProdAccountObjectAccess"  # or AllowProdAccountReadWrite
+  Effect = "Allow"
+  Principal = {
+    AWS = "arn:aws:iam::${var.account_id}:root"
+  }
+  Action = [
+    "s3:GetObject",
+    "s3:PutObject",
+    "s3:DeleteObject"  # required when cleanup deletes runtime artifacts from this bucket
+  ]
+  Resource = "${aws_s3_bucket.<name>.arn}/*"
+}
+```
+
+Without `s3:DeleteObject` in the bucket policy, the cleanup `aws s3 rm` returns `AccessDenied: DeleteObject` even though the cleanup user has AdministratorAccess from the IAM side — cross-account access requires BOTH identity-policy allow AND resource-policy allow. The starting user's identity policy never includes `s3:DeleteObject`, so widening the bucket policy here is safe — the attack precondition is unchanged.
+
+If the bucket policy is missing `s3:DeleteObject`, surface this to the orchestrator as a prerequisite the terraform-builder must add before this cleanup pattern will work.
+
+**Cleanup script form:**
+
+```bash
+echo -e "${YELLOW}Step N: Removing exfiltrated artifacts from attacker S3 bucket${NC}"
+
+if [ -n "$S3_BUCKET_NAME" ]; then
+    echo "Cleaning runtime artifacts from s3://$S3_BUCKET_NAME/exfil/"
+
+    OBJECTS=$(aws s3 ls "s3://$S3_BUCKET_NAME/exfil/" --region "$CURRENT_REGION" --recursive 2>/dev/null)
+    if [ -n "$OBJECTS" ]; then
+        aws s3 rm "s3://$S3_BUCKET_NAME/exfil/" \
+            --region "$CURRENT_REGION" \
+            --recursive
+        echo -e "${GREEN}✓ Removed runtime artifacts from attacker bucket${NC}"
+    else
+        echo -e "${YELLOW}No runtime artifacts found (may already be cleaned)${NC}"
+    fi
+else
+    echo -e "${YELLOW}Attacker bucket name not available, skipping cross-account cleanup${NC}"
+fi
+echo ""
+```
+
+Notes:
+- Target the specific runtime-artifact key prefix (e.g. `exfil/`, `output/`), NOT the bucket root. Bucket-managed objects (the exploit script `aws_s3_object`) are owned by Terraform under `aws.attacker` and must NOT be deleted by cleanup — `terraform destroy` reclaims them.
+- Read-only attacker buckets (where prod only `GetObject`s pre-staged exploit code, e.g. synthetics-001) do NOT need this cleanup step at all. The attacker bucket's contents stay TF-managed, and `force_destroy = true` on the bucket reclaims everything when the scenario is destroyed.
+
 #### No Cleanup Required
 For scenarios that only involve role assumption:
 ```bash

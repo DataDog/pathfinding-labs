@@ -1,7 +1,7 @@
 ---
 name: scenario-migrator
 description: Migrates a Pathfinding Labs scenario to the attacker-account, readonly-credentials, per-principal permissions, demo-restriction, and CTF-flag-terminal patterns
-tools: Read, Edit, Grep, Glob, Bash
+tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 color: yellow
 allowed_tools:
@@ -67,6 +67,16 @@ Before making ANY changes, analyze the scenario:
    - `aws.attacker` NOT already in `configuration_aliases`
    - Only applies to scenarios with attacker-controlled S3 buckets (e.g., mwaa-001, mwaa-002, sagemaker-002, sagemaker-003)
 
+   **Phase 1.6 (Service-Linked Role) indicators** -- scenario depends on an AWS service whose SLR is NOT auto-created in fresh playground accounts:
+   - The scenario's terraform creates a resource for, or the demo script invokes, a service from this list (non-exhaustive; verify against `modules/environments/prod/main.tf`):
+     - EMR Serverless → `AWSServiceRoleForAmazonEMRServerless`
+     - EC2 Image Builder → `AWSServiceRoleForImageBuilder`
+     - EMR (classic) → `AWSServiceRoleForEMRCleanup` (already wired as `create_emr_slr`)
+     - Auto Scaling, EC2 Spot, App Runner → already wired (pattern reference)
+   - The required SLR is NOT already present in `modules/environments/prod/main.tf` as an `aws_iam_service_linked_role` resource
+   - Symptom when missing: demo fails with `iam:CreateServiceLinkedRole` AccessDenied, OR the service silently returns `ValidationException: Access denied when calling CreateServiceLinkedRole operation`, OR the service-provisioned resource transitions to a failure state within seconds of creation
+   - The starting user MUST NOT be given `iam:CreateServiceLinkedRole` — that would be a precondition change. Pre-create the SLR in the environment module instead.
+
    **Phase 5 (CTF flag terminal) indicators** -- applies to EVERY scenario except those under `tool-testing/`:
    - `variables.tf` does NOT declare `flag_value`
    - `main.tf` does NOT contain `aws_ssm_parameter.flag` (to-admin) or `aws_s3_object.flag` / `flag.txt` (to-bucket)
@@ -100,6 +110,12 @@ Phase 1 (Permissions):  {NEEDED|NOT NEEDED}
   - Helpful perms in Terraform: {count}
   - scenario.yaml per-principal format: {yes/no}
 
+Phase 1.6 (Service-Linked Role): {NEEDED|NOT NEEDED}
+  - AWS service in this scenario requires SLR: {service / "none"}
+  - SLR name: {AWSServiceRoleFor... / "n/a"}
+  - SLR already pre-created in modules/environments/prod/main.tf: {yes/no}
+  - Auto-creatable by starting user without iam:CreateServiceLinkedRole: {yes/no}
+
 Phase 2 (Readonly creds): {NEEDED|NOT NEEDED|N/A (no demo_attack.sh)}
   - use_readonly_creds present: {yes/no}
   - Manual credential exports: {count}
@@ -117,7 +133,7 @@ Phase 5 (CTF flag terminal): {NEEDED|NOT NEEDED|N/A (tool-testing)}
   - Root main.tf passes flag_value: {yes/no}
   - Entry in flags.default.yaml: {yes/no}
 
-Proceeding with: Phase {1,2,3,5} ...
+Proceeding with: Phase {1,1.5,1.6,2,2.5,3,5} ...
 ========================================
 ```
 
@@ -227,6 +243,67 @@ resource "aws_iam_role" "vulnerable_role" {
 ```
 
 Run `terraform fmt -recursive` afterward to normalize attribute alignment. The flag has no effect on apply/update behavior — only on destroy — so this is safe to add to any scenario.
+
+## Phase 1.6: Service-Linked Role Pre-Creation (cross-cutting)
+
+### Goal
+
+When a scenario depends on an AWS service whose service-linked role (SLR) is NOT already auto-created in a fresh playground account, pre-create that SLR in the `prod` environment module and wire plabs detection so the binary can verify it before deploy. This MUST be done at the environment/CLI layer, not by granting the starting user `iam:CreateServiceLinkedRole` — granting that perm would change the documented attack precondition.
+
+### Why
+
+Several AWS services validate the existence of their SLR on the very first API call. If the SLR doesn't exist, the service may:
+- return `ValidationException: Access denied when calling CreateServiceLinkedRole operation` (EMR Serverless),
+- return `AccessDenied ... iam:CreateServiceLinkedRole on AWSServiceRoleFor...` (Image Builder, omitted on first CreateImage call),
+- accept the call but transition the resource into a failed state within seconds (EMR classic: cluster goes `TERMINATED_WITH_ERRORS` with reason `VALIDATION_ERROR: Service-linked role ... is required`).
+
+In every case the attack appears to "not work" — but the failure is environmental, not technical. The SLR must be pre-created.
+
+### Scope
+
+This phase is cross-cutting: it touches `modules/environments/prod/`, the root TF, and plabs Go code in `internal/`. It is NOT a per-scenario change like the other phases — but the migrator MUST detect when it is needed and either (a) perform the wiring or (b) surface a clear migration report entry so the user can do it.
+
+### Canonical reference
+
+Use commit `2828df9` ("Add EMR service-linked role to prod environment + plabs detection") as the canonical pattern. The change is mechanical — 9 files, ~33 lines total — and every new SLR mirrors it.
+
+### Step 1.6a: Identify the SLR
+
+Determine the exact SLR name from AWS docs. **Don't guess.** Service-linked role names are not always predictable from the service name (e.g. EMR classic's SLR is `AWSServiceRoleForEMRCleanup`, not `AWSServiceRoleForEMR`).
+
+Known SLRs in the project's pattern set:
+- `AWSServiceRoleForAutoScaling` (`create_autoscaling_slr`)
+- `AWSServiceRoleForEC2Spot` (`create_spot_slr`)
+- `AWSServiceRoleForAppRunner` (`create_apprunner_slr`)
+- `AWSServiceRoleForEMRCleanup` (`create_emr_slr`)
+
+To be added by this phase:
+- `AWSServiceRoleForAmazonEMRServerless` (proposed flag: `create_emr_serverless_slr`)
+- `AWSServiceRoleForImageBuilder` (proposed flag: `create_imagebuilder_slr`)
+
+### Step 1.6b: Wire the SLR through the project
+
+Mirror the existing SLR pattern (use `create_emr_slr` as your line-by-line guide; do `git show 2828df9` to see the exact diff). The touchpoints are:
+
+1. **`modules/environments/prod/variables.tf`** — add `variable "create_<short>_slr"` (default `true`).
+2. **`modules/environments/prod/main.tf`** — add `resource "aws_iam_service_linked_role" "<short>"` gated by `count = var.create_<short>_slr ? 1 : 0` with `aws_service_name = "<service>.amazonaws.com"`.
+3. **Root `variables.tf`** — add matching `create_<short>_slr` variable.
+4. **Root `main.tf`** — pass `create_<short>_slr = var.create_<short>_slr` into the `prod_environment` module.
+5. **`internal/aws/slr.go`** — add a field to `ServiceLinkedRoleStatus`, a state-address entry to `slrStateAddresses`, an entry in `serviceLinkedRoleChecks` mapping the field to the SLR's role name, and a switch case in the `Detect` function (mirror the EMR-cleanup case exactly).
+6. **`internal/config/config.go`** — add `Create<Short>` field to `ServiceLinkedRoleFlags`, and add the matching `terraform.tfvars` line in the serializer.
+7. **`internal/cmd/plan.go`, `internal/cmd/deploy.go`, `internal/tui/model.go`** (3 sites total) — add the `Create<Short>` literal where the other SLR flags appear; same one-line pattern.
+
+After wiring, `go build -o plabs ./cmd/plabs && ./plabs plan` should show plan output containing the new SLR resource on first run for an account that lacks it, and zero-diff once it exists.
+
+### Step 1.6c: Document the new SLR
+
+In the scenario's own README, add a one-line entry under "Prerequisites" (or create the section) noting that this scenario depends on the pre-created SLR. This makes the dependency explicit for anyone reading the README in isolation.
+
+### Important constraints
+
+- **NEVER** add `iam:CreateServiceLinkedRole` to the starting user's permissions to "fix" this. That changes the precondition of the attack and silently grants an extremely privileged action (CreateServiceLinkedRole is effectively service-scoped admin).
+- **NEVER** create the SLR inside the scenario's own `main.tf`. SLRs are account-global singletons — two scenarios both trying to create the same SLR will conflict, and the SLR survives `terraform destroy` of either scenario anyway. They belong in the environment module.
+- The `count = var.create_<short>_slr ? 1 : 0` gate exists so users whose accounts already have the SLR (created by a prior console action) can disable creation and avoid `EntityAlreadyExists`. plabs detection sets this automatically.
 
 ## Phase 2: Demo Script Readonly Pattern (demo_attack.sh)
 
@@ -439,6 +516,10 @@ resource "aws_s3_bucket_policy" "script_bucket_policy" {
 ```
 
 **MWAA wrinkle**: MWAA S3 buckets need broader access than just GetObject. The bucket policy must grant the MWAA execution role and the prod account access for DAGs, plugins, and startup scripts. Use `s3:GetObject`, `s3:ListBucket`, and potentially `s3:GetBucketLocation`.
+
+**Cross-account cleanup wrinkle (`s3:DeleteObject`)**: If the attack writes runtime-created artifacts to the attacker bucket — e.g. the compute role exfiltrates credentials, output, or logs into a key like `exfil/`, `output/`, or `results/` — the cleanup script must be able to remove those artifacts. The bucket lives in the attacker account and `cleanup_attack.sh` runs under the prod admin-cleanup user. Without an explicit cross-account allow, the bucket-policy half of the permission pair is missing and `aws s3 rm` fails with `AccessDenied: DeleteObject`. Fix: add `s3:DeleteObject` to the Sid that already grants the prod account access to the bucket (typically `AllowProdAccountObjectAccess` / `AllowProdAccountReadWrite`). The starting user's identity policy doesn't include `s3:DeleteObject`, so widening the bucket policy doesn't change the attack precondition — only the cleanup user (which has AdministratorAccess from the IAM side) gains the bucket-policy half of the pair.
+
+Detection rule: if `demo_attack.sh` does `aws s3 cp/sync` to (not from) the attacker bucket during the attack, OR the compute role writes to the bucket as part of exploitation, OR `cleanup_attack.sh` calls `aws s3 rm` against the attacker bucket, then the bucket policy MUST include `s3:DeleteObject` in the prod-account Sid. Read-only attacker buckets (where prod only `GetObject`s pre-staged exploit code, e.g. synthetics-001's `exploit_code` bucket) do NOT need this — their cleanup leaves bucket contents alone and lets `terraform destroy` handle teardown via `force_destroy = true`.
 
 ### Step 3b: Update scenario variables.tf
 
@@ -882,3 +963,5 @@ OVERALL: {PASS|FAIL}
 9. **Phase 5 scenario unique ID**: The ID you use for the SSM parameter name, the root `lookup(var.scenario_flags, ...)` call, and the `flags.default.yaml` entry MUST all match. For scenarios with a `pathfinding-cloud-id` in scenario.yaml, use `{pathfinding-cloud-id}-{target}`. Otherwise use `{leaf-directory-name}-{target}`. If uncertain, cross-reference `plabs scenarios list` output — the ID plabs displays is the ID you use here.
 
 10. **Phase 5 flag credentials**: The final demo_attack.sh step should reuse the credentials the attack already produced. Never add a fresh `aws sts assume-role` or `aws iam create-access-key` solely to read the flag. If the attack attached admin to the starting user, call `use_starting_creds`. If the attack created new access keys for an admin user, export those keys. If the attack performed an assume-role, reuse the resulting session creds. The flag read should feel like a natural continuation of the attack, not a new credential step.
+
+11. **Phase 1.6 is cross-cutting, not per-scenario**: Service-linked roles are account-global singletons and belong in `modules/environments/prod/`, not in a scenario's own `main.tf`. NEVER add `iam:CreateServiceLinkedRole` to a starting user's permissions to work around a missing SLR — that grants service-scoped admin and changes the documented attack precondition. The correct fix is to pre-create the SLR in the environment module and add plabs detection. Mirror commit `2828df9` exactly when adding a new SLR; the pattern is 9 files and ~33 lines total. When the SLR wiring requires plabs Go code changes outside the migrator's read/edit scope, surface a clear instruction in the migration report instead of attempting partial wiring.
