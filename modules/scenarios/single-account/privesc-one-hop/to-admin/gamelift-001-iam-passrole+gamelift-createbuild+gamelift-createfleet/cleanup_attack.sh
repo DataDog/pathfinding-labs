@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Cleanup script for iam:PassRole + gamelift:CreateBuild + gamelift:CreateFleet privilege escalation demo
 # This script detaches the AdministratorAccess policy from the starting user,
@@ -54,6 +55,13 @@ echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
 # Navigate back to scenario directory
 cd - > /dev/null
 
+# Source demo permissions library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Safety: remove any orphaned restriction policies
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
+
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -107,7 +115,7 @@ if [ -n "$FLEET_IDS" ] && [ "$FLEET_IDS" != "[]" ] && [ "$FLEET_IDS" != "null" ]
                 if [ "$FLEET_STATUS" == "ACTIVATING" ] || [ "$FLEET_STATUS" == "BUILDING" ] || [ "$FLEET_STATUS" == "DOWNLOADING" ] || [ "$FLEET_STATUS" == "VALIDATING" ]; then
                     echo "Fleet is in transitional state ($FLEET_STATUS), waiting for it to settle..."
                     WAIT_ELAPSED=0
-                    MAX_WAIT=300
+                    MAX_WAIT=600  # 10 minutes — ACTIVATING can take 5-8 minutes
                     while [ $WAIT_ELAPSED -lt $MAX_WAIT ]; do
                         sleep 15
                         WAIT_ELAPSED=$((WAIT_ELAPSED + 15))
@@ -121,21 +129,30 @@ if [ -n "$FLEET_IDS" ] && [ "$FLEET_IDS" != "[]" ] && [ "$FLEET_IDS" != "null" ]
                             break
                         fi
                     done
+
+                    # If still in a transitional state after MAX_WAIT, attempt delete anyway —
+                    # GameLift may accept it (DELETING supersedes the in-flight transition),
+                    # or it may reject it; either way, `|| true` form below keeps cleanup moving.
+                    if [ "$FLEET_STATUS" == "ACTIVATING" ] || [ "$FLEET_STATUS" == "BUILDING" ] || [ "$FLEET_STATUS" == "DOWNLOADING" ] || [ "$FLEET_STATUS" == "VALIDATING" ]; then
+                        echo -e "${YELLOW}⚠ Fleet still in transitional state ($FLEET_STATUS) after ${MAX_WAIT}s; attempting delete anyway${NC}"
+                    fi
                 fi
 
                 if [ "$FLEET_STATUS" == "TERMINATED" ] || [ "$FLEET_STATUS" == "DELETING" ]; then
                     echo -e "${YELLOW}Fleet $FLEET_ID is already $FLEET_STATUS${NC}"
                 else
                     echo "Deleting fleet: $FLEET_ID"
-                    aws gamelift delete-fleet \
+                    # Use if/then form so `set -e` doesn't kill the script on a
+                    # transitional-state rejection — ERROR -> TERMINATED transitions and
+                    # ACTIVATING fleets sometimes reject delete-fleet; that's recoverable.
+                    if aws gamelift delete-fleet \
                         --fleet-id "$FLEET_ID" \
-                        --region $CURRENT_REGION 2>/dev/null
-
-                    if [ $? -eq 0 ]; then
+                        --region $CURRENT_REGION 2>/dev/null; then
                         echo -e "${GREEN}✓ Fleet deletion initiated: $FLEET_ID${NC}"
                     else
-                        echo -e "${YELLOW}⚠ Could not delete fleet $FLEET_ID${NC}"
-                        echo "  aws gamelift delete-fleet --fleet-id $FLEET_ID --region $CURRENT_REGION"
+                        echo -e "${YELLOW}⚠ Could not delete fleet $FLEET_ID (status: $FLEET_STATUS)${NC}"
+                        echo "  Retry manually once it leaves the current state:"
+                        echo "    aws gamelift delete-fleet --fleet-id $FLEET_ID --region $CURRENT_REGION"
                     fi
                 fi
             fi

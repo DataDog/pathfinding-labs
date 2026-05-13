@@ -57,6 +57,7 @@ flags:
   ecs-007-to-admin: "flag{ecs_007_admin_captured}"
   ecs-008-to-admin: "flag{ecs_008_admin_captured}"
   ecs-009-to-admin: "flag{ecs_009_admin_captured}"
+  gamelift-001-to-admin: "flag{gamelift_001_admin_captured}"
   github-oidc-cross-account-pivot-to-bucket: "flag{github_oidc_cross_account_bucket_accessed}"
   glue-001-to-admin: "flag{glue_001_admin_captured}"
   glue-001-to-bucket: "flag{glue_001_bucket_accessed}"

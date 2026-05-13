@@ -1,10 +1,12 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.1"
+schema_version: "1.5.0"
 name: "iam-passrole+gamelift-createbuild+gamelift-createfleet"
+title: "GameLift Fleet to Admin"
 description: "User with iam:PassRole, gamelift:CreateBuild, and gamelift:CreateFleet can escalate privileges by uploading a malicious game server build and creating a fleet with an admin instance role whose credentials are available to the running process"
 cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "~$1/mo"
 pathfinding-cloud-id: "gamelift-001"
 
 # =============================================================================
@@ -32,45 +34,34 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - permission: "iam:PassRole"
-      resource: "arn:aws:iam::*:role/pl-prod-gamelift-001-to-admin-admin-role"
-
-    - permission: "gamelift:CreateBuild"
-      resource: "*"
-
-    - permission: "gamelift:CreateFleet"
-      resource: "*"
+    - principal: "pl-prod-gamelift-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-gamelift-001-to-admin-admin-role"
+        - permission: "gamelift:CreateBuild"
+          resource: "*"
+        - permission: "gamelift:CreateFleet"
+          resource: "*"
+        - permission: "gamelift:RequestUploadCredentials"
+          resource: "*"
 
   helpful:
-    - permission: "gamelift:DescribeBuild"
-      purpose: "Check build status and verify it reached READY state"
-
-    - permission: "gamelift:RequestUploadCredentials"
-      purpose: "Get temporary S3 credentials needed by the aws gamelift upload-build CLI command to upload build files"
-
-    - permission: "gamelift:DescribeFleetAttributes"
-      purpose: "Monitor fleet status and verify activation"
-
-    - permission: "gamelift:ListFleets"
-      purpose: "List existing fleets"
-
-    - permission: "gamelift:DescribeInstances"
-      purpose: "Find instance IDs for remote access"
-
-    - permission: "gamelift:GetComputeAccess"
-      purpose: "Get remote access credentials for fleet instances (SDK 5.x)"
-
-    - permission: "gamelift:DeleteFleet"
-      purpose: "Clean up fleet after demonstration"
-
-    - permission: "gamelift:DeleteBuild"
-      purpose: "Clean up build after demonstration"
-
-    - permission: "iam:DetachUserPolicy"
-      purpose: "Remove admin policy from starting user during cleanup"
-
-    - permission: "iam:ListAttachedUserPolicies"
-      purpose: "Verify privilege escalation success by listing attached policies"
+    - principal: "pl-prod-gamelift-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "gamelift:DescribeBuild"
+          purpose: "Check build status and verify it reached READY state"
+        - permission: "gamelift:DescribeFleetAttributes"
+          purpose: "Monitor fleet status and verify activation"
+        - permission: "gamelift:ListFleets"
+          purpose: "List existing fleets"
+        - permission: "gamelift:DescribeInstances"
+          purpose: "Find instance IDs for remote access"
+        - permission: "gamelift:GetComputeAccess"
+          purpose: "Get remote access credentials for fleet instances (SDK 5.x)"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
 
 # =============================================================================
 # MITRE ATT&CK

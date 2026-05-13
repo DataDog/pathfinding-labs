@@ -499,6 +499,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_el
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "Enable: single-account → privesc-one-hop → to-admin → glue-001-iam-passrole+glue-createdevendpoint ($2.20/hour for Glue dev endpoint)"
   type        = bool

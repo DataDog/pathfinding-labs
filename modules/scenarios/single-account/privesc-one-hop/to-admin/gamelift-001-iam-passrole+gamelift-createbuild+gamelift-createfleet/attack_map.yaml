@@ -1,0 +1,150 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-gamelift-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the admin target role, gamelift:CreateBuild,
+        gamelift:CreateFleet, and gamelift:RequestUploadCredentials. These permissions
+        together allow you to upload a malicious game server binary to GameLift, then
+        create a fleet that runs it under an admin instance role — giving your code
+        full administrative privileges without ever directly touching IAM.
+
+    - id: gamelift-fleet
+      label: "GameLift Fleet"
+      type: resource
+      subType: gamelift-fleet
+      arn: "arn:aws:gamelift:{region}:{account_id}:fleet/fleet-*"
+      description: >
+        An Amazon GameLift EC2-backed fleet created by the attacker. The fleet is
+        configured with an admin IAM instance role and SHARED_CREDENTIAL_FILE as the
+        credential provider, which makes the role's temporary credentials available
+        to processes running on the fleet instance at /local/credentials/credentials.
+        The malicious game server script reads those credentials and uses them to
+        attach AdministratorAccess to the starting user.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-gamelift-001-to-admin-admin-role"
+      description: >
+        An IAM role with AdministratorAccess attached that trusts the GameLift service
+        principal (gamelift.amazonaws.com). When passed to the fleet as the instance
+        role with SHARED_CREDENTIAL_FILE, GameLift writes the role's temporary
+        credentials to a file on the EC2 instance. The malicious game server script
+        reads those credentials and calls iam:AttachUserPolicy to grant the starting
+        user admin-equivalent access. This role is a pivot — the real target is
+        the CTF flag now accessible with the resulting admin permissions.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/gamelift-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: gamelift-fleet
+      label: "gamelift:CreateBuild + gamelift:RequestUploadCredentials"
+      description: >
+        The starting user uploads a malicious game server build to GameLift using the
+        upload-build CLI command, which internally calls gamelift:CreateBuild and
+        gamelift:RequestUploadCredentials to obtain temporary S3 upload credentials.
+        GameLift does not validate that the uploaded binary implements any game protocol,
+        so any executable will be accepted.
+      hints:
+        - "Build a minimal game server binary — a bash script works. Include an install.sh to satisfy GameLift's build structure requirements. Use 'aws gamelift upload-build' with --operating-system AMAZON_LINUX_2023 and --server-sdk-version 5.2.0."
+        - "The game server script should read credentials from /local/credentials/credentials (only available when SHARED_CREDENTIAL_FILE is used as the credential provider) and call iam:AttachUserPolicy on the starting user."
+      commands:
+        - description: "Prepare the malicious game server build directory"
+          command: >
+            mkdir -p /tmp/gamelift-build &&
+            echo '#!/bin/bash' > /tmp/gamelift-build/install.sh &&
+            chmod +x /tmp/gamelift-build/install.sh
+        - description: "Upload the build to GameLift"
+          command: >
+            aws gamelift upload-build
+              --name pl-prod-gamelift-001-to-admin-build
+              --operating-system AMAZON_LINUX_2023
+              --server-sdk-version 5.2.0
+              --build-root /tmp/gamelift-build
+              --build-version 1.0.0
+              --region {region}
+
+    - from: starting-user
+      to: gamelift-fleet
+      label: "iam:PassRole + gamelift:CreateFleet"
+      description: >
+        With the build uploaded and in READY state, the starting user creates a fleet
+        and passes the admin role as the instance role. Setting
+        --instance-role-credentials-provider to SHARED_CREDENTIAL_FILE causes GameLift
+        to write the role's temporary credentials to /local/credentials/credentials
+        on each fleet EC2 instance, making them directly accessible to game server
+        processes without any SDK calls.
+      hints:
+        - "Use --instance-role-arn pointing at the admin role and --instance-role-credentials-provider SHARED_CREDENTIAL_FILE. Set the --runtime-configuration LaunchPath to /local/game/gameserver.sh."
+        - "Browse to https://pathfinding.cloud/paths/gamelift-001 for technique details."
+      commands:
+        - description: "Create the fleet with admin instance role and SHARED_CREDENTIAL_FILE provider"
+          command: >
+            aws gamelift create-fleet
+              --name pl-prod-gamelift-001-to-admin-fleet
+              --build-id <build-id>
+              --compute-type EC2
+              --ec2-instance-type c5.large
+              --fleet-type ON_DEMAND
+              --instance-role-arn arn:aws:iam::{account_id}:role/pl-prod-gamelift-001-to-admin-admin-role
+              --instance-role-credentials-provider SHARED_CREDENTIAL_FILE
+              --runtime-configuration 'ServerProcesses=[{LaunchPath=/local/game/gameserver.sh,ConcurrentExecutions=1}]'
+              --region {region}
+
+    - from: gamelift-fleet
+      to: admin-role
+      label: "reads shared credentials + iam:AttachUserPolicy"
+      description: >
+        Once the fleet activates and launches the game server process, the malicious
+        script reads the admin role's temporary credentials from /local/credentials/credentials
+        and calls iam:AttachUserPolicy to attach AdministratorAccess to the starting user.
+        The fleet may enter an ERROR state after the exploit runs because the script does
+        not call GameLift's InitSDK() — this is expected and the escalation still succeeds.
+      hints: []
+      commands:
+        - description: "Check that AdministratorAccess is now attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-gamelift-001-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"
+        - description: "Verify full administrator access"
+          command: "aws iam list-users --max-items 3 --output table"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator-equivalent permissions now attached to the starting user,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin access you just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/gamelift-001-to-admin --query 'Parameter.Value' --output text"
