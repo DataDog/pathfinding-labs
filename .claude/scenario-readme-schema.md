@@ -440,6 +440,10 @@ A separate file per scenario, located in the same directory as the README. Writt
 
 **Source material:** Attack Overview prose + Attack Steps + "Executing the attack manually" content + demo_attack.sh commands and flow.
 
+**Forbidden H2 headings** (these belong in README.md, never in solution.md): `## Prerequisites`, `## Setup`, `## Environment Setup`, `## Cleanup`, `## Teardown`, `## How to Run`, `## Running the Lab`, and any numbered step format (`## Step 1`, `## Step 2`, `## Step N:`, etc.).
+
+**Required H2 headings** (exact text, in order): `## The Challenge`, `## Reconnaissance`, `## Exploitation`, `## Verification`, `## Capture the Flag`, `## What Happened`. Do not rename, reorder, or substitute numbered steps for these semantic sections.
+
 ---
 
 ## Old -> New Structure Migration Map (v2.0.1 -> v3.0.0)
