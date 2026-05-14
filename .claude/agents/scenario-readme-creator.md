@@ -162,6 +162,8 @@ Follow the attack map schema exactly. Include:
 
 **CTF Flag Terminal (non-tool-testing scenarios):** The `isTarget: true` node is the CTF flag resource. For to-admin scenarios, add a new node of `type: resource`, `subType: ssm-parameter`, with `arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/{scenario-unique-id}"` and `isTarget: true`. The admin principal it pivoted through takes `isAdmin: true` instead of `isTarget: true`. Add a final edge from the admin principal to the flag node labeled "Read CTF flag" with the `aws ssm get-parameter ...` invocation in `commands`. For to-bucket scenarios, the existing target bucket keeps `isTarget: true` (no new node); append `aws s3 cp s3://{bucket}/flag.txt -` to the final edge's `commands` array. If any intermediate principal in a multi-hop to-bucket chain reaches admin-equivalent permissions, add `isAdmin: true` to that node as well. Tool-testing scenarios are exempt and follow pre-1.4.0 attack map rules.
 
+**No cycles — PassRole+automation self-modification pattern:** When a privileged execution context (e.g., SSM Automation role, Lambda execution role) runs code that **grants permissions to the starting user** (e.g., attaches `AdministratorAccess` to the starting IAM user), do NOT create a return edge `admin-role → starting-principal`. That creates a cycle with a duplicate node ARN, which the schema prohibits ("No Duplicate ARNs" rule). Instead: the admin role gets `isAdmin: true` and the final edge goes directly `admin-role → ctf-flag`. The edge description explains that the execution attached AdminAccess to the starting user and the flag is now readable with those elevated credentials. The starting-principal ARN appears exactly once in the graph. Correct: `starting-principal → ssm-document → automation-role (isAdmin:true) → ctf-flag (isTarget:true)`. Incorrect: `starting-principal → ssm-document → automation-role → starting-principal → ctf-flag`.
+
 **Public/anonymous entry point:** When `permissions.required` in scenario.yaml has a `principal_type: "public"` entry, the publicly accessible resource itself is the starting node -- do NOT add a separate IAM user or "public internet" node before it. Use the public access prologue (not the IAM credentials prologue) on that node. The `arn` field holds the real AWS ARN of the public resource. Any optional IAM recon steps are described in prose within the starting node description or first edge, not modeled as a separate node. Also add the `access` field to this starting node (after `arn`, before `description`) with `type: public-network` and the appropriate endpoint sub-field: `url` for Lambda Function URLs, API Gateway, or App Runner; `ip` for public EC2 without a load balancer; `domain` for CloudFront or ALB-fronted services. Example for Lambda Function URL: `url: "https://{function_url_id}.lambda-url.{region}.on.aws/"`.
 
 ## File 3: solution.md
@@ -199,6 +201,20 @@ Write a narrative CTF writeup with this structure:
 ```
 
 **Tone:** Second person, narrative, educational. Not a dry list of commands.
+
+**Forbidden H2 headings** (these belong in README.md, never in solution.md):
+- `## Prerequisites`, `## Setup`, `## Environment Setup`
+- `## Cleanup`, `## Teardown`
+- `## How to Run`, `## Running the Lab`
+- Any numbered step format: `## Step 1`, `## Step 2`, `## Step N`, etc.
+
+**Required H2 headings** (exact text, in order — do not substitute or number them):
+1. `## The Challenge`
+2. `## Reconnaissance`
+3. `## Exploitation`
+4. `## Verification`
+5. `## Capture the Flag`
+6. `## What Happened`
 
 **Canonical example:** Read `modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-001-ssm-startsession/solution.md` as a reference for the expected quality, tone, and structure.
 

@@ -6,6 +6,14 @@ model: inherit
 color: yellow
 ---
 
+> **DEPRECATED — do not use directly.** The `/import-hypothesis` skill now routes through
+> `/workflows:scenario-orchestrator` in "Research Hypothesis Input Mode". That path uses the
+> same 5-agent concurrent pipeline as standard scenario creation, with research source files
+> passed as context to each agent. This file is kept for rollback reference only.
+>
+> If you are executing this agent directly, stop and invoke
+> `/workflows:scenario-orchestrator` instead, passing the research source directory path.
+
 # Pathfinding Labs Research Hypothesis Importer
 
 You convert a validated hypothesis produced by `pathfinding-research-agent` into a fully-formed pathfinding-labs scenario module. The research agent and pathfinding-labs share concepts (Terraform, demo/cleanup scripts, required + helpful permissions, prerequisites) but use different schemas, naming, file layouts, and credential plumbing. Your job is to bridge the gap deterministically while preserving the parts of the validated attack that make it actually work (sleeps, ordering, region re-exports).

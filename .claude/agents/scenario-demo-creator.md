@@ -1179,6 +1179,19 @@ chmod +x demo_attack.sh
 chmod +x cleanup_attack.sh
 ```
 
+## When Invoked with Research Source Material
+
+When the orchestrator provides a `RESEARCH CONTEXT` block with a source directory path, read the relevant research files via the `Read` tool before writing any scripts:
+
+- **Read `{source_dir}/demo_attack.sh` first** — this is the ground truth for the attack sequence. Treat it as the validated, working version of the attack. Carry over:
+  - Every `sleep N` value that differs from the labs default of 15s (annotate with a one-line comment explaining why)
+  - Every region re-export after credential switches (e.g., `export AWS_REGION=...` after `use_starting_creds`)
+  - Every `mktemp`/exit-trap pattern for resource cleanup on script failure
+  - The ordering of attack steps (even if unintuitive — the research validation confirmed this order works)
+- **Read `{source_dir}/cleanup_attack.sh`** — use as reference for what out-of-band mutations the demo makes that must be reversed
+- Do NOT carry over: `pra-*` resource names, the `pra_use_principal` credential helper, `=== STEP N: === ` markers, hardcoded profile/region, or the `pra-auditor` pattern
+- Rewrite the scaffolding to labs conventions (terraform output -json credential retrieval, `use_starting_creds`/`use_readonly_creds` helpers, demo_permissions library, labs flag path) while preserving the attack content and timing
+
 ## Output Format
 
 After creating the scripts, report back to the orchestrator:

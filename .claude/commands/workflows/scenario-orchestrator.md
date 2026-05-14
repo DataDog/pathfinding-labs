@@ -117,6 +117,78 @@ Note: Attack Simulation scenarios include `demo_attack.sh` (which recreates the 
 
 ---
 
+## Research Hypothesis Input Mode
+
+When the input is a directory path to a validated research hypothesis (from `pathfinding-research-agent`), skip the wizard. Requirements come from the research files rather than user answers.
+
+**Detection:** Input matches `--from-hypothesis <path>`, OR is a directory path containing `REPORT.md` and a `terraform/` subdirectory, OR the `/import-hypothesis` skill passed the hypothesis path directly.
+
+**Source-of-truth hierarchy (when sources disagree, resolve in this order):**
+1. `terraform/main.tf` — what infrastructure actually exists
+2. `demo_attack.sh` — the validated attack as it actually runs; every sleep, region re-export, exit trap, and jq pattern is load-bearing. When script contradicts REPORT prose, the script wins.
+3. `REPORT.md` — structured metadata: permissions, prerequisites, MITRE, mechanism, proof_methodology, references
+4. `scenario.yaml` stub — title suggestion and research category only
+
+**Step 1: Read source files and assign canonical ID**
+
+Read `REPORT.md` and `scenario.yaml` stub. Then assign a canonical labs ID:
+- Check pathfinding.cloud for existing IDs for that service: `curl -s https://pathfinding.cloud/paths.json | jq -r '.[] | select(.id | startswith("{service}-")) | .id'`
+- Scan pathfinding-labs for existing scenario directories and `pathfinding-cloud-id` values for that service
+- **Also scan existing same-service directories in the target `path_type/target/` directory to understand the local naming convention:**
+  ```bash
+  ls modules/scenarios/single-account/privesc-{path_type}/{target}/ | grep "^{service}-"
+  ```
+  Follow the local naming pattern for the technique slug. If existing same-service scenarios in that path use a shorter form (e.g., `ssm-001-ssm-startsession` without `iam-passrole+`), follow that local convention even if other services use the longer form.
+- Pick the next free integer; tell the user what was assigned and why.
+
+**Step 2: Classify into taxonomy**
+
+Map research category to labs taxonomy using the same rules as the standard wizard. Ask via `AskUserQuestion` if ambiguous.
+
+**Step 3: Validate with user (required — do not skip)**
+
+Present the following and wait for user approval before creating any files or launching agents:
+- Proposed canonical ID and technique slug
+- Directory path
+- Classification (category, sub_category, path_type, target)
+- Required permissions list
+- Attack path summary (one paragraph from REPORT `mechanism`)
+
+**Step 4: Create scenario.yaml** using SCHEMA.md as normal. Map research prerequisites to `required_preconditions`. Strip flag-revealing permissions (`ssm:GetParameter*`, `s3:GetObject` on flag bucket, `iam:ListUsers`) from helpful list.
+
+**Step 5: Delegate to sub-agents** using the standard concurrent pipeline (same 5 agents, same type_brief + flag_brief format).
+
+In **each** sub-agent's delegation brief, include the standard type_brief and flag_brief PLUS this `RESEARCH CONTEXT` block — pass the source directory path so each agent reads what it needs directly via the `Read` tool:
+
+```
+RESEARCH CONTEXT (validated pathfinding-research-agent hypothesis):
+  Source directory: {absolute_path_to_research_dir}
+  Hypothesis ID: {hypothesis_id} (research counter — labs canonical ID is {canonical_id})
+
+  Files available via Read tool:
+  - REPORT.md            — mechanism, exploitation_steps, enumeration_steps, proof_methodology, references
+  - terraform/main.tf    — proof-of-concept Terraform showing what infrastructure the attack needs
+  - demo_attack.sh       — validated attack script; ground truth for ordering, sleeps, region handling
+  - cleanup_attack.sh    — reference for what out-of-band mutations the demo makes
+
+  Source-of-truth rule: when demo_attack.sh contradicts REPORT.md prose, the script wins.
+  Read the files relevant to your job before generating output.
+```
+
+**Agent-specific reading guidance (append to each agent's brief):**
+
+- **scenario-terraform-builder:** Read `{source_dir}/terraform/main.tf` and `{source_dir}/REPORT.md`. Use the research TF as a proof-of-concept reference showing what resources and permissions the attack needs — perform a full rebuild using labs conventions (provider aliases, naming, flag SSM parameter, force_destroy/force_detach_policies). Do not mechanically rename; rebuild correctly from scratch.
+
+- **scenario-demo-creator:** Read `{source_dir}/demo_attack.sh` (primary source) and `{source_dir}/cleanup_attack.sh`. The research demo shows the validated attack sequence — preserve every `sleep` value that differs from the labs default of 15s, every region re-export after credential switches, and every `mktemp`/exit-trap for resource cleanup on failure. Rewrite the scaffolding (credential retrieval from terraform outputs, helper function calls, removal of `=== STEP N ===` markers) to labs conventions while preserving the attack content and timing.
+
+- **scenario-readme-creator:** Read `{source_dir}/REPORT.md` for exploitation_steps, proof_methodology, and references. Read `{source_dir}/demo_attack.sh` for the ordering of attack steps to reflect accurately in solution.md.
+
+- **project-updator:** No research files needed.
+
+- **scenario-cost-estimator:** No research files needed (runs infracost on the generated Terraform).
+
+---
+
 ## Input Hints
 
 The user may provide hints in their initial message in these forms:

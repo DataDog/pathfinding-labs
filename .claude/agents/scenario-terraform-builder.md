@@ -800,6 +800,20 @@ Before considering your work done:
 11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`). Use the single fixed Sid `HelpfulForReconAndMonitoring` for all helpful permission statements — do NOT suffix it with a purpose name, and do NOT use the old `HelpfulForExploitation*` pattern.
 12. **CTF flag resource**: For every scenario EXCEPT those under `tool-testing/`, confirm the flag resource is created in `main.tf` (SSM parameter for to-admin, S3 object inside the target bucket for to-bucket), the `flag_value` variable is declared in `variables.tf` with a `"flag{MISSING}"` default, and the corresponding outputs (`flag_ssm_parameter_name`/`_arn` for to-admin, `flag_s3_key`/`_uri` for to-bucket) are in `outputs.tf`. Do NOT add extra IAM permissions for flag retrieval — the existing attack already produces principals with the access needed (admin has `ssm:GetParameter` implicitly; bucket-access principal already has `s3:GetObject`).
 
+## When Invoked with Research Source Material
+
+When the orchestrator provides a `RESEARCH CONTEXT` block with a source directory path, read the relevant research files via the `Read` tool before writing any Terraform:
+
+- **Read `{source_dir}/terraform/main.tf`** — use as a proof-of-concept reference showing what resources, IAM policies, and trust relationships the attack requires. This is the validated infrastructure that makes the attack work.
+- **Read `{source_dir}/REPORT.md`** — use for the permission requirements, attack mechanism, and prerequisite understanding.
+- **Do a full rebuild using labs conventions** — do not mechanically rename `pra-*` → `pl-*`. Instead, understand what the research Terraform is building and rebuild it correctly:
+  - Provider: `aws.prod` (not a local `provider "aws"` block)
+  - Resource naming: `pl-{env}-{canonical-id}-to-{target}-{purpose}` for one-hop/self-escalation scenarios
+  - Flag resource: `aws_ssm_parameter` at `/pathfinding-labs/flags/{scenario-unique-id}` with `value = var.flag_value`
+  - Drop: `pra-auditor-*` user and its access key/policy (helpful permissions belong only in scenario.yaml)
+  - Drop: `tag "pathfinding-research-agent"`, hardcoded account IDs, hardcoded regions
+  - Add: `force_destroy = true` on all `aws_iam_user`, `force_detach_policies = true` on all `aws_iam_role`, `provider = aws.prod` on every resource
+
 ## Output Format
 
 Create the files in this order:

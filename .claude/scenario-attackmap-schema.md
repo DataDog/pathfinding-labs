@@ -278,6 +278,27 @@ Every scenario (except those under `tool-testing/`) ends with a CTF flag that th
 
 The target node must represent the CTF flag resource (SSM parameter or S3 bucket holding `flag.txt`), NOT the pivot principal that reached admin, NOT the starting principal relabeled after exploitation. For to-admin scenarios, the target is the SSM parameter terminal; the admin principal it pivoted through takes `isAdmin: true`. For to-bucket scenarios, the target is the S3 bucket.
 
+### PassRole + Automation Self-Modification Pattern
+
+Some PassRole attacks (SSM Automation `aws:executeScript`, Step Functions state machines, etc.) work by running privileged code that **modifies the starting principal itself** — e.g., attaching `AdministratorAccess` to the starting IAM user. The graph naively looks like it should loop: admin-role runs code that grants the starting user admin, then the starting user reads the flag.
+
+Do NOT model this as a cycle. Apply the standard to-admin rule instead:
+
+- The automation/execution role that holds admin permissions during the attack takes `isAdmin: true`.
+- The final edge goes from that admin role to `ctf-flag (isTarget: true)`.
+- The edge description explains that the execution granted admin to the starting user, and the flag is now readable with those elevated credentials.
+- The starting-principal ARN appears exactly once in the graph (as the entry node only).
+
+**Correct structure (linear DAG):**
+```
+starting-principal → ssm-document → automation-role (isAdmin:true) → ctf-flag (isTarget:true)
+```
+
+**Incorrect (cycle — violates No Duplicate ARNs rule):**
+```
+starting-principal → ssm-document → automation-role → starting-principal → ctf-flag
+```
+
 ### No Duplicate ARNs
 
 Each node must have a unique ARN. Two nodes with the same ARN means one is a "phantom" representing a state change (e.g., "starting user after gaining admin") rather than a distinct resource. Phantom nodes must be removed:
