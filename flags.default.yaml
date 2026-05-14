@@ -125,6 +125,7 @@ flags:
   ssm-001-to-bucket: "flag{ssm_001_bucket_accessed}"
   ssm-002-to-admin: "flag{ssm_002_admin_captured}"
   ssm-002-to-bucket: "flag{ssm_002_bucket_accessed}"
+  ssm-003-to-admin: "flag{ssm_003_admin_captured}"
   stepfunctions-001-to-admin: "flag{stepfunctions_001_admin_captured}"
   sts-001-to-admin: "flag{sts_001_admin_captured}"
   sts-001-to-bucket: "flag{sts_001_bucket_accessed}"

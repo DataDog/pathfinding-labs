@@ -469,6 +469,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-003-ssm-createdocument+ssm-startautomationexecution"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ssm-001-ssm-startsession"
   type        = bool

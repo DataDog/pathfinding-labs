@@ -137,6 +137,7 @@ enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenot
 enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution = false
 enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession            = false
 enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand             = false
+enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution = false
 
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET
 enable_single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey        = false

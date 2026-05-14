@@ -1333,6 +1333,21 @@ output "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  description = "All outputs for ssm-003-ssm-createdocument+ssm-startautomationexecution one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_secret_access_key
+    automation_role_arn             = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].automation_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].flag_ssm_parameter_arn
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   description = "All outputs for ssm-001-ssm-startsession one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession ? {

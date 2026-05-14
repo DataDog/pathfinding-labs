@@ -853,6 +853,18 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   flag_value      = lookup(var.scenario_flags, "ssm-002-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-003-ssm-createdocument+ssm-startautomationexecution"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "ssm-003-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-001-ssm-startsession"
