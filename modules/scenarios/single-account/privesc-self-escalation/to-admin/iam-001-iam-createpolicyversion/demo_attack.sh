@@ -75,10 +75,17 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+AWS_REGION=$(OTEL_TRACES_EXPORTER= terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    AWS_REGION="us-east-1"
+fi
+export AWS_REGION=$AWS_REGION
+
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
 echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
 echo "Policy ARN: $POLICY_ARN"
+echo "Region: $AWS_REGION"
 echo ""
 
 cd - > /dev/null  # Return to scenario directory
