@@ -2164,12 +2164,11 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 
 // getAccountIDForProfile calls AWS to get the account ID for a profile
 func (m *Model) getAccountIDForProfile(profile string) (string, error) {
-	cmd := exec.Command("aws", "sts", "get-caller-identity", "--profile", profile, "--query", "Account", "--output", "text")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
+	result := aws.ValidateProfile(profile)
+	if !result.Valid {
+		return "", result.Error
 	}
-	return strings.TrimSpace(string(output)), nil
+	return result.AccountID, nil
 }
 
 // validateCredentialsAsync returns a tea.Cmd that validates AWS credentials asynchronously

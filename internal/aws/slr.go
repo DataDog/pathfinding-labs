@@ -2,9 +2,12 @@
 package aws
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"os/exec"
-	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 )
 
 // ServiceLinkedRoleStatus tracks which service-linked roles already exist in an AWS account.
@@ -45,16 +48,21 @@ var serviceLinkedRoleChecks = map[string]string{
 }
 
 // DetectExistingServiceLinkedRoles checks which service-linked roles already exist
-// in the AWS account associated with the given profile
+// in the AWS account associated with the given profile.
+// Profile must be non-empty — the prod environment must be configured before calling this.
 func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus, error) {
-	if profile == "" {
-		return nil, fmt.Errorf("profile name is empty")
+	ctx := context.Background()
+
+	cfg, err := LoadAWSConfig(ctx, profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config for profile %q: %w", profile, err)
 	}
 
+	client := iam.NewFromConfig(cfg)
 	status := &ServiceLinkedRoleStatus{}
 
 	for key, roleName := range serviceLinkedRoleChecks {
-		exists, err := roleExists(profile, roleName)
+		exists, err := roleExists(ctx, client, roleName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check service-linked role %s: %w", roleName, err)
 		}
@@ -72,27 +80,21 @@ func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus,
 	return status, nil
 }
 
-// roleExists checks if an IAM role exists in the account by calling aws iam get-role
-func roleExists(profile, roleName string) (bool, error) {
-	cmd := exec.Command("aws", "iam", "get-role",
-		"--role-name", roleName,
-		"--profile", profile,
-		"--output", "text",
-		"--query", "Role.RoleName")
+// roleExists checks if an IAM role exists using the SDK IAM client.
+// Returns false (not an error) when the role doesn't exist or when access is denied,
+// so Terraform can attempt creation and surface the real failure if needed.
+func roleExists(ctx context.Context, client *iam.Client, roleName string) (bool, error) {
+	_, err := client.GetRole(ctx, &iam.GetRoleInput{RoleName: &roleName})
+	if err == nil {
+		return true, nil
+	}
 
-	output, err := cmd.Output()
-	if err != nil {
-		// aws iam get-role returns exit code 254 / NoSuchEntity when the role doesn't exist
-		// Any error here means the role doesn't exist or we can't check -- either way, let
-		// Terraform attempt to create it
-		exitErr, ok := err.(*exec.ExitError)
-		if ok && strings.Contains(string(exitErr.Stderr), "NoSuchEntity") {
-			return false, nil
-		}
-		// For other errors (e.g., access denied), assume the role doesn't exist and let
-		// Terraform handle it -- worst case it fails with the same permission error
+	var noSuch *types.NoSuchEntityException
+	if errors.As(err, &noSuch) {
 		return false, nil
 	}
 
-	return strings.TrimSpace(string(output)) == roleName, nil
+	// For other errors (e.g., access denied), assume the role doesn't exist and let
+	// Terraform handle it — worst case it fails with the same permission error
+	return false, nil
 }
