@@ -191,10 +191,6 @@ show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
 
-echo "Testing S3 access..."
-show_cmd "ReadOnly" "aws s3 ls"
-aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
-
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 
 # Clean up temp file

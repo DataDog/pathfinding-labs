@@ -134,10 +134,10 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 # [EXPLOIT] Step 4: Check current permissions (should be limited)
 echo -e "${YELLOW}Step 4: Testing current permissions${NC}"
 use_starting_creds
-echo "Attempting to list S3 buckets (should fail)..."
-show_cmd "Attacker" "aws s3 ls"
-if aws s3 ls 2>&1 | grep -q "AccessDenied\|operation: Access Denied"; then
-    echo -e "${GREEN}✓ Confirmed limited permissions (cannot list S3 buckets)${NC}"
+echo "Attempting to list IAM users (should fail)..."
+show_cmd "Attacker" "aws iam list-users --max-items 1"
+if aws iam list-users --max-items 1 2>&1 | grep -q "AccessDenied\|not authorized"; then
+    echo -e "${GREEN}✓ Confirmed limited permissions${NC}"
 else
     echo -e "${YELLOW}Warning: Unexpected permissions${NC}"
 fi

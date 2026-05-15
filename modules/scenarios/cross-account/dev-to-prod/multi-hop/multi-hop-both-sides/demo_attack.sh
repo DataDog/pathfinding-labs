@@ -212,10 +212,6 @@ if HELPDESK_CREDENTIALS=$(aws sts assume-role --role-arn "$HELPDESK_ROLE_ARN" --
                         echo -e "${GREEN}✓ Can list IAM users (admin permission confirmed)${NC}"
                     fi
 
-                    show_cmd "ReadOnly" "aws s3 ls"
-                    if aws s3 ls > /dev/null 2>&1; then
-                        echo -e "${GREEN}✓ Can list S3 buckets (admin permission confirmed)${NC}"
-                    fi
 
                 else
                     echo -e "${YELLOW}⚠ Could not verify Jeremy's access directly${NC}"
