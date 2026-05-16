@@ -29,121 +29,63 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Cleanup: IAM DeleteAccessKey + CreateAccessKey Demo${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
-# Step 1: Get admin credentials from Terraform
+# Step 1: Get admin credentials and terraform-managed key IDs
 echo -e "${YELLOW}Step 1: Getting admin cleanup credentials from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
-# Get admin cleanup user credentials from root terraform output
 ADMIN_ACCESS_KEY=$(terraform output -raw prod_admin_user_for_cleanup_access_key_id 2>/dev/null)
 ADMIN_SECRET_KEY=$(terraform output -raw prod_admin_user_for_cleanup_secret_access_key 2>/dev/null)
 
 if [ -z "$ADMIN_ACCESS_KEY" ] || [ "$ADMIN_ACCESS_KEY" == "null" ]; then
     echo -e "${RED}Error: Could not find admin cleanup credentials in terraform output${NC}"
-    echo "Make sure the admin cleanup user is deployed"
     exit 1
 fi
 
-# Set admin credentials
+# Get the two terraform-managed key IDs for the target user
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_createaccesskey.value // empty')
+TF_KEY_1=$(echo "$MODULE_OUTPUT" | jq -r '.target_user_key_1_id // empty')
+TF_KEY_2=$(echo "$MODULE_OUTPUT" | jq -r '.target_user_key_2_id // empty')
+
 export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 
-echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
+echo -e "${GREEN}✓ Retrieved admin credentials${NC}"
+echo "Terraform-managed keys: ${TF_KEY_1:-unknown} ${TF_KEY_2:-unknown}"
 
-# Navigate back to scenario directory
 cd - > /dev/null
 
-# Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-echo "Account ID: $ACCOUNT_ID"
 echo ""
 
-# Step 2: Check current state of target user's access keys
-echo -e "${YELLOW}Step 2: Checking current state of target user's access keys${NC}"
+# Step 2: Delete any keys not managed by terraform
+# After the demo the target user may have an attacker-created key in addition to
+# (or in place of) the terraform keys. Delete anything that isn't in the tf set.
+echo -e "${YELLOW}Step 2: Removing attacker-created keys from target user${NC}"
 echo "Target user: $TARGET_USER"
-echo ""
 
 CURRENT_KEYS=$(aws iam list-access-keys --user-name $TARGET_USER --query 'AccessKeyMetadata[].AccessKeyId' --output text)
-CURRENT_KEY_COUNT=$(echo "$CURRENT_KEYS" | wc -w | xargs)
 
-echo "Current access keys for $TARGET_USER:"
-aws iam list-access-keys --user-name $TARGET_USER --output table
-echo ""
-echo "Total keys: $CURRENT_KEY_COUNT"
-echo ""
-
-# Step 3: Delete the newly created access key
-echo -e "${YELLOW}Step 3: Deleting the newly created access key${NC}"
-
-# Check if we have the created key ID saved
-CREATED_KEY_FILE="/tmp/iam-003-created-key-id-${ACCOUNT_ID}.txt"
-if [ -f "$CREATED_KEY_FILE" ]; then
-    CREATED_KEY_ID=$(cat "$CREATED_KEY_FILE")
-    echo "Found created key ID from demo: $CREATED_KEY_ID"
-
-    if aws iam get-access-key-last-used --access-key-id $CREATED_KEY_ID &> /dev/null; then
-        echo "Deleting access key: $CREATED_KEY_ID"
-        aws iam delete-access-key \
-            --user-name $TARGET_USER \
-            --access-key-id $CREATED_KEY_ID
-        echo -e "${GREEN}✓ Deleted created access key${NC}"
-        rm -f "$CREATED_KEY_FILE"
+DELETED=0
+for key in $CURRENT_KEYS; do
+    if [ "$key" != "$TF_KEY_1" ] && [ "$key" != "$TF_KEY_2" ]; then
+        echo "Deleting attacker-created key: $key"
+        aws iam delete-access-key --user-name $TARGET_USER --access-key-id "$key"
+        DELETED=$((DELETED + 1))
     else
-        echo -e "${YELLOW}Access key $CREATED_KEY_ID not found (may already be deleted)${NC}"
-        rm -f "$CREATED_KEY_FILE"
+        echo "Keeping terraform-managed key: $key"
     fi
-else
-    echo -e "${YELLOW}No record of created key ID found${NC}"
-    echo "This is expected if the demo didn't complete or was run previously"
+done
+
+if [ "$DELETED" -eq 0 ]; then
+    echo "No attacker-created keys found"
 fi
-echo ""
+echo -e "${GREEN}✓ Cleanup complete — run 'plabs deploy' to restore any terraform keys deleted during the demo${NC}\n"
 
-# Step 4: Ensure target user has exactly 2 access keys
-echo -e "${YELLOW}Step 4: Ensuring target user has 2 access keys${NC}"
+# Step 3: Remove local temporary files
+echo -e "${YELLOW}Step 3: Removing local temporary files${NC}"
 
-# Recount keys after deletion
-UPDATED_KEYS=$(aws iam list-access-keys --user-name $TARGET_USER --query 'AccessKeyMetadata[].AccessKeyId' --output text)
-UPDATED_KEY_COUNT=$(echo "$UPDATED_KEYS" | wc -w | xargs)
-
-echo "Current key count after cleanup: $UPDATED_KEY_COUNT"
-
-if [ "$UPDATED_KEY_COUNT" -lt 2 ]; then
-    KEYS_NEEDED=$((2 - UPDATED_KEY_COUNT))
-    echo "Need to create $KEYS_NEEDED additional key(s) to restore the 2-key limit scenario"
-
-    for i in $(seq 1 $KEYS_NEEDED); do
-        echo "Creating replacement access key $i..."
-        NEW_KEY=$(aws iam create-access-key --user-name $TARGET_USER --output json)
-        NEW_KEY_ID=$(echo "$NEW_KEY" | jq -r '.AccessKey.AccessKeyId')
-        echo "Created new key: $NEW_KEY_ID"
-    done
-
-    echo -e "${GREEN}✓ Restored target user to 2-key limit${NC}"
-elif [ "$UPDATED_KEY_COUNT" -eq 2 ]; then
-    echo -e "${GREEN}✓ Target user already has 2 keys${NC}"
-elif [ "$UPDATED_KEY_COUNT" -gt 2 ]; then
-    echo -e "${YELLOW}Warning: Target user has more than 2 keys ($UPDATED_KEY_COUNT)${NC}"
-    echo "This shouldn't happen - AWS limit is 2 keys per user"
-fi
-echo ""
-
-# Step 5: Verify final state
-echo -e "${YELLOW}Step 5: Verifying final state${NC}"
-echo "Final access keys for $TARGET_USER:"
-aws iam list-access-keys --user-name $TARGET_USER --output table
-FINAL_KEY_COUNT=$(aws iam list-access-keys --user-name $TARGET_USER --query 'AccessKeyMetadata[].AccessKeyId' --output text | wc -w | xargs)
-echo "Total keys: $FINAL_KEY_COUNT"
-
-if [ "$FINAL_KEY_COUNT" -eq 2 ]; then
-    echo -e "${GREEN}✓ Target user has exactly 2 access keys (at AWS limit)${NC}"
-else
-    echo -e "${YELLOW}Warning: Expected 2 keys but found $FINAL_KEY_COUNT${NC}"
-fi
-echo ""
-
-# Step 6: Remove local temporary files
-echo -e "${YELLOW}Step 6: Removing local temporary files${NC}"
-
+CREATED_KEY_FILE="/tmp/iam-003-created-key-id-${ACCOUNT_ID}.txt"
 DELETED_KEY_FILE="/tmp/iam-003-deleted-key-id-${ACCOUNT_ID}.txt"
 DOWNLOAD_FILE="/tmp/iam-003-bucket-sensitive-data-${ACCOUNT_ID}.txt"
 
