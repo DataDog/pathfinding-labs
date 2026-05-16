@@ -57,7 +57,7 @@ attackMap:
       type: resource
       subType: ssm-parameter
       isTarget: true
-      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/lambda-004 + iam-002-to-admin"
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin"
       description: >
         The CTF flag for this scenario, stored as an SSM parameter in the victim account.
         Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
@@ -129,4 +129,4 @@ attackMap:
         - "Use the admin credentials to call ssm:GetParameter with the full parameter name to retrieve the flag."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"
-          command: "aws ssm get-parameter --name \"/pathfinding-labs/flags/lambda-004 + iam-002-to-admin\" --query 'Parameter.Value' --output text"
+          command: "aws ssm get-parameter --name \"/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin\" --query 'Parameter.Value' --output text"

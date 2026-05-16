@@ -126,7 +126,7 @@ Using the admin user's permanent access keys you created in the previous step, r
 
 ```bash
 aws ssm get-parameter \
-    --name "/pathfinding-labs/flags/lambda-004 + iam-002-to-admin" \
+    --name "/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin" \
     --query 'Parameter.Value' \
     --output text
 # flag{...}  — your scenario-specific flag value

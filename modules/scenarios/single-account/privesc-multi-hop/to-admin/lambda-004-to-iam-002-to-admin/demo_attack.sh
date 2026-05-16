@@ -504,7 +504,7 @@ rm -f /tmp/lambda_function.py /tmp/lambda_function.zip /tmp/response.json
 # The admin user has AdministratorAccess, which grants ssm:GetParameter implicitly.
 # Use those credentials to read the scenario flag from SSM Parameter Store.
 echo -e "${YELLOW}Step 20: Capturing CTF flag from SSM Parameter Store${NC}"
-FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-004 + iam-002-to-admin"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name \"$FLAG_PARAM_NAME\" --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 

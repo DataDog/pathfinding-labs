@@ -9,7 +9,7 @@
 * **Technique:** Update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002`
 * **Schema Version:** 4.6.0
-* **Pathfinding.cloud ID:** lambda-004 + iam-002
+* **Pathfinding.cloud ID:** lambda-004-to-iam-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0006 - Credential Access
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1059 - Command and Scripting Interpreter
@@ -76,7 +76,7 @@ plabs apply
 | `arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-iam-002-admin-user` | Target admin user with AdministratorAccess managed policy attached |
 | `arn:aws:iam::{account_id}:policy/pl-prod-lambda-004-to-iam-002-starting-policy` | Policy granting starting user Lambda permissions |
 | `arn:aws:iam::{account_id}:policy/pl-prod-lambda-004-to-iam-002-lambda-policy` | Policy granting Lambda role iam:CreateAccessKey on admin user |
-| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/lambda-004 + iam-002-to-admin` | CTF flag stored in SSM Parameter Store; readable with admin credentials |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin` | CTF flag stored in SSM Parameter Store; readable with admin credentials |
 
 ### Solution
 

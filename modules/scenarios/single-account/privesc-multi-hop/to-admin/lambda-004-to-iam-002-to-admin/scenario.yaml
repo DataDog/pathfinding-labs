@@ -7,7 +7,7 @@ title: "Lambda Code Update + Access Key Creation to Admin"
 description: "Multi-hop privilege escalation: update Lambda function code to exfiltrate execution role credentials, then use those credentials to create access keys for an admin user"
 cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
-pathfinding-cloud-id: "lambda-004 + iam-002"
+pathfinding-cloud-id: "lambda-004-to-iam-002"
 
 # =============================================================================
 # CLASSIFICATION
