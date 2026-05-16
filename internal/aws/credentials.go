@@ -4,12 +4,12 @@ package aws
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // ValidationResult contains the result of credential validation
@@ -32,35 +32,38 @@ func LoadAWSConfig(ctx context.Context, profile string) (awssdk.Config, error) {
 }
 
 // ValidateProfile checks if the given AWS profile has valid credentials
-// by calling sts:GetCallerIdentity via the AWS SDK.
-// Profile must be non-empty — this function always uses the named profile and
-// never falls back to the SDK default credential chain.
+// by running `aws sts get-caller-identity`. Delegating to the AWS CLI means
+// every credential mechanism works automatically — SSO (browser auth),
+// credential_process (aws-vault, etc.), static keys, env vars — without
+// plabs needing to know anything about how the profile is configured.
 func ValidateProfile(profile string) ValidationResult {
 	result := ValidationResult{
 		Profile: profile,
 	}
 
-	ctx := context.Background()
-
-	cfg, err := LoadAWSConfig(ctx, profile)
-	if err != nil {
-		result.Error = err
+	if profile == "" {
+		result.Error = fmt.Errorf("profile name is empty")
 		return result
 	}
 
-	client := sts.NewFromConfig(cfg)
-	out, err := client.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	cmd := exec.Command("aws", "sts", "get-caller-identity",
+		"--profile", profile,
+		"--query", "Account",
+		"--output", "text")
+
+	output, err := cmd.Output()
 	if err != nil {
-		result.Error = fmt.Errorf("AWS credentials invalid for profile %q (SSO session may have expired — run: aws sso login --profile %s): %w", profile, profile, err)
+		result.Error = fmt.Errorf("AWS credentials invalid or expired for profile %q — re-authenticate and try again", profile)
 		return result
 	}
 
-	if out.Account == nil || *out.Account == "" {
+	accountID := strings.TrimSpace(string(output))
+	if accountID == "" {
 		result.Error = fmt.Errorf("could not retrieve account ID for profile %q", profile)
 		return result
 	}
 
-	result.AccountID = strings.TrimSpace(*out.Account)
+	result.AccountID = accountID
 	result.Valid = true
 	return result
 }

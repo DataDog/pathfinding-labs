@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -58,6 +59,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
 
 	fmt.Println()
 	if activeWorkspace != "default" {
@@ -67,8 +69,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println()
 
-	// Step 1: Create directories
-	fmt.Printf("[1/5] Creating directories at %s\n", paths.PlabsRoot)
+	// Step 1: Check required tools
+	fmt.Println("[1/5] Checking required tools...")
+	if err := checkDependencies(green, yellow, red); err != nil {
+		return err
+	}
+
+	// Step 2: Create directories
+	fmt.Printf("[2/5] Creating directories at %s\n", paths.PlabsRoot)
 	if err := paths.EnsureDirectories(); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
@@ -79,16 +87,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 	fmt.Println(green("      Directories created"))
-
-	// Step 2: Check for git
-	fmt.Println("[2/5] Checking for git...")
-	if !repo.IsGitAvailable() {
-		return fmt.Errorf("git is not installed. Please install git and try again.\n" +
-			"  macOS: brew install git\n" +
-			"  Ubuntu/Debian: sudo apt-get install git\n" +
-			"  RHEL/CentOS: sudo yum install git")
-	}
-	fmt.Println(green("      Git is available"))
 
 	// Step 3: Check for/download terraform
 	fmt.Println("[3/5] Checking for terraform...")
@@ -124,7 +122,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Step 5: Run setup wizard
-	fmt.Println("[5/5] Running setup wizard...")
+	fmt.Println("[5/5] Running setup wizard (AWS profile configuration)...")
 
 	wizard := config.NewWizard()
 	newWS, err := wizard.Run()
@@ -209,6 +207,84 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("    4. Run a demo attack:")
 	fmt.Println(cyan("       plabs demo iam-002-to-admin"))
 	fmt.Println()
+
+	return nil
+}
+
+type depCheck struct {
+	name     string
+	binary   string
+	required bool
+	// hint shown when missing
+	missingNote string
+	installHint string
+}
+
+// checkDependencies prints a checklist of required and optional tools.
+// Returns an error if any required tool is missing.
+func checkDependencies(green, yellow, red func(...interface{}) string) error {
+	checks := []depCheck{
+		{
+			name:     "git",
+			binary:   "git",
+			required: true,
+			installHint: "  macOS:          brew install git\n" +
+				"  Ubuntu/Debian:  sudo apt-get install git\n" +
+				"  RHEL/CentOS:    sudo yum install git",
+		},
+		{
+			name:     "aws CLI",
+			binary:   "aws",
+			required: true,
+			installHint: "  macOS:          brew install awscli\n" +
+				"  Linux:          https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html\n" +
+				"  Windows:        https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-windows.html",
+		},
+		{
+			name:        "jq",
+			binary:      "jq",
+			required:    false,
+			missingNote: "some demos require it",
+			installHint: "  macOS:          brew install jq\n" +
+				"  Ubuntu/Debian:  sudo apt-get install jq\n" +
+				"  RHEL/CentOS:    sudo yum install jq",
+		},
+		{
+			name:        "session-manager-plugin",
+			binary:      "session-manager-plugin",
+			required:    false,
+			missingNote: "SSM-based demos require it",
+			installHint: "  https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html",
+		},
+	}
+
+	var missingRequired []depCheck
+
+	for _, c := range checks {
+		_, err := exec.LookPath(c.binary)
+		found := err == nil
+
+		switch {
+		case found:
+			fmt.Printf("      %s %s\n", green("✓"), c.name)
+		case c.required:
+			fmt.Printf("      %s %s %s\n", red("✗"), c.name, red("(required — not installed)"))
+			missingRequired = append(missingRequired, c)
+		default:
+			fmt.Printf("      %s %s %s\n", yellow("⚠"), c.name, yellow("(not installed — "+c.missingNote+")"))
+		}
+	}
+
+	if len(missingRequired) > 0 {
+		fmt.Println()
+		fmt.Println(red("The following required tools are missing:"))
+		for _, c := range missingRequired {
+			fmt.Println()
+			fmt.Printf("  %s\n", red(c.name))
+			fmt.Println(c.installHint)
+		}
+		return fmt.Errorf("missing required tools — install them and run 'plabs init' again")
+	}
 
 	return nil
 }
