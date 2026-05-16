@@ -228,12 +228,15 @@ func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green
 		return fmt.Errorf("terraform destroy failed: %w", err)
 	}
 
-	// Clean up attacker IAM user credentials from config after successful destroy
-	if cfg != nil && cfg.Active().AWS.Attacker.Mode == "iam-user" {
-		cfg.Active().AWS.Attacker.IAMAccessKeyID = ""
-		cfg.Active().AWS.Attacker.IAMSecretKey = ""
+	// Clear all enabled scenarios and attacker IAM credentials from config after successful destroy
+	if cfg != nil {
+		cfg.Active().Scenarios.Enabled = nil
+		if cfg.Active().AWS.Attacker.Mode == "iam-user" {
+			cfg.Active().AWS.Attacker.IAMAccessKeyID = ""
+			cfg.Active().AWS.Attacker.IAMSecretKey = ""
+		}
 		if err := cfg.Save(); err != nil {
-			fmt.Printf("%s Failed to clean up attacker credentials from config: %v\n", yellow("!"), err)
+			fmt.Printf("%s Failed to clean up config after destroy: %v\n", yellow("!"), err)
 		}
 	}
 
