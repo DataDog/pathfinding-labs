@@ -69,7 +69,7 @@ cd /Users/seth.art/Documents/projects/pathfinding-labs
 ### Step 2: Deploy
 ```bash
 cd /Users/seth.art/Documents/projects/pathfinding-labs
-OTEL_TRACES_EXPORTER= ./plabs deploy -y
+OTEL_TRACES_EXPORTER= ./plabs apply -y
 ```
 If deploy fails: log the error, attempt to disable all batch scenarios and deploy again to clean up, then move to the next batch.
 
@@ -106,7 +106,7 @@ cd /Users/seth.art/Documents/projects/pathfinding-labs
 ### Step 5: Deploy to tear down
 ```bash
 cd /Users/seth.art/Documents/projects/pathfinding-labs
-OTEL_TRACES_EXPORTER= ./plabs deploy -y
+OTEL_TRACES_EXPORTER= ./plabs apply -y
 ```
 This destroys the batch's infrastructure before moving to the next batch.
 
@@ -215,7 +215,7 @@ After writing the report, print a summary showing:
 
 ## Error Handling
 
-- **Deploy failure for a batch**: Log error, disable those scenarios, attempt `plabs deploy -y` to clean up, move to next batch
+- **Deploy failure for a batch**: Log error, disable those scenarios, attempt `plabs apply -y` to clean up, move to next batch
 - **Individual test failure**: Log it, continue to next scenario in batch
 - **Cleanup failure**: Log warning, continue (note: next test may be affected)
 - **Always tear down each batch** before moving to the next

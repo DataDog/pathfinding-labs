@@ -66,7 +66,7 @@ var configLoadFlagsCmd = &cobra.Command{
 	Long: `Load CTF flag values into the active workspace configuration.
 
 If no file argument is given, looks for flags.default.yaml in the Terraform directory.
-After loading, syncs terraform.tfvars so that 'plabs deploy' will write the real flag
+After loading, syncs terraform.tfvars so that 'plabs apply' will write the real flag
 values into SSM Parameter Store.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runConfigLoadFlags,
@@ -448,6 +448,6 @@ func runConfigLoadFlags(cmd *cobra.Command, args []string) error {
 
 	green := color.New(color.FgGreen).SprintFunc()
 	fmt.Printf("%s Loaded %d CTF flag(s) from %s\n", green("OK"), len(ws.Flags), flagFilePath)
-	fmt.Println("  Run 'plabs deploy' to push the updated flag values to SSM Parameter Store.")
+	fmt.Println("  Run 'plabs apply' to push the updated flag values to SSM Parameter Store.")
 	return nil
 }

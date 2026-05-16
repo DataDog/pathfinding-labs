@@ -127,7 +127,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		fmt.Printf("%s Scenario '%s' is enabled but not deployed.\n", yellow("!"), scenario.UniqueID())
 		fmt.Println()
-		fmt.Printf("Deploy it first: %s\n", cyan("plabs deploy"))
+		fmt.Printf("Deploy it first: %s\n", cyan("plabs apply"))
 		return fmt.Errorf("scenario not deployed")
 	}
 

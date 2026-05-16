@@ -139,7 +139,7 @@ For each batch:
 
 **6b. Deploy**:
 ```bash
-OTEL_TRACES_EXPORTER= ./plabs deploy -y
+OTEL_TRACES_EXPORTER= ./plabs apply -y
 ```
 Use a 10-minute timeout. If deploy fails, log error, disable batch, deploy again to clean up, move to next batch.
 
@@ -174,7 +174,7 @@ If a test fails, log it but continue with remaining scenarios.
 
 **6e. Teardown**:
 ```bash
-OTEL_TRACES_EXPORTER= ./plabs deploy -y
+OTEL_TRACES_EXPORTER= ./plabs apply -y
 ```
 
 ### Concurrency constraint

@@ -65,7 +65,7 @@ func runOutput(cmd *cobra.Command, args []string) error {
 	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
 	if !runner.IsInitialized() {
 		fmt.Fprintf(os.Stderr, "Error: terraform is not initialized\n")
-		fmt.Fprintf(os.Stderr, "Run 'plabs deploy' to deploy your scenarios\n")
+		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy your scenarios\n")
 		os.Exit(1)
 	}
 
@@ -83,12 +83,12 @@ func runOutput(cmd *cobra.Command, args []string) error {
 	block, exists := outputs.GetScenarioOutput(outputName)
 	if !exists {
 		fmt.Fprintf(os.Stderr, "Error: output key %q not found — is the scenario deployed?\n", outputName)
-		fmt.Fprintf(os.Stderr, "Run 'plabs deploy' to deploy it\n")
+		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy it\n")
 		os.Exit(1)
 	}
 	if block == nil {
 		fmt.Fprintf(os.Stderr, "Error: scenario %q is not deployed (output is null)\n", scenario.UniqueID())
-		fmt.Fprintf(os.Stderr, "Run 'plabs deploy' to deploy it\n")
+		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy it\n")
 		os.Exit(1)
 	}
 

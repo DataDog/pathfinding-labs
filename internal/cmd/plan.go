@@ -93,7 +93,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	fmt.Printf("Run %s to apply these changes\n", cyan("plabs deploy"))
+	fmt.Printf("Run %s to apply these changes\n", cyan("plabs apply"))
 	fmt.Println()
 
 	return nil

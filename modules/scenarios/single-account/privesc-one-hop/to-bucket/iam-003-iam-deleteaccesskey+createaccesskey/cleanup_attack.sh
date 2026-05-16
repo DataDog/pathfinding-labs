@@ -80,7 +80,7 @@ done
 if [ "$DELETED" -eq 0 ]; then
     echo "No attacker-created keys found"
 fi
-echo -e "${GREEN}✓ Cleanup complete — run 'plabs deploy' to restore any terraform keys deleted during the demo${NC}\n"
+echo -e "${GREEN}✓ Cleanup complete — run 'plabs apply' to restore any terraform keys deleted during the demo${NC}\n"
 
 # Step 3: Remove local temporary files
 echo -e "${YELLOW}Step 3: Removing local temporary files${NC}"

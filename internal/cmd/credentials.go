@@ -88,7 +88,7 @@ func runCredentials(cmd *cobra.Command, args []string) error {
 
 	if !runner.IsInitialized() {
 		fmt.Fprintf(os.Stderr, "Error: terraform is not initialized\n")
-		fmt.Fprintf(os.Stderr, "Run 'plabs deploy' to deploy your scenarios\n")
+		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy your scenarios\n")
 		os.Exit(1)
 	}
 
@@ -103,7 +103,7 @@ func runCredentials(cmd *cobra.Command, args []string) error {
 
 	if !isScenarioDeployed(scenario, outputs, deployedModules) {
 		fmt.Fprintf(os.Stderr, "Error: scenario %q is enabled but not yet deployed\n", scenario.UniqueID())
-		fmt.Fprintf(os.Stderr, "Run 'plabs deploy' to deploy it\n")
+		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy it\n")
 		os.Exit(1)
 	}
 

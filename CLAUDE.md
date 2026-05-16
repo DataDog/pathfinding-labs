@@ -240,7 +240,7 @@ Running `plabs` with no arguments launches the interactive TUI dashboard.
 | `plabs scenarios list` | List scenarios with filtering |
 | `plabs enable [id\|pattern]` | Enable scenarios |
 | `plabs disable [id\|pattern]` | Disable scenarios |
-| `plabs deploy` | Deploy enabled scenarios |
+| `plabs apply` | Deploy enabled scenarios |
 | `plabs plan` | Show terraform plan |
 | `plabs destroy` | Destroy infrastructure |
 | `plabs status` | Show deployment status |
@@ -471,7 +471,7 @@ plabs enable iam-002
 plabs enable "one-hop/*"
 
 # Deploy enabled scenarios
-plabs deploy
+plabs apply
 
 # Show deployment status
 plabs status

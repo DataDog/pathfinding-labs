@@ -165,11 +165,11 @@ func runLocalSync(paths *repo.Paths, localDir string, green, yellow, cyan func(a
 		"--exclude", "*.tfstate",
 		"--exclude", "*.tfstate.*",
 		"--exclude", ".terraform.lock.hcl",
-		"--exclude", "terraform.tfvars",     // Don't overwrite user's tfvars
+		"--exclude", "terraform.tfvars", // Don't overwrite user's tfvars
 		"--exclude", "terraform.tfvars.bak*", // Don't copy backup files
-		"--exclude", "plabs",                // Don't copy the binary
-		"--exclude", ".claude",              // Don't copy Claude config
-		"--exclude", ".idea",                // Don't copy IDE settings
+		"--exclude", "plabs", // Don't copy the binary
+		"--exclude", ".claude", // Don't copy Claude config
+		"--exclude", ".idea", // Don't copy IDE settings
 		"--exclude", ".vscode",
 		"--exclude", "*.log",
 		localDir + "/",
@@ -191,7 +191,7 @@ func runLocalSync(paths *repo.Paths, localDir string, green, yellow, cyan func(a
 	cfg, _ := config.Load()
 	if cfg != nil {
 		fmt.Println()
-		fmt.Println(yellow("Note: You may need to run 'plabs deploy' or 'terraform init' to pick up module changes"))
+		fmt.Println(yellow("Note: You may need to run 'plabs apply' or 'terraform init' to pick up module changes"))
 	}
 
 	return nil

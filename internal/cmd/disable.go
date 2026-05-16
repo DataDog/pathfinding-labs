@@ -207,7 +207,7 @@ func runDisable(cmd *cobra.Command, args []string) error {
 			}
 		} else {
 			fmt.Println()
-			fmt.Println("Run 'plabs deploy' to apply changes (this will destroy disabled scenarios)")
+			fmt.Println("Run 'plabs apply' to apply changes (this will destroy disabled scenarios)")
 		}
 	}
 

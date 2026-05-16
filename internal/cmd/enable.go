@@ -266,7 +266,7 @@ func runEnable(cmd *cobra.Command, args []string) error {
 			}
 		} else {
 			fmt.Println()
-			fmt.Println("Run 'plabs deploy' to deploy the enabled scenarios")
+			fmt.Println("Run 'plabs apply' to deploy the enabled scenarios")
 		}
 	}
 

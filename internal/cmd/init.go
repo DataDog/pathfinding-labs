@@ -204,7 +204,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println(cyan("       plabs enable iam-002-to-admin"))
 	fmt.Println()
 	fmt.Println("    3. Deploy enabled scenarios:")
-	fmt.Println(cyan("       plabs deploy"))
+	fmt.Println(cyan("       plabs apply"))
 	fmt.Println()
 	fmt.Println("    4. Run a demo attack:")
 	fmt.Println(cyan("       plabs demo iam-002-to-admin"))
