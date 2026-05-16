@@ -1224,23 +1224,46 @@ func (m *Model) spawnShell() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) toggleSelected() tea.Cmd {
-	// Check BEFORE toggling: if about to enable, validate required config keys are set
+	// Check BEFORE toggling: if about to enable, validate cross-account env profiles and required config
 	current := m.scenariosPane.Selected()
-	if current != nil && m.config != nil && !current.Enabled && current.Scenario.HasConfig() {
-		var missingKeys []string
-		for _, cfgKey := range current.Scenario.Config {
-			if cfgKey.Required {
-				val, _ := m.config.Active().GetScenarioConfig(current.Scenario.Name, cfgKey.Key)
-				if val == "" {
-					missingKeys = append(missingKeys, cfgKey.Key)
+	if current != nil && m.config != nil && !current.Enabled {
+		ws := m.config.Active()
+		var envErrors []string
+		for _, env := range current.Scenario.Environments {
+			switch env {
+			case "dev":
+				if ws.AWS.Dev.Profile == "" {
+					envErrors = append(envErrors, "requires \"dev\" account profile\n  Set with: plabs config set dev-profile <aws-profile>")
+				}
+			case "operations":
+				if ws.AWS.Ops.Profile == "" {
+					envErrors = append(envErrors, "requires \"operations\" account profile\n  Set with: plabs config set ops-profile <aws-profile>")
 				}
 			}
 		}
-		if len(missingKeys) > 0 {
-			m.overlay.Show(OverlayError, "Config Required",
-				fmt.Sprintf("Cannot enable %s\n\nMissing required config:\n  %s\n\nSwitch to the Details pane (Tab) and press 'e' to set these values.",
-					current.Scenario.Name, strings.Join(missingKeys, "\n  ")))
+		if len(envErrors) > 0 {
+			m.overlay.Show(OverlayError, "Account Profile Required",
+				fmt.Sprintf("Cannot enable %s\n\n%s",
+					current.Scenario.Name, strings.Join(envErrors, "\n")))
 			return nil
+		}
+
+		if current.Scenario.HasConfig() {
+			var missingKeys []string
+			for _, cfgKey := range current.Scenario.Config {
+				if cfgKey.Required {
+					val, _ := m.config.Active().GetScenarioConfig(current.Scenario.Name, cfgKey.Key)
+					if val == "" {
+						missingKeys = append(missingKeys, cfgKey.Key)
+					}
+				}
+			}
+			if len(missingKeys) > 0 {
+				m.overlay.Show(OverlayError, "Config Required",
+					fmt.Sprintf("Cannot enable %s\n\nMissing required config:\n  %s\n\nSwitch to the Details pane (Tab) and press 'e' to set these values.",
+						current.Scenario.Name, strings.Join(missingKeys, "\n  ")))
+				return nil
+			}
 		}
 	}
 
@@ -1296,6 +1319,17 @@ func (m *Model) updateInfoCounts() {
 }
 
 func (m *Model) runDeploy() tea.Cmd {
+	// Block deploy if any enabled scenario requires a dev/ops account profile that isn't configured
+	if envMissing := m.getMissingCrossAccountEnvProfiles(); len(envMissing) > 0 {
+		var sb strings.Builder
+		sb.WriteString("Cannot deploy — additional AWS account profiles are required:\n\n")
+		for _, msg := range envMissing {
+			sb.WriteString("  " + msg + "\n")
+		}
+		m.overlay.Show(OverlayError, "Account Profile Required", sb.String())
+		return nil
+	}
+
 	// Block deploy if any enabled scenario is missing required config
 	if missing := m.getMissingRequiredConfigs(); len(missing) > 0 {
 		var sb strings.Builder
@@ -2641,6 +2675,34 @@ func (m *Model) renderDisablePatternBar() string {
 		promptStyle.Render("Enter pattern: ") +
 		m.disablePatternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+// getMissingCrossAccountEnvProfiles returns human-readable entries for every enabled
+// cross-account scenario that requires a dev or ops AWS profile that is not configured.
+func (m *Model) getMissingCrossAccountEnvProfiles() []string {
+	if m.config == nil {
+		return nil
+	}
+	ws := m.config.Active()
+	var missing []string
+	for _, item := range m.scenariosPane.GetItems() {
+		if !item.Enabled {
+			continue
+		}
+		for _, env := range item.Scenario.Environments {
+			switch env {
+			case "dev":
+				if ws.AWS.Dev.Profile == "" {
+					missing = append(missing, fmt.Sprintf("%s: requires \"dev\" account profile\n    plabs config set dev-profile <aws-profile>", item.Scenario.Name))
+				}
+			case "operations":
+				if ws.AWS.Ops.Profile == "" {
+					missing = append(missing, fmt.Sprintf("%s: requires \"operations\" account profile\n    plabs config set ops-profile <aws-profile>", item.Scenario.Name))
+				}
+			}
+		}
+	}
+	return missing
 }
 
 // getMissingRequiredConfigs returns human-readable entries for every enabled scenario

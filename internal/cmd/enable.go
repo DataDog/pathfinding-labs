@@ -156,6 +156,18 @@ func runEnable(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Block if any scenario to enable requires a dev or ops account that isn't configured
+	if envErrors := crossAccountEnvErrors(toEnable, cfg.Active()); len(envErrors) > 0 {
+		fmt.Println()
+		fmt.Println(red("Cannot enable: some scenarios require additional AWS account profiles:"))
+		fmt.Println()
+		for _, e := range envErrors {
+			fmt.Println(e)
+		}
+		fmt.Println()
+		return nil
+	}
+
 	// Block if any scenario to enable is missing required config
 	var configErrors []string
 	for _, s := range toEnable {

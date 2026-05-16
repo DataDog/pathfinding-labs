@@ -174,6 +174,32 @@ func validateAWSCredentials(cfg *config.Config) error {
 	return nil
 }
 
+// crossAccountEnvErrors returns error strings for each scenario that requires a dev or ops
+// AWS account profile that is not configured. The format mirrors the required-config error
+// messages produced by enable/deploy so the user sees a consistent error surface.
+func crossAccountEnvErrors(scenarioList []*scenarios.Scenario, ws *config.WorkspaceConfig) []string {
+	var errs []string
+	for _, s := range scenarioList {
+		for _, env := range s.Environments {
+			switch env {
+			case "dev":
+				if ws.AWS.Dev.Profile == "" {
+					errs = append(errs, fmt.Sprintf(
+						"  %s: requires a \"dev\" AWS account profile (not configured)\n    Set with: plabs config set dev-profile <aws-profile>",
+						s.Name))
+				}
+			case "operations":
+				if ws.AWS.Ops.Profile == "" {
+					errs = append(errs, fmt.Sprintf(
+						"  %s: requires an \"operations\" AWS account profile (not configured)\n    Set with: plabs config set ops-profile <aws-profile>",
+						s.Name))
+				}
+			}
+		}
+	}
+	return errs
+}
+
 // newDiscovery creates a Discovery instance wired to the current config.
 // IncludeBeta is set from the loaded config so beta scenarios are hidden unless
 // the user has run: plabs config set include-beta true
