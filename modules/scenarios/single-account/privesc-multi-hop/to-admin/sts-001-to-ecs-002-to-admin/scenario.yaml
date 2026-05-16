@@ -2,7 +2,7 @@
 # CORE METADATA
 # =============================================================================
 schema_version: "1.2.1"
-name: "sts-001-to-ecs-002-to-admin"
+name: "sts-001-to-ecs-002"
 title: "Role Assumption + ECS Service Creation to Admin"
 description: "Multi-hop escalation: assume a role with ECS permissions, then use PassRole + ECS to run a task with an admin role"
 cost_estimate: "$0/mo"

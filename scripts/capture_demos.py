@@ -22,6 +22,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import yaml as _yaml
+except ImportError:
+    _yaml = None
+
 # ---------------------------------------------------------------------------
 # Repo layout (this script lives in pathfinding-labs/scripts/)
 # ---------------------------------------------------------------------------
@@ -31,6 +36,9 @@ PLABS_BIN   = LABS_REPO / "plabs"
 SCRIPTS_DIR = LABS_REPO / "scripts"
 DEMOS_DIR   = CLOUD_REPO / "docs" / "labs" / "demo-transcripts"
 RAW_DIR     = Path("/tmp/pathfinding-demos-raw")
+
+PLABS_CONFIG_PATH   = Path.home() / ".plabs" / "plabs.yaml"
+PLABS_MANAGED_REPO  = Path.home() / ".plabs" / "pathfinding-labs"
 
 RUN_DEMOS_SCRIPT    = SCRIPTS_DIR / "run_demos.py"
 REDACT_SCRIPT       = SCRIPTS_DIR / "redact_transcripts.py"
@@ -57,6 +65,34 @@ def check_prerequisites():
         print(f"ERROR: {GENERATE_JSON_SCRIPT} not found")
         ok = False
     return ok
+
+
+def get_plabs_terraform_dir() -> Path:
+    """Return the directory where plabs runs terraform (i.e. where the state lives).
+
+    Reads the active workspace from plabs.yaml and resolves the correct path:
+      - dev mode with dev_mode_path → local repo (dev_mode_path)
+      - default workspace, no dev mode → ~/.plabs/pathfinding-labs/
+      - named workspace, no dev mode → ~/.plabs/workspaces/{name}/pathfinding-labs/
+
+    Demo scripts use `cd ../../../../../..` to reach the terraform root, so they
+    must be executed from within this directory tree.
+    """
+    if _yaml is not None and PLABS_CONFIG_PATH.exists():
+        try:
+            with open(PLABS_CONFIG_PATH) as f:
+                config = _yaml.safe_load(f) or {}
+            active = config.get("active_workspace", "default")
+            workspace = (config.get("workspaces") or {}).get(active, {})
+            if workspace.get("dev_mode") and workspace.get("dev_mode_path"):
+                p = Path(workspace["dev_mode_path"])
+                if p.exists():
+                    return p
+            if active and active != "default":
+                return Path.home() / ".plabs" / "workspaces" / active / "pathfinding-labs"
+        except Exception:
+            pass
+    return PLABS_MANAGED_REPO
 
 
 def get_enabled_unique_ids() -> list[str]:
@@ -196,8 +232,10 @@ def main():
     # ------------------------------------------------------------------
     if not args.skip_run:
         print(f"\nStep 2: Running demo scripts -> {RAW_DIR}")
+        terraform_dir = get_plabs_terraform_dir()
         cmd = ([sys.executable, str(RUN_DEMOS_SCRIPT), "--labs"] + slugs
-               + ["--output-dir", str(RAW_DIR), "--workers", str(args.workers)])
+               + ["--output-dir", str(RAW_DIR), "--workers", str(args.workers),
+                  "--terraform-dir", str(terraform_dir)])
         if args.no_cleanup:
             cmd.append("--no-cleanup")
         ok = run_step("run_demos", cmd, dry_run=args.dry_run)
@@ -207,17 +245,30 @@ def main():
         print(f"\nStep 2: Skipped (--skip-run). Using existing files in {RAW_DIR}")
 
     # ------------------------------------------------------------------
-    # Step 3: Redact
+    # Step 3: Redact - process only the files for the target slugs so that
+    # stale transcripts from other labs sitting in RAW_DIR don't get copied
+    # into pathfinding.cloud as a side effect.
     # ------------------------------------------------------------------
     print(f"\nStep 3: Redacting transcripts -> {DEMOS_DIR}")
     if not args.dry_run:
         DEMOS_DIR.mkdir(parents=True, exist_ok=True)
-    ok = run_step(
-        "redact_transcripts",
-        [sys.executable, str(REDACT_SCRIPT), str(RAW_DIR), "--output-dir", str(DEMOS_DIR)],
-        dry_run=args.dry_run,
-    )
-    if not ok and not args.dry_run:
+
+    redact_ok = True
+    for slug in slugs:
+        raw_file = RAW_DIR / f"{slug}.txt"
+        if not raw_file.exists():
+            if not args.skip_run:
+                print(f"  WARNING: expected transcript not found: {raw_file}", file=sys.stderr)
+            continue
+        ok = run_step(
+            f"redact_transcripts ({slug})",
+            [sys.executable, str(REDACT_SCRIPT), str(raw_file), "--output-dir", str(DEMOS_DIR)],
+            dry_run=args.dry_run,
+        )
+        if not ok:
+            redact_ok = False
+
+    if not redact_ok and not args.dry_run:
         sys.exit(1)
 
     # ------------------------------------------------------------------

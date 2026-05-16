@@ -73,9 +73,16 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+AWS_REGION=$(OTEL_TRACES_EXPORTER= terraform output -raw aws_region 2>/dev/null || echo "")
+if [ -z "$AWS_REGION" ]; then
+    AWS_REGION="us-east-1"
+fi
+export AWS_REGION=$AWS_REGION
+
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
 echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
+echo "Region: $AWS_REGION"
 echo -e "${GREEN}✓ Retrieved credentials for $STARTING_USER${NC}\n"
 
 cd - > /dev/null  # Return to scenario directory
@@ -161,10 +168,6 @@ echo "Testing admin permissions (listing IAM users)..."
 show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)
 echo -e "${GREEN}✓ Successfully listed IAM users: $IAM_USERS${NC}"
-
-echo "Testing S3 access..."
-show_cmd "ReadOnly" "aws s3 ls"
-aws s3 ls | head -5 || echo -e "${YELLOW}(No buckets or still propagating)${NC}"
 
 echo -e "${GREEN}✓ Confirmed administrator access!${NC}\n"
 

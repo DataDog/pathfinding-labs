@@ -44,12 +44,11 @@ fi
 # Disable paging for AWS CLI
 export AWS_PAGER=""
 
-# Navigate to the Terraform root directory (6 levels up from scenario directory)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TERRAFORM_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Retrieving credentials from Terraform outputs..."
-cd "$TERRAFORM_ROOT"
+cd ../../../../../..
+
 
 # Get the grouped module output
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_multi_hop_to_admin_multiple_paths_combined.value // empty')

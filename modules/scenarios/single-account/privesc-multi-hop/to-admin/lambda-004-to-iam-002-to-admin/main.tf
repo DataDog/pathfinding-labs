@@ -214,7 +214,7 @@ resource "aws_iam_user_policy_attachment" "admin_user_admin_access" {
 
 resource "aws_ssm_parameter" "flag" {
   provider = aws.prod
-  name     = "/pathfinding-labs/flags/lambda-004-plus-iam-002-to-admin"
+  name     = "/pathfinding-labs/flags/lambda-004-to-iam-002-to-admin"
   type     = "String"
   value    = var.flag_value
 

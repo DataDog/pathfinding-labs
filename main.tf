@@ -171,7 +171,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_005_iam_putrolepolic
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepolicy" {
@@ -184,7 +184,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_009_iam_attachrolepo
   dev_account_id        = local.dev_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "iam-009-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "iam-009-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion" {
@@ -197,7 +197,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicy
   dev_account_id        = local.dev_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "iam-001-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "iam-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolicy" {
@@ -209,7 +209,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_007_iam_putuserpolic
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-007-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-007-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy" {
@@ -221,7 +221,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppoli
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-011-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-011-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogroup" {
@@ -233,7 +233,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_013_iam_addusertogro
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-013-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-013-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy" {
@@ -245,7 +245,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpo
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-008-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-008-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgrouppolicy" {
@@ -257,7 +257,7 @@ module "single_account_privesc_self_escalation_to_admin_iam_010_iam_attachgroupp
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-010-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-010-to-admin", "flag{MISSING}")
 }
 
 
@@ -274,7 +274,7 @@ module "single_account_privesc_one_hop_to_admin_iam_019_iam_attachrolepolicy_iam
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-019-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-019-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts_assumerole" {
@@ -286,7 +286,7 @@ module "single_account_privesc_one_hop_to_admin_iam_014_iam_attachrolepolicy_sts
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-014-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-014-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam_createaccesskey" {
@@ -298,7 +298,7 @@ module "single_account_privesc_one_hop_to_admin_iam_015_iam_attachuserpolicy_iam
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-015-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-015-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updateservice" {
@@ -311,7 +311,7 @@ module "single_account_privesc_one_hop_to_admin_apprunner_002_apprunner_updatese
   environment                      = "prod"
   resource_suffix                  = random_string.resource_suffix.result
   apprunner_service_linked_role_id = module.prod_environment[0].apprunner_service_linked_role_id
-  flag_value                       = lookup(var.scenario_flags, "apprunner-002-to-admin", "flag{MISSING}")
+  flag_value                       = lookup(local.effective_flags, "apprunner-002-to-admin", "flag{MISSING}")
 
   # Ensure service-linked role is created first and destroyed last
   depends_on = [module.prod_environment]
@@ -326,7 +326,7 @@ module "single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_createaccesskey" {
@@ -338,7 +338,7 @@ module "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
@@ -362,7 +362,7 @@ module "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_appru
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "apprunner-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "apprunner-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter" {
@@ -374,7 +374,7 @@ module "single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrock
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "bedrock-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "bedrock-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke" {
@@ -386,7 +386,7 @@ module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "bedrock-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "bedrock-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances" {
@@ -400,7 +400,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ec2-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
@@ -414,7 +414,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ec2-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
@@ -428,7 +428,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplate
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ec2-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask" {
@@ -440,7 +440,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createc
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ecs-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registertaskdefinition_ecs_runtask" {
@@ -452,7 +452,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_004_iam_passrole_ecs_registe
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ecs-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask" {
@@ -466,13 +466,13 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ecs-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
   count      = var.enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
   source     = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-003-iam-passrole+ecs-registertaskdefinition+ecs-createservice"
-  flag_value = lookup(var.scenario_flags, "ecs-003-to-admin", "flag{MISSING}")
+  flag_value = lookup(local.effective_flags, "ecs-003-to-admin", "flag{MISSING}")
   providers = {
     aws.prod = aws.prod
   }
@@ -490,7 +490,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_001_iam_passrole_ecs_createc
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ecs-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks" {
@@ -504,7 +504,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ecs-006-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-006-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_starttask_ecs_registercontainerinstance" {
@@ -518,7 +518,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_007_iam_passrole_ecs_startta
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ecs-007-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-007-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask" {
@@ -530,7 +530,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_008_iam_passrole_ecs_runtask
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ecs-008-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-008-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask" {
@@ -544,7 +544,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_startta
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ecs-009-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ecs-009-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
@@ -556,7 +556,7 @@ module "single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sts-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sts-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepolicy" {
@@ -568,7 +568,7 @@ module "single_account_privesc_one_hop_to_admin_iam_012_iam_updateassumerolepoli
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-012-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-012-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile" {
@@ -580,7 +580,7 @@ module "single_account_privesc_one_hop_to_admin_iam_004_iam_createloginprofile" 
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_iam_updateassumerolepolicy" {
@@ -592,7 +592,7 @@ module "single_account_privesc_one_hop_to_admin_iam_020_iam_createpolicyversion_
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-020-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-020-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_sts_assumerole" {
@@ -604,7 +604,7 @@ module "single_account_privesc_one_hop_to_admin_iam_016_iam_createpolicyversion_
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-016-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-016-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile" {
@@ -616,7 +616,7 @@ module "single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile" 
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-006-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-006-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission" {
@@ -628,7 +628,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_006_iam_passrole_lambda_c
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-006-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-006-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction" {
@@ -640,7 +640,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole_lambda_c
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset" {
@@ -652,7 +652,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformatio
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "cloudformation-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cloudformation-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformation_updatestack" {
@@ -664,7 +664,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_002_cloudformatio
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "cloudformation-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cloudformation-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_cloudformation_updatestackset" {
@@ -676,7 +676,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_004_iam_passrole_
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "cloudformation-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cloudformation-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_cloudformation" {
@@ -688,7 +688,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_001_iam_passrole_
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "cloudformation-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cloudformation-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_cloudformation_createstackset_cloudformation_createstackinstances" {
@@ -700,7 +700,7 @@ module "single_account_privesc_one_hop_to_admin_cloudformation_003_iam_passrole_
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "cloudformation-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cloudformation-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codebuild_createproject_codebuild_startbuild" {
@@ -712,7 +712,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "codebuild-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "codebuild-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
@@ -752,7 +752,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "codebuild-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "codebuild-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy" {
@@ -764,7 +764,7 @@ module "single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_up
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-021-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-021-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole" {
@@ -776,7 +776,7 @@ module "single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_as
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-017-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-017-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey" {
@@ -788,7 +788,7 @@ module "single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_cr
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-018-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-018-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
@@ -800,7 +800,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_002_iam_passrole_lambda_c
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctioncode" {
@@ -812,7 +812,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunction
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunctioncode_lambda_addpermission" {
@@ -824,7 +824,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_005_lambda_updatefunction
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunctioncode_lambda_invokefunction" {
@@ -836,7 +836,7 @@ module "single_account_privesc_one_hop_to_admin_lambda_004_lambda_updatefunction
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
@@ -850,7 +850,7 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ssm-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ssm-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
@@ -876,7 +876,7 @@ module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ssm-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ssm-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbuild" {
@@ -888,7 +888,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_002_codebuild_startbui
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "codebuild-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "codebuild-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch" {
@@ -900,7 +900,7 @@ module "single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbui
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "codebuild-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "codebuild-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey" {
@@ -914,7 +914,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sen
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ec2-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
@@ -928,7 +928,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ec2-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
@@ -1020,7 +1020,7 @@ module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_creat
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "glue-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "glue-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint" {
@@ -1032,7 +1032,7 @@ module "single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint"
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "glue-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "glue-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_createjob_glue_createtrigger" {
@@ -1046,7 +1046,7 @@ module "single_account_privesc_one_hop_to_admin_glue_004_iam_passrole_glue_creat
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
-  flag_value          = lookup(var.scenario_flags, "glue-004-to-admin", "flag{MISSING}")
+  flag_value          = lookup(local.effective_flags, "glue-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_createjob_glue_startjobrun" {
@@ -1060,7 +1060,7 @@ module "single_account_privesc_one_hop_to_admin_glue_003_iam_passrole_glue_creat
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
-  flag_value          = lookup(var.scenario_flags, "glue-003-to-admin", "flag{MISSING}")
+  flag_value          = lookup(local.effective_flags, "glue-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updatejob_glue_startjobrun" {
@@ -1074,7 +1074,7 @@ module "single_account_privesc_one_hop_to_admin_glue_005_iam_passrole_glue_updat
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
-  flag_value          = lookup(var.scenario_flags, "glue-005-to-admin", "flag{MISSING}")
+  flag_value          = lookup(local.effective_flags, "glue-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updatejob_glue_createtrigger" {
@@ -1088,7 +1088,7 @@ module "single_account_privesc_one_hop_to_admin_glue_006_iam_passrole_glue_updat
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
-  flag_value          = lookup(var.scenario_flags, "glue-006-to-admin", "flag{MISSING}")
+  flag_value          = lookup(local.effective_flags, "glue-006-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_createsession_glue_runstatement" {
@@ -1100,7 +1100,7 @@ module "single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_glue_creat
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "glue-007-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "glue-007-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance" {
@@ -1112,7 +1112,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagem
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sagemaker-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sagemaker-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagemaker_createprocessingjob" {
@@ -1124,7 +1124,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_003_iam_passrole_sagem
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sagemaker-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sagemaker-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob" {
@@ -1136,7 +1136,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagem
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sagemaker-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sagemaker-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpresignednotebookinstanceurl" {
@@ -1148,7 +1148,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker_createpr
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sagemaker-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sagemaker-004-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config" {
@@ -1160,7 +1160,7 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updateno
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sagemaker-005-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sagemaker-005-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
@@ -1188,7 +1188,7 @@ module "single_account_privesc_self_escalation_to_bucket_iam_005_iam_putrolepoli
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-005-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-005-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolepolicy" {
@@ -1200,7 +1200,7 @@ module "single_account_privesc_self_escalation_to_bucket_iam_009_iam_attachrolep
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-009-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-009-to-bucket", "flag{MISSING}")
 }
 
 
@@ -1217,7 +1217,7 @@ module "single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_crea
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "glue-001-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "glue-001-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey" {
@@ -1229,7 +1229,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-002-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-002-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile" {
@@ -1241,7 +1241,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_004_iam_createloginprofile"
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-004-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-004-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_createaccesskey" {
@@ -1253,7 +1253,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_003_iam_deleteaccesskey_cre
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-003-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-003-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy" {
@@ -1265,7 +1265,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepol
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-012-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-012-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole" {
@@ -1277,7 +1277,7 @@ module "single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sts-001-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sts-001-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile" {
@@ -1289,7 +1289,7 @@ module "single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile"
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "iam-006-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "iam-006-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
@@ -1301,7 +1301,7 @@ module "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_se
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ec2-003-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-003-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint" {
@@ -1313,7 +1313,7 @@ module "single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "glue-002-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "glue-002-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
@@ -1327,7 +1327,7 @@ module "single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ssm-002-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ssm-002-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
@@ -1341,7 +1341,7 @@ module "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "ssm-001-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ssm-001-to-bucket", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1359,7 +1359,7 @@ module "single_account_privesc_multi_hop_to_admin_lambda_004_to_iam_002" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "lambda-004-plus-iam-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "lambda-004-plus-iam-002-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
@@ -1372,7 +1372,7 @@ module "single_account_privesc_multi_hop_to_admin_multiple_paths_combined" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "multiple-paths-combined-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "multiple-paths-combined-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
@@ -1386,7 +1386,7 @@ module "single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sts-001-to-ecs-002-to-admin-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sts-001-to-ecs-002-to-admin-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1402,7 +1402,7 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "role-chain-to-s3-to-bucket", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "role-chain-to-s3-to-bucket", "flag{MISSING}")
 }
 
 module "tool_testing_exclusive_resource_policy" {
@@ -1476,7 +1476,7 @@ module "single_account_cspm_toxic_combo_public_lambda_with_admin" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "public-lambda-with-admin-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "public-lambda-with-admin-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1494,7 +1494,7 @@ module "single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "cspm-ec2-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "cspm-ec2-001-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1511,7 +1511,7 @@ module "cross_account_dev_to_prod_one_hop_simple_role_assumption" {
   dev_account_id  = local.dev_account_id
   prod_account_id = local.prod_account_id
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "dev-to-prod-simple-role-assumption-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "dev-to-prod-simple-role-assumption-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_multi_hop_passrole_lambda_admin" {
@@ -1525,7 +1525,7 @@ module "cross_account_dev_to_prod_multi_hop_passrole_lambda_admin" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "passrole-lambda-admin-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "passrole-lambda-admin-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
@@ -1539,7 +1539,7 @@ module "cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "multi-hop-both-sides-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "multi-hop-both-sides-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
@@ -1553,7 +1553,7 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "lambda-invoke-update-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "lambda-invoke-update-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
@@ -1566,7 +1566,7 @@ module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   dev_account_id  = local.dev_account_id
   prod_account_id = local.prod_account_id
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "root-trust-role-assumption-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "root-trust-role-assumption-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1584,7 +1584,7 @@ module "cross_account_ops_to_prod_one_hop_simple_role_assumption" {
   prod_account_id       = local.prod_account_id
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
-  flag_value            = lookup(var.scenario_flags, "ops-to-prod-simple-role-assumption-to-admin", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "ops-to-prod-simple-role-assumption-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_ops_to_prod_github_oidc_pivot" {
@@ -1600,7 +1600,7 @@ module "cross_account_ops_to_prod_github_oidc_pivot" {
   prod_account_id       = local.prod_account_id
   resource_suffix       = random_string.resource_suffix.result
   github_repo           = var.github_oidc_cross_account_pivot_github_repo
-  flag_value            = lookup(var.scenario_flags, "github-oidc-cross-account-pivot-to-bucket", "flag{MISSING}")
+  flag_value            = lookup(local.effective_flags, "github-oidc-cross-account-pivot-to-bucket", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1616,7 +1616,7 @@ module "ctf_ai_chatbot_to_admin" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ctf-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ctf-001-to-admin", "flag{MISSING}")
 }
 
 module "ctf_ai_chatbot_lambda_pivot" {
@@ -1628,7 +1628,7 @@ module "ctf_ai_chatbot_lambda_pivot" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "ctf-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ctf-002-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1644,7 +1644,7 @@ module "attack_simulation_sysdig_8_minutes_to_admin" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "sysdig-8-minutes-to-admin-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "sysdig-8-minutes-to-admin-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1660,7 +1660,7 @@ module "end_of_life_privesc_iam_passrole_datapipeline_to_admin" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "datapipeline-001-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "datapipeline-001-to-admin", "flag{MISSING}")
 }
 
 module "end_of_life_privesc_iam_passrole_datapipeline_to_bucket" {
@@ -1676,5 +1676,5 @@ module "end_of_life_privesc_iam_passrole_datapipeline_to_bucket" {
   attacker_account_id = local.attacker_account_id
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
-  flag_value          = lookup(var.scenario_flags, "datapipeline-001-to-bucket", "flag{MISSING}")
+  flag_value          = lookup(local.effective_flags, "datapipeline-001-to-bucket", "flag{MISSING}")
 }

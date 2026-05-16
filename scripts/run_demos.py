@@ -122,12 +122,28 @@ def read_scenario_timeouts(scenario_dir: Path) -> tuple[int, int]:
 
 EXIT_USER_ACTION_REQUIRED = 3  # demo needs a human (e.g. browser step) — not a failure
 
+# Env vars that break terraform when inherited from the parent process.
+# OTEL_TRACES_EXPORTER causes terraform ≥1.8 to attempt OTLP tracing setup;
+# if the endpoint is misconfigured it exits non-zero before printing any output,
+# silently breaking `terraform output 2>/dev/null` calls in demo scripts.
+_ENV_BLOCKLIST = {"OTEL_TRACES_EXPORTER", "OTEL_EXPORTER_OTLP_ENDPOINT"}
 
-def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: bool = True) -> tuple[str, str]:
+
+def _clean_env() -> dict:
+    """Return os.environ with blocklisted vars removed."""
+    return {k: v for k, v in os.environ.items() if k not in _ENV_BLOCKLIST}
+
+
+def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: bool = True, terraform_dir: Path = None) -> tuple[str, str]:
     """Run demo_attack.sh for a single scenario, save the transcript, then run cleanup.
 
     cleanup_attack.sh is always run after the demo (even on failure) unless
     cleanup=False, to ensure no demo artifacts are left behind.
+
+    terraform_dir overrides where scripts are executed from. Demo scripts use
+    `cd ../../../../../..` to find terraform state, so they must run from within
+    the tree that contains the actual .terraform state directory. When plabs is
+    not in dev mode, that tree is ~/.plabs/pathfinding-labs/, not the local repo.
 
     Returns (status, slug) where status is one of: "ok", "failed", "skipped".
     Output is buffered and printed atomically after the script finishes
@@ -136,9 +152,22 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
     script_path = entry["path"]
     scenario_dir = entry["scenario_dir"]
     slug = entry["slug"]
+
+    # Remap the cwd to the terraform working tree when it differs from the discovery
+    # root. Demo scripts use `cd ../../../../../..` to reach terraform state, so the
+    # cwd must be within the terraform dir tree. script_path and cleanup_path stay
+    # pointing to the local repo so local edits take effect in both dev and non-dev
+    # mode (in dev mode terraform_dir == REPO_ROOT so nothing changes).
+    if terraform_dir is not None:
+        try:
+            rel = scenario_dir.relative_to(REPO_ROOT)
+            scenario_dir = terraform_dir / rel  # cwd only — scripts stay local
+        except ValueError:
+            pass  # scenario_dir not under REPO_ROOT — use as-is
+
     output_file = output_dir / f"{slug}.txt"
-    cleanup_path = scenario_dir / "cleanup_attack.sh"
-    demo_timeout, cleanup_timeout = read_scenario_timeouts(scenario_dir)
+    cleanup_path = entry["scenario_dir"] / "cleanup_attack.sh"  # local repo
+    demo_timeout, cleanup_timeout = read_scenario_timeouts(entry["scenario_dir"])
 
     lines = [f"  [{slug}] starting..."]
 
@@ -154,6 +183,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
             cwd=str(scenario_dir),
             capture_output=True,
             stdin=subprocess.DEVNULL,
+            env=_clean_env(),
             # Do not set text=True — preserve raw bytes for ANSI codes
             timeout=demo_timeout,
         )
@@ -190,6 +220,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
                 cwd=str(scenario_dir),
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
+                env=_clean_env(),
                 timeout=cleanup_timeout,
             )
             if cleanup_result.returncode != 0:
@@ -207,7 +238,7 @@ def run_demo(entry: dict, output_dir: Path, skip_check: bool = False, cleanup: b
     return status, slug
 
 
-def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_check: bool, cleanup: bool) -> tuple[int, int, int]:
+def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_check: bool, cleanup: bool, terraform_dir: Path = None) -> tuple[int, int, int]:
     """Run demos in parallel batches. Returns (success_count, skipped_count, failure_count)."""
     success = 0
     skipped = 0
@@ -215,7 +246,7 @@ def run_demos_concurrent(targets: list, output_dir: Path, workers: int, skip_che
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(run_demo, entry, output_dir, skip_check, cleanup): entry["slug"]
+            pool.submit(run_demo, entry, output_dir, skip_check, cleanup, terraform_dir): entry["slug"]
             for entry in targets
         }
         for future in concurrent.futures.as_completed(futures):
@@ -265,6 +296,12 @@ def main():
         "--no-cleanup", action="store_true",
         help="Skip running cleanup_attack.sh after each demo",
     )
+    parser.add_argument(
+        "--terraform-dir", metavar="PATH",
+        help="Path to the terraform working directory (where .terraform state lives). "
+             "Defaults to the repo root. Pass ~/.plabs/pathfinding-labs when running "
+             "plabs without dev mode so demo scripts can find terraform outputs.",
+    )
     args = parser.parse_args()
 
     all_demos = find_demo_scripts()
@@ -296,13 +333,17 @@ def main():
         print("No demo scripts to run.", file=sys.stderr)
         sys.exit(1)
 
+    terraform_dir = Path(args.terraform_dir) if args.terraform_dir else None
+    if terraform_dir and terraform_dir != REPO_ROOT:
+        print(f"  Terraform dir: {terraform_dir}")
+
     workers = min(args.workers, len(targets))
     cleanup = not args.no_cleanup
     print(f"Running {len(targets)} demo(s) with {workers} concurrent worker(s) -> {output_dir}")
     if not cleanup:
         print("  Cleanup disabled (--no-cleanup)")
 
-    success, skipped, failure = run_demos_concurrent(targets, output_dir, workers, args.skip_check, cleanup)
+    success, skipped, failure = run_demos_concurrent(targets, output_dir, workers, args.skip_check, cleanup, terraform_dir)
 
     parts = [f"{success} succeeded"]
     if skipped:

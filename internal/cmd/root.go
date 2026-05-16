@@ -32,7 +32,7 @@ All commands are also available for scripting:
   plabs init         - Set up plabs and configure your AWS accounts
   plabs scenarios    - Browse available attack scenarios
   plabs enable       - Enable a specific scenario
-  plabs deploy       - Deploy enabled scenarios to AWS`,
+  plabs apply       - Deploy enabled scenarios to AWS`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	// Run TUI by default when no subcommand is provided

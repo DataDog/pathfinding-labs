@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/fatih/color"
@@ -127,7 +128,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		fmt.Printf("%s Scenario '%s' is enabled but not deployed.\n", yellow("!"), scenario.UniqueID())
 		fmt.Println()
-		fmt.Printf("Deploy it first: %s\n", cyan("plabs deploy"))
+		fmt.Printf("Deploy it first: %s\n", cyan("plabs apply"))
 		return fmt.Errorf("scenario not deployed")
 	}
 
@@ -142,8 +143,19 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	fmt.Println(dim("─────────────────────────────────────────────────────────────"))
 	fmt.Println()
 
+	// Mark demo as active before running so partial/failed runs are still flagged for cleanup.
+	markerPath := scenario.DirPath + "/.demo_active"
+	_ = os.WriteFile(markerPath, []byte{}, 0644)
+
 	demoRunner := demo.NewRunner(paths.TerraformDir)
 	if err := demoRunner.RunDemo(scenario.DirPath); err != nil {
+		fmt.Println()
+		fmt.Println(yellow("════════════════════════════════════════════════════════════"))
+		fmt.Println(yellow("  Demo failed — scenario is marked as demo active."))
+		fmt.Println(yellow("════════════════════════════════════════════════════════════"))
+		fmt.Println()
+		fmt.Printf("Run %s to clean up any artifacts that were created\n", cyan(fmt.Sprintf("plabs cleanup %s", scenario.UniqueID())))
+		fmt.Println()
 		return err
 	}
 

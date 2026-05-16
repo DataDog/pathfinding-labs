@@ -222,7 +222,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	if pendingCount > 0 {
 		fmt.Println()
-		fmt.Printf("Run %s to deploy pending scenarios\n", cyan("plabs deploy"))
+		fmt.Printf("Run %s to deploy pending scenarios\n", cyan("plabs apply"))
 	}
 
 	fmt.Println()

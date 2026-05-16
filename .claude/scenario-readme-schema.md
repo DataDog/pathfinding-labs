@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.7.0`**
+**Current schema version: `4.7.1`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -89,7 +89,7 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
   <- only for privesc self-escalation and one-hop scenarios
 
 * **Pathfinding.cloud ID:** {e.g., iam-002}
-  <- only if pathfinding-cloud-id is present in scenario.yaml
+  <- ONLY for scenarios with a 1:1 mapping to a single pathfinding.cloud path catalog entry (the ID must exist in pathfinding.cloud/data/paths/). Omit for multi-hop, cross-account, attack-simulation, tool-testing, and CSPM toxic-combo labs — these don't map to a single path entry and must not use composite values like "iam-002 + sts-001".
 
 * **Interactive Demo:** Yes
   <- only if interactive_demo: true in scenario.yaml
@@ -261,7 +261,7 @@ plabs apply
 ```
 ```
 
-`{scenario_plabs_id}` is the scenario's unique ID used by the `plabs` CLI (e.g., `apprunner-001-to-admin`, `public-lambda-with-admin-to-admin`). For scenarios with a `pathfinding-cloud-id` in `scenario.yaml`, it is `{pathfinding-cloud-id}-{target}`. Otherwise it is `{name}-{target}`.
+`{scenario_plabs_id}` is the scenario's unique ID used by the `plabs` CLI (e.g., `apprunner-001-to-admin`, `public-lambda-with-admin-to-admin`). For scenarios with a `pathfinding-cloud-id` in `scenario.yaml`, it is `{pathfinding-cloud-id}-{target}`. Otherwise it is `{name}-{target}`. For multi-hop and other labs without `pathfinding-cloud-id`, the `name` field in scenario.yaml must NOT include the target suffix — e.g., `name: "lambda-004-to-iam-002"` with `target: "to-admin"` produces the clean plabs ID `lambda-004-to-iam-002-to-admin`.
 
 #### `### Deploy with plabs tui` -- use the scenario's plabs ID in the navigation instruction:
 

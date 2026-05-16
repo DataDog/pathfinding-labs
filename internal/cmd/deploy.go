@@ -12,6 +12,7 @@ import (
 
 	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
@@ -44,17 +45,33 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Check for enabled scenarios with missing required config before doing any AWS calls
+	// Check for enabled scenarios with missing required environment profiles or config before doing any AWS calls
 	{
 		discovery := newDiscovery(paths.ScenariosPath())
 		allScenarios, discoverErr := discovery.DiscoverAll()
 		if discoverErr == nil {
+			red := color.New(color.FgRed).SprintFunc()
 			enabledVars := cfg.Active().GetEnabledScenarioVars()
-			var configErrors []string
+			var enabledScenarios []*scenarios.Scenario
 			for _, s := range allScenarios {
-				if !enabledVars[s.Terraform.VariableName] {
-					continue
+				if enabledVars[s.Terraform.VariableName] {
+					enabledScenarios = append(enabledScenarios, s)
 				}
+			}
+
+			if envErrors := crossAccountEnvErrors(enabledScenarios, cfg.Active()); len(envErrors) > 0 {
+				fmt.Println()
+				fmt.Println(red("Cannot deploy: some enabled scenarios require additional AWS account profiles:"))
+				fmt.Println()
+				for _, e := range envErrors {
+					fmt.Println(e)
+				}
+				fmt.Println()
+				return fmt.Errorf("missing required AWS account profile for cross-account scenario")
+			}
+
+			var configErrors []string
+			for _, s := range enabledScenarios {
 				for _, cfgKey := range s.Config {
 					if cfgKey.Required {
 						val, _ := cfg.Active().GetScenarioConfig(s.Name, cfgKey.Key)
@@ -67,7 +84,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if len(configErrors) > 0 {
-				red := color.New(color.FgRed).SprintFunc()
 				fmt.Println()
 				fmt.Println(red("Cannot deploy: some enabled scenarios have missing required configuration:"))
 				fmt.Println()

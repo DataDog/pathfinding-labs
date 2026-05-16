@@ -305,7 +305,7 @@ Next steps:
 
 ## Hard rules
 
-- Never invoke `terraform apply`, `plabs deploy`, or any tool that mutates AWS state.
+- Never invoke `terraform apply`, `plabs apply`, or any tool that mutates AWS state.
 - Never overwrite an existing scenario directory. If `modules/scenarios/.../<id>-<technique>/` already exists, abort and ask the user how to proceed.
 - Never use `Write` on `pathfinding-labs/variables.tf`, `main.tf`, or `outputs.tf` — only `Edit` (append).
 - Never put `ssm:GetParameter*`, `s3:GetObject`/`s3:ListBucket` on flag bucket, or `iam:ListUsers` in `permissions.helpful` — the flag-protection filter is non-negotiable.

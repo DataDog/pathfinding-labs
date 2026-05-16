@@ -77,6 +77,8 @@ if [ -z "$READONLY_ACCESS_KEY" ] || [ "$READONLY_ACCESS_KEY" == "null" ]; then
     exit 1
 fi
 
+BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
+
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."
 echo "ReadOnly Key ID: ${READONLY_ACCESS_KEY:0:10}..."
@@ -145,16 +147,18 @@ else
 fi
 echo ""
 
-# [EXPLOIT] Step 6: List existing access keys for target user
+# [OBSERVATION] Step 6: List existing access keys for target user
+# Uses readonly credentials — iam:ListAccessKeys is a helpful (non-required) permission
+# so it is denied on the starting user during demo validation.
 echo -e "${YELLOW}Step 6: Listing existing access keys for target user${NC}"
-use_starting_creds
+use_readonly_creds
 echo "Target user: $TARGET_USER"
 echo ""
 
-show_attack_cmd "Attacker" "aws iam list-access-keys --user-name $TARGET_USER --output json"
+show_cmd "ReadOnly" "aws iam list-access-keys --user-name $TARGET_USER --output json"
 ACCESS_KEYS_JSON=$(aws iam list-access-keys --user-name $TARGET_USER --output json)
 ACCESS_KEYS=$(echo "$ACCESS_KEYS_JSON" | jq -r '.AccessKeyMetadata[].AccessKeyId')
-KEY_COUNT=$(echo "$ACCESS_KEYS" | wc -l | xargs)
+KEY_COUNT=$(echo "$ACCESS_KEYS" | wc -w | xargs)
 
 echo "Found $KEY_COUNT access keys for $TARGET_USER:"
 echo "$ACCESS_KEYS_JSON" | jq -r '.AccessKeyMetadata[] | "  - Key ID: \(.AccessKeyId) (Status: \(.Status), Created: \(.CreateDate))"'
@@ -231,18 +235,11 @@ TARGET_USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "New identity: $TARGET_USER_IDENTITY"
 echo -e "${GREEN}✓ Now using target user credentials${NC}\n"
 
-# [OBSERVATION] Step 10: List buckets to find the exact bucket name
-echo -e "${YELLOW}Step 10: Finding the target bucket${NC}"
-show_cmd "ReadOnly" "aws s3api list-buckets --query \"Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name\" --output text"
-FULL_BUCKET_NAME=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'pl-sensitive-data-iam-003-')].Name" --output text)
-
-if [ -z "$FULL_BUCKET_NAME" ]; then
-    echo -e "${RED}Error: Could not find target bucket${NC}"
-    exit 1
-fi
-
+# [OBSERVATION] Step 10: Identify target bucket
+echo -e "${YELLOW}Step 10: Identifying target bucket${NC}"
+FULL_BUCKET_NAME="$BUCKET_NAME"
 echo "Target bucket: $FULL_BUCKET_NAME"
-echo -e "${GREEN}✓ Found target bucket${NC}\n"
+echo -e "${GREEN}✓ Identified target bucket from scenario configuration${NC}\n"
 
 # [EXPLOIT] Step 11: Verify S3 bucket access
 echo -e "${YELLOW}Step 11: Verifying S3 bucket access${NC}"

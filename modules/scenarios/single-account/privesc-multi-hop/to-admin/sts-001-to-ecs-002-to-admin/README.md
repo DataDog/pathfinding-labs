@@ -9,7 +9,6 @@
 * **Technique:** Assume a role with ECS permissions, then use PassRole combined with ECS Fargate to run a task with an administrative role
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_sts_001_to_ecs_002_to_admin`
 * **Schema Version:** 4.6.0
-* **Pathfinding.cloud ID:** sts-001 + ecs-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
