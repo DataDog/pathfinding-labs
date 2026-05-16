@@ -174,12 +174,12 @@ print(json.dumps(policy))
         _dp_aws_as_admin iam put-user-policy \
             --user-name "$principal_name" \
             --policy-name "$_DP_POLICY_NAME" \
-            --policy-document "$policy_doc" 2>/dev/null
+            --policy-document "$policy_doc"
     elif [ "$principal_type" = "role" ]; then
         _dp_aws_as_admin iam put-role-policy \
             --role-name "$principal_name" \
             --policy-name "$_DP_POLICY_NAME" \
-            --policy-document "$policy_doc" 2>/dev/null
+            --policy-document "$policy_doc"
     else
         echo -e "${_DP_RED}[demo_permissions] Error: Unknown principal_type '$principal_type' for $principal_name${_DP_NC}" >&2
         return 1

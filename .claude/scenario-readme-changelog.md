@@ -4,6 +4,33 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.7.1 — 2026-05-15
+
+Patch: clarified when `Pathfinding.cloud ID` should and should not appear.
+
+**Changes:**
+- **`* **Pathfinding.cloud ID:**`** -- tightened the condition. Field is now explicitly restricted to scenarios with a 1:1 mapping to a single pathfinding.cloud path catalog entry (ID must exist in `pathfinding.cloud/data/paths/`). Multi-hop, cross-account, attack-simulation, tool-testing, and CSPM toxic-combo labs must omit it entirely. Composite values like `"iam-002 + sts-001"` are never valid.
+- **`{scenario_plabs_id}` guidance** -- added rule that for labs without `pathfinding-cloud-id`, the `name` field in scenario.yaml must NOT include the target suffix, so that `UniqueID()` = `{name}-{target}` produces a clean, non-redundant plabs ID.
+
+**Motivation:**
+- The field was being overloaded: set to composite IDs (`"lambda-004 + iam-002"`, `"sts-001 + ecs-002"`) for multi-hop labs that don't correspond to any single path catalog entry. This produced URL slugs with spaces and `+` signs, and linked to non-existent path pages.
+- Separates two concerns: (1) does this lab implement a specific pathfinding.cloud path? (2) what is the plabs CLI identity for this lab?
+
+**Migration rules:**
+- PATCH -- no existing single-hop READMEs change; only multi-hop/cross-account READMEs that incorrectly carry a composite `Pathfinding.cloud ID` need the line removed.
+- Two specific READMEs were fixed as part of this change: `lambda-004-to-iam-002-to-admin` and `sts-001-to-ecs-002-to-admin`.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    Remove the "* **Pathfinding.cloud ID:**" line from any README whose scenario is
+    multi-hop, cross-account, attack-simulation, tool-testing, or cspm-toxic-combo.
+    Do not add a composite value. Leave the line absent.
+```
+
+---
+
 ## 4.7.0 — 2026-05-13
 
 Minor: added optional `* **Required Preconditions:**` metadata field.
