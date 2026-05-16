@@ -40,12 +40,19 @@ func ShouldCheck(version string) bool {
 }
 
 // GetInstallMethod returns the effective install method. Brew installs are identified
-// by the executable path containing "/Cellar/plabs/", which covers all Homebrew
+// by the real executable path containing "/Cellar/plabs/", which covers all Homebrew
 // prefixes (/usr/local, /opt/homebrew, /home/linuxbrew/.linuxbrew).
+// os.Executable returns the symlink path (e.g. /opt/homebrew/bin/plabs), so we
+// resolve symlinks first to reach the actual Cellar path.
 func GetInstallMethod() string {
 	exe, err := os.Executable()
-	if err == nil && strings.Contains(exe, "/Cellar/plabs/") {
-		return "brew"
+	if err == nil {
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
+		if strings.Contains(exe, "/Cellar/plabs/") {
+			return "brew"
+		}
 	}
 	return InstallMethod
 }
