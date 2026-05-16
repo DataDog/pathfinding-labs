@@ -496,9 +496,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.isCleanup {
 				// Cleanup completed: remove the demo-active marker (best effort)
 				_ = os.Remove(markerPath)
-			} else if msg.err == nil {
-				// Demo completed successfully: create the marker so the TUI shows the
-				// "demos active" warning for scripts that don't do their own touch.
+			} else {
+				// Demo attempted: mark as active regardless of success/failure, since
+				// partial runs can still create resources that need cleanup.
 				_ = os.WriteFile(markerPath, []byte{}, 0644)
 			}
 		}

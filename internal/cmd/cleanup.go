@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/fatih/color"
@@ -119,6 +120,9 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	if err := demoRunner.RunCleanup(scenario.DirPath); err != nil {
 		return err
 	}
+
+	// Remove the demo-active marker now that cleanup has completed successfully.
+	_ = os.Remove(scenario.DirPath + "/.demo_active")
 
 	fmt.Println()
 	fmt.Println(green("════════════════════════════════════════════════════════════"))
