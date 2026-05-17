@@ -117,7 +117,7 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	demoRunner := demo.NewRunner(paths.TerraformDir)
-	if err := demoRunner.RunCleanup(scenario.DirPath); err != nil {
+	if err := demoRunner.RunCleanup(scenario.DirPath, demo.RunOptions{}); err != nil {
 		return err
 	}
 

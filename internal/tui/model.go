@@ -443,7 +443,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.overlay.Show(OverlayError, "AWS Credentials", "No AWS profile configured.\n\nRun 'plabs init' to configure.")
 			} else {
 				m.overlay.Show(OverlayError, "AWS Credentials",
-					fmt.Sprintf("AWS SSO session expired or invalid.\n\nProfile: %s\n\nRun this command to authenticate:\n\n  aws sso login --profile %s\n\nThen try again.", msg.profile, msg.profile))
+					fmt.Sprintf("Profile '%s' needs to be re-authenticated before you can proceed.\n\nRe-authenticate using your usual method (e.g. aws sso login, aws-vault, aws-sso-util), then try again.", msg.profile))
 			}
 			m.validatingForAction = ""
 			m.validatingScenarioID = ""

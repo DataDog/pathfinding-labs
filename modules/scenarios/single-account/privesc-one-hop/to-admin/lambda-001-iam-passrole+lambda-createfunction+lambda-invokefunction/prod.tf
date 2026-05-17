@@ -110,8 +110,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "sts:GetCallerIdentity",
           "iam:GetRole",
           "iam:ListRoles",
-          "lambda:GetFunction",
-          "lambda:DeleteFunction"
+          "lambda:GetFunction"
         ]
         Resource = "*"
       }

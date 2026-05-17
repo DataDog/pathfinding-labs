@@ -169,7 +169,7 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
 
@@ -191,7 +191,7 @@ module "single_account_privesc_{path_type}_to_{target}_{scenario_name}" {
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
 
@@ -221,7 +221,7 @@ module "cross_account_dev_to_prod_{path_type}_{scenario_name}" {
   prod_account_id = var.prod_account_id
   environment     = "cross-account"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "{scenario-unique-id}", "flag{MISSING}")
 }
 ```
 
@@ -388,7 +388,7 @@ flags:
   {scenario-unique-id}: "flag{<readable_per_scenario_default>}"
 ```
 
-Where `{scenario-unique-id}` matches the ID used by the module's `lookup(var.scenario_flags, "<id>", ...)` call and by the Terraform flag resource.
+Where `{scenario-unique-id}` matches the ID used by the module's `lookup(local.effective_flags, "<id>", ...)` call and by the Terraform flag resource.
 
 #### Example
 
@@ -407,6 +407,37 @@ Use a snake_case identifier derived from the scenario's pathfinding.cloud ID (or
 #### Placement
 - Entries must be alphabetically sorted by scenario unique ID.
 - Do NOT modify the file's header comment block; it's the schema guide for vendors.
+
+### 4c. scenario_flag_defaults in variables.tf
+
+Location: `/variables.tf` — the `scenario_flag_defaults` variable (hardcoded map, **not** `scenario_flags`)
+
+**CRITICAL**: This is the Terraform-native default used when plabs has not yet populated `scenario_flags` in `terraform.tfvars`. Every non-tool-testing scenario MUST have an entry here in addition to `flags.default.yaml`. Without this, users who run `terraform apply` without first running `plabs init` (or without plabs at all) will get `flag{MISSING}`.
+
+The full flag pipeline is:
+- `scenario_flag_defaults` (variables.tf) — hardcoded defaults, ships with the repo, always present
+- `scenario_flags` (terraform.tfvars) — populated by plabs from `flags.default.yaml`; may be absent if plabs hasn't run
+- `local.effective_flags = merge(scenario_flag_defaults, scenario_flags)` — `scenario_flags` wins on conflict
+
+**Both files must be updated for every new scenario.** Omitting `scenario_flag_defaults` means any user who hasn't run plabs gets `flag{MISSING}`.
+
+#### Format
+
+```hcl
+variable "scenario_flag_defaults" {
+  # ...
+  default = {
+    # ... existing entries, alphabetically sorted
+    "{scenario-unique-id}" = "flag{<same_value_as_flags.default.yaml>}"
+  }
+}
+```
+
+#### Placement
+- Find the `scenario_flag_defaults` variable in `variables.tf` (search for `variable "scenario_flag_defaults"`)
+- Add the new entry in alphabetical order by scenario unique ID within the `default = { ... }` map
+- Use the **exact same flag value** as the corresponding `flags.default.yaml` entry
+- Maintain the column alignment of surrounding entries
 
 ### 5. README.md
 
@@ -658,8 +689,8 @@ Before completing, verify:
 13. ✅ README scenario count is incremented
 14. ✅ README table entry is in the correct section
 15. ✅ All file edits maintain consistent formatting
-16. ✅ **Non-tool-testing scenarios only**: module block in root main.tf includes `flag_value = lookup(var.scenario_flags, "{scenario-unique-id}", "flag{MISSING}")`; `flags.default.yaml` in the repo root has a new entry for this scenario; entries remain alphabetically sorted
-17. ✅ **Tool-testing scenarios only**: module block does NOT include `flag_value`; `flags.default.yaml` does NOT have an entry for this scenario
+16. ✅ **Non-tool-testing scenarios only**: module block in root main.tf includes `flag_value = lookup(local.effective_flags, "{scenario-unique-id}", "flag{MISSING}")`; `flags.default.yaml` in the repo root has a new entry for this scenario; `scenario_flag_defaults` map in `variables.tf` has a matching entry with the same flag value; both files are alphabetically sorted
+17. ✅ **Tool-testing scenarios only**: module block does NOT include `flag_value`; `flags.default.yaml` does NOT have an entry for this scenario; `scenario_flag_defaults` does NOT have an entry for this scenario
 
 ## Special Considerations
 

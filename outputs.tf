@@ -1498,6 +1498,117 @@ output "single_account_privesc_one_hop_to_bucket_ssm_001_ssm_startsession" {
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "All outputs for lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].target_role_name
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].target_bucket_name
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  description = "All outputs for lambda-002-iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].target_role_name
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].target_bucket_arn
+    dynamodb_table_name             = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].dynamodb_table_name
+    dynamodb_stream_arn             = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].dynamodb_stream_arn
+    exfil_table_name                = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].exfil_table_name
+    flag_s3_key                     = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].flag_s3_key
+    flag_s3_uri                     = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].flag_s3_uri
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode" {
+  description = "All outputs for lambda-003-lambda-updatefunctioncode one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].target_role_name
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].target_lambda_function_arn
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].target_bucket_name
+    flag_s3_key                     = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].flag_s3_key
+    flag_s3_uri                     = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].flag_s3_uri
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction" {
+  description = "All outputs for lambda-004-lambda-updatefunctioncode+lambda-invokefunction one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].target_role_name
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].target_lambda_function_arn
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].target_bucket_name
+    flag_s3_key                     = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].flag_s3_key
+    flag_s3_uri                     = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].flag_s3_uri
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission" {
+  description = "All outputs for lambda-005-lambda-updatefunctioncode+lambda-addpermission one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].target_role_name
+    target_lambda_function_name     = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].target_lambda_function_name
+    target_lambda_function_arn      = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].target_lambda_function_arn
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].target_bucket_name
+    flag_s3_key                     = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].flag_s3_key
+    flag_s3_uri                     = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].flag_s3_uri
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  description = "All outputs for lambda-006-iam-passrole+lambda-createfunction+lambda-addpermission one-hop to-bucket scenario"
+  value = var.enable_single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_role_name
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].target_bucket_arn
+    flag_s3_key                     = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].flag_s3_key
+    flag_s3_uri                     = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].flag_s3_uri
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint" {
   description = "All outputs for glue-001 iam-passrole+glue-createdevendpoint one-hop to-bucket scenario"
   value = var.enable_single_account_privesc_one_hop_to_bucket_glue_001_iam_passrole_glue_createdevendpoint ? {
