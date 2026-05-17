@@ -40,9 +40,11 @@ Examples:
 }
 
 var listDemos bool
+var demoRestrictPermissions bool
 
 func init() {
 	demoCmd.Flags().BoolVar(&listDemos, "list", false, "List available demos")
+	demoCmd.Flags().BoolVar(&demoRestrictPermissions, "restrict-permissions", false, "Restrict helpful permissions during demo (validation use only — proves attack works without helper permissions)")
 }
 
 func runDemo(cmd *cobra.Command, args []string) error {
@@ -148,7 +150,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	_ = os.WriteFile(markerPath, []byte{}, 0644)
 
 	demoRunner := demo.NewRunner(paths.TerraformDir)
-	if err := demoRunner.RunDemo(scenario.DirPath); err != nil {
+	if err := demoRunner.RunDemo(scenario.DirPath, demo.RunOptions{RestrictPermissions: demoRestrictPermissions}); err != nil {
 		fmt.Println()
 		fmt.Println(yellow("════════════════════════════════════════════════════════════"))
 		fmt.Println(yellow("  Demo failed — scenario is marked as demo active."))

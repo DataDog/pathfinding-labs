@@ -22,7 +22,7 @@
 #   restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 #
 # Environment variables:
-#   PL_SKIP_RESTRICTION=1  - Skip restriction entirely (for manual/interactive use)
+#   PL_RESTRICT_PERMISSIONS=1  - Apply helpful permission restrictions (for validation use only)
 
 # Guard against double-sourcing
 if [ -n "$_DEMO_PERMISSIONS_LOADED" ]; then
@@ -211,9 +211,8 @@ restrict_helpful_permissions() {
     local scenario_yaml="$1"
     _DP_SCENARIO_YAML_PATH="$scenario_yaml"
 
-    # Skip if restriction is disabled
-    if [ "${PL_SKIP_RESTRICTION:-0}" = "1" ]; then
-        echo -e "${_DP_YELLOW}[demo_permissions] Skipping restriction (PL_SKIP_RESTRICTION=1)${_DP_NC}"
+    # Skip unless restriction is explicitly requested
+    if [ "${PL_RESTRICT_PERMISSIONS:-0}" != "1" ]; then
         return 0
     fi
 
@@ -270,8 +269,8 @@ restrict_helpful_permissions() {
 restore_helpful_permissions() {
     local scenario_yaml="${1:-$_DP_SCENARIO_YAML_PATH}"
 
-    # Skip if restriction was disabled
-    if [ "${PL_SKIP_RESTRICTION:-0}" = "1" ]; then
+    # Skip unless restriction was requested
+    if [ "${PL_RESTRICT_PERMISSIONS:-0}" != "1" ]; then
         return 0
     fi
 
@@ -340,8 +339,8 @@ setup_demo_restriction_trap() {
     local scenario_yaml="$1"
     _DP_SCENARIO_YAML_PATH="$scenario_yaml"
 
-    # Skip if restriction is disabled
-    if [ "${PL_SKIP_RESTRICTION:-0}" = "1" ]; then
+    # Skip unless restriction was requested
+    if [ "${PL_RESTRICT_PERMISSIONS:-0}" != "1" ]; then
         return 0
     fi
 
