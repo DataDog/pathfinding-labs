@@ -9,8 +9,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
+	"github.com/DataDog/pathfinding-labs/internal/terraform"
 	"github.com/DataDog/pathfinding-labs/internal/updater"
 )
 
@@ -106,6 +106,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		fmt.Println(green("✓ Updated successfully!"))
 		fmt.Printf("  Previous version: %s\n", beforeCommit)
 		fmt.Printf("  Current version:  %s\n", afterCommit)
+
+		// New modules may have been added — re-initialize so the next apply/plan works.
+		if err := runTerraformInitAfterUpdate(paths, green); err != nil {
+			fmt.Printf(yellow("Warning: %v\n"), err)
+			fmt.Println("You may need to run 'terraform init' manually before deploying.")
+		}
 	} else {
 		fmt.Println(green("✓ Already up to date"))
 		fmt.Printf("  Current version: %s\n", afterCommit)
@@ -187,12 +193,28 @@ func runLocalSync(paths *repo.Paths, localDir string, green, yellow, cyan func(a
 	fmt.Println()
 	fmt.Println(green("✓ Synced successfully from local directory"))
 
-	// Check if we need to run terraform init
-	cfg, _ := config.Load()
-	if cfg != nil {
-		fmt.Println()
-		fmt.Println(yellow("Note: You may need to run 'plabs apply' or 'terraform init' to pick up module changes"))
+	// New modules may have been added — re-initialize so the next apply/plan works.
+	if err := runTerraformInitAfterUpdate(paths, green); err != nil {
+		fmt.Printf(yellow("Warning: %v\n"), err)
+		fmt.Println("You may need to run 'terraform init' manually before deploying.")
 	}
 
+	return nil
+}
+
+// runTerraformInitAfterUpdate runs terraform init if the workspace is already initialized.
+// Called after a successful update to pick up newly added modules.
+func runTerraformInitAfterUpdate(paths *repo.Paths, green func(a ...interface{}) string) error {
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	if !runner.IsInitialized() {
+		// Not initialized at all yet — init will be run on the next apply/plan.
+		return nil
+	}
+	fmt.Println()
+	fmt.Println("Running terraform init to install new modules...")
+	if err := runner.Init(); err != nil {
+		return fmt.Errorf("terraform init failed: %w", err)
+	}
+	fmt.Println(green("✓ Terraform modules initialized"))
 	return nil
 }

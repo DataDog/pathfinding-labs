@@ -188,14 +188,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s Terraform directory: %s\n", dim("->"), paths.TerraformDir)
 	fmt.Println()
 
-	// Ensure terraform is initialized
-	if !runner.IsInitialized() {
-		fmt.Println("Running terraform init...")
-		if err := runner.Init(); err != nil {
-			return fmt.Errorf("terraform init failed: %w", err)
-		}
-		fmt.Println()
+	// Always run terraform init — idempotent and fast when nothing has changed,
+	// but required when new modules have been added to main.tf since last init.
+	fmt.Println("Running terraform init...")
+	if err := runner.Init(); err != nil {
+		return fmt.Errorf("terraform init failed: %w", err)
 	}
+	fmt.Println()
 
 	// Show what will be deployed
 	fmt.Println("Running terraform plan...")
