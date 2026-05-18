@@ -125,6 +125,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -221,6 +222,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Sending SSM command to extract instance role credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
@@ -325,6 +327,7 @@ export AWS_ACCESS_KEY_ID="$EXTRACTED_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"

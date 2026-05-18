@@ -146,6 +146,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_user_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -378,6 +379,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     export AWS_SECRET_ACCESS_KEY=$STOLEN_SECRET_KEY
     export AWS_SESSION_TOKEN=$STOLEN_SESSION_TOKEN
     export AWS_REGION=$AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 
     # Verify identity
     echo "Verifying new identity..."

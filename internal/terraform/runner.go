@@ -44,7 +44,7 @@ func (r *Runner) ensureTerraform() error {
 		return nil
 	}
 
-	path, err := r.installer.EnsureInstalled()
+	path, _, err := r.installer.EnsureInstalled()
 	if err != nil {
 		return err
 	}

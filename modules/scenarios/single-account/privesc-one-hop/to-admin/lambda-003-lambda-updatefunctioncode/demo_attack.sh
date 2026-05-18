@@ -116,6 +116,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -294,6 +295,7 @@ echo ""
 echo -e "${YELLOW}Step 10: Waiting for Lambda code update to reach Successful state...${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 MAX_WAIT=60
 WAITED=0
 while [ "$WAITED" -lt "$MAX_WAIT" ]; do

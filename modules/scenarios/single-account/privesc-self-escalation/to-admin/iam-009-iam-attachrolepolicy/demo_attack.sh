@@ -113,6 +113,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
@@ -169,6 +170,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Checking if AdministratorAccess is now attached to the starting role..."
 show_cmd "ReadOnly" "aws iam list-attached-role-policies --role-name \"$STARTING_ROLE\" --query 'AttachedPolicies[*].PolicyArn' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-role-policies \

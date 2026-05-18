@@ -133,6 +133,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -307,6 +308,7 @@ export AWS_ACCESS_KEY_ID="$EXTRACTED_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -331,6 +333,7 @@ EXTRACTED_SESSION_TOKEN="$AWS_SESSION_TOKEN"
 # [OBSERVATION] Confirm starting user still cannot access bucket
 use_starting_creds
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 STARTING_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -353,6 +356,7 @@ export AWS_ACCESS_KEY_ID="$EXTRACTED_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_ACCESS_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 NEW_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)

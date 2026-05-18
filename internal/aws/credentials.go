@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -68,14 +67,15 @@ func ValidateProfile(profile string) ValidationResult {
 	return result
 }
 
-// ValidateProfiles validates multiple AWS profiles and returns results for each.
-// It validates profiles one at a time with a small delay to allow SSO browser auth to complete.
-// Empty profile strings are skipped — callers use GetUniqueProfiles to deduplicate before calling.
+// ValidateProfiles validates AWS profiles strictly one at a time, stopping at the
+// first failure. This is intentional: profiles that share the same SSO service will
+// all gain valid tokens once the user authenticates the first failing profile, so
+// there is no point triggering additional auth flows for the remaining profiles.
+// Empty profile strings are skipped — callers use GetUniqueProfiles to deduplicate.
 func ValidateProfiles(profiles []string) ([]ValidationResult, error) {
 	var results []ValidationResult
-	var invalidProfiles []string
 
-	for i, profile := range profiles {
+	for _, profile := range profiles {
 		if profile == "" {
 			continue
 		}
@@ -84,17 +84,8 @@ func ValidateProfiles(profiles []string) ([]ValidationResult, error) {
 		results = append(results, result)
 
 		if !result.Valid {
-			invalidProfiles = append(invalidProfiles, profile)
+			return results, fmt.Errorf("invalid credentials for profile %q", profile)
 		}
-
-		// Small delay between profile checks to allow SSO auth to settle
-		if i < len(profiles)-1 && result.Valid {
-			time.Sleep(500 * time.Millisecond)
-		}
-	}
-
-	if len(invalidProfiles) > 0 {
-		return results, fmt.Errorf("invalid credentials for profiles: %s", strings.Join(invalidProfiles, ", "))
 	}
 
 	return results, nil

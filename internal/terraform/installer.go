@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,8 +14,9 @@ import (
 )
 
 const (
-	// TerraformVersion is the version to download
-	TerraformVersion = "1.7.0"
+	// TerraformVersion is the version plabs downloads and manages.
+	// Bump this when cutting a new plabs release to pick up the latest Terraform.
+	TerraformVersion = "1.15.3"
 	// TerraformBaseURL is the base URL for downloading terraform
 	TerraformBaseURL = "https://releases.hashicorp.com/terraform"
 )
@@ -29,11 +31,10 @@ func NewInstaller(binDir string) *Installer {
 	return &Installer{binDir: binDir}
 }
 
-// GetTerraformPath returns the path to the terraform binary.
-// It prefers the plabs-managed binary in binDir so plabs is isolated from
-// whatever system terraform (e.g. a broken tfenv wrapper) is in PATH.
+// GetTerraformPath returns the path to the plabs-managed terraform binary.
+// plabs always uses its own binary to avoid interference from system terraform
+// wrappers (e.g. tfenv) that may not be configured on the user's machine.
 func (i *Installer) GetTerraformPath() (string, error) {
-	// Prefer the plabs-managed binary — isolates plabs from system terraform state
 	plabsTf := filepath.Join(i.binDir, "terraform")
 	if runtime.GOOS == "windows" {
 		plabsTf += ".exe"
@@ -43,24 +44,66 @@ func (i *Installer) GetTerraformPath() (string, error) {
 		return plabsTf, nil
 	}
 
-	// Fall back to system terraform in PATH
-	if path, err := exec.LookPath("terraform"); err == nil {
-		return path, nil
-	}
-
-	return "", fmt.Errorf("terraform not found")
+	return "", fmt.Errorf("terraform not found; run 'plabs init' to install it")
 }
 
-// EnsureInstalled makes sure terraform is available, downloading if necessary
-func (i *Installer) EnsureInstalled() (string, error) {
-	// Try to find existing terraform
+// InstallResult describes what EnsureInstalled did.
+type InstallResult int
+
+const (
+	InstallResultAlreadyCurrent InstallResult = iota
+	InstallResultUpdated
+	InstallResultFreshInstall
+)
+
+// EnsureInstalled makes sure the plabs-managed terraform binary is available and
+// matches TerraformVersion, downloading it if missing or outdated.
+// It never prints to stdout so it is safe to call from a TUI goroutine.
+// The InstallResult return value lets callers surface status to the user.
+func (i *Installer) EnsureInstalled() (string, InstallResult, error) {
 	if path, err := i.GetTerraformPath(); err == nil {
-		return path, nil
+		if i.isCorrectVersion(path) {
+			return path, InstallResultAlreadyCurrent, nil
+		}
+		path, err = i.Download()
+		return path, InstallResultUpdated, err
 	}
 
-	// Download terraform
-	fmt.Println("Terraform not found. Downloading...")
-	return i.Download()
+	path, err := i.Download()
+	return path, InstallResultFreshInstall, err
+}
+
+// isCorrectVersion returns true when the binary at path reports TerraformVersion.
+func (i *Installer) isCorrectVersion(path string) bool {
+	return i.installedVersion(path) == TerraformVersion
+}
+
+// installedVersion returns the short version string (e.g. "1.15.3") from the
+// binary at path, or "" if it cannot be determined.
+func (i *Installer) installedVersion(path string) string {
+	cmd := exec.Command(path, "version", "-json")
+	out, err := cmd.Output()
+	if err != nil {
+		// Fall back to plain version output
+		cmd = exec.Command(path, "version")
+		out, err = cmd.Output()
+		if err != nil {
+			return ""
+		}
+		// First line looks like "Terraform v1.15.3"
+		line := strings.SplitN(string(out), "\n", 2)[0]
+		line = strings.TrimPrefix(strings.TrimSpace(line), "Terraform v")
+		return strings.TrimSpace(line)
+	}
+
+	// JSON output: {"terraform_version":"1.15.3",...}
+	var result struct {
+		Version string `json:"terraform_version"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return ""
+	}
+	return result.Version
 }
 
 // Download downloads and installs terraform to the bin directory
@@ -85,8 +128,6 @@ func (i *Installer) Download() (string, error) {
 	// Construct download URL
 	filename := fmt.Sprintf("terraform_%s_%s_%s.zip", TerraformVersion, goos, arch)
 	url := fmt.Sprintf("%s/%s/%s", TerraformBaseURL, TerraformVersion, filename)
-
-	fmt.Printf("Downloading terraform %s from %s\n", TerraformVersion, url)
 
 	// Download the zip file
 	resp, err := http.Get(url)
@@ -127,7 +168,6 @@ func (i *Installer) Download() (string, error) {
 		return "", fmt.Errorf("failed to make terraform executable: %w", err)
 	}
 
-	fmt.Printf("Terraform installed to %s\n", tfPath)
 	return tfPath, nil
 }
 

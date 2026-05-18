@@ -114,6 +114,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -359,6 +360,7 @@ else
     export AWS_SECRET_ACCESS_KEY=$(echo $TEMP_CREDS | jq -r '.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo $TEMP_CREDS | jq -r '.SessionToken')
     export AWS_REGION=$AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 
     echo -e "${GREEN}✓ Simulated credential extraction from IMDS${NC}\n"
 

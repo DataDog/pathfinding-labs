@@ -200,6 +200,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	fmt.Println("Running terraform plan...")
 	fmt.Println()
 	if err := runner.Plan(); err != nil {
+		printTerraformAuthHint(cfg)
 		return fmt.Errorf("terraform plan failed: %w", err)
 	}
 
@@ -227,6 +228,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	if err := runner.Apply(true); err != nil {
+		printTerraformAuthHint(cfg)
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
 

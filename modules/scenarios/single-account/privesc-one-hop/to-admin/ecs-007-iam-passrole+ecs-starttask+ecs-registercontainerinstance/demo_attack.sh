@@ -268,6 +268,7 @@ echo -e "${YELLOW}Step 2: Setting up SSM access to EC2 (simulating RCE)${NC}"
 echo -e "${DIM}(In the real world, the attacker has shell access via an application vulnerability)${NC}"
 use_admin_creds
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo -e "${GREEN}✓ SSM access configured (RCE simulation)${NC}\n"
 
 # Step 2b: Verify SSM agent is online before sending commands

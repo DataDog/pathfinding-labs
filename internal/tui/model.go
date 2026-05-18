@@ -109,6 +109,9 @@ type Model struct {
 
 	// Transient status bar message shown after clipboard copy
 	copyToast string
+
+	// Transient status bar message for terraform install/update progress
+	tfInstallStatus string
 }
 
 // Message types for async operations
@@ -136,6 +139,21 @@ type cmdOutputMsg struct {
 type cmdDoneMsg struct {
 	err error
 }
+
+// credRecheckMsg is sent after an async credential recheck triggered by a
+// failed terraform operation. expired contains profile names that failed.
+type credRecheckMsg struct {
+	expired []string
+}
+
+// tfInstallMsg is sent when the background terraform install/update check completes.
+type tfInstallMsg struct {
+	result terraform.InstallResult
+	err    error
+}
+
+// clearTfInstallStatusMsg clears the terraform install status from the status bar.
+type clearTfInstallStatusMsg struct{}
 
 type errMsg struct {
 	err error
@@ -234,8 +252,20 @@ func NewModel(paths *repo.Paths, version string, updateNotice string) *Model {
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.EnterAltScreen,
+		m.ensureTerraformCmd(),
 		m.loadScenarios,
 	)
+}
+
+// ensureTerraformCmd checks and installs/updates the plabs-managed terraform
+// binary in the background so the TUI can show progress in the status bar
+// rather than printing to stdout (which corrupts the alt-screen layout).
+func (m *Model) ensureTerraformCmd() tea.Cmd {
+	return func() tea.Msg {
+		installer := terraform.NewInstaller(m.paths.BinPath)
+		_, result, err := installer.EnsureInstalled()
+		return tfInstallMsg{result: result, err: err}
+	}
 }
 
 // loadScenarios loads scenarios from the filesystem
@@ -352,14 +382,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Load deployed states for environments
 		if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 			deployed := m.tfRunner.GetDeployedModules()
-			// Attacker module has no resources in state (it's a pass-through),
-			// so treat it as deployed when enabled and terraform is initialized
-			attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 			m.environment.SetDeploymentStatus(
 				deployed["prod_environment"],
 				deployed["dev_environment"],
 				deployed["ops_environment"],
-				attackerDeployed,
+				deployed["attacker_environment"],
 			)
 		}
 
@@ -483,12 +510,32 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cmdWaitDone = nil
 		m.overlay.SetComplete()
 		if msg.err != nil {
-			m.overlay.AppendContent(fmt.Sprintf("\n[Error: %v]", msg.err))
+			// Try to surface a useful auth error from what was captured in the overlay.
+			// If nothing is found (terraform's error output may not have been piped),
+			// kick off an async credential recheck — the result will append a hint to
+			// the overlay while it is still open waiting for the user to press Enter.
+			authMsg := m.formatTerraformAuthError(m.overlay.Content())
+			if authMsg != "" {
+				m.overlay.AppendContent("\n" + authMsg)
+			} else {
+				m.overlay.AppendContent(fmt.Sprintf("\n[Error: %v]", msg.err))
+			}
+			m.overlay.ScrollToBottom()
+			return m, tea.Batch(m.loadScenarios, m.recheckCredentials())
 		}
 		// Ensure the done message is visible
 		m.overlay.ScrollToBottom()
 		// Reload scenarios to refresh deployment state
 		return m, m.loadScenarios
+
+	case credRecheckMsg:
+		if len(msg.expired) > 0 && m.overlay.IsVisible() {
+			for _, p := range msg.expired {
+				m.overlay.AppendContent(fmt.Sprintf("\nAuthentication failed for %s. Please re-authenticate and retry.", p))
+			}
+			m.overlay.ScrollToBottom()
+		}
+		return m, nil
 
 	case interactiveDemoDoneMsg:
 		if msg.scenarioDir != "" {
@@ -513,6 +560,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clearCopyToastMsg:
 		m.copyToast = ""
+		return m, nil
+
+	case tfInstallMsg:
+		if msg.err != nil {
+			m.tfInstallStatus = "Terraform install failed"
+		} else if msg.result == terraform.InstallResultFreshInstall {
+			m.tfInstallStatus = fmt.Sprintf("Terraform v%s installed", terraform.TerraformVersion)
+		} else if msg.result == terraform.InstallResultUpdated {
+			m.tfInstallStatus = fmt.Sprintf("Terraform updated to v%s", terraform.TerraformVersion)
+		} else {
+			// Already current — no message needed
+			return m, nil
+		}
+		return m, tea.Tick(4*time.Second, func(_ time.Time) tea.Msg {
+			return clearTfInstallStatusMsg{}
+		})
+
+	case clearTfInstallStatusMsg:
+		m.tfInstallStatus = ""
 		return m, nil
 
 	case errMsg:
@@ -2227,6 +2293,17 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 // so credentials never need to be written to terraform.tfvars.
 func (m *Model) buildTerraformEnv() []string {
 	env := terraform.CleanEnv()
+
+	// Prepend the plabs bin dir to PATH so all bash invocations (terraform apply,
+	// plan, destroy) resolve to the plabs-managed binary, not whatever terraform
+	// the system has installed (e.g. a tfenv wrapper).
+	for i, e := range env {
+		if strings.HasPrefix(e, "PATH=") {
+			env[i] = "PATH=" + m.paths.BinPath + ":" + strings.TrimPrefix(e, "PATH=")
+			break
+		}
+	}
+
 	if m.config != nil {
 		env = append(env, m.config.Active().GetAttackerTFVarEnv()...)
 	}
@@ -2297,6 +2374,81 @@ func (m *Model) readNextLine() tea.Msg {
 			return cmdOutputMsg{line: ""}
 		}
 	}
+}
+
+// recheckCredentials validates all configured AWS profiles asynchronously.
+// It is kicked off when a terraform operation fails so that the overlay (still
+// open, waiting for the user to press Enter) can surface a clear auth hint even
+// when terraform's error output wasn't captured into the overlay pipe.
+func (m *Model) recheckCredentials() tea.Cmd {
+	return func() tea.Msg {
+		if m.config == nil {
+			return credRecheckMsg{}
+		}
+		ws := m.config.Active()
+
+		// During destroy, plabs switches attacker to the setup profile — check that one.
+		attackerProfile := ws.AWS.Attacker.Profile
+		if ws.AWS.Attacker.Mode == "iam-user" {
+			if ws.AWS.Attacker.SetupProfile != "" {
+				attackerProfile = ws.AWS.Attacker.SetupProfile
+			} else {
+				attackerProfile = ""
+			}
+		}
+
+		profiles := aws.GetUniqueProfiles(
+			ws.AWS.Prod.Profile,
+			ws.AWS.Dev.Profile,
+			ws.AWS.Ops.Profile,
+			attackerProfile,
+		)
+
+		var expired []string
+		for _, p := range profiles {
+			if p == "" {
+				continue
+			}
+			result := aws.ValidateProfile(p)
+			if !result.Valid {
+				expired = append(expired, p)
+			}
+		}
+		return credRecheckMsg{expired: expired}
+	}
+}
+
+// formatTerraformAuthError scans terraform output for credential failures and
+// returns a targeted, actionable message. Returns "" when no auth error is found.
+func (m *Model) formatTerraformAuthError(output string) string {
+	errors := terraform.ParseAuthErrors(output)
+	if len(errors) == 0 {
+		return ""
+	}
+
+	profileForAlias := func(alias string) string {
+		if m.config == nil {
+			return ""
+		}
+		ws := m.config.Active()
+		switch alias {
+		case "prod":
+			return ws.AWS.Prod.Profile
+		case "dev":
+			return ws.AWS.Dev.Profile
+		case "ops", "operations":
+			return ws.AWS.Ops.Profile
+		case "attacker":
+			// For destroy, plabs switches to the setup profile.
+			if ws.AWS.Attacker.SetupProfile != "" {
+				return ws.AWS.Attacker.SetupProfile
+			}
+			return ws.AWS.Attacker.Profile
+		}
+		return ""
+	}
+
+	return terraform.FormatAuthErrorMessage(errors, profileForAlias)
 }
 
 func (m *Model) updateLayout() {
@@ -2467,11 +2619,14 @@ func (m *Model) renderStatusBar() string {
 
 	demoActiveStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg)
 
-	// Build left side - copy toast when active, otherwise status counts
+	// Build left side: priority order — copy toast, tf install status, then normal counts
 	var leftParts []string
 	if m.copyToast != "" {
 		toastStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Background(statusBg).Bold(true)
 		leftParts = append(leftParts, toastStyle.Render(m.copyToast))
+	} else if m.tfInstallStatus != "" {
+		installStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Background(statusBg).Bold(true)
+		leftParts = append(leftParts, installStyle.Render(m.tfInstallStatus))
 	} else {
 		leftParts = append(leftParts, enabledStyle.Render(fmt.Sprintf("%d enabled", enabledCount)))
 		leftParts = append(leftParts, separatorStyle.Render(" . "))

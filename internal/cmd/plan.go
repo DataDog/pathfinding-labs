@@ -115,6 +115,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	// Run plan
 	if err := runner.Plan(); err != nil {
+		printTerraformAuthHint(cfg)
 		return fmt.Errorf("terraform plan failed: %w", err)
 	}
 

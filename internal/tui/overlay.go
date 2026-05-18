@@ -76,6 +76,11 @@ func (o *Overlay) SetContent(content string) {
 	o.content = strings.Split(content, "\n")
 }
 
+// Content returns all accumulated content as a single newline-joined string.
+func (o *Overlay) Content() string {
+	return strings.Join(o.content, "\n")
+}
+
 // SetComplete marks the overlay as no longer running
 func (o *Overlay) SetComplete() {
 	o.isRunning = false

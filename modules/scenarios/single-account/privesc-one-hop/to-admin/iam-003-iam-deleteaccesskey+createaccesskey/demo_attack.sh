@@ -115,6 +115,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -225,6 +226,7 @@ export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -260,6 +262,7 @@ unset AWS_SESSION_TOKEN
 export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-003-to-admin"
 show_attack_cmd "Attacker (admin user)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)

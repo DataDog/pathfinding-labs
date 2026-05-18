@@ -119,6 +119,7 @@ echo -e "${GREEN}✓ Successfully extracted and configured credentials${NC}\n"
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_USER"

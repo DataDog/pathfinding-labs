@@ -78,11 +78,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 			return
 		}
 
-		// Check if deployed: state first (primary), then outputs (fallback)
-		// Environment module names in state are like "prod_environment", "dev_environment", "ops_environment"
+		// Check terraform state — this is the only reliable source of truth for
+		// deployment status. The outputs fallback was removed because Terraform
+		// retains the last known output values in state even after a destroy,
+		// which causes environments to appear deployed when they are not.
 		moduleName := name + "_environment"
-		isDeployed := (deployedModules != nil && deployedModules[moduleName]) ||
-			(outputs != nil && outputs.Exists(name+"_admin_user_for_cleanup_access_key_id"))
+		isDeployed := deployedModules != nil && deployedModules[moduleName]
 
 		if isDeployed {
 			fmt.Printf("  %s %-12s %s %s\n", green("*"), name+":", profile, green("deployed"))
