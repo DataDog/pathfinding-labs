@@ -5,13 +5,13 @@
 class Plabs < Formula
   desc "CLI for managing Pathfinding Labs AWS attack scenarios"
   homepage "https://github.com/DataDog/pathfinding-labs"
-  version "1.0.0"
+  version "1.0.1"
   license "Apache-2.0"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.0/plabs_1.0.0_darwin_amd64.tar.gz"
-      sha256 "8d051dfaa10e154f6ec82d064c2abcaee828971985452f995eec88bc65e02a50"
+      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.1/plabs_1.0.1_darwin_amd64.tar.gz"
+      sha256 "fc5a4fcc711ef4d91a051e0d920052cf1ce5eb5fe17067f6ef5220fdcfe97585"
 
       define_method(:install) do
         bin.install "plabs"
@@ -19,8 +19,8 @@ class Plabs < Formula
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.0/plabs_1.0.0_darwin_arm64.tar.gz"
-      sha256 "413279328206203c23c9a1ee6a51a4b482039be6558a57e2b4980487aebce442"
+      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.1/plabs_1.0.1_darwin_arm64.tar.gz"
+      sha256 "30d6765a1c8e3f7a2916a38e919ffc83cba0d30d4daab3288ff10434d22fdf7a"
 
       define_method(:install) do
         bin.install "plabs"
@@ -31,16 +31,16 @@ class Plabs < Formula
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.0/plabs_1.0.0_linux_amd64.tar.gz"
-      sha256 "ea7be0c0f6aba5c9f85e75a6f7d5a62fb2686780eb47802f0badf043c28e9f3c"
+      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.1/plabs_1.0.1_linux_amd64.tar.gz"
+      sha256 "9a31197d13a26b4b214290e36c645ded22ff922baaf333f3f703bd2fee5d07fb"
       define_method(:install) do
         bin.install "plabs"
         generate_completions_from_executable(bin/"plabs", "completion")
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.0/plabs_1.0.0_linux_arm64.tar.gz"
-      sha256 "edd738116a02f05f973b84b801ef4b6363fe7c699c8c951af54f8bee902eff7f"
+      url "https://github.com/DataDog/pathfinding-labs/releases/download/v1.0.1/plabs_1.0.1_linux_arm64.tar.gz"
+      sha256 "66500d37bb0a8fea16bf618e9b8ee60209343b489604cdad57b7c4b15296b5bb"
       define_method(:install) do
         bin.install "plabs"
         generate_completions_from_executable(bin/"plabs", "completion")
