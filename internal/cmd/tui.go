@@ -59,7 +59,6 @@ func runTUI(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check for a binary update to surface in the TUI info header.
-	syncInstallMethod()
 	updateNotice := updater.Check(version)
 
 	// Create the TUI model

@@ -10,9 +10,8 @@ import (
 )
 
 var (
-	version       = "0.0.1"
-	commit        = "unknown"
-	installMethod = "unknown" // overridden via ldflags: "source" (Makefile) or "release" (goreleaser)
+	version = "dev"
+	commit  = "unknown"
 )
 
 var rootCmd = &cobra.Command{
@@ -71,7 +70,6 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("plabs %s (commit: %s)\n", version, commit)
-		syncInstallMethod()
 		if notice := updater.Check(version); notice != "" {
 			yellow := color.New(color.FgYellow).SprintFunc()
 			fmt.Println()
@@ -80,8 +78,3 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-// syncInstallMethod propagates the installMethod ldflag into the updater package
-// before any update check is performed. Called once per surface that uses updater.Check.
-func syncInstallMethod() {
-	updater.InstallMethod = installMethod
-}
