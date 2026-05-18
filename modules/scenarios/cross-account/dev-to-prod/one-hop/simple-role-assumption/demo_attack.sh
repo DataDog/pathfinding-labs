@@ -261,7 +261,7 @@ echo -e "\n${BLUE}i This demonstrates a cross-account privilege escalation path$
 echo -e "${BLUE}An attacker with dev account credentials can gain admin access to prod${NC}"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

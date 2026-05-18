@@ -581,7 +581,7 @@ echo -e "\n${RED}Warning: The ECS cluster and admin policy attachment persist${N
 echo -e "${RED}Warning: ECS clusters may incur minimal charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

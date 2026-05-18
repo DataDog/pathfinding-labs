@@ -400,7 +400,7 @@ echo "This is because the trust policy itself grants the assumption capability."
 
 echo -e "\n${RED}⚠ Warning: The target role now has admin permissions and a modified trust policy!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

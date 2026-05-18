@@ -406,7 +406,7 @@ echo -e "${RED}⚠ App Runner services incur charges while active${NC}"
 echo -e "${RED}⚠ The AdministratorAccess policy is still attached to $STARTING_USER${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

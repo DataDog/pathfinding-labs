@@ -421,7 +421,7 @@ echo "- T1078.004: Valid Accounts: Cloud Accounts"
 echo -e "\n${YELLOW}Note: SSM session history is automatically logged in CloudTrail${NC}"
 echo -e "${YELLOW}This scenario does not create persistent artifacts that require cleanup${NC}"
 echo -e "${YELLOW}To clean up environment variables (optional):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

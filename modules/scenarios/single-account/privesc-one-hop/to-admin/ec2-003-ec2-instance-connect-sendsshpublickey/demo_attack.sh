@@ -413,7 +413,7 @@ echo "can SSH into that instance and extract the instance role's credentials."
 echo "If the instance has a privileged role, this results in privilege escalation."
 
 echo -e "\n${YELLOW}To clean up:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

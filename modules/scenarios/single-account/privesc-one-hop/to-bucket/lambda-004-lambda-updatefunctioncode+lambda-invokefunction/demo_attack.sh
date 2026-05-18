@@ -292,10 +292,31 @@ else
 fi
 echo ""
 
-# Wait for Lambda to finish processing the code update
-echo -e "${YELLOW}Waiting 15 seconds for Lambda to process the code update${NC}"
-sleep 15
-echo -e "${GREEN}✓ Lambda function code update applied${NC}\n"
+# Wait for Lambda code update to reach Successful state before invoking.
+# Using readonly creds because lambda:GetFunction is in the "helpful" permission set
+# which may be restricted during a validation run — readonly user always has read access.
+echo -e "${YELLOW}Waiting for Lambda code update to reach Successful state...${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+MAX_WAIT=60
+WAITED=0
+while [ "$WAITED" -lt "$MAX_WAIT" ]; do
+    UPDATE_STATUS=$(aws lambda get-function \
+        --region "$AWS_REGION" \
+        --function-name "$TARGET_LAMBDA" \
+        --query 'Configuration.LastUpdateStatus' \
+        --output text 2>/dev/null)
+    if [ "$UPDATE_STATUS" = "Successful" ]; then
+        echo -e "${GREEN}✓ Lambda code update complete (LastUpdateStatus: Successful)${NC}\n"
+        break
+    fi
+    echo "  LastUpdateStatus: $UPDATE_STATUS — waiting 5s..."
+    sleep 5
+    WAITED=$((WAITED + 5))
+done
+if [ "$WAITED" -ge "$MAX_WAIT" ]; then
+    echo -e "${YELLOW}Warning: Lambda update did not reach Successful within ${MAX_WAIT}s, proceeding${NC}"
+fi
 
 # [EXPLOIT] Step 10: Invoke the modified Lambda function (SECOND REQUIRED PERMISSION)
 echo -e "${YELLOW}Step 10: Invoking Lambda function to read flag from target S3 bucket${NC}"
@@ -400,7 +421,7 @@ echo "- Backup of original code: /tmp/lambda-004-to-bucket-original-backup.zip"
 echo -e "\n${RED}Warning: The Lambda function code and environment variables have been modified${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

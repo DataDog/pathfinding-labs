@@ -419,7 +419,7 @@ echo "- T1552.005: Unsecured Credentials: Cloud Instance Metadata API"
 
 echo -e "\n${YELLOW}Note: SSM command history is automatically cleaned up by AWS after 30 days${NC}"
 echo -e "${YELLOW}To clean up immediately (optional):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

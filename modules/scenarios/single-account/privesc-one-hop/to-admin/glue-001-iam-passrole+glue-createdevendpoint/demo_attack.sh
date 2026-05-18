@@ -383,7 +383,7 @@ echo -e "${RED}⚠ Glue Dev Endpoints cost approximately $2.20/hour${NC}"
 echo -e "${RED}⚠ You are being charged while the endpoint remains active${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and stop charges:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 
