@@ -13,7 +13,7 @@
 
 ---
 
-Pathfinding Labs helps security teams learn how to atttack and defend exploitable identity misconfigurations by deploying intentionally vulnerable cloud resources to sandbox environments.
+Pathfinding Labs helps security teams learn how to attack and defend exploitable identity misconfigurations by deploying intentionally vulnerable cloud resources to sandbox environments.
 
 > **Full lab catalog, individual lab docs, and guided installation:** [pathfinding.cloud/labs](https://pathfinding.cloud/labs)
 > This README is a quick-start guide and command reference for users working directly from the repository.
