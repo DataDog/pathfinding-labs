@@ -1481,6 +1481,19 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   flag_value            = lookup(local.effective_flags, "lambda-invoke-update-to-admin", "flag{MISSING}")
 }
 
+module "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/ssm-startsession-ec2-admin"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id  = local.dev_account_id
+  prod_account_id = local.prod_account_id
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "ssm-startsession-ec2-admin-to-admin", "flag{MISSING}")
+}
+
 module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   count  = var.enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption ? 1 : 0
   source = "./modules/scenarios/cross-account/dev-to-prod/one-hop/root-trust-role-assumption"

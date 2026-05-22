@@ -223,6 +223,7 @@ variable "scenario_flag_defaults" {
     "ssm-001-to-bucket"                               = "flag{ssm_001_bucket_accessed}"
     "ssm-002-to-admin"                                = "flag{ssm_002_admin_captured}"
     "ssm-002-to-bucket"                               = "flag{ssm_002_bucket_accessed}"
+    "ssm-startsession-ec2-admin-to-admin"             = "flag{ssm_startsession_ec2_admin}"
     "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
     "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
     "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
@@ -899,6 +900,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
 
 variable "enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   description = "Enable: cross-account → dev-to-prod → multi-hop → lambda-invoke-update"
+  type        = bool
+  default     = false
+}
+
+variable "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  description = "Enable: cross-account → dev-to-prod → multi-hop → ssm-startsession-ec2-admin"
   type        = bool
   default     = false
 }

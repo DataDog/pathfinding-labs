@@ -140,6 +140,39 @@ Read `main.tf` and verify:
 - IAM policies have proper permissions
 - Tags are complete (Name, Environment, Scenario, Purpose)
 
+#### Check per-scenario starting user (MANDATORY)
+Every scenario module (regardless of single-account vs cross-account, user-based vs role-based) MUST create its own scenario-specific starting user. Reusing the legacy shared `pl-pathfinding-starting-user-{prod,dev,operations}` users is **forbidden** — they are a deprecated pattern from very early scenarios and break the plabs TUI deployment detection.
+
+**Public-start exception:** If `scenario.yaml`'s `permissions.required` contains only `principal_type: "public"` entries, skip this entire check.
+
+For every other scenario, verify ALL of the following in the module's `.tf` files (`main.tf`, `prod.tf`, `dev.tf`, `operations.tf`, `attacker.tf`):
+
+1. **The module declares its own user + access key:**
+   ```bash
+   grep -E 'resource "aws_iam_user" "starting_user"' {scenario-dir}/*.tf
+   grep -E 'resource "aws_iam_access_key" "starting_user' {scenario-dir}/*.tf
+   ```
+   Both must be present. The user's `name` must follow the scenario's naming convention (path-ID pattern for self-escalation/one-hop, scenario-shorthand pattern otherwise). For cross-account scenarios, both resources live in the **source** account (`provider = aws.dev` or `aws.operations`), not in prod.
+
+2. **No reuse of the legacy shared users:** The module must NOT contain references to the shared users as the starting principal:
+   ```bash
+   # These should return zero hits in any .tf file in the scenario module:
+   grep -nE 'pl-pathfinding-starting-user-(prod|dev|operations)' {scenario-dir}/*.tf
+   ```
+   If any hit appears, flag it as an error. The most common forms are:
+   - `aws_iam_user_policy` whose `user` attribute is the shared user name (attaching a scenario policy to a shared principal).
+   - A role's trust policy `Principal.AWS` referencing `arn:aws:iam::*:user/pl-pathfinding-starting-user-{env}`.
+   - Hardcoded strings as output values (e.g., `value = "pl-pathfinding-starting-user-dev"` instead of `value = aws_iam_user.starting_user.name`).
+
+3. **Outputs reference the per-scenario resources, not strings:**
+   - `starting_user_name` value must be `aws_iam_user.starting_user.name` (or equivalent), not a string literal.
+   - `starting_user_arn` value must be `aws_iam_user.starting_user.arn`, not a constructed/literal ARN string.
+   - `starting_user_access_key_id` and `starting_user_secret_access_key` must reference the `aws_iam_access_key` resource and be marked `sensitive = true`.
+
+4. **Cross-account trust policies reference the scenario user:** For cross-account scenarios, the target-account role's `assume_role_policy` `Principal.AWS` must reference the scenario-specific user's ARN — either via `aws_iam_user.starting_user.arn` (when both providers are in the same module, which is the common case) or via a hardcoded `arn:aws:iam::${var.{source}_account_id}:user/pl-{source-env}-{scenario-shorthand}-starting-user` that matches the user the module actually creates. It must NOT reference `pl-pathfinding-starting-user-{env}`.
+
+If any of these fail, fix automatically where unambiguous (e.g., swap a hardcoded output literal for the resource reference; rewrite a trust policy to point at the scenario user) and report. If the module reuses the shared user wholesale, flag it as a redesign-required issue and do not silently auto-fix — the orchestrator should re-run the terraform-builder agent.
+
 #### Check IAM destroy hygiene (MANDATORY)
 Every `aws_iam_user` resource in `main.tf` (and `prod.tf` / `dev.tf` / `attacker.tf`) **must** set `force_destroy = true`. Every `aws_iam_role` resource **must** set `force_detach_policies = true`. Flag any block missing the relevant flag as an error.
 
@@ -361,7 +394,7 @@ grep "output.*{module_name}" /path/to/root/outputs.tf
 Should find the grouped output for the scenario. Verify:
 - Output name matches module name (e.g., `single_account_privesc_one_hop_to_admin_iam_createaccesskey`)
 - Output uses conditional: `var.enable_... ? { ... } : null`
-- Output includes ALL module outputs (starting_user credentials, target resources, attack_path)
+- Output includes ALL module outputs. For non-public-start scenarios, the grouped output MUST include `starting_user_access_key_id` and `starting_user_secret_access_key` keys — grep for both. If either is missing, the plabs TUI will report the scenario as "Not yet deployed" even after a successful `terraform apply`, and demo scripts that read `MODULE_OUTPUT | jq -r '.starting_user_access_key_id'` will fail. (Public-start scenarios omit these by design.)
 - Output is marked as `sensitive = true`
 - All module outputs are accessed via `module.{module_name}[0].{output_name}`
 
@@ -482,6 +515,10 @@ Tool-testing scenarios are exempt from all of the above; they do not participate
 **Symptom**: Role trusts `:root` instead of pathfinding starting user
 **Fix**: Update trust policy to reference `pl-{environment}-{scenario-shorthand}-starting-user`
 
+### Issue: Reuses shared `pl-pathfinding-starting-user-{env}` instead of scenario-specific user
+**Symptom**: Module references `pl-pathfinding-starting-user-prod` / `-dev` / `-operations` as the starting principal (in a user-policy `user` attribute, a role's trust policy, or a hardcoded output value). Plabs TUI shows "Not yet deployed — apply to start learning" after a successful apply because the grouped output is missing `starting_user_access_key_id` / `starting_user_secret_access_key`.
+**Fix**: Have the module create its own `aws_iam_user` + `aws_iam_access_key` (in the appropriate source account for cross-account scenarios), move the inline policy onto that new user, retarget any trust policy that referenced the shared user, and update `outputs.tf` to expose the four `starting_user_*` fields from the new resources. Add the two access-key fields to the root `outputs.tf` grouped output. Run `terraform apply` to recreate the scenario.
+
 ### Issue: Missing outputs
 **Symptom**: outputs.tf doesn't include all necessary outputs for demo script
 **Fix**: Add outputs for resources referenced in demo script
@@ -523,6 +560,10 @@ TERRAFORM VALIDATION
   ✓ Resource names follow conventions
   ✓ Providers correctly specified
   ✓ Tags complete
+  ✓ Module creates its own scenario-specific aws_iam_user + aws_iam_access_key
+  ✓ No references to the legacy shared pl-pathfinding-starting-user-{env} principals
+  ✓ starting_user_* outputs reference module resources (not hardcoded strings)
+  ✓ Cross-account trust policies reference the scenario-specific user
   ✗ Issue: {description}
     - Fixed: {what was changed}
 
@@ -554,6 +595,7 @@ PROJECT INTEGRATION VALIDATION
   ✓ Module added to main.tf
   ✓ Grouped output added to root outputs.tf
   ✓ Grouped output includes all module outputs
+  ✓ Grouped output includes starting_user_access_key_id + starting_user_secret_access_key (non-public-start)
   ✓ Grouped output marked as sensitive
   ✓ Entry in terraform.tfvars.example
   ✓ Entry in terraform.tfvars

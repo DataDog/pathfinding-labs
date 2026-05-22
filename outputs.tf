@@ -670,10 +670,10 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_arn
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_arn
-    ecs_service_name        = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
-    flag_ssm_parameter_name = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
-    flag_ssm_parameter_arn  = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
-    attack_path             = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
+    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
   } : null
   sensitive = true
 }
@@ -1966,6 +1966,26 @@ output "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
     target_role_name                = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_name
     target_role_arn                 = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_arn
     attack_path                     = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  description = "All outputs for ssm-startsession-ec2-admin cross-account multi-hop scenario"
+  value = var.enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin ? {
+    starting_user_name              = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_name
+    starting_user_arn               = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_secret_access_key
+    prod_pivot_role_arn             = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].prod_pivot_role_arn
+    prod_pivot_role_name            = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].prod_pivot_role_name
+    ec2_instance_id                 = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_instance_id
+    ec2_instance_arn                = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_instance_arn
+    ec2_admin_role_name             = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_admin_role_name
+    ec2_admin_role_arn              = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_admin_role_arn
+    flag_ssm_parameter_name         = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_arn
+    attack_path                     = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].attack_path
   } : null
   sensitive = true
 }

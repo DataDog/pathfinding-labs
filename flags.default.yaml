@@ -122,6 +122,7 @@ flags:
   ssm-001-to-bucket: "flag{ssm_001_bucket_accessed}"
   ssm-002-to-admin: "flag{ssm_002_admin_captured}"
   ssm-002-to-bucket: "flag{ssm_002_bucket_accessed}"
+  ssm-startsession-ec2-admin-to-admin: "flag{ssm_startsession_ec2_admin}"
   sts-001-to-admin: "flag{sts_001_admin_captured}"
   sts-001-to-bucket: "flag{sts_001_bucket_accessed}"
   sts-001-to-ecs-002-to-admin-to-admin: "flag{sts_001_ecs_002_multi_hop_admin_captured}"

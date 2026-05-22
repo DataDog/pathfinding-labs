@@ -1,0 +1,95 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "ssm-startsession-ec2-admin"
+title: "Dev to Prod via SSM StartSession to EC2 with Admin Role"
+description: "Cross-account privesc: dev user assumes a prod pivot role, exploits ssm:StartSession to access an EC2 instance with an admin instance profile, then retrieves admin credentials via IMDS"
+cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
+interactive_demo: false
+demo_timeout_seconds: 600
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+path_type: "cross-account"
+target: "to-admin"
+environments:
+  - "dev"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{dev_account_id}:user/pl-dev-ssm-ec2-starting-user"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-pivot-role"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-admin-role"
+
+  summary: "pl-dev-ssm-ec2-starting-user (dev) → [sts:AssumeRole cross-account] → pl-prod-ssm-ec2-pivot-role (prod) → [ssm:StartSession / ssm:SendCommand] → EC2 instance with admin instance profile → [IMDS credential retrieval] → pl-prod-ssm-ec2-admin-role → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-dev-ssm-ec2-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-pivot-role"
+    - principal: "pl-prod-ssm-ec2-pivot-role"
+      principal_type: "role"
+      permissions:
+        - permission: "ssm:StartSession"
+          resource: "arn:aws:ec2:*:{prod_account_id}:instance/*"
+        - permission: "ssm:SendCommand"
+          resource: "arn:aws:ec2:*:{prod_account_id}:instance/*"
+        - permission: "ssm:SendCommand"
+          resource: "arn:aws:ssm:*::document/AWS-RunShellScript"
+        - permission: "ssm:GetCommandInvocation"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-dev-ssm-ec2-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover assumable roles in the prod account"
+    - principal: "pl-prod-ssm-ec2-pivot-role"
+      principal_type: "role"
+      permissions:
+        - permission: "ec2:DescribeInstances"
+          purpose: "Enumerate instances and find the target instance ID"
+        - permission: "ssm:DescribeInstanceInformation"
+          purpose: "Find SSM-managed instances eligible for session"
+
+# =============================================================================
+# REQUIRED PRECONDITIONS
+# =============================================================================
+required_preconditions:
+  - type: "aws-resource"
+    resource: "aws_instance"
+    description: "EC2 instance running in the prod account with SSM agent active and an admin IAM instance profile attached"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1021.007 - Remote Services: Cloud Services"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/multi-hop/ssm-startsession-ec2-admin"
