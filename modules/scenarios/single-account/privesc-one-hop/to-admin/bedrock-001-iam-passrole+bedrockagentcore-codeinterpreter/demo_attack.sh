@@ -147,6 +147,7 @@ echo ""
 echo -e "${YELLOW}Step 3: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -341,6 +342,7 @@ export AWS_ACCESS_KEY_ID=$ADMIN_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$ADMIN_SECRET_KEY
 export AWS_SESSION_TOKEN=$ADMIN_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 ADMIN_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -427,7 +429,7 @@ echo -e "\n${RED}⚠ Warning: The code interpreter is still deployed${NC}"
 echo -e "${RED}⚠ Bedrock code interpreters may incur charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

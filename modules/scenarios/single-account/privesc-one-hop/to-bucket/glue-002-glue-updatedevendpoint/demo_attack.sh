@@ -131,6 +131,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -399,7 +400,7 @@ echo -e "\n${YELLOW}Note: The Glue dev endpoint continues to run (created by Ter
 echo -e "${YELLOW}Cleanup will remove only the attacker's SSH key, not the endpoint itself${NC}"
 echo ""
 echo -e "${YELLOW}To clean up attack artifacts:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

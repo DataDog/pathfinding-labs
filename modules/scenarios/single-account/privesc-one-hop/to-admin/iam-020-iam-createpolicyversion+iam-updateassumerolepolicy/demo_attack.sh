@@ -120,6 +120,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -348,6 +349,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -422,7 +424,7 @@ echo "- Temporary files: /tmp/admin-policy.json, /tmp/new-trust-policy.json"
 
 echo -e "\n${RED}⚠ Warning: The target policy has an admin policy version AND the role trust policy is modified!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

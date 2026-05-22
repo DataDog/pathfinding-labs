@@ -58,6 +58,7 @@ if [ -n "$ADMIN_ACCESS_KEY" ] && [ "$ADMIN_ACCESS_KEY" != "null" ]; then
     export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
     export AWS_REGION="$CURRENT_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 
     if aws lambda get-function \

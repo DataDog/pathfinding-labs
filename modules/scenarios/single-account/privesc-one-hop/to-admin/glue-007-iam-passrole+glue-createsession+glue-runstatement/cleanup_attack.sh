@@ -57,6 +57,7 @@ if [ -z "$CURRENT_REGION" ]; then
 fi
 
 export AWS_REGION=$CURRENT_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Region from Terraform: $CURRENT_REGION"
 

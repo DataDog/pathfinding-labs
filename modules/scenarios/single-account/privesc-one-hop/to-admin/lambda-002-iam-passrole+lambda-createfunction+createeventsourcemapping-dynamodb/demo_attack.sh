@@ -40,6 +40,7 @@ use_starting_user_creds() {
     export AWS_ACCESS_KEY_ID="$STARTING_ACCESS_KEY_ID"
     export AWS_SECRET_ACCESS_KEY="$STARTING_SECRET_ACCESS_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 
@@ -47,6 +48,7 @@ use_readonly_creds() {
     export AWS_ACCESS_KEY_ID="$READONLY_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$READONLY_SECRET_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 
@@ -54,6 +56,7 @@ use_admin_creds() {
     export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
     export AWS_REGION="$AWS_REGION"
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 }
 
@@ -496,7 +499,7 @@ echo -e "${RED}⚠ Lambda functions incur charges when invoked${NC}"
 echo -e "${RED}⚠ The starting user now has AdministratorAccess attached${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

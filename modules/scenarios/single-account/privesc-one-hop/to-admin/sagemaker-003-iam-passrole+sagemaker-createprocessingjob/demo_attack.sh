@@ -142,6 +142,7 @@ trap _demo_exit_handler EXIT INT TERM
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -344,6 +345,7 @@ echo "Checking if AdministratorAccess is now attached to starting user..."
 echo ""
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "ReadOnly" "aws iam list-attached-user-policies --user-name \"$STARTING_USER\" --query 'AttachedPolicies[*].PolicyArn' --output text"
 ATTACHED_POLICIES=$(aws iam list-attached-user-policies \
@@ -425,7 +427,7 @@ echo "- IAM policy attachment: AdministratorAccess → $STARTING_USER"
 
 echo -e "\n${RED}⚠ Warning: The starting user now has AdministratorAccess policy attached${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Cleanup temp files

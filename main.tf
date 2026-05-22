@@ -1292,6 +1292,78 @@ module "single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile"
   flag_value      = lookup(local.effective_flags, "iam-006-to-bucket", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-001-to-bucket", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-002-iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-002-to-bucket", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-003-lambda-updatefunctioncode"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-003-to-bucket", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-004-lambda-updatefunctioncode+lambda-invokefunction"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-004-to-bucket", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-005-lambda-updatefunctioncode+lambda-addpermission"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-005-to-bucket", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/lambda-006-iam-passrole+lambda-createfunction+lambda-addpermission"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "lambda-006-to-bucket", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
   count  = var.enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ec2-003-ec2-instance-connect-sendsshpublickey"
@@ -1554,6 +1626,19 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
   flag_value            = lookup(local.effective_flags, "lambda-invoke-update-to-admin", "flag{MISSING}")
+}
+
+module "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/ssm-startsession-ec2-admin"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id  = local.dev_account_id
+  prod_account_id = local.prod_account_id
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "ssm-startsession-ec2-admin-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {

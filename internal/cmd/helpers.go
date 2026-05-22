@@ -174,6 +174,70 @@ func validateAWSCredentials(cfg *config.Config) error {
 	return nil
 }
 
+// printTerraformAuthHint re-validates AWS credentials after a terraform operation fails and
+// prints a targeted "re-authenticate" message when a profile is found to be expired.
+// It checks the setup profile for attacker (used during destroy) in addition to the
+// regular profiles. Call this immediately after a failed terraform.Runner operation.
+func printTerraformAuthHint(cfg *config.Config) {
+	if cfg == nil {
+		return
+	}
+	red := color.New(color.FgRed).SprintFunc()
+	cyan := color.New(color.FgCyan).SprintFunc()
+
+	ws := cfg.Active()
+
+	// Build the full set of profiles to check, including the attacker setup profile
+	// (which may differ from the normal attacker profile used during deploy).
+	attackerProfile := ws.AWS.Attacker.Profile
+	if ws.AWS.Attacker.Mode == "iam-user" {
+		// Destroy switches to the setup profile, so check that one.
+		if ws.AWS.Attacker.SetupProfile != "" {
+			attackerProfile = ws.AWS.Attacker.SetupProfile
+		} else {
+			attackerProfile = ""
+		}
+	}
+
+	profiles := plabsaws.GetUniqueProfiles(
+		ws.AWS.Prod.Profile,
+		ws.AWS.Dev.Profile,
+		ws.AWS.Ops.Profile,
+		attackerProfile,
+	)
+
+	var expired []string
+	for _, p := range profiles {
+		if p == "" {
+			continue
+		}
+		result := plabsaws.ValidateProfile(p)
+		if !result.Valid {
+			expired = append(expired, p)
+		}
+	}
+
+	if len(expired) == 0 {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(red("Authentication Error"))
+	fmt.Println()
+	fmt.Println("The following AWS profile(s) are not authenticated:")
+	fmt.Println()
+	for _, p := range expired {
+		fmt.Printf("  %s  %s\n", red("✗"), p)
+	}
+	fmt.Println()
+	fmt.Println("Re-authenticate and retry:")
+	fmt.Println()
+	for _, p := range expired {
+		fmt.Printf("  %s\n", cyan(fmt.Sprintf("aws sso login --profile %s", p)))
+	}
+	fmt.Println()
+}
+
 // crossAccountEnvErrors returns error strings for each scenario that requires a dev or ops
 // AWS account profile that is not configured. The format mirrors the required-config error
 // messages produced by enable/deploy so the user sees a consistent error surface.

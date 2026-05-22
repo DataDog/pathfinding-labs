@@ -31,7 +31,16 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 2. **Create variables.tf** with standard variables (including `flag_value` for non-tool-testing scenarios)
 3. **Create outputs.tf** with ARNs, attack paths, credentials, and flag resource identifiers
 
-**CRITICAL**: Every scenario MUST create a scenario-specific starting user with access keys. These credentials MUST be exported to outputs so demo scripts can retrieve them from Terraform.
+**CRITICAL — per-scenario starting user (NO EXCEPTIONS)**: Every scenario MUST create its own `aws_iam_user` + `aws_iam_access_key` inside the scenario module, and MUST export `starting_user_name`, `starting_user_arn`, `starting_user_access_key_id`, and `starting_user_secret_access_key` from the module. This applies to **every** scenario type — single-account, cross-account, user-based, role-based, multi-hop. The only exception is public-start scenarios (scenario.yaml `permissions.required` contains only `principal_type: "public"`).
+
+**FORBIDDEN — do NOT reuse the legacy shared users**: Never reference `pl-pathfinding-starting-user-prod`, `pl-pathfinding-starting-user-dev`, or `pl-pathfinding-starting-user-operations` as the starting principal for a new scenario. Those shared users are a deprecated pattern from very early scenarios. Do not:
+- Attach a `aws_iam_user_policy` to one of them.
+- Reference one of them in a role trust policy (use the scenario-specific user's ARN instead).
+- Hardcode one of their names/ARNs as the value of `starting_user_name` / `starting_user_arn` outputs.
+
+**Why this matters**: The `plabs` TUI reads `starting_user_access_key_id` / `starting_user_secret_access_key` from each scenario's grouped output (see `internal/terraform/outputs.go`) to decide whether the scenario is "deployed and ready to learn". If the module reuses a shared user and omits these outputs, the TUI shows "Not yet deployed — apply to start learning" even though Terraform succeeded, and demo scripts have no creds to read.
+
+In cross-account scenarios specifically: the per-scenario user lives in the **source** account (dev or operations), with its access key, and the cross-account role's trust policy references that scenario-specific user's ARN — not the shared `pl-pathfinding-starting-user-{env}`.
 
 **CRITICAL (CTF flag)**: Every scenario EXCEPT those under `tool-testing/` MUST also create a CTF flag resource whose value is driven by a `flag_value` module input. See the "CTF Flag Resource" section below.
 
@@ -493,7 +502,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      version               = "~> 5.0"
+      version               = "~> 6.0"
       configuration_aliases = [aws.prod]
     }
   }
@@ -517,7 +526,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      version               = "~> 5.0"
+      version               = "~> 6.0"
       configuration_aliases = [aws.dev, aws.prod]
     }
   }
@@ -542,6 +551,64 @@ resource "aws_iam_role" "prod_role" {
 ```
 
 **Why this matters:** The `configuration_aliases` declaration tells Terraform that this module expects to receive aliased providers. The root main.tf must then pass `aws.prod = aws.prod` (not `aws = aws.prod`) when calling the module.
+
+**Cross-account starting user pattern (MANDATORY):** The scenario-specific starting user lives in the **source** account (dev or operations). The role in the target account (typically prod) trusts that scenario-specific user's ARN — never the shared `pl-pathfinding-starting-user-{env}`. Convention is to put the source-account resources in `dev.tf` (or `operations.tf`) and the target-account resources in `prod.tf`.
+
+```hcl
+# dev.tf — source account: scenario-specific starting user + access key
+resource "aws_iam_user" "starting_user" {
+  provider      = aws.dev
+  force_destroy = true
+  name          = "pl-dev-{scenario-shorthand}-starting-user"
+  # ...
+}
+
+resource "aws_iam_access_key" "starting_user" {
+  provider = aws.dev
+  user     = aws_iam_user.starting_user.name
+}
+
+resource "aws_iam_user_policy" "starting_user" {
+  provider = aws.dev
+  name     = "pl-dev-{scenario-shorthand}-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+  policy   = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "RequiredForExploitationAssumeRole"
+        Effect   = "Allow"
+        Action   = ["sts:AssumeRole"]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-{scenario-shorthand}-pivot-role"
+      },
+      # HelpfulForReconAndMonitoring as a second statement if scenario.yaml has helpful perms
+    ]
+  })
+}
+
+# prod.tf — target account: pivot role trusts the SCENARIO-SPECIFIC dev user
+resource "aws_iam_role" "pivot_role" {
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-{scenario-shorthand}-pivot-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowScenarioDevStartingUserToAssume"
+        Effect = "Allow"
+        Principal = {
+          # Reference the per-scenario user, NOT pl-pathfinding-starting-user-dev
+          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-dev-{scenario-shorthand}-starting-user"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+```
+
+The `outputs.tf` exports `starting_user_*` (including the access key fields) from `aws_iam_user.starting_user` / `aws_iam_access_key.starting_user` exactly like single-account scenarios — see the "Outputs Template" section below.
 
 ## Common Patterns
 

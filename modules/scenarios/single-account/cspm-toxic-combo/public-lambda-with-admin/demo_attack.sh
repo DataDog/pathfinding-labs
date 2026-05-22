@@ -75,6 +75,7 @@ echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
 cd - > /dev/null
 
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo -e "${BLUE}i Attack Simulation Note:${NC}"
 echo -e "${BLUE}  This attack requires no AWS credentials. The Lambda function URL has${NC}"

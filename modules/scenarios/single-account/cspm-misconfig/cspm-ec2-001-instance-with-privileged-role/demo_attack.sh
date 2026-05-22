@@ -142,6 +142,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Simulating a user with SSM access to this instance${NC}"
 use_demo_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify demo user identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -261,6 +262,7 @@ if [ -n "$STOLEN_ACCESS_KEY" ] && [ -n "$STOLEN_SECRET_KEY" ] && [ -n "$STOLEN_S
     export AWS_SECRET_ACCESS_KEY="$STOLEN_SECRET_KEY"
     export AWS_SESSION_TOKEN="$STOLEN_SESSION_TOKEN"
     export AWS_REGION=$AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 
     echo ""
     echo "Fetching flag from SSM: $FLAG_PARAM_NAME"

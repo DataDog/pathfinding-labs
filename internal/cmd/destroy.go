@@ -225,6 +225,7 @@ func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green
 	fmt.Println()
 
 	if err := runner.Destroy(true); err != nil {
+		printTerraformAuthHint(cfg)
 		return fmt.Errorf("terraform destroy failed: %w", err)
 	}
 

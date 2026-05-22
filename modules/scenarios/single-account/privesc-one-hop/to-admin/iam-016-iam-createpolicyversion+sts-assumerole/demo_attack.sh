@@ -118,6 +118,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -136,6 +137,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -145,6 +147,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -158,6 +161,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Getting current policy information${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Target policy: $TARGET_POLICY_ARN"
 echo ""
 
@@ -182,6 +186,7 @@ echo -e "${GREEN}✓ Retrieved policy information${NC}\n"
 echo -e "${YELLOW}Step 6: Viewing current policy document (v1)${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Current default version has minimal permissions:"
 echo ""
 
@@ -204,6 +209,7 @@ echo -e "${GREEN}✓ Current policy has no admin permissions${NC}\n"
 echo -e "${YELLOW}Step 7: Creating new policy version with admin permissions${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "This is the privilege escalation action!"
 echo ""
 
@@ -242,6 +248,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying new policy version${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Updated policy versions:"
 show_cmd "ReadOnly" "aws iam list-policy-versions --policy-arn $TARGET_POLICY_ARN --query 'Versions[*].[VersionId,IsDefaultVersion,CreateDate]' --output table"
 aws iam list-policy-versions \
@@ -264,6 +271,7 @@ echo -e "${GREEN}✓ Policy version v2 with admin permissions is now active${NC}
 echo -e "${YELLOW}Step 9: Assuming the target role with admin permissions${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 TARGET_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/$TARGET_ROLE"
 echo "Role ARN: $TARGET_ROLE_ARN"
 
@@ -279,6 +287,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -351,7 +360,7 @@ echo "- Temporary file: /tmp/admin-policy.json"
 
 echo -e "\n${RED}⚠ Warning: The target policy now has an admin policy version!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

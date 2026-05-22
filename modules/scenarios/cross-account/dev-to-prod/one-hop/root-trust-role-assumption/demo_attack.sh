@@ -121,6 +121,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials (dev account)${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -139,6 +140,7 @@ echo -e "${GREEN}✓ Verified starting user identity in dev account${NC}\n"
 echo -e "${YELLOW}Step 3: Identifying dev and prod accounts${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 DEV_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 PROD_ACCOUNT_ID=$(echo $TARGET_ROLE_ARN | cut -d':' -f5)
@@ -171,6 +173,7 @@ echo -e "${GREEN}✓ Trust policy analyzed${NC}\n"
 echo -e "${YELLOW}Step 5: Verifying we don't have admin access in prod yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users in prod account (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -184,6 +187,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Assuming the target role in prod account${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Target Role ARN: $TARGET_ROLE_ARN"
 echo ""
 echo "Because the role trusts :root, we can assume it with our basic user credentials..."
@@ -201,6 +205,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDENTIALS | jq -r '.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDENTIALS | jq -r '.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify we assumed the role
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -301,7 +306,7 @@ echo "3. Use aws:PrincipalOrgID to limit trust to specific AWS Organizations"
 echo "4. Implement least privilege - only grant trust to principals that need it"
 
 echo -e "\n${YELLOW}To clean up (no cleanup needed for this scenario):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

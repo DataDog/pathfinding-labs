@@ -46,6 +46,7 @@ fi
 export AWS_ACCESS_KEY_ID="$ADMIN_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="$ADMIN_SECRET_KEY"
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 unset AWS_SESSION_TOKEN
 
 echo -e "${GREEN}✓ Retrieved admin credentials${NC}\n"
@@ -60,6 +61,7 @@ fi
 
 echo "Region from Terraform: $CURRENT_REGION"
 export AWS_REGION="$CURRENT_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Get account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)

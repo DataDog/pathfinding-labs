@@ -56,9 +56,6 @@ permissions:
         - permission: "lambda:GetFunction"
           purpose: "Verify function creation"
 
-        - permission: "lambda:DeleteFunction"
-          purpose: "Clean up attack artifacts"
-
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

@@ -118,6 +118,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -220,6 +221,7 @@ unset AWS_SESSION_TOKEN
 export AWS_ACCESS_KEY_ID=$NEW_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$NEW_SECRET_KEY
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -291,7 +293,7 @@ echo "- CTF flag: $FLAG_VALUE"
 
 echo -e "\n${RED}⚠ Warning: Target user now has administrative permissions${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

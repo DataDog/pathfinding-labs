@@ -1,0 +1,72 @@
+# Scenario-specific starting user outputs (REQUIRED FOR ALL SCENARIOS)
+output "starting_user_arn" {
+  description = "ARN of the scenario-specific starting user"
+  value       = aws_iam_user.starting_user.arn
+}
+
+output "starting_user_name" {
+  description = "Name of the scenario-specific starting user"
+  value       = aws_iam_user.starting_user.name
+}
+
+output "starting_user_access_key_id" {
+  description = "Access key ID for the scenario-specific starting user"
+  value       = aws_iam_access_key.starting_user_key.id
+  sensitive   = true
+}
+
+output "starting_user_secret_access_key" {
+  description = "Secret access key for the scenario-specific starting user"
+  value       = aws_iam_access_key.starting_user_key.secret
+  sensitive   = true
+}
+
+# Target role outputs
+output "target_role_arn" {
+  description = "ARN of the target role attached to the Lambda function (has S3 bucket read access)"
+  value       = aws_iam_role.target_role.arn
+}
+
+output "target_role_name" {
+  description = "Name of the target role attached to the Lambda function"
+  value       = aws_iam_role.target_role.name
+}
+
+# Target Lambda function outputs
+output "target_lambda_function_name" {
+  description = "Name of the pre-existing target Lambda function to be exploited"
+  value       = aws_lambda_function.target_function.function_name
+}
+
+output "target_lambda_function_arn" {
+  description = "ARN of the pre-existing target Lambda function"
+  value       = aws_lambda_function.target_function.arn
+}
+
+# Target S3 bucket outputs
+output "target_bucket_name" {
+  description = "Name of the target S3 bucket containing the CTF flag"
+  value       = aws_s3_bucket.target_bucket.id
+}
+
+output "target_bucket_arn" {
+  description = "ARN of the target S3 bucket"
+  value       = aws_s3_bucket.target_bucket.arn
+}
+
+# CTF flag outputs
+output "flag_s3_key" {
+  description = "S3 object key for the CTF flag inside the target bucket"
+  value       = aws_s3_object.flag.key
+}
+
+output "flag_s3_uri" {
+  description = "Full s3:// URI for the CTF flag object"
+  value       = "s3://${aws_s3_bucket.target_bucket.id}/${aws_s3_object.flag.key}"
+}
+
+# Attack path description
+output "attack_path" {
+  description = "Description of the attack path"
+  value       = "User (pl-prod-lambda-004-to-bucket-starting-user) → lambda:UpdateFunctionCode → existing Lambda function (pl-prod-lambda-004-to-bucket-target-lambda) → lambda:InvokeFunction → Lambda reads flag.txt from target bucket using target role → s3:GetObject flag.txt → CTF flag"
+}

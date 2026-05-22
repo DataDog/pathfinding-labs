@@ -268,6 +268,7 @@ echo -e "${YELLOW}Step 2: Setting up SSM access to EC2 (simulating RCE)${NC}"
 echo -e "${DIM}(In the real world, the attacker has shell access via an application vulnerability)${NC}"
 use_admin_creds
 export AWS_REGION="$AWS_REGION"
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo -e "${GREEN}✓ SSM access configured (RCE simulation)${NC}\n"
 
 # Step 2b: Verify SSM agent is online before sending commands
@@ -738,7 +739,7 @@ echo -e "\n${RED}Warning: The instance role now has AdministratorAccess policy a
 echo -e "${RED}Warning: The EC2 instance is now registered to the ECS cluster${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

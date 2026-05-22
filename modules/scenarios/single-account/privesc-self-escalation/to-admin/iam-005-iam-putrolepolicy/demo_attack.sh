@@ -113,6 +113,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying identity${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
 echo "Current identity: $CURRENT_IDENTITY"
@@ -186,6 +187,7 @@ echo ""
 echo -e "${YELLOW}Step 6: Verifying administrator access${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Testing admin permissions (listing IAM users)..."
 show_cmd "ReadOnly" "aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text"
 IAM_USERS=$(aws iam list-users --max-items 5 --query 'Users[*].UserName' --output text)

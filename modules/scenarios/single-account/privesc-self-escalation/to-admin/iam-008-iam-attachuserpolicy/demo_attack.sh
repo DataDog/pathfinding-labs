@@ -78,6 +78,7 @@ if [ -z "$AWS_REGION" ]; then
     AWS_REGION="us-east-1"
 fi
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Retrieved access key for: $STARTING_USER"
 echo "Access Key ID: ${STARTING_ACCESS_KEY_ID:0:10}..."

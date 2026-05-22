@@ -194,12 +194,18 @@ variable "scenario_flag_defaults" {
     "iam-020-to-admin"                                = "flag{iam_020_admin_captured}"
     "iam-021-to-admin"                                = "flag{iam_021_admin_captured}"
     "lambda-001-to-admin"                             = "flag{lambda_001_admin_captured}"
+    "lambda-001-to-bucket"                            = "flag{lambda_001_bucket_accessed}"
     "lambda-002-to-admin"                             = "flag{lambda_002_admin_captured}"
+    "lambda-002-to-bucket"                            = "flag{lambda_002_bucket_accessed}"
     "lambda-003-to-admin"                             = "flag{lambda_003_admin_captured}"
+    "lambda-003-to-bucket"                            = "flag{lambda_003_bucket_accessed}"
     "lambda-004-plus-iam-002-to-admin"                = "flag{lambda_004_iam_002_multi_hop_admin_captured}"
     "lambda-004-to-admin"                             = "flag{lambda_004_admin_captured}"
+    "lambda-004-to-bucket"                            = "flag{lambda_004_bucket_accessed}"
     "lambda-005-to-admin"                             = "flag{lambda_005_admin_captured}"
+    "lambda-005-to-bucket"                            = "flag{lambda_005_bucket_accessed}"
     "lambda-006-to-admin"                             = "flag{lambda_006_admin_captured}"
+    "lambda-006-to-bucket"                            = "flag{lambda_006_bucket_accessed}"
     "lambda-invoke-update-to-admin"                   = "flag{lambda_invoke_update_cross_account_admin_captured}"
     "multi-hop-both-sides-to-admin"                   = "flag{multi_hop_both_sides_admin_captured}"
     "multiple-paths-combined-to-admin"                = "flag{multiple_paths_combined_admin_captured}"
@@ -217,6 +223,7 @@ variable "scenario_flag_defaults" {
     "ssm-001-to-bucket"                               = "flag{ssm_001_bucket_accessed}"
     "ssm-002-to-admin"                                = "flag{ssm_002_admin_captured}"
     "ssm-002-to-bucket"                               = "flag{ssm_002_bucket_accessed}"
+    "ssm-startsession-ec2-admin-to-admin"             = "flag{ssm_startsession_ec2_admin}"
     "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
     "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
     "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
@@ -779,6 +786,42 @@ variable "enable_single_account_privesc_one_hop_to_bucket_iam_006_iam_updatelogi
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_001_iam_passrole_lambda_createfunction_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-001-iam-passrole+lambda-createfunction+lambda-invokefunction"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-002-iam-passrole+lambda-createfunction+createeventsourcemapping-dynamodb"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-003-lambda-updatefunctioncode"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_004_lambda_updatefunctioncode_lambda_invokefunction" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-004-lambda-updatefunctioncode+lambda-invokefunction"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-005-lambda-updatefunctioncode+lambda-addpermission"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → lambda-006-iam-passrole+lambda-createfunction+lambda-addpermission"
+  type        = bool
+  default     = false
+}
+
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
@@ -923,6 +966,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides" {
 
 variable "enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   description = "Enable: cross-account → dev-to-prod → multi-hop → lambda-invoke-update"
+  type        = bool
+  default     = false
+}
+
+variable "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  description = "Enable: cross-account → dev-to-prod → multi-hop → ssm-startsession-ec2-admin"
   type        = bool
   default     = false
 }

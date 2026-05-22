@@ -300,7 +300,7 @@ fi
 
 echo -e "\n${RED}Warning: The prod Lambda function still contains malicious code.${NC}"
 echo -e "${YELLOW}To restore the original function code:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

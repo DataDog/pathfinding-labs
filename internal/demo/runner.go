@@ -17,30 +17,35 @@ func NewRunner(repoPath string) *Runner {
 	return &Runner{repoPath: repoPath}
 }
 
-// RunDemo executes the demo_attack.sh script for a scenario
-func (r *Runner) RunDemo(scenarioDir string) error {
+// RunOptions holds optional parameters for running demo/cleanup scripts.
+type RunOptions struct {
+	RestrictPermissions bool
+}
+
+// RunDemo executes the demo_attack.sh script for a scenario.
+func (r *Runner) RunDemo(scenarioDir string, opts RunOptions) error {
 	scriptPath := filepath.Join(scenarioDir, "demo_attack.sh")
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		return fmt.Errorf("demo script not found: %s", scriptPath)
 	}
 
-	return r.runScript(scriptPath, scenarioDir)
+	return r.runScript(scriptPath, scenarioDir, opts)
 }
 
-// RunCleanup executes the cleanup_attack.sh script for a scenario
-func (r *Runner) RunCleanup(scenarioDir string) error {
+// RunCleanup executes the cleanup_attack.sh script for a scenario.
+func (r *Runner) RunCleanup(scenarioDir string, opts RunOptions) error {
 	scriptPath := filepath.Join(scenarioDir, "cleanup_attack.sh")
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		return fmt.Errorf("cleanup script not found: %s", scriptPath)
 	}
 
-	return r.runScript(scriptPath, scenarioDir)
+	return r.runScript(scriptPath, scenarioDir, opts)
 }
 
-// runScript executes a shell script
-func (r *Runner) runScript(scriptPath, workDir string) error {
+// runScript executes a shell script.
+func (r *Runner) runScript(scriptPath, workDir string, opts RunOptions) error {
 	// Make sure script is executable
 	if err := os.Chmod(scriptPath, 0755); err != nil {
 		return fmt.Errorf("failed to make script executable: %w", err)
@@ -57,6 +62,10 @@ func (r *Runner) runScript(scriptPath, workDir string) error {
 
 	// Add the repo path to help scripts find terraform outputs
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PLABS_REPO_PATH=%s", r.repoPath))
+
+	if opts.RestrictPermissions {
+		cmd.Env = append(cmd.Env, "PL_RESTRICT_PERMISSIONS=1")
+	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("script execution failed: %w", err)

@@ -62,6 +62,7 @@ fi
 # Get AWS region
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 export AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Extract bucket info
 BUCKET_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name')
@@ -134,6 +135,7 @@ test_user() {
     export AWS_ACCESS_KEY_ID="$access_key"
     export AWS_SECRET_ACCESS_KEY="$secret_key"
     export AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
     unset AWS_SESSION_TOKEN
 
     # Wait for IAM propagation
@@ -199,6 +201,7 @@ test_role() {
     # Switch to starting user credentials for role assumption
     use_starting_creds
     export AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 
     # Wait for IAM propagation
     sleep 1
@@ -225,6 +228,7 @@ test_role() {
     export AWS_SECRET_ACCESS_KEY="$TEMP_SECRET_KEY"
     export AWS_SESSION_TOKEN="$TEMP_SESSION_TOKEN"
     export AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 
     # Test S3 access
     if aws s3 ls s3://$BUCKET_NAME/ > /dev/null 2>&1; then

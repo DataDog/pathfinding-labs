@@ -124,6 +124,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -142,6 +143,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -151,6 +153,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 4: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -164,6 +167,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Discovering target EC2 instance${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Listing EC2 instances with their attached IAM roles..."
 INSTANCE_INFO=$(aws ec2 describe-instances \
     --region $AWS_REGION \
@@ -194,6 +198,7 @@ fi
 echo -e "${YELLOW}Step 6: Checking if instance is ready for SSM session${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Verifying SSM agent is running on the instance..."
 
 MAX_RETRIES=5
@@ -232,6 +237,7 @@ echo ""
 echo -e "${YELLOW}Step 7: Starting SSM session to extract instance role credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}INTERACTIVE SESSION INSTRUCTIONS${NC}"
 echo -e "${BLUE}========================================${NC}"
@@ -320,6 +326,7 @@ export AWS_SECRET_ACCESS_KEY="$EXTRACTED_SECRET_KEY"
 export AWS_SESSION_TOKEN="$EXTRACTED_SESSION_TOKEN"
 # Keep region consistent
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 # Verify new identity
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -398,7 +405,7 @@ echo "- Session activity is logged in CloudTrail and SSM Session Manager logs"
 
 echo -e "\n${YELLOW}Note: SSM session history is logged and retained for auditing${NC}"
 echo -e "${YELLOW}To clean up (informational only - no artifacts to remove):${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

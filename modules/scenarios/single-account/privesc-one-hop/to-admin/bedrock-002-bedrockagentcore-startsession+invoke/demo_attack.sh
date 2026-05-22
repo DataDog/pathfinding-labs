@@ -158,6 +158,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 3: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -176,6 +177,7 @@ echo -e "${GREEN}✓ Verified starting user identity${NC}\n"
 echo -e "${YELLOW}Step 4: Getting account ID${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
 echo "Account ID: $ACCOUNT_ID"
@@ -185,6 +187,7 @@ echo -e "${GREEN}✓ Retrieved account ID${NC}\n"
 echo -e "${YELLOW}Step 5: Verifying we don't have admin permissions yet${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Attempting to list IAM users (should fail)..."
 show_cmd "Attacker" "aws iam list-users --max-items 1"
 if aws iam list-users --max-items 1 &> /dev/null; then
@@ -344,6 +347,7 @@ echo -e "${GREEN}✓ Created credential extraction script${NC}\n"
 echo -e "${YELLOW}Step 9: Extracting credentials from code interpreter's MMDS${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 echo "Running Python script to extract credentials..."
 echo ""
 
@@ -374,6 +378,7 @@ export AWS_ACCESS_KEY_ID=$EXTRACTED_ACCESS_KEY
 export AWS_SECRET_ACCESS_KEY=$EXTRACTED_SECRET_KEY
 export AWS_SESSION_TOKEN=$EXTRACTED_SESSION_TOKEN
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Verifying identity with extracted credentials..."
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
@@ -461,7 +466,7 @@ echo -e "\n${RED}⚠ Warning: The extracted credentials are temporary and will e
 echo -e "${RED}⚠ The code interpreter session remains active until cleaned up${NC}"
 
 echo -e "\n${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

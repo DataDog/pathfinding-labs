@@ -146,6 +146,7 @@ trap _glue_demo_exit_handler EXIT INT TERM
 echo -e "${YELLOW}Step 2: Configuring AWS CLI with starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -383,7 +384,7 @@ echo -e "${RED}⚠ Glue Dev Endpoints cost approximately $2.20/hour${NC}"
 echo -e "${RED}⚠ You are being charged while the endpoint remains active${NC}"
 echo ""
 echo -e "${YELLOW}To clean up and stop charges:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 

@@ -117,6 +117,7 @@ NEW_PASSWORD="PathfindingLabs123!${RANDOM_SUFFIX}"  # New password with random s
 echo -e "${YELLOW}Step 2: Verifying identity as starting user${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 CURRENT_USER=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -301,7 +302,7 @@ echo ""
 
 echo -e "${RED}⚠ Warning: The bucket user's password has been changed!${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Mark demo as active for plabs tracking

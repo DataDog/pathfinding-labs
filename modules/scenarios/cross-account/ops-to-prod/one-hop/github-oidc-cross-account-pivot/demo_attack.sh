@@ -167,12 +167,14 @@ use_ops_readonly_creds() {
     export AWS_SECRET_ACCESS_KEY="$OPS_READONLY_SECRET_KEY"
     unset AWS_SESSION_TOKEN
     export AWS_REGION=$AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 }
 use_prod_admin_creds() {
     export AWS_ACCESS_KEY_ID="$PROD_ADMIN_ACCESS_KEY"
     export AWS_SECRET_ACCESS_KEY="$PROD_ADMIN_SECRET_KEY"
     unset AWS_SESSION_TOKEN
     export AWS_REGION=$AWS_REGION
+    export AWS_DEFAULT_REGION="$AWS_REGION"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -113,6 +113,7 @@ setup_demo_restriction_trap "$SCRIPT_DIR/scenario.yaml"
 echo -e "${YELLOW}Step 2: Verifying starting user identity${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "Attacker" "aws sts get-caller-identity --query 'Arn' --output text"
 USER_IDENTITY=$(aws sts get-caller-identity --query 'Arn' --output text)
@@ -128,6 +129,7 @@ echo -e "${GREEN}✓ Confirmed identity as $PRIVESC_USER${NC}\n"
 echo -e "${YELLOW}Step 3: Getting account ID and verifying group membership${NC}"
 use_readonly_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_cmd "ReadOnly" "aws sts get-caller-identity --query 'Account' --output text"
 ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
@@ -226,6 +228,7 @@ fi
 echo -e "${YELLOW}Step 7: Capturing the CTF flag${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 show_attack_cmd "Attacker" "aws ssm get-parameter --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name /pathfinding-labs/flags/iam-011-to-admin --query 'Parameter.Value' --output text)

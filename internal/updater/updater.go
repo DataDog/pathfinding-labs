@@ -18,10 +18,6 @@ const (
 	httpTimeout = 3 * time.Second
 )
 
-// InstallMethod is set via ldflags at build time: "source", "release", or "unknown".
-// Brew installs are detected at runtime via the executable path.
-var InstallMethod = "unknown"
-
 // UpdateCache stores the result of the last GitHub release check.
 type UpdateCache struct {
 	CheckedAt     time.Time `json:"checked_at"`
@@ -31,30 +27,12 @@ type UpdateCache struct {
 // ShouldCheck returns true when the version looks like a tagged release build.
 // Skips dev builds, dirty builds (contain "-"), and the default placeholder.
 func ShouldCheck(version string) bool {
-	if version == "" || version == "dev" || version == "unknown" || version == "0.0.1" {
+	if version == "" || version == "dev" || version == "unknown" {
 		return false
 	}
 	// Versions like "v1.2.3-5-gabcdef" or "v1.2.3-dirty" are untagged/dirty builds.
 	v := strings.TrimPrefix(version, "v")
 	return !strings.Contains(v, "-")
-}
-
-// GetInstallMethod returns the effective install method. Brew installs are identified
-// by the real executable path containing "/Cellar/plabs/", which covers all Homebrew
-// prefixes (/usr/local, /opt/homebrew, /home/linuxbrew/.linuxbrew).
-// os.Executable returns the symlink path (e.g. /opt/homebrew/bin/plabs), so we
-// resolve symlinks first to reach the actual Cellar path.
-func GetInstallMethod() string {
-	exe, err := os.Executable()
-	if err == nil {
-		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-			exe = resolved
-		}
-		if strings.Contains(exe, "/Cellar/plabs/") {
-			return "brew"
-		}
-	}
-	return InstallMethod
 }
 
 // cacheFilePath returns the path to the on-disk update cache.
@@ -153,20 +131,13 @@ func isNewer(current, latest string) bool {
 	return false
 }
 
-// FormatNotice returns the update notice string for the given install method.
-func FormatNotice(currentVersion, latestVersion, method string) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("A new version of plabs is available: %s (you have %s)\n", latestVersion, currentVersion))
-	switch method {
-	case "brew":
-		sb.WriteString("  Upgrade:  brew upgrade plabs\n")
-	case "source":
-		sb.WriteString("  Run:      git pull && make build\n")
-	default:
-		sb.WriteString(fmt.Sprintf("  Download: https://github.com/%s/releases/latest\n", githubRepo))
-	}
-	sb.WriteString("  Then run: plabs update  (to pull the latest scenarios)")
-	return sb.String()
+// FormatNotice returns the update notice string.
+func FormatNotice(currentVersion, latestVersion string) string {
+	return fmt.Sprintf(
+		"A new version of plabs is available: %s (you have %s)\n"+
+			"Install the latest version and then run: plabs update (to pull the latest scenarios)",
+		latestVersion, currentVersion,
+	)
 }
 
 // Check performs the update check and returns a formatted notice string, or "" if
@@ -181,7 +152,7 @@ func Check(currentVersion string) string {
 	cache, err := LoadCache()
 	if err == nil && time.Since(cache.CheckedAt) < cacheTTL {
 		if cache.LatestVersion != "" && isNewer(currentVersion, cache.LatestVersion) {
-			return FormatNotice(currentVersion, cache.LatestVersion, GetInstallMethod())
+			return FormatNotice(currentVersion, cache.LatestVersion)
 		}
 		return ""
 	}
@@ -202,7 +173,7 @@ func Check(currentVersion string) string {
 	})
 
 	if isNewer(currentVersion, latestVersion) {
-		return FormatNotice(currentVersion, latestVersion, GetInstallMethod())
+		return FormatNotice(currentVersion, latestVersion)
 	}
 	return ""
 }

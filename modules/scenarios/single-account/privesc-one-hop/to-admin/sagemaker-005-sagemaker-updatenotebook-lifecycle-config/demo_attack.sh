@@ -142,6 +142,7 @@ trap _demo_exit_handler EXIT INT TERM
 echo -e "${YELLOW}Step 2: Verifying starting user credentials${NC}"
 use_starting_creds
 export AWS_REGION=$AWS_REGION
+export AWS_DEFAULT_REGION="$AWS_REGION"
 
 echo "Using region: $AWS_REGION"
 
@@ -505,7 +506,7 @@ echo "- Notebook instance modified: $NOTEBOOK_NAME"
 
 echo -e "\n${RED}⚠ Warning: Multiple changes made to the environment${NC}"
 echo -e "${YELLOW}To clean up and restore the original state:${NC}"
-echo "  ./cleanup_attack.sh or use the plabs TUI/CLI"
+echo "  run plabs cleanup or use the plabs TUI/CLI"
 echo ""
 
 # Demo completed successfully — disarm the best-effort-stop trap.

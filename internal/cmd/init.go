@@ -91,11 +91,18 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Step 3: Check for/download terraform
 	fmt.Println("[3/5] Checking for terraform...")
 	installer := terraform.NewInstaller(paths.BinPath)
-	tfPath, err := installer.EnsureInstalled()
+	tfPath, installResult, err := installer.EnsureInstalled()
 	if err != nil {
 		return fmt.Errorf("failed to ensure terraform is installed: %w", err)
 	}
-	fmt.Printf(green("      Terraform available at %s\n"), tfPath)
+	switch installResult {
+	case terraform.InstallResultFreshInstall:
+		fmt.Printf(green("      Terraform v%s installed to %s\n"), terraform.TerraformVersion, tfPath)
+	case terraform.InstallResultUpdated:
+		fmt.Printf(green("      Terraform updated to v%s at %s\n"), terraform.TerraformVersion, tfPath)
+	default:
+		fmt.Printf(green("      Terraform v%s ready at %s\n"), terraform.TerraformVersion, tfPath)
+	}
 
 	// Step 4: Clone repository (skip for dev mode workspaces)
 	fmt.Println("[4/5] Setting up pathfinding-labs repository...")

@@ -130,7 +130,13 @@ func (i *InfoPane) View() string {
 
 	// Build the box content - now just title and version
 	titleText := "PATHFINDING LABS"
-	versionText := fmt.Sprintf("v%s", strings.TrimPrefix(i.version, "v"))
+	v := strings.TrimPrefix(i.version, "v")
+	var versionText string
+	if v == "dev" {
+		versionText = "dev build"
+	} else {
+		versionText = "v" + v
+	}
 
 	// Find the widest line for box width
 	boxWidth := len(titleText)
