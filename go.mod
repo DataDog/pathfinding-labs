@@ -4,9 +4,9 @@ go 1.25.0
 
 require (
 	github.com/atotto/clipboard v0.1.4
-	github.com/aws/aws-sdk-go-v2 v1.41.7
+	github.com/aws/aws-sdk-go-v2 v1.41.8
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
-	github.com/aws/aws-sdk-go-v2/service/iam v1.53.10
+	github.com/aws/aws-sdk-go-v2/service/iam v1.53.11
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/huh v1.0.0
@@ -21,8 +21,8 @@ require (
 require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.23 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.24 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.24 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.23 // indirect
