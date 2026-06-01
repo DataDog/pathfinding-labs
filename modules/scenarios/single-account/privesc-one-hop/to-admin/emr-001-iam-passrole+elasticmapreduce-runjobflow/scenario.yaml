@@ -1,0 +1,78 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+elasticmapreduce-runjobflow"
+title: "EMR RunJobFlow with Admin Instance Profile to Admin"
+description: "User with iam:PassRole and elasticmapreduce:RunJobFlow can escalate privileges by creating an EMR cluster with an admin instance profile and executing a step via command-runner.jar"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "emr-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-emr-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-emr-001-to-admin-admin-role"
+
+  summary: "starting_user → (elasticmapreduce:RunJobFlow with admin instance profile + service role, step using command-runner.jar calls iam:attach-user-policy) → EMR cluster attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-emr-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-001-to-admin-admin-role"
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-001-to-admin-service-role"
+        - permission: "elasticmapreduce:RunJobFlow"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-emr-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "elasticmapreduce:DescribeCluster"
+          purpose: "Monitor cluster status and verify step completion"
+        - permission: "elasticmapreduce:DescribeStep"
+          purpose: "Check step execution status"
+        - permission: "elasticmapreduce:ListClusters"
+          purpose: "List existing clusters"
+        - permission: "elasticmapreduce:ListSteps"
+          purpose: "List steps on the EMR cluster to check step execution status"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/emr-001-iam-passrole+elasticmapreduce-runjobflow"

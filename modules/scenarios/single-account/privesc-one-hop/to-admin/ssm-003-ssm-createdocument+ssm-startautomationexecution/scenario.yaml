@@ -1,0 +1,78 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "ssm-createdocument+ssm-startautomationexecution"
+title: "PassRole + SSM Automation ExecuteScript to Admin"
+description: "User with iam:PassRole, ssm:CreateDocument, and ssm:StartAutomationExecution can escalate to full administrator by creating a custom SSM Automation document with a Python aws:executeScript step that attaches AdministratorAccess to themselves, then passing an admin-privileged IAM role as AutomationAssumeRole. SSM runs the Python script in AWS-managed serverless compute under the admin role's credentials — no EC2 instance or SSM agent required."
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "ssm-003"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-ssm-003-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ssm-003-to-admin-automation-role"
+
+  summary: "starting-user → (iam:PassRole + ssm:CreateDocument + ssm:StartAutomationExecution) → SSM Automation runs Python under automation-role credentials → iam:AttachUserPolicy grants AdministratorAccess to starting-user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-ssm-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-ssm-003-to-admin-automation-role"
+        - permission: "ssm:CreateDocument"
+          resource: "*"
+        - permission: "ssm:StartAutomationExecution"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-ssm-003-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover IAM roles that trust ssm.amazonaws.com as AutomationAssumeRole candidates"
+        - permission: "iam:GetRole"
+          purpose: "Inspect trust policy of candidate roles to confirm SSM service principal"
+        - permission: "ssm:ListDocuments"
+          purpose: "Enumerate existing SSM documents for situational awareness"
+        - permission: "ssm:DescribeDocument"
+          purpose: "Inspect document schema and parameters before executing"
+        - permission: "ssm:GetAutomationExecution"
+          purpose: "Poll automation execution status to confirm the Python script ran successfully"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0005 - Defense Evasion"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1651 - Cloud Administration Command"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-003-ssm-createdocument+ssm-startautomationexecution"

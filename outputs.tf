@@ -467,6 +467,25 @@ output "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  description = "All outputs for amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].admin_role_name
+    codecommit_repo_name            = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_name
+    codecommit_repo_arn             = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_arn
+    codecommit_repo_clone_url_http  = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].codecommit_repo_clone_url_http
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   description = "All outputs for apprunner-001-iam-passrole+apprunner-createservice one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice ? {
@@ -507,6 +526,20 @@ output "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
     existing_interpreter_id         = module.single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke[0].existing_interpreter_id
     existing_interpreter_arn        = module.single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke[0].existing_interpreter_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
+  description = "All outputs for cognito-identity-001 one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].admin_role_arn
+    identity_pool_id                = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].identity_pool_id
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles[0].attack_path
   } : null
   sensitive = true
 }
@@ -670,10 +703,10 @@ output "single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_descr
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].target_role_arn
     ecs_cluster_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_name
     ecs_cluster_arn                 = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_cluster_arn
-    ecs_service_name        = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
-    flag_ssm_parameter_name = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
-    flag_ssm_parameter_arn  = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
-    attack_path             = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
+    ecs_service_name                = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].ecs_service_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks[0].attack_path
   } : null
   sensitive = true
 }
@@ -1040,6 +1073,66 @@ output "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  description = "All outputs for batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].admin_role_name
+    execution_role_arn              = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].execution_role_arn
+    job_queue_arn                   = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].job_queue_arn
+    job_queue_name                  = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].job_queue_name
+    compute_environment_arn         = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].compute_environment_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
+  description = "All outputs for batch-002-batch-submitjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].admin_role_name
+    job_definition_name             = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].job_definition_name
+    job_definition_arn              = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].job_definition_arn
+    job_queue_name                  = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].job_queue_name
+    job_queue_arn                   = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].job_queue_arn
+    compute_environment_arn         = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].compute_environment_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
+  description = "All outputs for braket-001-iam-passrole+braket-createjob one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].admin_role_name
+    s3_bucket_name                  = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].s3_bucket_name
+    s3_bucket_arn                   = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].s3_bucket_arn
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].attacker_bucket_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   description = "All outputs for codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch ? {
@@ -1051,6 +1144,25 @@ output "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
     target_role_arn                 = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].target_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].attack_path
     flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch[0].flag_ssm_parameter_name
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment" {
+  description = "All outputs for codedeploy-001-codedeploy-createdeployment one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].starting_user_secret_access_key
+    ec2_role_arn                    = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].ec2_role_arn
+    app_name                        = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].app_name
+    deployment_group_name           = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].deployment_group_name
+    attacker_bucket                 = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].attacker_bucket
+    revision_key                    = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].revision_key
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment[0].attack_path
   } : null
   sensitive = true
 }
@@ -1227,6 +1339,55 @@ output "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updateno
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
+  description = "All outputs for stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].admin_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution" {
+  description = "All outputs for stepfunctions-002 one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].starting_user_secret_access_key
+    state_machine_arn               = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].state_machine_arn
+    state_machine_name              = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].state_machine_name
+    statemachine_role_arn           = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].statemachine_role_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_scheduler_001" {
+  description = "All outputs for scheduler-001 one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_scheduler_001 ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].starting_user_secret_access_key
+    scheduler_role_arn              = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].scheduler_role_arn
+    scheduler_role_name             = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].scheduler_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_scheduler_001[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob" {
   description = "All outputs for sagemaker-002-iam-passrole+sagemaker-createtrainingjob one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_sagemaker_002_iam_passrole_sagemaker_createtrainingjob ? {
@@ -1255,6 +1416,21 @@ output "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
     ec2_admin_role_name             = module.single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand[0].ec2_admin_role_name
     ec2_admin_role_arn              = module.single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand[0].ec2_admin_role_arn
     attack_path                     = module.single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  description = "All outputs for ssm-003-ssm-createdocument+ssm-startautomationexecution one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].starting_user_secret_access_key
+    automation_role_arn             = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].automation_role_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -1342,6 +1518,122 @@ output "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   } : null
   sensitive = true
 }
+
+output "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
+  description = "All outputs for emr-001-iam-passrole+elasticmapreduce-runjobflow one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].admin_role_name
+    admin_instance_profile_name     = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].admin_instance_profile_name
+    admin_instance_profile_arn      = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].admin_instance_profile_arn
+    service_role_arn                = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].service_role_arn
+    service_role_name               = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].service_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun" {
+  description = "All outputs for emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].admin_role_name
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].attacker_bucket_name
+    s3_bucket_name                  = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].s3_bucket_name
+    s3_bucket_arn                   = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].s3_bucket_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
+  description = "All outputs for gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].admin_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage" {
+  description = "All outputs for imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].admin_role_name
+    admin_instance_profile_arn      = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].admin_instance_profile_arn
+    admin_instance_profile_name     = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].admin_instance_profile_name
+    default_subnet_id               = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].default_subnet_id
+    build_security_group_id         = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].build_security_group_id
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
+  description = "All outputs for kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].admin_role_name
+    code_bucket_name                = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].code_bucket_name
+    code_bucket_key                 = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].code_bucket_key
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].attacker_bucket_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  description = "All outputs for omics-001-iam-passrole+omics-createworkflow+omics-startrun one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].admin_role_name
+    s3_bucket_name                  = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].s3_bucket_name
+    s3_bucket_arn                   = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].s3_bucket_arn
+    attacker_bucket_name            = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].attacker_bucket_name
+    ecr_image_uri                   = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].ecr_image_uri
+    ecr_registry                    = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].ecr_registry
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun[0].attack_path
+  } : null
+  sensitive = true
+}
+
 
 output "single_account_privesc_one_hop_to_bucket_iam_002_iam_createaccesskey" {
   description = "All outputs for iam-002-iam-createaccesskey one-hop to-bucket scenario"
@@ -1966,6 +2258,26 @@ output "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
     target_role_name                = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_name
     target_role_arn                 = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].target_role_arn
     attack_path                     = module.cross_account_dev_to_prod_one_hop_root_trust_role_assumption[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  description = "All outputs for ssm-startsession-ec2-admin cross-account multi-hop scenario"
+  value = var.enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin ? {
+    starting_user_name              = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_name
+    starting_user_arn               = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].starting_user_secret_access_key
+    prod_pivot_role_arn             = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].prod_pivot_role_arn
+    prod_pivot_role_name            = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].prod_pivot_role_name
+    ec2_instance_id                 = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_instance_id
+    ec2_instance_arn                = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_instance_arn
+    ec2_admin_role_name             = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_admin_role_name
+    ec2_admin_role_arn              = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].ec2_admin_role_arn
+    flag_ssm_parameter_name         = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_arn
+    attack_path                     = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].attack_path
   } : null
   sensitive = true
 }

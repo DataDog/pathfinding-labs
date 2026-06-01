@@ -13,17 +13,23 @@ import (
 // ServiceLinkedRoleStatus tracks which service-linked roles already exist in an AWS account.
 // Roles that already exist should not be created by Terraform to avoid deploy failures.
 type ServiceLinkedRoleStatus struct {
-	AutoScalingExists bool
-	SpotExists        bool
-	AppRunnerExists   bool
+	AutoScalingExists       bool
+	SpotExists              bool
+	AppRunnerExists         bool
+	EMRExists               bool
+	EMRServerlessExists     bool
+	ImageBuilderExists      bool
 }
 
 // slrStateAddresses maps each SLR to its canonical Terraform state resource address.
 // These are the addresses used when Terraform created the SLR via the prod_environment module.
 var slrStateAddresses = map[string]string{
-	"autoscaling": "module.prod_environment[0].aws_iam_service_linked_role.autoscaling[0]",
-	"spot":        "module.prod_environment[0].aws_iam_service_linked_role.spot[0]",
-	"apprunner":   "module.prod_environment[0].aws_iam_service_linked_role.apprunner[0]",
+	"autoscaling":   "module.prod_environment[0].aws_iam_service_linked_role.autoscaling[0]",
+	"spot":          "module.prod_environment[0].aws_iam_service_linked_role.spot[0]",
+	"apprunner":     "module.prod_environment[0].aws_iam_service_linked_role.apprunner[0]",
+	"emr":           "module.prod_environment[0].aws_iam_service_linked_role.emr[0]",
+	"emrserverless": "module.prod_environment[0].aws_iam_service_linked_role.emr_serverless[0]",
+	"imagebuilder":  "module.prod_environment[0].aws_iam_service_linked_role.imagebuilder[0]",
 }
 
 // SLRInState returns which service-linked roles are currently in Terraform state
@@ -34,17 +40,23 @@ func SLRInState(stateResources []string) *ServiceLinkedRoleStatus {
 		inState[r] = true
 	}
 	return &ServiceLinkedRoleStatus{
-		AutoScalingExists: inState[slrStateAddresses["autoscaling"]],
-		SpotExists:        inState[slrStateAddresses["spot"]],
-		AppRunnerExists:   inState[slrStateAddresses["apprunner"]],
+		AutoScalingExists:   inState[slrStateAddresses["autoscaling"]],
+		SpotExists:          inState[slrStateAddresses["spot"]],
+		AppRunnerExists:     inState[slrStateAddresses["apprunner"]],
+		EMRExists:           inState[slrStateAddresses["emr"]],
+		EMRServerlessExists: inState[slrStateAddresses["emrserverless"]],
+		ImageBuilderExists:  inState[slrStateAddresses["imagebuilder"]],
 	}
 }
 
 // serviceLinkedRoleChecks maps our internal names to the AWS IAM role names
 var serviceLinkedRoleChecks = map[string]string{
-	"autoscaling": "AWSServiceRoleForAutoScaling",
-	"spot":        "AWSServiceRoleForEC2Spot",
-	"apprunner":   "AWSServiceRoleForAppRunner",
+	"autoscaling":   "AWSServiceRoleForAutoScaling",
+	"spot":          "AWSServiceRoleForEC2Spot",
+	"apprunner":     "AWSServiceRoleForAppRunner",
+	"emr":           "AWSServiceRoleForEMRCleanup",
+	"emrserverless": "AWSServiceRoleForAmazonEMRServerless",
+	"imagebuilder":  "AWSServiceRoleForImageBuilder",
 }
 
 // DetectExistingServiceLinkedRoles checks which service-linked roles already exist
@@ -74,6 +86,12 @@ func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus,
 			status.SpotExists = exists
 		case "apprunner":
 			status.AppRunnerExists = exists
+		case "emr":
+			status.EMRExists = exists
+		case "emrserverless":
+			status.EMRServerlessExists = exists
+		case "imagebuilder":
+			status.ImageBuilderExists = exists
 		}
 	}
 

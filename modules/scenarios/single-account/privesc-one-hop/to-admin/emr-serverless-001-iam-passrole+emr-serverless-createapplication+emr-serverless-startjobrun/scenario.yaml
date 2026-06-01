@@ -1,0 +1,76 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.1"
+name: "iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+title: "EMR Serverless Application Job to Admin"
+description: "User with iam:PassRole, emr-serverless:CreateApplication, and emr-serverless:StartJobRun can escalate privileges by creating an EMR Serverless Spark application and running a job with an admin execution role that grants starting user admin access"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "emrserverless-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-emr-serverless-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-emr-serverless-001-to-admin-admin-role"
+
+  summary: "starting_user → (emr-serverless:CreateApplication) → (iam:PassRole + emr-serverless:StartJobRun with admin execution role + pre-staged exploit script) → Spark job exfiltrates admin role creds to S3 → attacker retrieves creds → attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-emr-serverless-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-emr-serverless-001-to-admin-admin-role"
+        - permission: "emr-serverless:CreateApplication"
+          resource: "*"
+        - permission: "emr-serverless:StartJobRun"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-emr-serverless-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "emr-serverless:GetApplication"
+          purpose: "Check application state before submitting job"
+        - permission: "emr-serverless:GetJobRun"
+          purpose: "Monitor job run status and verify completion"
+        - permission: "emr-serverless:ListApplications"
+          purpose: "Discover existing applications"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"

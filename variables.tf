@@ -124,8 +124,11 @@ variable "scenario_flag_defaults" {
   default = {
     "apprunner-001-to-admin"                          = "flag{apprunner_001_admin_captured}"
     "apprunner-002-to-admin"                          = "flag{apprunner_002_admin_captured}"
+    "batch-001-to-admin"                              = "flag{batch_001_admin_captured}"
+    "batch-002-to-admin"                              = "flag{batch-submitjob-existing-admin-jd}"
     "bedrock-001-to-admin"                            = "flag{bedrock_001_admin_captured}"
     "bedrock-002-to-admin"                            = "flag{bedrock_002_admin_captured}"
+    "cognito-identity-001-to-admin"                   = "flag{cognito-identity-pool-unauthenticated-role-swap}"
     "cloudformation-001-to-admin"                     = "flag{cloudformation_001_admin_captured}"
     "cloudformation-002-to-admin"                     = "flag{cloudformation_002_admin_captured}"
     "cloudformation-003-to-admin"                     = "flag{cloudformation_003_admin_captured}"
@@ -135,6 +138,7 @@ variable "scenario_flag_defaults" {
     "codebuild-002-to-admin"                          = "flag{codebuild_002_admin_captured}"
     "codebuild-003-to-admin"                          = "flag{codebuild_003_admin_captured}"
     "codebuild-004-to-admin"                          = "flag{codebuild_004_admin_captured}"
+    "codedeploy-001-to-admin"                         = "flag{codedeploy-createdeployment-ec2-hook}"
     "cspm-ec2-001-to-admin"                           = "flag{cspm_ec2_001_admin_captured}"
     "ctf-001-to-admin"                                = "flag{ctf_001_chatbot_prompt_injected}"
     "ctf-002-to-admin"                                = "flag{ctf_002_admin_captured}"
@@ -219,10 +223,13 @@ variable "scenario_flag_defaults" {
     "sagemaker-003-to-admin"                          = "flag{sagemaker_003_admin_captured}"
     "sagemaker-004-to-admin"                          = "flag{sagemaker_004_admin_captured}"
     "sagemaker-005-to-admin"                          = "flag{sagemaker_005_admin_captured}"
+    "scheduler-001-to-admin"                          = "flag{eventbridge-scheduler-universal-target-passrole-privesc}"
     "ssm-001-to-admin"                                = "flag{ssm_001_admin_captured}"
     "ssm-001-to-bucket"                               = "flag{ssm_001_bucket_accessed}"
     "ssm-002-to-admin"                                = "flag{ssm_002_admin_captured}"
     "ssm-002-to-bucket"                               = "flag{ssm_002_bucket_accessed}"
+    "ssm-startsession-ec2-admin-to-admin"             = "flag{ssm_startsession_ec2_admin}"
+    "stepfunctions-002-to-admin"                      = "flag{stepfunctions-updatestatemachine-existing-role-escalation}"
     "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
     "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
     "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
@@ -362,6 +369,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updatelogin
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob (Pathfinding.cloud: amplify-001)"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   description = "Enable: single-account → privesc-one-hop → to-admin → apprunner-001-iam-passrole+apprunner-createservice (Pathfinding.cloud: apprunner-001)"
   type        = bool
@@ -376,6 +389,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrol
 
 variable "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke" {
   description = "Enable: single-account → privesc → one-hop → to-admin → bedrock-002-bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cognito-identity-001-iam-passrole+cognito-identity-setidentitypoolroles"
   type        = bool
   default     = false
 }
@@ -476,6 +495,24 @@ variable "enable_single_account_privesc_one_hop_to_admin_lambda_001_iam_passrole
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → batch-002-batch-submitjob"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → braket-001-iam-passrole+braket-createjob"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_cloudformation_005_cloudformation_createchangeset_executechangeset" {
   description = "Enable: single-account → privesc-one-hop → to-admin → cloudformation-005-cloudformation-createchangeset+executechangeset"
   type        = bool
@@ -514,6 +551,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_codebuild_001_iam_passr
 
 variable "enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codedeploy-001-codedeploy-createdeployment"
   type        = bool
   default     = false
 }
@@ -566,6 +609,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ssm-003-ssm-createdocument+ssm-startautomationexecution"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ssm-001-ssm-startsession"
   type        = bool
@@ -592,6 +641,42 @@ variable "enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_co
 
 variable "enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ec2-002 → ec2-modifyinstanceattribute+stopinstances+startinstances"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → emr-001-iam-passrole+elasticmapreduce-runjobflow"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → omics-001-iam-passrole+omics-createworkflow+omics-startrun"
   type        = bool
   default     = false
 }
@@ -638,6 +723,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_g
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_scheduler_001" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → scheduler-001"
+  type        = bool
+  default     = false
+}
+
 
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
@@ -669,6 +760,18 @@ variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_004_sagemaker
 
 variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config" {
   description = "Enable: single-account → privesc-one-hop → to-admin → sagemaker-005-sagemaker-updatenotebook-lifecycle-config ($5/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → stepfunctions-002-states-updatestatemachine+states-startexecution"
   type        = bool
   default     = false
 }
@@ -903,6 +1006,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   default     = false
 }
 
+variable "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  description = "Enable: cross-account → dev-to-prod → multi-hop → ssm-startsession-ec2-admin"
+  type        = bool
+  default     = false
+}
+
 variable "enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   description = "Enable: cross-account → dev-to-prod → one-hop → root-trust-role-assumption"
   type        = bool
@@ -977,6 +1086,24 @@ variable "create_spot_slr" {
 
 variable "create_apprunner_slr" {
   description = "Create the App Runner service-linked role (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_emr_slr" {
+  description = "Create the EMR cleanup service-linked role AWSServiceRoleForEMRCleanup (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_emr_serverless_slr" {
+  description = "Create the EMR Serverless service-linked role AWSServiceRoleForAmazonEMRServerless (set false if it already exists)"
+  type        = bool
+  default     = true
+}
+
+variable "create_imagebuilder_slr" {
+  description = "Create the EC2 Image Builder service-linked role AWSServiceRoleForImageBuilder (set false if it already exists)"
   type        = bool
   default     = true
 }

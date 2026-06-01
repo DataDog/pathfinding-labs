@@ -1,0 +1,126 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-emr-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on both the admin role and the EMR service role,
+        plus elasticmapreduce:RunJobFlow. These permissions together allow you to create
+        an EMR cluster that runs with administrative credentials and executes an arbitrary
+        shell command via command-runner.jar to modify IAM permissions on your behalf.
+
+    - id: emr-cluster
+      label: "EMR Cluster"
+      type: resource
+      subType: emr-cluster
+      arn: "arn:aws:elasticmapreduce:{region}:{account_id}:cluster/pl-prod-emr-001-to-admin-privesc-cluster"
+      description: >
+        An Amazon EMR cluster created by the attacker using elasticmapreduce:RunJobFlow.
+        The cluster is configured with the admin instance profile as the JobFlowRole,
+        meaning all EC2 nodes in the cluster assume the admin role via IMDS. The cluster
+        includes a step that invokes command-runner.jar — a pre-installed utility on all
+        EMR nodes — to run an arbitrary bash command with the admin role's credentials.
+        The cluster is set to auto-terminate after the step completes.
+
+    - id: admin-role
+      label: "Admin Instance Profile Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-emr-001-to-admin-admin-role"
+      description: >
+        An IAM role with AdministratorAccess attached, associated with an EC2 instance
+        profile passed to the EMR cluster as the JobFlowRole. When EMR cluster nodes boot,
+        they automatically assume this role via the Instance Metadata Service (IMDS). Any
+        process running on the cluster — including EMR steps — executes AWS CLI commands
+        with this role's full administrative credentials. The attacker uses this to call
+        iam:AttachUserPolicy and grant themselves permanent admin access. This role is an
+        admin pivot, not the terminal — the CTF flag is the actual end goal.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/emr-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: emr-cluster
+      label: "iam:PassRole + elasticmapreduce:RunJobFlow"
+      description: >
+        The starting user creates an EMR cluster using elasticmapreduce:RunJobFlow,
+        passing both the admin instance profile (pl-prod-emr-001-to-admin-admin-role)
+        as the JobFlowRole and the EMR service role
+        (pl-prod-emr-001-to-admin-service-role) as the ServiceRole. The cluster
+        definition includes a step that uses command-runner.jar to execute a bash
+        command attaching AdministratorAccess to the starting user. The --auto-terminate
+        flag causes the cluster to shut down automatically after the step runs.
+      hints:
+        - "You need to pass two roles: the JobFlowRole (instance profile, trusted by ec2.amazonaws.com) and the ServiceRole (trusted by elasticmapreduce.amazonaws.com). Both role names are available in the Terraform outputs."
+        - "EMR steps with command-runner.jar can run arbitrary bash. The step runs as the EC2 instance's IAM role — which in this case is the admin role. Use it to call aws iam attach-user-policy."
+        - "Set --auto-terminate so the cluster shuts itself down after the step completes. EMR provisioning takes 5-15 minutes — poll elasticmapreduce:DescribeCluster until the state is TERMINATED."
+      commands:
+        - description: "Create the EMR cluster with the admin instance profile and an escalation step"
+          command: >
+            aws emr create-cluster
+              --region {region}
+              --name "pl-prod-emr-001-to-admin-privesc-cluster"
+              --release-label emr-7.0.0
+              --applications Name=Hadoop
+              --instance-type m5.xlarge
+              --instance-count 1
+              --service-role pl-prod-emr-001-to-admin-service-role
+              --ec2-attributes "InstanceProfile=pl-prod-emr-001-to-admin-admin-instance-profile"
+              --steps '[{"Name":"Escalate","ActionOnFailure":"TERMINATE_CLUSTER","Type":"CUSTOM_JAR","Jar":"command-runner.jar","Args":["bash","-c","aws iam attach-user-policy --user-name pl-prod-emr-001-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"]}]'
+              --auto-terminate
+              --output json
+
+    - from: emr-cluster
+      to: admin-role
+      label: "assumes instance profile + iam:AttachUserPolicy"
+      description: >
+        The EMR cluster nodes assume the admin instance profile role automatically
+        via the EC2 Instance Metadata Service (IMDS). The command-runner.jar step
+        executes the bash command with the admin role's credentials, calling
+        iam:AttachUserPolicy to attach AdministratorAccess to the starting user.
+        After the step completes the cluster auto-terminates. Wait approximately
+        15 seconds for IAM policy propagation before verifying access.
+      hints: []
+      commands:
+        - description: "Poll cluster state until TERMINATED"
+          command: "aws emr describe-cluster --region {region} --cluster-id {cluster_id} --query 'Cluster.Status.State' --output text"
+        - description: "Verify AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-emr-001-to-admin-starting-user --query 'AttachedPolicies[*].PolicyArn' --output text"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator-equivalent permissions now attached to the starting user,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin access you just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/emr-001-to-admin --query 'Parameter.Value' --output text"

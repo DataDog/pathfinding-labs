@@ -1,0 +1,96 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "codedeploy-createdeployment"
+title: "AWS CodeDeploy CreateDeployment to Admin via Existing Admin EC2 Instance Profile"
+description: "Principal with codedeploy:CreateDeployment can escalate privileges by deploying a malicious revision whose lifecycle hooks execute as the target EC2 instance's admin instance profile"
+cost_estimate: "$8/mo"
+cost_estimate_when_demo_executed: "$8/mo"
+pathfinding-cloud-id: "codedeploy-001"
+interactive_demo: false
+supports_online_mode: false
+demo_timeout_seconds: 1200
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-codedeploy-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-codedeploy-001-to-admin-ec2-role"
+
+  summary: "starting_user → (codedeploy:CreateDeployment with malicious appspec.yml revision in attacker S3) → CodeDeploy agent on target EC2 executes lifecycle hook as admin instance profile → hook attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-codedeploy-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "codedeploy:CreateDeployment"
+          resource: "*"
+        - permission: "codedeploy:GetDeploymentConfig"
+          resource: "*"
+        - permission: "codedeploy:RegisterApplicationRevision"
+          resource: "*"
+        - permission: "codedeploy:GetApplicationRevision"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-codedeploy-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "codedeploy:GetDeployment"
+          purpose: "Monitor deployment status to know when lifecycle hooks have executed"
+        - permission: "codedeploy:ListDeployments"
+          purpose: "List deployments to find the deployment ID"
+        - permission: "codedeploy:GetDeploymentGroup"
+          purpose: "Inspect deployment group configuration to understand target instances"
+        - permission: "codedeploy:GetApplication"
+          purpose: "Inspect the CodeDeploy application configuration"
+        - permission: "codedeploy:ListDeploymentInstances"
+          purpose: "List instances in the deployment to verify target"
+        - permission: "codedeploy:GetDeploymentInstance"
+          purpose: "Check per-instance deployment lifecycle status"
+
+# =============================================================================
+# REQUIRED PRECONDITIONS
+# =============================================================================
+required_preconditions:
+  - type: "aws-resource"
+    resource: "aws_instance"
+    description: "A pre-existing EC2 instance with a privileged instance profile (AdministratorAccess) and the CodeDeploy agent installed and running"
+  - type: "aws-resource"
+    resource: "aws_codedeploy_deployment_group"
+    description: "A CodeDeploy application and deployment group targeting the privileged EC2 instance must already exist"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1072 - Software Deployment Tools"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/codedeploy-001-codedeploy-createdeployment"

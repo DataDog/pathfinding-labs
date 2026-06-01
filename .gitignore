@@ -79,3 +79,4 @@ Thumbs.db
 /local/
 
 .oss-readiness/
+.claude/launch.json

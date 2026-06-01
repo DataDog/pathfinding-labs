@@ -103,9 +103,12 @@ module "prod_environment" {
   budget_limit_usd     = var.budget_limit_usd
 
   # Service-linked role creation flags (plabs auto-detects existing SLRs)
-  create_autoscaling_slr = var.create_autoscaling_slr
-  create_spot_slr        = var.create_spot_slr
-  create_apprunner_slr   = var.create_apprunner_slr
+  create_autoscaling_slr    = var.create_autoscaling_slr
+  create_spot_slr           = var.create_spot_slr
+  create_apprunner_slr      = var.create_apprunner_slr
+  create_emr_slr            = var.create_emr_slr
+  create_emr_serverless_slr = var.create_emr_serverless_slr
+  create_imagebuilder_slr   = var.create_imagebuilder_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)
@@ -338,6 +341,18 @@ module "single_account_privesc_one_hop_to_admin_iam_003_iam_deleteaccesskey_crea
   flag_value      = lookup(local.effective_flags, "iam-003-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/amplify-001-iam-passrole+amplify-createapp+amplify-createbranch+amplify-startjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "amplify-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_apprunner_001_iam_passrole_apprunner_createservice ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/apprunner-001-iam-passrole+apprunner-createservice"
@@ -372,6 +387,18 @@ module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(local.effective_flags, "bedrock-002-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cognito-identity-001-iam-passrole+cognito-identity-setidentitypoolroles"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "cognito-identity-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances" {
@@ -455,7 +482,7 @@ module "single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registe
 }
 
 module "single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
+  count      = var.enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice ? 1 : 0
   source     = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ecs-003-iam-passrole+ecs-registertaskdefinition+ecs-createservice"
   flag_value = lookup(local.effective_flags, "ecs-003-to-admin", "flag{MISSING}")
   providers = {
@@ -700,6 +727,48 @@ module "single_account_privesc_one_hop_to_admin_codebuild_001_iam_passrole_codeb
   flag_value      = lookup(local.effective_flags, "codebuild-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/batch-001-iam-passrole+batch-registerjobdefinition+batch-submitjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/batch-002-batch-submitjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(local.effective_flags, "batch-002-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "braket-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
@@ -710,6 +779,23 @@ module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(local.effective_flags, "codebuild-004-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codedeploy-001-codedeploy-createdeployment"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  vpc_id              = module.prod_environment[0].vpc_id
+  subnet_id           = module.prod_environment[0].subnet1_id
+  aws_region          = var.aws_region
+  flag_value          = lookup(local.effective_flags, "codedeploy-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy" {
@@ -810,6 +896,18 @@ module "single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand" {
   flag_value      = lookup(local.effective_flags, "ssm-002-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_003_ssm_createdocument_ssm_startautomationexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-003-ssm-createdocument+ssm-startautomationexecution"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "ssm-003-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ssm-001-ssm-startsession"
@@ -874,6 +972,86 @@ module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattrib
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
   flag_value      = lookup(local.effective_flags, "ec2-002-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/emr-001-iam-passrole+elasticmapreduce-runjobflow"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "emr-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_emr_serverless_001_iam_passrole_emr_serverless_createapplication_emr_serverless_startjobrun ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/emr-serverless-001-iam-passrole+emr-serverless-createapplication+emr-serverless-startjobrun"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "emr-serverless-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "gamelift-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_imagebuilder_001_iam_passrole_imagebuilder_createcomponent_imagebuilder_createimagerecipe_imagebuilder_createinfrastructureconfiguration_imagebuilder_createimage ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/imagebuilder-001-iam-passrole+imagebuilder-createcomponent+imagebuilder-createimagerecipe+imagebuilder-createinfrastructureconfiguration+imagebuilder-createimage"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(var.scenario_flags, "imagebuilder-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/kinesisanalytics-001-iam-passrole+kinesisanalytics-createapplication+kinesisanalytics-startapplication"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "kinesisanalytics-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/omics-001-iam-passrole+omics-createworkflow+omics-startrun"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  flag_value          = lookup(var.scenario_flags, "omics-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint" {
@@ -1026,6 +1204,46 @@ module "single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updateno
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(local.effective_flags, "sagemaker-005-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "stepfunctions-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-002-states-updatestatemachine+states-startexecution"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "stepfunctions-002-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_scheduler_001" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_scheduler_001 ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/scheduler-001"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "scheduler-001-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
@@ -1479,6 +1697,19 @@ module "cross_account_dev_to_prod_multi_hop_lambda_invoke_update" {
   operations_account_id = local.operations_account_id
   resource_suffix       = random_string.resource_suffix.result
   flag_value            = lookup(local.effective_flags, "lambda-invoke-update-to-admin", "flag{MISSING}")
+}
+
+module "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
+  count  = var.enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/ssm-startsession-ec2-admin"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id  = local.dev_account_id
+  prod_account_id = local.prod_account_id
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "ssm-startsession-ec2-admin-to-admin", "flag{MISSING}")
 }
 
 module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {

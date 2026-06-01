@@ -1,0 +1,133 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-cognito-identity-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has two key permissions: iam:PassRole scoped to the admin role in this
+        account, and cognito-identity:SetIdentityPoolRoles on all resources. Together these
+        two permissions are sufficient to obtain full administrator credentials without touching
+        IAM directly.
+
+    - id: cognito-pool
+      label: "Identity Pool"
+      type: resource
+      subType: cognito-identity-pool
+      arn: "arn:aws:cognito-identity:{region}:{account_id}:identitypool/{pool_id}"
+      description: >
+        This Cognito Identity Pool was created to support the unauthenticated (guest) tier
+        of a mobile application. It has AllowUnauthenticatedIdentities=true and AllowClassicFlow=true.
+
+        The classic flow is the critical detail: when a caller uses GetOpenIdToken followed by
+        sts:AssumeRoleWithWebIdentity, Cognito does NOT attach a managed session policy to the
+        resulting credentials. The role's full permissions apply without restriction. By contrast,
+        the enhanced flow (GetCredentialsForIdentity) attaches a Cognito-managed session policy
+        that blocks most IAM and SSM actions — making it useless for privilege escalation.
+
+        This pool starts with no unauthenticated role bound. The attacker will bind the admin
+        role to the unauthenticated slot using SetIdentityPoolRoles, then exploit the public
+        credential-vending endpoints to receive full admin STS credentials.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-cognito-identity-001-to-admin-admin-role"
+      description: >
+        This IAM role has AdministratorAccess attached. Its trust policy allows
+        sts:AssumeRoleWithWebIdentity from the federated principal cognito-identity.amazonaws.com,
+        with two conditions: the cognito-identity.amazonaws.com:aud claim must equal the specific
+        identity pool ID, and the cognito-identity.amazonaws.com:amr claim must contain
+        "unauthenticated".
+
+        Once the admin role is bound to the pool's unauthenticated slot, ANY anonymous internet
+        caller can satisfy these trust conditions by calling the pool's public GetId and
+        GetOpenIdToken endpoints (no SigV4 signing required). The resulting OIDC token carries
+        the correct aud and amr claims, so sts:AssumeRoleWithWebIdentity succeeds and delivers
+        full AdministratorAccess credentials — no session policy applied.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/cognito-identity-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as a SecureString in SSM Parameter Store.
+        Retrieving it requires ssm:GetParameter on this parameter, which the AdministratorAccess
+        managed policy attached to the admin role grants implicitly. Use the STS credentials
+        obtained in the previous step to read the flag value.
+
+  edges:
+    - from: starting-principal
+      to: cognito-pool
+      label: "cognito-identity:SetIdentityPoolRoles + iam:PassRole"
+      description: >
+        The starting user calls cognito-identity:SetIdentityPoolRoles to bind the admin role
+        to the pool's unauthenticated slot. Cognito validates iam:PassRole against the caller's
+        identity before accepting the binding — this is the IAM gate the starting user's policy
+        explicitly satisfies.
+
+        After this call succeeds (HTTP 200, empty body), the pool is configured to vend STS
+        credentials for the admin role to any anonymous caller who completes the classic flow.
+      hints:
+        - "SetIdentityPoolRoles binds a named IAM role to the pool's 'unauthenticated' or 'authenticated' slot. Cognito enforces iam:PassRole on the caller before accepting the binding — check which roles this principal can pass."
+        - "Once the admin role is bound to the unauthenticated slot, the pool's public endpoints (GetId and GetOpenIdToken) can be called without any AWS credentials to obtain an OIDC token. Pass that token to sts:AssumeRoleWithWebIdentity using --no-sign-request — the OIDC token is the authenticator, not SigV4. Use the classic flow, not GetCredentialsForIdentity (enhanced flow), to avoid the Cognito-managed session policy that would restrict the role's permissions."
+        - "Browse to https://pathfinding.cloud/paths/cognito-identity-001 for technique details."
+      commands:
+        - description: "Bind the admin role to the pool's unauthenticated slot"
+          command: "aws cognito-identity set-identity-pool-roles --identity-pool-id {pool_id} --roles unauthenticated=arn:aws:iam::{account_id}:role/pl-prod-cognito-identity-001-to-admin-admin-role --region {region}"
+
+    - from: cognito-pool
+      to: admin-role
+      label: "GetId + GetOpenIdToken + sts:AssumeRoleWithWebIdentity"
+      description: >
+        Any anonymous caller (no AWS credentials required) can now call three public endpoints
+        in sequence to receive full STS credentials for the admin role:
+
+        1. cognito-identity:GetId — returns a Cognito identity ID for the pool; no SigV4 signing required
+        2. cognito-identity:GetOpenIdToken — exchanges the identity ID for an OIDC token signed by
+           cognito-identity.amazonaws.com; the token carries aud=pool_id and amr=unauthenticated
+        3. sts:AssumeRoleWithWebIdentity — exchanges the OIDC token for STS credentials for the
+           admin role; no SigV4 signing required because the OIDC token itself authenticates the request
+
+        Because this is the classic flow (not GetCredentialsForIdentity), Cognito does not attach
+        a managed session policy. The resulting credentials carry the role's full AdministratorAccess
+        without any scope restriction.
+      hints: []
+      commands:
+        - description: "Obtain a Cognito identity ID (no AWS credentials required)"
+          command: "aws cognito-identity get-id --no-sign-request --account-id {account_id} --identity-pool-id {pool_id} --region {region}"
+        - description: "Exchange the identity ID for an OIDC token via the classic flow (no AWS credentials required)"
+          command: "aws cognito-identity get-open-id-token --no-sign-request --identity-id {identity_id} --region {region}"
+        - description: "Assume the admin role using the OIDC token (no AWS credentials required)"
+          command: "aws sts assume-role-with-web-identity --no-sign-request --role-arn arn:aws:iam::{account_id}:role/pl-prod-cognito-identity-001-to-admin-admin-role --role-session-name cognito-escalation --web-identity-token {oidc_token}"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the STS credentials obtained from sts:AssumeRoleWithWebIdentity, read the CTF
+        flag from SSM Parameter Store. The admin role has AdministratorAccess, which includes
+        ssm:GetParameter on all parameters in the account.
+      hints:
+        - "You now hold admin-equivalent STS credentials issued via the Cognito classic flow. Export the AccessKeyId, SecretAccessKey, and SessionToken as environment variables, then use the AWS CLI to read the flag from SSM Parameter Store."
+      commands:
+        - description: "Export the escalated admin credentials"
+          command: "export AWS_ACCESS_KEY_ID={escalated_akid} && export AWS_SECRET_ACCESS_KEY={escalated_secret} && export AWS_SESSION_TOKEN={escalated_session}"
+        - description: "Verify admin identity"
+          command: "aws sts get-caller-identity"
+        - description: "Retrieve the CTF flag"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/cognito-identity-001-to-admin --query 'Parameter.Value' --output text"

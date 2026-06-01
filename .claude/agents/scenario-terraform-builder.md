@@ -31,7 +31,16 @@ You are a specialized agent for creating Terraform infrastructure code for Pathf
 2. **Create variables.tf** with standard variables (including `flag_value` for non-tool-testing scenarios)
 3. **Create outputs.tf** with ARNs, attack paths, credentials, and flag resource identifiers
 
-**CRITICAL**: Every scenario MUST create a scenario-specific starting user with access keys. These credentials MUST be exported to outputs so demo scripts can retrieve them from Terraform.
+**CRITICAL — per-scenario starting user (NO EXCEPTIONS)**: Every scenario MUST create its own `aws_iam_user` + `aws_iam_access_key` inside the scenario module, and MUST export `starting_user_name`, `starting_user_arn`, `starting_user_access_key_id`, and `starting_user_secret_access_key` from the module. This applies to **every** scenario type — single-account, cross-account, user-based, role-based, multi-hop. The only exception is public-start scenarios (scenario.yaml `permissions.required` contains only `principal_type: "public"`).
+
+**FORBIDDEN — do NOT reuse the legacy shared users**: Never reference `pl-pathfinding-starting-user-prod`, `pl-pathfinding-starting-user-dev`, or `pl-pathfinding-starting-user-operations` as the starting principal for a new scenario. Those shared users are a deprecated pattern from very early scenarios. Do not:
+- Attach a `aws_iam_user_policy` to one of them.
+- Reference one of them in a role trust policy (use the scenario-specific user's ARN instead).
+- Hardcode one of their names/ARNs as the value of `starting_user_name` / `starting_user_arn` outputs.
+
+**Why this matters**: The `plabs` TUI reads `starting_user_access_key_id` / `starting_user_secret_access_key` from each scenario's grouped output (see `internal/terraform/outputs.go`) to decide whether the scenario is "deployed and ready to learn". If the module reuses a shared user and omits these outputs, the TUI shows "Not yet deployed — apply to start learning" even though Terraform succeeded, and demo scripts have no creds to read.
+
+In cross-account scenarios specifically: the per-scenario user lives in the **source** account (dev or operations), with its access key, and the cross-account role's trust policy references that scenario-specific user's ARN — not the shared `pl-pathfinding-starting-user-{env}`.
 
 **CRITICAL (CTF flag)**: Every scenario EXCEPT those under `tool-testing/` MUST also create a CTF flag resource whose value is driven by a `flag_value` module input. See the "CTF Flag Resource" section below.
 
@@ -543,6 +552,64 @@ resource "aws_iam_role" "prod_role" {
 
 **Why this matters:** The `configuration_aliases` declaration tells Terraform that this module expects to receive aliased providers. The root main.tf must then pass `aws.prod = aws.prod` (not `aws = aws.prod`) when calling the module.
 
+**Cross-account starting user pattern (MANDATORY):** The scenario-specific starting user lives in the **source** account (dev or operations). The role in the target account (typically prod) trusts that scenario-specific user's ARN — never the shared `pl-pathfinding-starting-user-{env}`. Convention is to put the source-account resources in `dev.tf` (or `operations.tf`) and the target-account resources in `prod.tf`.
+
+```hcl
+# dev.tf — source account: scenario-specific starting user + access key
+resource "aws_iam_user" "starting_user" {
+  provider      = aws.dev
+  force_destroy = true
+  name          = "pl-dev-{scenario-shorthand}-starting-user"
+  # ...
+}
+
+resource "aws_iam_access_key" "starting_user" {
+  provider = aws.dev
+  user     = aws_iam_user.starting_user.name
+}
+
+resource "aws_iam_user_policy" "starting_user" {
+  provider = aws.dev
+  name     = "pl-dev-{scenario-shorthand}-starting-user-policy"
+  user     = aws_iam_user.starting_user.name
+  policy   = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "RequiredForExploitationAssumeRole"
+        Effect   = "Allow"
+        Action   = ["sts:AssumeRole"]
+        Resource = "arn:aws:iam::${var.prod_account_id}:role/pl-prod-{scenario-shorthand}-pivot-role"
+      },
+      # HelpfulForReconAndMonitoring as a second statement if scenario.yaml has helpful perms
+    ]
+  })
+}
+
+# prod.tf — target account: pivot role trusts the SCENARIO-SPECIFIC dev user
+resource "aws_iam_role" "pivot_role" {
+  provider              = aws.prod
+  force_detach_policies = true
+  name                  = "pl-prod-{scenario-shorthand}-pivot-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowScenarioDevStartingUserToAssume"
+        Effect = "Allow"
+        Principal = {
+          # Reference the per-scenario user, NOT pl-pathfinding-starting-user-dev
+          AWS = "arn:aws:iam::${var.dev_account_id}:user/pl-dev-{scenario-shorthand}-starting-user"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+```
+
+The `outputs.tf` exports `starting_user_*` (including the access key fields) from `aws_iam_user.starting_user` / `aws_iam_access_key.starting_user` exactly like single-account scenarios — see the "Outputs Template" section below.
+
 ## Common Patterns
 
 ### MANDATORY: Destroy hygiene on IAM users and roles
@@ -794,9 +861,11 @@ Before considering your work done:
     - Adding `aws.attacker` to `configuration_aliases`: `configuration_aliases = [aws.prod, aws.attacker]`
     - Using `provider = aws.attacker` on attacker-controlled resources (S3 buckets, objects, bucket policies, PABs)
     - Using `var.attacker_account_id` in bucket names (not `var.account_id`)
-    - Adding a bucket policy granting the prod account (`var.account_id`) read access via resource policy
+    - Adding a bucket policy granting the prod account (`var.account_id`) the actions the attack needs:
+        - **Read-only attacker bucket** (prod only fetches pre-staged exploit code, e.g. synthetics-001 `exploit_code`): grant `s3:GetObject` (+ `s3:ListBucket` if the service enumerates). No `DeleteObject` needed — cleanup leaves bucket contents alone and `terraform destroy` reclaims the bucket via `force_destroy = true`.
+        - **Exfiltration attacker bucket** (the compute role writes runtime artifacts there during the attack — `exfil/`, `output/`, `results/` keys — e.g. emr-serverless-001, omics-001): grant `s3:GetObject`, `s3:PutObject`, **`s3:DeleteObject`**, and `s3:ListBucket`. The `DeleteObject` half is essential: `cleanup_attack.sh` runs under the prod admin-cleanup user and removes runtime artifacts from the attacker bucket cross-account; without it, `aws s3 rm` fails with `AccessDenied: DeleteObject` and cleanup exits 1. Widening the bucket policy is safe — the starting user's identity policy never includes `s3:DeleteObject`, so the precondition of the attack is unchanged; only the cleanup user (which already has AdministratorAccess from the IAM side) gains the bucket-policy half of the permission pair.
     - Adding `attacker_account_id` variable to variables.tf
-    - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference
+    - See glue-003 scenario (`modules/scenarios/single-account/privesc-one-hop/to-admin/glue-003-iam-passrole+glue-createjob+glue-startjobrun/main.tf`) as the gold standard reference for read-only attacker buckets, and emr-serverless-001 / omics-001 as the references for exfiltration attacker buckets.
 11. **Sid naming convention**: Use `RequiredForExploitation{Purpose}` for required permission statements (e.g., `RequiredForExploitationPassRole`, `RequiredForExploitationGlue`). Use the single fixed Sid `HelpfulForReconAndMonitoring` for all helpful permission statements — do NOT suffix it with a purpose name, and do NOT use the old `HelpfulForExploitation*` pattern.
 12. **CTF flag resource**: For every scenario EXCEPT those under `tool-testing/`, confirm the flag resource is created in `main.tf` (SSM parameter for to-admin, S3 object inside the target bucket for to-bucket), the `flag_value` variable is declared in `variables.tf` with a `"flag{MISSING}"` default, and the corresponding outputs (`flag_ssm_parameter_name`/`_arn` for to-admin, `flag_s3_key`/`_uri` for to-bucket) are in `outputs.tf`. Do NOT add extra IAM permissions for flag retrieval — the existing attack already produces principals with the access needed (admin has `ssm:GetParameter` implicitly; bucket-access principal already has `s3:GetObject`).
 

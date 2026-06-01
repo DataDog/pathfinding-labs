@@ -178,6 +178,21 @@ func (s *ScenariosPane) applyFilter() {
 	}
 
 	s.sortByCategoryOrder()
+	s.clampCursor()
+}
+
+// clampCursor ensures the cursor stays within the bounds of s.filtered.
+func (s *ScenariosPane) clampCursor() {
+	if len(s.filtered) == 0 {
+		s.cursor = 0
+		return
+	}
+	if s.cursor >= len(s.filtered) {
+		s.cursor = len(s.filtered) - 1
+	}
+	if s.cursor < 0 {
+		s.cursor = 0
+	}
 }
 
 // sortByCategoryOrder sorts filtered items to match the grouped view order
@@ -226,6 +241,7 @@ func (s *ScenariosPane) applyTextFilter() {
 
 // MoveUp moves the cursor up, skipping collapsed scenarios
 func (s *ScenariosPane) MoveUp() {
+	s.clampCursor()
 	if s.cursor <= 0 {
 		// Already at top, but still call ensureVisible to scroll to show header
 		s.ensureVisible()
@@ -257,6 +273,7 @@ func (s *ScenariosPane) MoveUp() {
 
 // MoveDown moves the cursor down, skipping collapsed scenarios
 func (s *ScenariosPane) MoveDown() {
+	s.clampCursor()
 	if s.cursor >= len(s.filtered)-1 {
 		return
 	}

@@ -1,0 +1,82 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.5.0"
+name: "iam-passrole+gamelift-createbuild+gamelift-createfleet"
+title: "GameLift Fleet to Admin"
+description: "User with iam:PassRole, gamelift:CreateBuild, and gamelift:CreateFleet can escalate privileges by uploading a malicious game server build and creating a fleet with an admin instance role whose credentials are available to the running process"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "~$1/mo"
+pathfinding-cloud-id: "gamelift-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-gamelift-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-gamelift-001-to-admin-admin-role"
+
+  summary: "starting_user → (gamelift:CreateBuild to upload malicious game server) → (iam:PassRole + gamelift:CreateFleet with admin instance role) → game server process reads shared credentials and attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-gamelift-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-gamelift-001-to-admin-admin-role"
+        - permission: "gamelift:CreateBuild"
+          resource: "*"
+        - permission: "gamelift:CreateFleet"
+          resource: "*"
+        - permission: "gamelift:RequestUploadCredentials"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-gamelift-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "gamelift:DescribeBuild"
+          purpose: "Check build status and verify it reached READY state"
+        - permission: "gamelift:DescribeFleetAttributes"
+          purpose: "Monitor fleet status and verify activation"
+        - permission: "gamelift:ListFleets"
+          purpose: "List existing fleets"
+        - permission: "gamelift:DescribeInstances"
+          purpose: "Find instance IDs for remote access"
+        - permission: "gamelift:GetComputeAccess"
+          purpose: "Get remote access credentials for fleet instances (SDK 5.x)"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1578 - Modify Cloud Compute Infrastructure"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/gamelift-001-iam-passrole+gamelift-createbuild+gamelift-createfleet"

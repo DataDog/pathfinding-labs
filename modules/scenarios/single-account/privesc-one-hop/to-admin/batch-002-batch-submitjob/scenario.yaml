@@ -1,0 +1,86 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "batch-submitjob"
+title: "AWS Batch SubmitJob to Admin via Existing Admin Job Definition"
+description: "Principal with batch:SubmitJob can escalate privileges by overriding the command of an existing Batch job definition that carries an admin jobRoleArn"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "batch-002"
+interactive_demo: false
+supports_online_mode: false
+demo_timeout_seconds: 900
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "existing-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-batch-002-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-batch-002-to-admin-admin-role"
+
+  summary: "starting_user → (batch:SubmitJob with ContainerOverrides.Command on existing admin-role job definition) → Batch job container runs as admin jobRoleArn → attaches AdministratorAccess to starting user → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-batch-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "batch:SubmitJob"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-batch-002-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "batch:DescribeJobDefinitions"
+          purpose: "Discover existing job definitions with privileged jobRoleArn"
+        - permission: "batch:DescribeJobQueues"
+          purpose: "List available job queues for job submission"
+        - permission: "batch:DescribeJobs"
+          purpose: "Monitor job execution status and verify job completion"
+        - permission: "batch:DescribeComputeEnvironments"
+          purpose: "Discover available compute environments"
+
+# =============================================================================
+# REQUIRED PRECONDITIONS
+# =============================================================================
+required_preconditions:
+  - type: "aws-resource"
+    resource: "aws_batch_job_definition"
+    description: "A pre-existing AWS Batch job definition with a privileged jobRoleArn (e.g., AdministratorAccess) must exist in the account"
+  - type: "aws-resource"
+    resource: "aws_batch_job_queue"
+    description: "An active AWS Batch job queue connected to a Fargate compute environment must exist"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0002 - Execution"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1610 - Deploy Container"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/batch-002-batch-submitjob"
