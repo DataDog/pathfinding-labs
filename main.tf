@@ -389,6 +389,18 @@ module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   flag_value      = lookup(local.effective_flags, "bedrock-002-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cognito-identity-001-iam-passrole+cognito-identity-setidentitypoolroles"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "cognito-identity-001-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-001-iam-passrole+ec2-runinstances"
@@ -729,6 +741,20 @@ module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_reg
   flag_value      = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/batch-002-batch-submitjob"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  vpc_id          = module.prod_environment[0].vpc_id
+  subnet_id       = module.prod_environment[0].subnet1_id
+  flag_value      = lookup(local.effective_flags, "batch-002-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/braket-001-iam-passrole+braket-createjob"
@@ -753,6 +779,23 @@ module "single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codeb
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(local.effective_flags, "codebuild-004-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/codedeploy-001-codedeploy-createdeployment"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id          = local.prod_account_id
+  attacker_account_id = local.attacker_account_id
+  environment         = "prod"
+  resource_suffix     = random_string.resource_suffix.result
+  vpc_id              = module.prod_environment[0].vpc_id
+  subnet_id           = module.prod_environment[0].subnet1_id
+  aws_region          = var.aws_region
+  flag_value          = lookup(local.effective_flags, "codedeploy-001-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy" {
@@ -1173,6 +1216,34 @@ module "single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_s
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(var.scenario_flags, "stepfunctions-001-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/stepfunctions-002-states-updatestatemachine+states-startexecution"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "stepfunctions-002-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_scheduler_001" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_scheduler_001 ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/scheduler-001"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "scheduler-001-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################

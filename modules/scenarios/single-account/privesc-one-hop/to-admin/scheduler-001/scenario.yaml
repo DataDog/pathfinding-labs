@@ -1,0 +1,58 @@
+schema_version: "1.8.0"
+name: "scheduler-001"
+title: "PassRole + EventBridge Scheduler: Universal Target Privilege Escalation"
+description: "Principal with iam:PassRole and scheduler:CreateSchedule can schedule a one-shot EventBridge Scheduler invocation targeting the universal target arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy — the scheduler calls iam:AttachUserPolicy as the passed admin role, attaching AdministratorAccess to the attacker's user with no Lambda or EC2 required"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: null
+
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-scheduler-001-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-scheduler-001-to-admin-scheduler-role"
+  summary: "starting_user → (iam:PassRole + scheduler:CreateSchedule) → creates one-shot schedule with universal target arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy → schedule fires as admin role → iam:AttachUserPolicy grants AdministratorAccess to starting_user → admin access"
+
+required_preconditions:
+  - type: "aws-resource"
+    resource: "IAM Role"
+    description: "with AdministratorAccess and a trust policy scoped to scheduler.amazonaws.com"
+
+permissions:
+  required:
+    - principal: "pl-prod-scheduler-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-scheduler-001-to-admin-scheduler-role"
+        - permission: "scheduler:CreateSchedule"
+          resource: "*"
+  helpful:
+    - principal: "pl-prod-scheduler-001-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover IAM roles in the account to find ones trusting scheduler.amazonaws.com"
+        - permission: "iam:GetRole"
+          purpose: "Inspect role trust policies to confirm scheduler.amazonaws.com as the trusted principal"
+        - permission: "scheduler:ListSchedules"
+          purpose: "Enumerate existing schedules and confirm the created schedule appears"
+        - permission: "scheduler:GetSchedule"
+          purpose: "Check schedule status and target configuration after creation"
+
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1098 - Account Manipulation"
+    - "T1648 - Serverless Execution"
+
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_scheduler_001"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/scheduler-001"

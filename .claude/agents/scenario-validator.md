@@ -457,6 +457,48 @@ Resource names should be consistent across:
 
 **Public-start scenarios (CTF, CSPM with anonymous entry):** If the attack begins from anonymous/public access, there is no starting IAM user. The demo script should use unauthenticated HTTP calls (curl, etc.) rather than AWS CLI with credentials. The cleanup script still uses admin credentials from Terraform outputs.
 
+#### Flag grep case-sensitivity (CRITICAL — common silent failure)
+
+All `grep` calls in demo scripts that check for the flag value MUST use the `-i` flag (case-insensitive). Flag values in `flags.default.yaml` always use lowercase `flag{...}`, but generated demo scripts often check for `FLAG{` (uppercase), causing silent false-negative failures where the flag IS present in the output but grep returns non-zero and the script exits with "Scheduler may not have run" or similar misleading error.
+
+Check every demo script for this anti-pattern:
+```bash
+grep -n 'grep -q "FLAG{"\|grep -q .FLAG{' {scenario-dir}/demo_attack.sh
+```
+
+Any hit is a bug. The correct form is `grep -qi "flag{"`. Fix all occurrences — typically 2–3 per script:
+- The retry loop break condition: `if echo "$PROVE_CAN_OUTPUT" | grep -qi "flag{"`
+- The post-loop success check: `elif echo "$PROVE_CAN_OUTPUT" | grep -qi "flag{"`
+- The fallback extraction: `grep -oi 'flag{[^}]*}'` (note `-oi` for case-insensitive + print match only)
+
+Also verify the complementary check: the PROVE_CANT step (confirming the user cannot read the flag before escalation) checks for `AccessDenied\|is not authorized`, NOT for the presence of `flag{`. That check is correct and does not need `-i`.
+
+#### ARN format correctness
+
+Different AWS services use different ARN formats. Validate ARNs in `main.tf`, `demo_attack.sh`, and `cleanup_attack.sh` against these rules:
+
+**Standard ARN segments:** `arn:partition:service:region:account-id:resource-type/resource-id` or `arn:partition:service:region:account-id:resource-type:resource-id`
+- IAM ARNs use **slash** between resource type and name: `arn:aws:iam::account:user/username`, `arn:aws:iam::account:role/rolename`, `arn:aws:iam::account:policy/policyname`
+- SSM ARNs use **colon** before `parameter`: `arn:aws:ssm:region:account:parameter/path/to/param` (note: the parameter name itself uses slashes but the `parameter` keyword is separated by colon)
+- Lambda ARNs use **colon**: `arn:aws:lambda:region:account:function:function-name`
+- S3 bucket ARNs omit region and account: `arn:aws:s3:::bucket-name`
+
+**EventBridge Scheduler universal target ARNs** use a non-standard format with triple colons: `arn:aws:scheduler:::aws-sdk:service:apiAction` (e.g., `arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy`). The three consecutive colons are intentional — region and account are empty. Do NOT flag this as an error.
+
+**Common ARN mistakes to check:**
+```bash
+# Slash where colon is required (or vice versa) in IAM ARNs
+grep -n 'arn:aws:iam::[^:]*:user[:/]' {scenario-dir}/demo_attack.sh  # should use /
+grep -n 'arn:aws:iam::[^:]*:role[:/]' {scenario-dir}/demo_attack.sh  # should use /
+grep -n 'arn:aws:iam::[^:]*:policy[:/]' {scenario-dir}/demo_attack.sh  # should use /
+
+# SSM parameter ARNs with wrong separator
+grep -n 'arn:aws:ssm' {scenario-dir}/demo_attack.sh
+# Verify the form is arn:aws:ssm:{region}:{account}:parameter/{path} — "parameter" separated by colon, path uses slashes
+```
+
+If an ARN in a demo script or Terraform resource uses `/` where `:` is required (or vice versa), the AWS CLI call will fail with `InvalidARN` or `NoSuchEntity`. Fix any mismatches found.
+
 #### CTF Flag Consistency (non-tool-testing scenarios only)
 
 For every scenario NOT under `tool-testing/`, verify:
@@ -522,6 +564,14 @@ Tool-testing scenarios are exempt from all of the above; they do not participate
 ### Issue: Missing outputs
 **Symptom**: outputs.tf doesn't include all necessary outputs for demo script
 **Fix**: Add outputs for resources referenced in demo script
+
+### Issue: Flag grep case mismatch (silent failure)
+**Symptom**: Demo script exits with "Scheduler may not have run" or "flag not found" even though the flag IS visible in the printed output. The flag value contains `flag{...}` (lowercase) but the grep checks for `FLAG{` (uppercase). The SSM/S3 read succeeds and the output is printed, but the case-sensitive grep returns non-zero so the script treats it as failure.
+**Fix**: Change all `grep -q "FLAG{"` → `grep -qi "flag{"` and `grep -o 'FLAG{[^}]*}'` → `grep -oi 'flag{[^}]*}'` in demo_attack.sh. Typically 2–3 occurrences per file: the retry-loop break condition, the post-loop success branch, and the fallback `grep -o` extractor.
+
+### Issue: ARN format error (colon vs slash)
+**Symptom**: AWS CLI returns `InvalidARN`, `NoSuchEntity`, or `ValidationException` for a resource that exists. The ARN in the script or Terraform uses `/` where `:` is required between resource type and resource name (or vice versa).
+**Fix**: IAM users, roles, and policies always use a slash separator (`arn:aws:iam::acct:user/name`). SSM parameters use `arn:aws:ssm:region:acct:parameter/path`. Lambda functions use `arn:aws:lambda:region:acct:function:name` (colon before function name). EventBridge Scheduler universal targets use triple-colon `arn:aws:scheduler:::aws-sdk:service:action` intentionally — do not "fix" these.
 
 ### Issue: Mermaid syntax error
 **Symptom**: README mermaid diagram has syntax errors

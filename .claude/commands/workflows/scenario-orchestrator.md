@@ -121,7 +121,19 @@ Note: Attack Simulation scenarios include `demo_attack.sh` (which recreates the 
 
 When the input is a directory path to a validated research hypothesis (from `pathfinding-research-agent`), skip the wizard. Requirements come from the research files rather than user answers.
 
-**Detection:** Input matches `--from-hypothesis <path>`, OR is a directory path containing `REPORT.md` and a `terraform/` subdirectory, OR the `/import-hypothesis` skill passed the hypothesis path directly.
+**Hypothesis workspace location:**
+
+Research hypotheses live under:
+```
+~/.pathfinding-research-agent/workspace/hypotheses/<hypothesis-id>/
+```
+
+The base directory is `~/.pathfinding-research-agent/` and can be overridden via the `PRA_HOME` environment variable. When the user supplies only a hypothesis ID (e.g. `hypothesis-042` or just `042`), expand it to the full path:
+```
+${PRA_HOME:-~/.pathfinding-research-agent}/workspace/hypotheses/<hypothesis-id>/
+```
+
+**Detection:** Input matches `--from-hypothesis <path-or-id>`, OR is a bare hypothesis ID / directory path containing `REPORT.md` and a `terraform/` subdirectory, OR the `/import-hypothesis` skill passed the hypothesis path directly. When only an ID is given, resolve the full path using the workspace location above before reading any files.
 
 **Source-of-truth hierarchy (when sources disagree, resolve in this order):**
 1. `terraform/main.tf` — what infrastructure actually exists

@@ -124,8 +124,11 @@ variable "scenario_flag_defaults" {
   default = {
     "apprunner-001-to-admin"                          = "flag{apprunner_001_admin_captured}"
     "apprunner-002-to-admin"                          = "flag{apprunner_002_admin_captured}"
+    "batch-001-to-admin"                              = "flag{batch_001_admin_captured}"
+    "batch-002-to-admin"                              = "flag{batch-submitjob-existing-admin-jd}"
     "bedrock-001-to-admin"                            = "flag{bedrock_001_admin_captured}"
     "bedrock-002-to-admin"                            = "flag{bedrock_002_admin_captured}"
+    "cognito-identity-001-to-admin"                   = "flag{cognito-identity-pool-unauthenticated-role-swap}"
     "cloudformation-001-to-admin"                     = "flag{cloudformation_001_admin_captured}"
     "cloudformation-002-to-admin"                     = "flag{cloudformation_002_admin_captured}"
     "cloudformation-003-to-admin"                     = "flag{cloudformation_003_admin_captured}"
@@ -135,6 +138,7 @@ variable "scenario_flag_defaults" {
     "codebuild-002-to-admin"                          = "flag{codebuild_002_admin_captured}"
     "codebuild-003-to-admin"                          = "flag{codebuild_003_admin_captured}"
     "codebuild-004-to-admin"                          = "flag{codebuild_004_admin_captured}"
+    "codedeploy-001-to-admin"                         = "flag{codedeploy-createdeployment-ec2-hook}"
     "cspm-ec2-001-to-admin"                           = "flag{cspm_ec2_001_admin_captured}"
     "ctf-001-to-admin"                                = "flag{ctf_001_chatbot_prompt_injected}"
     "ctf-002-to-admin"                                = "flag{ctf_002_admin_captured}"
@@ -219,11 +223,13 @@ variable "scenario_flag_defaults" {
     "sagemaker-003-to-admin"                          = "flag{sagemaker_003_admin_captured}"
     "sagemaker-004-to-admin"                          = "flag{sagemaker_004_admin_captured}"
     "sagemaker-005-to-admin"                          = "flag{sagemaker_005_admin_captured}"
+    "scheduler-001-to-admin"                          = "flag{eventbridge-scheduler-universal-target-passrole-privesc}"
     "ssm-001-to-admin"                                = "flag{ssm_001_admin_captured}"
     "ssm-001-to-bucket"                               = "flag{ssm_001_bucket_accessed}"
     "ssm-002-to-admin"                                = "flag{ssm_002_admin_captured}"
     "ssm-002-to-bucket"                               = "flag{ssm_002_bucket_accessed}"
     "ssm-startsession-ec2-admin-to-admin"             = "flag{ssm_startsession_ec2_admin}"
+    "stepfunctions-002-to-admin"                      = "flag{stepfunctions-updatestatemachine-existing-role-escalation}"
     "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
     "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
     "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
@@ -387,6 +393,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagen
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → cognito-identity-001-iam-passrole+cognito-identity-setidentitypoolroles"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinstances" {
   description = "Enable: single-account → privesc-one-hop → to-admin → ec2-001-iam-passrole+ec2-runinstances"
   type        = bool
@@ -489,6 +501,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → batch-002-batch-submitjob"
+  type        = bool
+  default     = false
+}
+
 variable "enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {
   description = "Enable: single-account → privesc-one-hop → to-admin → braket-001-iam-passrole+braket-createjob"
   type        = bool
@@ -533,6 +551,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_codebuild_001_iam_passr
 
 variable "enable_single_account_privesc_one_hop_to_admin_codebuild_004_iam_passrole_codebuild_createproject_codebuild_startbuildbatch" {
   description = "Enable: single-account → privesc-one-hop → to-admin → codebuild-004-iam-passrole+codebuild-createproject+codebuild-startbuildbatch"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → codedeploy-001-codedeploy-createdeployment"
   type        = bool
   default     = false
 }
@@ -699,6 +723,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_glue_007_iam_passrole_g
   default     = false
 }
 
+variable "enable_single_account_privesc_one_hop_to_admin_scheduler_001" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → scheduler-001"
+  type        = bool
+  default     = false
+}
+
 
 ##############################################################################
 # SINGLE-ACCOUNT ONE-HOP TO-ADMIN SCENARIOS NON-FREE
@@ -736,6 +766,12 @@ variable "enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker
 
 variable "enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution" {
   description = "Enable: single-account → privesc-one-hop → to-admin → stepfunctions-001-iam-passrole+states-createstatemachine+states-startexecution"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → stepfunctions-002-states-updatestatemachine+states-startexecution"
   type        = bool
   default     = false
 }

