@@ -128,6 +128,11 @@ variable "scenario_flag_defaults" {
     "batch-002-to-admin"                              = "flag{batch-submitjob-existing-admin-jd}"
     "bedrock-001-to-admin"                            = "flag{bedrock_001_admin_captured}"
     "bedrock-002-to-admin"                            = "flag{bedrock_002_admin_captured}"
+    "bedrock-003-to-admin"                            = "flag{bedrock_003_admin_captured}"
+    "bedrock-004-to-admin"                            = "flag{bedrock_004_admin_captured}"
+    "bedrock-005-to-admin"                            = "flag{bedrock_005_admin_captured}"
+    "bedrock-006-to-admin"                            = "flag{bedrock_006_admin_captured}"
+    "bedrock-007-to-admin"                            = "flag{bedrock_007_admin_captured}"
     "cognito-identity-001-to-admin"                   = "flag{cognito-identity-pool-unauthenticated-role-swap}"
     "cloudformation-001-to-admin"                     = "flag{cloudformation_001_admin_captured}"
     "cloudformation-002-to-admin"                     = "flag{cloudformation_002_admin_captured}"
@@ -233,6 +238,7 @@ variable "scenario_flag_defaults" {
     "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
     "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
     "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
+    "sts-role-chain-to-admin"                         = "flag{role_chain_complete}"
     "sysdig-8-minutes-to-admin-to-admin"              = "flag{sysdig_8min_admin_captured}"
   }
 }
@@ -389,6 +395,36 @@ variable "enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrol
 
 variable "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke" {
   description = "Enable: single-account → privesc → one-hop → to-admin → bedrock-002-bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-003-iam-passrole+bedrockagentcore-createagentruntime"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-004-bedrockagentcore-invokeagentcommand"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-005-iam-passrole+bedrockagentcore-createharness"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-006-iam-passrole+bedrockagentcore-createbrowser"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-007-bedrockagentcore-startbrowsersession+cdp"
   type        = bool
   default     = false
 }
@@ -1014,6 +1050,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin"
 
 variable "enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   description = "Enable: cross-account → dev-to-prod → one-hop → root-trust-role-assumption"
+  type        = bool
+  default     = false
+}
+
+variable "enable_cross_account_dev_to_prod_sts_role_chain_to_admin" {
+  description = "Enable: cross-account → dev-to-prod → multi-hop → sts-role-chain"
   type        = bool
   default     = false
 }

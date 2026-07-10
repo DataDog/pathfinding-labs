@@ -19,6 +19,7 @@ type ServiceLinkedRoleStatus struct {
 	EMRExists               bool
 	EMRServerlessExists     bool
 	ImageBuilderExists      bool
+	AgentCoreExists         bool
 }
 
 // slrStateAddresses maps each SLR to its canonical Terraform state resource address.
@@ -30,6 +31,7 @@ var slrStateAddresses = map[string]string{
 	"emr":           "module.prod_environment[0].aws_iam_service_linked_role.emr[0]",
 	"emrserverless": "module.prod_environment[0].aws_iam_service_linked_role.emr_serverless[0]",
 	"imagebuilder":  "module.prod_environment[0].aws_iam_service_linked_role.imagebuilder[0]",
+	"agentcore":     "module.prod_environment[0].aws_iam_service_linked_role.agentcore[0]",
 }
 
 // SLRInState returns which service-linked roles are currently in Terraform state
@@ -46,6 +48,7 @@ func SLRInState(stateResources []string) *ServiceLinkedRoleStatus {
 		EMRExists:           inState[slrStateAddresses["emr"]],
 		EMRServerlessExists: inState[slrStateAddresses["emrserverless"]],
 		ImageBuilderExists:  inState[slrStateAddresses["imagebuilder"]],
+		AgentCoreExists:     inState[slrStateAddresses["agentcore"]],
 	}
 }
 
@@ -57,6 +60,7 @@ var serviceLinkedRoleChecks = map[string]string{
 	"emr":           "AWSServiceRoleForEMRCleanup",
 	"emrserverless": "AWSServiceRoleForAmazonEMRServerless",
 	"imagebuilder":  "AWSServiceRoleForImageBuilder",
+	"agentcore":     "AWSServiceRoleForBedrockAgentCoreGatewayNetwork",
 }
 
 // DetectExistingServiceLinkedRoles checks which service-linked roles already exist
@@ -92,6 +96,8 @@ func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus,
 			status.EMRServerlessExists = exists
 		case "imagebuilder":
 			status.ImageBuilderExists = exists
+		case "agentcore":
+			status.AgentCoreExists = exists
 		}
 	}
 

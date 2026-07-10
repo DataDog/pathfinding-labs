@@ -1,0 +1,90 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "sts-role-chain"
+title: "Dev to Prod Cross-Account Role Chain to Admin"
+description: "Non-admin dev user chains through dev and prod roles via sts:AssumeRole to reach prod administrative access"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+path_type: "cross-account"
+target: "to-admin"
+environments:
+  - "dev"
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{dev_account_id}:user/pl-dev-sts-role-chain-starting-user"
+    - "arn:aws:iam::{dev_account_id}:role/pl-dev-sts-role-chain-dev-role"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-non-admin-role"
+    - "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-admin-role"
+
+  summary: "starting_user → (sts:AssumeRole) → dev_non_admin_role → (sts:AssumeRole cross-account) → prod_non_admin_role → (sts:AssumeRole) → prod_admin_role → admin access"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-dev-sts-role-chain-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{dev_account_id}:role/pl-dev-sts-role-chain-dev-role"
+    - principal: "pl-dev-sts-role-chain-dev-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-non-admin-role"
+    - principal: "pl-prod-sts-role-chain-prod-non-admin-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-admin-role"
+
+  helpful:
+    - principal: "pl-dev-sts-role-chain-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover roles available to assume in dev account"
+    - principal: "pl-dev-sts-role-chain-dev-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify identity after assuming dev role"
+        - permission: "iam:ListRoles"
+          purpose: "Discover cross-account roles available to assume"
+    - principal: "pl-prod-sts-role-chain-prod-non-admin-role"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify identity after assuming prod non-admin role"
+        - permission: "iam:ListRoles"
+          purpose: "Discover admin roles available in prod account"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0008 - Lateral Movement"
+  techniques:
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_cross_account_dev_to_prod_sts_role_chain_to_admin"
+  module_path: "modules/scenarios/cross-account/dev-to-prod/multi-hop/sts-role-chain"

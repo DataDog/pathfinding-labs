@@ -103,6 +103,15 @@ resource "aws_iam_service_linked_role" "imagebuilder" {
   aws_service_name = "imagebuilder.amazonaws.com"
 }
 
+# AWSServiceRoleForAmazonBedrockAgentCore — Bedrock AgentCore requires this
+# SLR before any CreateAgentRuntime (or CreateHarness / CreateBrowser) call.
+# Without it the API returns AccessDeniedException: "Failed creating service
+# linked role" even when the caller otherwise has the right permissions.
+resource "aws_iam_service_linked_role" "agentcore" {
+  count            = var.create_agentcore_slr ? 1 : 0
+  aws_service_name = "bedrock-agentcore.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   force_destroy = true

@@ -137,6 +137,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
 			CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 			CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+			CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
 		}
 	}
 

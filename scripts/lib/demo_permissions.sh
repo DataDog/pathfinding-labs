@@ -25,7 +25,7 @@
 #   PL_RESTRICT_PERMISSIONS=1  - Apply helpful permission restrictions (for validation use only)
 
 # Guard against double-sourcing
-if [ -n "$_DEMO_PERMISSIONS_LOADED" ]; then
+if [ -n "${_DEMO_PERMISSIONS_LOADED:-}" ]; then
     return 0 2>/dev/null || true
 fi
 _DEMO_PERMISSIONS_LOADED=1

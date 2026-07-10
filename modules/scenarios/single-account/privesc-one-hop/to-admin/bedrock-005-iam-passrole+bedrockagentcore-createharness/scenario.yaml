@@ -1,0 +1,91 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.8.0"
+name: "iam-passrole+bedrockagentcore-createharness"
+title: "AgentCore Harness Creation to Admin"
+description: "Principal with iam:PassRole and AgentCore Harness create/invoke permissions can deploy a new Harness with a privileged execution role and extract credentials from MMDS"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "bedrock-005"
+demo_timeout_seconds: 600
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-bedrock-005-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-bedrock-005-to-admin-target-role"
+
+  summary: "starting_user → (iam:PassRole + CreateHarness + CreateAgentRuntime + CreateAgentRuntimeEndpoint + CreateWorkloadIdentity + GetAgentRuntime) → new Harness with admin execution role → InvokeAgentRuntimeCommand → read MMDS credentials at 169.254.169.254 → admin access"
+
+# =============================================================================
+# REQUIRED PRECONDITIONS
+# =============================================================================
+required_preconditions:
+  - type: "aws-resource"
+    resource: "IAM Role"
+    description: "with administrative privileges that trusts bedrock-agentcore.amazonaws.com as a service principal (so it can be passed to the new harness as its execution role)"
+  - type: "configuration"
+    description: "at least one Bedrock foundation model enabled in the account (required at CreateHarness time; the model is never invoked by the attack since InvokeAgentRuntimeCommand bypasses the agent loop entirely)"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-bedrock-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:PassRole"
+          resource: "arn:aws:iam::*:role/pl-prod-bedrock-005-to-admin-target-role"
+        - permission: "bedrock-agentcore:CreateHarness"
+          resource: "*"
+        - permission: "bedrock-agentcore:CreateAgentRuntime"
+          resource: "*"
+        - permission: "bedrock-agentcore:CreateAgentRuntimeEndpoint"
+          resource: "*"
+        - permission: "bedrock-agentcore:CreateWorkloadIdentity"
+          resource: "*"
+        - permission: "bedrock-agentcore:GetAgentRuntime"
+          resource: "*"
+        - permission: "bedrock-agentcore:InvokeAgentRuntimeCommand"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-bedrock-005-to-admin-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:ListRoles"
+          purpose: "Discover available privileged roles to pass to the new harness"
+        - permission: "iam:GetRole"
+          purpose: "View role trust policies and attached permissions"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1552.005 - Unsecured Credentials: Cloud Instance Metadata API"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-005-iam-passrole+bedrockagentcore-createharness"

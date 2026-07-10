@@ -530,6 +530,91 @@ output "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   sensitive = true
 }
 
+output "single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime" {
+  description = "All outputs for bedrock-003-iam-passrole+bedrockagentcore-createagentruntime one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].starting_user_secret_access_key
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].target_role_name
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].target_role_arn
+    attacker_ecr_image_uri          = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].attacker_ecr_image_uri
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].attack_path
+    attacker_account_aws_profile    = module.single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime[0].attacker_account_aws_profile
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand" {
+  description = "All outputs for bedrock-004-bedrockagentcore-invokeagentcommand one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].target_role_name
+    target_runtime_arn              = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].target_runtime_arn
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness" {
+  description = "All outputs for bedrock-005-iam-passrole+bedrockagentcore-createharness one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].target_role_name
+    bedrock_model_id                = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].bedrock_model_id
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser" {
+  description = "All outputs for bedrock-006-iam-passrole+bedrockagentcore-createbrowser one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].target_role_name
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp" {
+  description = "All outputs for bedrock-007-bedrockagentcore-startbrowsersession+cdp one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].starting_user_secret_access_key
+    target_role_arn                 = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].target_role_arn
+    target_role_name                = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].target_role_name
+    target_browser_ssm_param        = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].target_browser_ssm_param
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].flag_ssm_parameter_arn
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
   description = "All outputs for cognito-identity-001 one-hop to-admin scenario"
   value = var.enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles ? {
@@ -2278,6 +2363,26 @@ output "cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin" {
     flag_ssm_parameter_name         = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_name
     flag_ssm_parameter_arn          = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].flag_ssm_parameter_arn
     attack_path                     = module.cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "cross_account_dev_to_prod_sts_role_chain_to_admin" {
+  description = "All outputs for sts-role-chain cross-account dev-to-prod scenario"
+  value = var.enable_cross_account_dev_to_prod_sts_role_chain_to_admin ? {
+    starting_user_name              = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].starting_user_name
+    starting_user_arn               = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].starting_user_arn
+    starting_user_access_key_id     = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].starting_user_secret_access_key
+    dev_role_name                   = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].dev_role_name
+    dev_role_arn                    = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].dev_role_arn
+    prod_non_admin_role_name        = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].prod_non_admin_role_name
+    prod_non_admin_role_arn         = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].prod_non_admin_role_arn
+    prod_admin_role_name            = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].prod_admin_role_name
+    prod_admin_role_arn             = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].prod_admin_role_arn
+    flag_ssm_parameter_name         = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].flag_ssm_parameter_arn
+    attack_path                     = module.cross_account_dev_to_prod_sts_role_chain_to_admin[0].attack_path
   } : null
   sensitive = true
 }

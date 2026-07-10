@@ -197,3 +197,9 @@ variable "create_imagebuilder_slr" {
   type        = bool
   default     = true
 }
+
+variable "create_agentcore_slr" {
+  description = "Create the Bedrock AgentCore service-linked role AWSServiceRoleForBedrockAgentCoreGatewayNetwork (set false if it already exists)"
+  type        = bool
+  default     = true
+}
