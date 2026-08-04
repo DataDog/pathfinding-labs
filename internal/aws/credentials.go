@@ -2,13 +2,9 @@
 package aws
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"strings"
-
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 // ValidationResult contains the result of credential validation
@@ -17,17 +13,6 @@ type ValidationResult struct {
 	AccountID string
 	Valid     bool
 	Error     error
-}
-
-// LoadAWSConfig returns an AWS SDK config for the given profile.
-// Profile must be non-empty; call sites are responsible for checking whether an
-// environment is configured before calling this. This function never falls back to
-// the SDK default credential chain — if the profile is wrong, it fails loudly.
-func LoadAWSConfig(ctx context.Context, profile string) (awssdk.Config, error) {
-	if profile == "" {
-		return awssdk.Config{}, fmt.Errorf("no AWS profile configured for this environment — run 'plabs init' to set one up")
-	}
-	return config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
 }
 
 // ValidateProfile checks if the given AWS profile has valid credentials

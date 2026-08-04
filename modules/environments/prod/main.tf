@@ -103,6 +103,15 @@ resource "aws_iam_service_linked_role" "imagebuilder" {
   aws_service_name = "imagebuilder.amazonaws.com"
 }
 
+# AWSServiceRoleForBatch — AWS Batch requires this SLR to manage compute
+# environments on the caller's behalf. It is also implicitly auto-created by
+# AWS the first time a Batch compute environment is created, so scenarios
+# must never create it themselves — only reference it via the SLR ID output.
+resource "aws_iam_service_linked_role" "batch" {
+  count            = var.create_batch_slr ? 1 : 0
+  aws_service_name = "batch.amazonaws.com"
+}
+
 # Create admin user for cleanup scripts
 resource "aws_iam_user" "admin_user_for_cleanup" {
   force_destroy = true

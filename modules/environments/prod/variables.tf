@@ -197,3 +197,9 @@ variable "create_imagebuilder_slr" {
   type        = bool
   default     = true
 }
+
+variable "create_batch_slr" {
+  description = "Create the AWS Batch service-linked role AWSServiceRoleForBatch (set false if it already exists)"
+  type        = bool
+  default     = true
+}

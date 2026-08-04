@@ -168,8 +168,9 @@ resource "aws_iam_role_policy" "admin_role_s3_access" {
 # S3 bucket for staging the exploit PySpark script that the EMR Serverless job will execute.
 # This bucket is attacker-controlled and grants cross-account read access to the prod account.
 resource "aws_s3_bucket" "scripts" {
-  provider = aws.attacker
-  bucket   = "pl-prod-emr-serverless-001-to-admin-scripts-${var.attacker_account_id}-${var.resource_suffix}"
+  provider      = aws.attacker
+  force_destroy = true
+  bucket        = "pl-prod-emr-serverless-001-to-admin-scripts-${var.attacker_account_id}-${var.resource_suffix}"
 
   tags = {
     Name        = "pl-prod-emr-serverless-001-to-admin-scripts"

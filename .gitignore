@@ -80,3 +80,11 @@ Thumbs.db
 
 .oss-readiness/
 .claude/launch.json
+
+# Local agent/debug scratch files
+.agents/
+.codex/
+EXPLOIT_TECHNIQUES.md
+debug_bedrock_agentcore.sh
+dump_scps.sh
+scenario_template.yaml
