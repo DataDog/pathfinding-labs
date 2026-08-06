@@ -56,10 +56,18 @@ permissions:
           purpose: "Discover existing job queues for job submission"
         - permission: "batch:DescribeComputeEnvironments"
           purpose: "Discover existing compute environments"
+        - permission: "batch:DescribeJobDefinitions"
+          purpose: "Discover existing job definitions with privileged jobRoleArn"
         - permission: "batch:DeregisterJobDefinition"
           purpose: "Clean up job definition after demonstration"
         - permission: "iam:ListAttachedUserPolicies"
           purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListRoles"
+          purpose: "Discover IAM roles in the account to identify passable admin and execution roles"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Discover subnets for compute environment reconnaissance"
+        - permission: "ec2:DescribeSecurityGroups"
+          purpose: "Discover security groups for compute environment reconnaissance"
 
 # =============================================================================
 # MITRE ATT&CK

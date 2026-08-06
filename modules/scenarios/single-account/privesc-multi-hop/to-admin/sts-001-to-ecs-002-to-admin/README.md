@@ -31,14 +31,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:RegisterTaskDefinition` on `*` -- allows registering a task definition with the admin role attached (Hop 2)
 - `ecs:RunTask` on `*` -- allows launching the Fargate task that escalates privileges (Hop 2)
 
-**Helpful** (`pl-prod-sts001-ecs002-starting-user`):
-- `iam:ListRoles` -- discover available roles that trust ecs-tasks.amazonaws.com
-- `iam:GetRole` -- view role permissions and trust policies before assuming
-
 **Helpful** (`pl-prod-sts001-ecs002-intermediate-role`):
 - `ec2:DescribeVpcs` -- find the default VPC for Fargate network configuration
 - `ec2:DescribeSubnets` -- find subnets for Fargate network configuration
 - `ecs:DescribeTasks` -- monitor task status and completion
+- `iam:ListRoles` -- discover available roles that trust ecs-tasks.amazonaws.com
+- `iam:GetRole` -- view role permissions and trust policies before passing to the ECS task
 
 ## Self-hosted Lab Setup
 

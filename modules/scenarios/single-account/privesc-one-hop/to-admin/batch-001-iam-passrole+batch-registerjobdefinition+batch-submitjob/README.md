@@ -34,8 +34,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `batch:DescribeJobs` -- monitor job execution status and verify job completion
 - `batch:DescribeJobQueues` -- discover existing job queues available for job submission
 - `batch:DescribeComputeEnvironments` -- discover existing compute environments
+- `batch:DescribeJobDefinitions` -- discover existing job definitions with privileged jobRoleArn
 - `batch:DeregisterJobDefinition` -- clean up the job definition after the demonstration
 - `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
+- `iam:ListRoles` -- discover IAM roles in the account to identify passable admin and execution roles
+- `ec2:DescribeSubnets` -- discover subnets for compute environment reconnaissance
+- `ec2:DescribeSecurityGroups` -- discover security groups for compute environment reconnaissance
 
 ## Self-hosted Lab Setup
 

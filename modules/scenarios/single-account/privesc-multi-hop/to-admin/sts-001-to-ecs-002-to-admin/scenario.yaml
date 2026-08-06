@@ -48,8 +48,8 @@ permissions:
           resource: "*"
 
   helpful:
-    - principal: "pl-prod-sts001-ecs002-starting-user"
-      principal_type: "user"
+    - principal: "pl-prod-sts001-ecs002-intermediate-role"
+      principal_type: "role"
       permissions:
         - permission: "ec2:DescribeVpcs"
           purpose: "Find default VPC for Fargate network configuration"

@@ -55,6 +55,14 @@ permissions:
           purpose: "Monitor job execution status and verify job completion"
         - permission: "batch:DescribeComputeEnvironments"
           purpose: "Discover available compute environments"
+        - permission: "iam:ListAttachedUserPolicies"
+          purpose: "Verify privilege escalation success by listing attached policies"
+        - permission: "iam:ListRoles"
+          purpose: "Discover IAM roles in the account to identify passable admin and execution roles"
+        - permission: "ec2:DescribeSubnets"
+          purpose: "Discover subnets for compute environment reconnaissance"
+        - permission: "ec2:DescribeSecurityGroups"
+          purpose: "Discover security groups for compute environment reconnaissance"
 
 # =============================================================================
 # REQUIRED PRECONDITIONS

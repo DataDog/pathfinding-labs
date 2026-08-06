@@ -107,8 +107,12 @@ resource "aws_iam_user_policy" "starting_user_required" {
           "batch:DescribeJobs",
           "batch:DescribeJobQueues",
           "batch:DescribeComputeEnvironments",
+          "batch:DescribeJobDefinitions",
           "batch:DeregisterJobDefinition",
-          "iam:ListAttachedUserPolicies"
+          "iam:ListAttachedUserPolicies",
+          "iam:ListRoles",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups"
         ]
         Resource = "*"
       }
