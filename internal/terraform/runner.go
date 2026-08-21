@@ -438,7 +438,7 @@ func collectARNs(module *tfModule, modulePrefix string, arns *[]string) {
 	// Check if this module matches
 	if strings.HasPrefix(module.Address, modulePrefix) {
 		for _, resource := range module.Resources {
-			if arn := extractARN(resource.Values); arn != "" {
+			if arn := extractARN(resource.Type, resource.Values); arn != "" {
 				*arns = append(*arns, arn)
 			}
 		}
@@ -464,7 +464,7 @@ func collectAllModuleARNs(module *tfModule, result map[string][]string) {
 			strings.HasPrefix(moduleName, "tool_testing_") {
 
 			for _, resource := range module.Resources {
-				if arn := extractARN(resource.Values); arn != "" {
+				if arn := extractARN(resource.Type, resource.Values); arn != "" {
 					result[moduleName] = append(result[moduleName], arn)
 				}
 			}
@@ -477,11 +477,22 @@ func collectAllModuleARNs(module *tfModule, result map[string][]string) {
 	}
 }
 
-// extractARN extracts an ARN from resource values
-func extractARN(values map[string]interface{}) string {
-	// Try common ARN field names
+// extractARN extracts an ARN from resource values. Most AWS resources
+// expose an "arn" attribute, but a handful (e.g. aws_cloudformation_stack)
+// only expose "id", which is itself the resource's ARN.
+func extractARN(resourceType string, values map[string]interface{}) string {
 	if arn, ok := values["arn"].(string); ok && arn != "" {
 		return arn
 	}
+
+	idAsARNResourceTypes := map[string]bool{
+		"aws_cloudformation_stack": true,
+	}
+	if idAsARNResourceTypes[resourceType] {
+		if id, ok := values["id"].(string); ok && strings.HasPrefix(id, "arn:") {
+			return id
+		}
+	}
+
 	return ""
 }

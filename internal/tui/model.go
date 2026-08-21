@@ -1449,6 +1449,7 @@ func (m *Model) executeDeploy() tea.Cmd {
 				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
 				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
 				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
 			}
 		}
@@ -1486,6 +1487,7 @@ func (m *Model) executePlan() tea.Cmd {
 				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
 				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
 				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
 			}
 		}

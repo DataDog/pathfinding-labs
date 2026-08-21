@@ -94,6 +94,7 @@ resource "aws_iam_user_policy" "starting_user_helpful" {
         Action = [
           "ecs:ListContainerInstances",
           "ecs:ListTaskDefinitions",
+          "ecs:DescribeTaskDefinition",
           "ecs:DescribeTasks",
           "ecs:ListClusters",
           "ecs:StopTask",

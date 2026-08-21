@@ -17,6 +17,7 @@ type ServiceLinkedRoleStatus struct {
 	EMRExists               bool
 	EMRServerlessExists     bool
 	ImageBuilderExists      bool
+	AgentCoreExists         bool
 	BatchExists             bool
 }
 
@@ -29,6 +30,7 @@ var slrStateAddresses = map[string]string{
 	"emr":           "module.prod_environment[0].aws_iam_service_linked_role.emr[0]",
 	"emrserverless": "module.prod_environment[0].aws_iam_service_linked_role.emr_serverless[0]",
 	"imagebuilder":  "module.prod_environment[0].aws_iam_service_linked_role.imagebuilder[0]",
+	"agentcore":     "module.prod_environment[0].aws_iam_service_linked_role.agentcore[0]",
 	"batch":         "module.prod_environment[0].aws_iam_service_linked_role.batch[0]",
 }
 
@@ -46,6 +48,7 @@ func SLRInState(stateResources []string) *ServiceLinkedRoleStatus {
 		EMRExists:           inState[slrStateAddresses["emr"]],
 		EMRServerlessExists: inState[slrStateAddresses["emrserverless"]],
 		ImageBuilderExists:  inState[slrStateAddresses["imagebuilder"]],
+		AgentCoreExists:     inState[slrStateAddresses["agentcore"]],
 		BatchExists:         inState[slrStateAddresses["batch"]],
 	}
 }
@@ -58,6 +61,7 @@ var serviceLinkedRoleChecks = map[string]string{
 	"emr":           "AWSServiceRoleForEMRCleanup",
 	"emrserverless": "AWSServiceRoleForAmazonEMRServerless",
 	"imagebuilder":  "AWSServiceRoleForImageBuilder",
+	"agentcore":     "AWSServiceRoleForBedrockAgentCoreGatewayNetwork",
 	"batch":         "AWSServiceRoleForBatch",
 }
 
@@ -98,6 +102,8 @@ func DetectExistingServiceLinkedRoles(profile string) (*ServiceLinkedRoleStatus,
 			status.EMRServerlessExists = exists
 		case "imagebuilder":
 			status.ImageBuilderExists = exists
+		case "agentcore":
+			status.AgentCoreExists = exists
 		case "batch":
 			status.BatchExists = exists
 		}

