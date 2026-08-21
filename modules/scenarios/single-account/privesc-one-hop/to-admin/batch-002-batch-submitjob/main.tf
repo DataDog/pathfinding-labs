@@ -167,10 +167,11 @@ resource "aws_iam_role_policy_attachment" "exec_role_ecs_policy" {
 # =============================================================================
 # NOTE: AWS Batch service-linked role
 # =============================================================================
-# The Batch SLR (batch.amazonaws.com) is NOT created here. batch-001 already
-# creates it and it is account-wide — creating it a second time would fail with
-# a conflict. The compute environment below depends on it existing; if batch-001
-# is not enabled, apply batch-001 first or create the SLR manually.
+# The Batch SLR (batch.amazonaws.com) is NOT created here. It is an
+# account-wide singleton created once by the prod environment module (see
+# modules/environments/prod/main.tf) — ordering with this scenario's module is
+# enforced via the module-level depends_on in the root main.tf, independent of
+# whether batch-001 is enabled.
 
 # =============================================================================
 # CLOUDWATCH LOGS
@@ -194,7 +195,7 @@ resource "aws_cloudwatch_log_group" "batch_logs" {
 # =============================================================================
 
 # Egress-only security group — Batch Fargate tasks need outbound access to
-# pull the amazon/aws-cli image and call AWS APIs. No inbound rules needed.
+# pull the python:3.11-slim image and call AWS APIs. No inbound rules needed.
 resource "aws_security_group" "batch_sg" {
   provider    = aws.prod
   name        = "pl-prod-batch-002-to-admin-sg"
@@ -222,10 +223,10 @@ resource "aws_security_group" "batch_sg" {
 # =============================================================================
 
 resource "aws_batch_compute_environment" "ce" {
-  provider                 = aws.prod
-  name = "pl-prod-batch-002-to-admin-compute-env"
-  type                     = "MANAGED"
-  state                    = "ENABLED"
+  provider = aws.prod
+  name     = "pl-prod-batch-002-to-admin-compute-env"
+  type     = "MANAGED"
+  state    = "ENABLED"
 
   compute_resources {
     type      = "FARGATE"
@@ -270,11 +271,18 @@ resource "aws_batch_job_queue" "queue" {
 # AWS BATCH JOB DEFINITION (Pre-existing with privileged jobRoleArn)
 # =============================================================================
 
-# This job definition represents a legitimate, pre-existing workflow that a
-# developer created for a privileged maintenance task (e.g., automated IAM
-# cleanup). It carries admin_role as the jobRoleArn.
+# This job definition represents a legitimate, pre-existing ETL/data-processing
+# workflow that a developer created for a privileged maintenance task (e.g.,
+# automated IAM cleanup). It carries admin_role as the jobRoleArn.
 #
-# The default command ("echo", "operational-default") is a benign placeholder.
+# The container image is python:3.11-slim, a common base for data-pipeline Batch
+# jobs. The official Python image defines NO custom ENTRYPOINT (only a CMD of
+# ["python3"]), so ContainerOverrides.Command at submit time fully replaces the
+# container's execution — behaving exactly like a wrapper entrypoint that does
+# exec "$@". This lets an attacker run arbitrary code with the container's
+# credentials without registering a new job definition.
+#
+# The default command is a benign placeholder that simulates a normal batch run.
 # The attacker does NOT need to register a new job definition — they submit a
 # job against THIS definition with ContainerOverrides.Command set to their
 # payload. Because the jobRoleArn is inherited from the job definition, the
@@ -286,12 +294,12 @@ resource "aws_batch_job_definition" "jd" {
   platform_capabilities = ["FARGATE"]
 
   container_properties = jsonencode({
-    image            = "amazon/aws-cli:latest"
-    command          = ["echo", "operational-default"]
+    image            = "python:3.11-slim"
+    command          = ["python3", "-c", "import time, sys; print('Processing batch job...'); time.sleep(2); print('Done.')"]
     jobRoleArn       = aws_iam_role.admin_role.arn
     executionRoleArn = aws_iam_role.exec_role.arn
     resourceRequirements = [
-      { type = "VCPU",   value = "0.25" },
+      { type = "VCPU", value = "0.25" },
       { type = "MEMORY", value = "512" }
     ]
     networkConfiguration = {

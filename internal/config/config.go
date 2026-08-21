@@ -181,6 +181,7 @@ type ServiceLinkedRoleFlags struct {
 	CreateEMRServerless bool
 	CreateImageBuilder  bool
 	CreateAgentCore     bool
+	CreateBatch         bool
 }
 
 // GetConfigPath returns the path to the config file.
@@ -619,6 +620,7 @@ func (w *WorkspaceConfig) GenerateTFVars() string {
 		lines = append(lines, fmt.Sprintf("create_emr_serverless_slr  = %t", w.SLRFlags.CreateEMRServerless))
 		lines = append(lines, fmt.Sprintf("create_imagebuilder_slr    = %t", w.SLRFlags.CreateImageBuilder))
 		lines = append(lines, fmt.Sprintf("create_agentcore_slr       = %t", w.SLRFlags.CreateAgentCore))
+		lines = append(lines, fmt.Sprintf("create_batch_slr           = %t", w.SLRFlags.CreateBatch))
 		lines = append(lines, "")
 	}
 

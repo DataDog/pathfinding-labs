@@ -37,3 +37,8 @@ output "apprunner_service_linked_role_id" {
   description = "ID of the App Runner service-linked role"
   value       = length(aws_iam_service_linked_role.apprunner) > 0 ? aws_iam_service_linked_role.apprunner[0].id : "arn:aws:iam::${var.account_id}:role/aws-service-role/apprunner.amazonaws.com/AWSServiceRoleForAppRunner"
 }
+
+output "batch_service_linked_role_id" {
+  description = "ID of the AWS Batch service-linked role"
+  value       = length(aws_iam_service_linked_role.batch) > 0 ? aws_iam_service_linked_role.batch[0].id : "arn:aws:iam::${var.account_id}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch"
+}

@@ -28,7 +28,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Starting Permissions
 
 **Required** (`pl-prod-batch-002-to-admin-starting-user`):
-- `batch:SubmitJob` on `*` -- allows submitting jobs to the pre-existing Batch job definition, overriding the container command via `ContainerOverrides.Command` to execute arbitrary AWS CLI calls as the admin `jobRoleArn`
+- `batch:SubmitJob` on `*` -- allows submitting jobs to the pre-existing Batch job definition, overriding the container command via `ContainerOverrides.Command`. The job definition runs `python:3.11-slim` (a generic data-processing image with no custom entrypoint), so the override fully replaces execution and runs arbitrary shell code as the admin `jobRoleArn`
 
 **Helpful** (`pl-prod-batch-002-to-admin-starting-user`):
 - `batch:DescribeJobDefinitions` -- Discover existing job definitions with privileged jobRoleArn
@@ -87,7 +87,7 @@ For a narrative, step-by-step walkthrough of this attack (CTF writeup style), se
 The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Confirm the starting user cannot read the CTF flag before escalation
-3. Build a `ContainerOverrides` JSON payload that replaces the job command with an `iam:AttachUserPolicy` call
+3. Build a `ContainerOverrides` JSON payload that replaces the job command with a shell one-liner (pip-installs the aws CLI, since `python:3.11-slim` lacks it, then runs `iam:AttachUserPolicy`)
 4. Submit the job to the pre-existing Batch job definition using `batch:SubmitJob` with `--container-overrides`
 5. Poll the job status until it reaches `SUCCEEDED` (Fargate provisioning typically takes 1-3 minutes)
 6. Wait 30 seconds for IAM policy propagation
@@ -165,7 +165,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `batch:SubmitJob` -- Batch job submitted; inspect `requestParameters.containerOverrides.command` — an `iam:AttachUserPolicy`, `iam:PutUserPolicy`, or `iam:PutRolePolicy` command in the override indicates exploitation of an existing privileged job definition; also inspect `requestParameters.jobDefinition` to identify which definition was targeted
+- `batch:SubmitJob` -- Batch job submitted; inspect `requestParameters.containerOverrides.command`. Any command override on a job definition carrying a privileged `jobRoleArn` is suspicious — the payload is often a shell wrapper (`sh -c ...`) that hides the real intent, so match on shell invocation, package installs (`pip install`, `apt-get`), or embedded IAM verbs (`iam:AttachUserPolicy`, `iam:PutUserPolicy`, `iam:PutRolePolicy`) inside the argument string, not just the first array element; also inspect `requestParameters.jobDefinition` to identify which definition was targeted
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within a Batch/ECS task context; critical when the policy is `AdministratorAccess` and the caller's ARN includes `ecs-tasks` or a Batch job role
 - `iam:PutUserPolicy` -- inline policy added to an IAM user from a Batch job context; monitor for policies granting broad IAM or `*` permissions
 

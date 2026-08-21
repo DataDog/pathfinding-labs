@@ -27,6 +27,7 @@ flags:
   bedrock-001-to-admin: "flag{bedrock_001_admin_captured}"
   batch-001-to-admin: "flag{batch_001_admin_captured}"
   batch-002-to-admin: "flag{batch-submitjob-existing-admin-jd}"
+  batch-003-to-admin: "flag{batch_003_admin_captured}"
   braket-001-to-admin: "flag{braket_001_admin_captured}"
   bedrock-002-to-admin: "flag{bedrock_002_admin_captured}"
   bedrock-003-to-admin: "flag{bedrock_003_admin_captured}"

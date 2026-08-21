@@ -109,6 +109,7 @@ module "prod_environment" {
   create_emr_slr            = var.create_emr_slr
   create_emr_serverless_slr = var.create_emr_serverless_slr
   create_imagebuilder_slr   = var.create_imagebuilder_slr
+  create_batch_slr          = var.create_batch_slr
 }
 
 # Dev environment is optional (for cross-account scenarios)
@@ -806,12 +807,16 @@ module "single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_reg
   providers = {
     aws.prod = aws.prod
   }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
-  vpc_id          = module.prod_environment[0].vpc_id
-  subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
+  account_id                   = local.prod_account_id
+  environment                  = "prod"
+  resource_suffix              = random_string.resource_suffix.result
+  vpc_id                       = module.prod_environment[0].vpc_id
+  subnet_id                    = module.prod_environment[0].subnet1_id
+  batch_service_linked_role_id = module.prod_environment[0].batch_service_linked_role_id
+  flag_value                   = lookup(var.scenario_flags, "batch-001-to-admin", "flag{MISSING}")
+
+  # Ensure service-linked role is created first and destroyed last
+  depends_on = [module.prod_environment]
 }
 
 module "single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
@@ -820,12 +825,35 @@ module "single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob" {
   providers = {
     aws.prod = aws.prod
   }
+  account_id                   = local.prod_account_id
+  environment                  = "prod"
+  resource_suffix              = random_string.resource_suffix.result
+  vpc_id                       = module.prod_environment[0].vpc_id
+  subnet_id                    = module.prod_environment[0].subnet1_id
+  batch_service_linked_role_id = module.prod_environment[0].batch_service_linked_role_id
+  flag_value                   = lookup(local.effective_flags, "batch-002-to-admin", "flag{MISSING}")
+
+  # Ensure service-linked role is created first and destroyed last
+  depends_on = [module.prod_environment]
+}
+
+module "single_account_privesc_one_hop_to_admin_batch_003_iam_passrole_batch_createcomputeenvironment_batch_createjobqueue_batch_registerjobdefinition_batch_submitjob" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_batch_003_iam_passrole_batch_createcomputeenvironment_batch_createjobqueue_batch_registerjobdefinition_batch_submitjob ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/batch-003-iam-passrole+batch-createcomputeenvironment+batch-createjobqueue+batch-registerjobdefinition+batch-submitjob"
+  providers = {
+    aws.prod = aws.prod
+  }
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(local.effective_flags, "batch-002-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "batch-003-to-admin", "flag{MISSING}")
+
+  # Ensure prod networking (VPC/subnet) is created first; this scenario creates
+  # no Batch resources in Terraform (the demo script builds the pipeline at
+  # runtime), so no dependency on the Batch service-linked role is needed here.
+  depends_on = [module.prod_environment]
 }
 
 module "single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob" {

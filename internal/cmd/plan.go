@@ -91,6 +91,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 			CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
 			CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
 			CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
+			CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
 		}
 	}
 

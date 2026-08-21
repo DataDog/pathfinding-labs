@@ -4,7 +4,7 @@
 schema_version: "1.8.0"
 name: "batch-submitjob"
 title: "AWS Batch SubmitJob to Admin via Existing Admin Job Definition"
-description: "Principal with batch:SubmitJob can escalate privileges by overriding the command of an existing Batch job definition that carries an admin jobRoleArn"
+description: "Principal with batch:SubmitJob can escalate privileges by overriding the command of an existing Python data-processing Batch job definition (python:3.11-slim, no custom entrypoint) that carries an admin jobRoleArn, running arbitrary shell code as the admin role"
 cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "batch-002"
