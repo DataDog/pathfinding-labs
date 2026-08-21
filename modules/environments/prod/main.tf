@@ -103,6 +103,13 @@ resource "aws_iam_service_linked_role" "imagebuilder" {
   aws_service_name = "imagebuilder.amazonaws.com"
 }
 
+# AWSServiceRoleForAmazonBedrockAgentCore — Bedrock AgentCore requires this
+# SLR before any CreateAgentRuntime (or CreateHarness / CreateBrowser) call.
+# Without it the API returns AccessDeniedException: "Failed creating service
+# linked role" even when the caller otherwise has the right permissions.
+resource "aws_iam_service_linked_role" "agentcore" {
+  count            = var.create_agentcore_slr ? 1 : 0
+  aws_service_name = "bedrock-agentcore.amazonaws.com"
 # AWSServiceRoleForBatch — AWS Batch requires this SLR to manage compute
 # environments on the caller's behalf. It is also implicitly auto-created by
 # AWS the first time a Batch compute environment is created, so scenarios

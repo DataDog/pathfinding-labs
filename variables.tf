@@ -122,6 +122,124 @@ variable "scenario_flag_defaults" {
   description = "Default CTF flag values for all scenarios. Override individual flags via scenario_flags (managed by plabs)."
   type        = map(string)
   default = {
+    "apprunner-001-to-admin"                          = "flag{apprunner_001_admin_captured}"
+    "apprunner-002-to-admin"                          = "flag{apprunner_002_admin_captured}"
+    "batch-001-to-admin"                              = "flag{batch_001_admin_captured}"
+    "batch-002-to-admin"                              = "flag{batch-submitjob-existing-admin-jd}"
+    "bedrock-001-to-admin"                            = "flag{bedrock_001_admin_captured}"
+    "bedrock-002-to-admin"                            = "flag{bedrock_002_admin_captured}"
+    "bedrock-003-to-admin"                            = "flag{bedrock_003_admin_captured}"
+    "bedrock-004-to-admin"                            = "flag{bedrock_004_admin_captured}"
+    "bedrock-005-to-admin"                            = "flag{bedrock_005_admin_captured}"
+    "bedrock-006-to-admin"                            = "flag{bedrock_006_admin_captured}"
+    "bedrock-007-to-admin"                            = "flag{bedrock_007_admin_captured}"
+    "cognito-identity-001-to-admin"                   = "flag{cognito-identity-pool-unauthenticated-role-swap}"
+    "cloudformation-001-to-admin"                     = "flag{cloudformation_001_admin_captured}"
+    "cloudformation-002-to-admin"                     = "flag{cloudformation_002_admin_captured}"
+    "cloudformation-003-to-admin"                     = "flag{cloudformation_003_admin_captured}"
+    "cloudformation-004-to-admin"                     = "flag{cloudformation_004_admin_captured}"
+    "cloudformation-005-to-admin"                     = "flag{cloudformation_005_admin_captured}"
+    "codebuild-001-to-admin"                          = "flag{codebuild_001_admin_captured}"
+    "codebuild-002-to-admin"                          = "flag{codebuild_002_admin_captured}"
+    "codebuild-003-to-admin"                          = "flag{codebuild_003_admin_captured}"
+    "codebuild-004-to-admin"                          = "flag{codebuild_004_admin_captured}"
+    "codedeploy-001-to-admin"                         = "flag{codedeploy-createdeployment-ec2-hook}"
+    "cspm-ec2-001-to-admin"                           = "flag{cspm_ec2_001_admin_captured}"
+    "ctf-001-to-admin"                                = "flag{ctf_001_chatbot_prompt_injected}"
+    "ctf-002-to-admin"                                = "flag{ctf_002_admin_captured}"
+    "datapipeline-001-to-admin"                       = "flag{datapipeline_001_admin_captured}"
+    "datapipeline-001-to-bucket"                      = "flag{datapipeline_001_bucket_accessed}"
+    "dev-to-prod-simple-role-assumption-to-admin"     = "flag{cross_account_prod_admin_captured}"
+    "ec2-001-to-admin"                                = "flag{ec2_001_admin_captured}"
+    "ec2-002-to-admin"                                = "flag{ec2_002_admin_captured}"
+    "ec2-003-to-admin"                                = "flag{ec2_003_admin_captured}"
+    "ec2-003-to-bucket"                               = "flag{ec2_003_bucket_accessed}"
+    "ec2-004-to-admin"                                = "flag{ec2_004_admin_captured}"
+    "ec2-005-to-admin"                                = "flag{ec2_005_admin_captured}"
+    "ecs-001-to-admin"                                = "flag{ecs_001_admin_captured}"
+    "ecs-003-to-admin"                                = "flag{ecs_003_admin_captured}"
+    "ecs-004-to-admin"                                = "flag{ecs_004_admin_captured}"
+    "ecs-005-to-admin"                                = "flag{ecs_005_admin_captured}"
+    "ecs-006-to-admin"                                = "flag{ecs_006_admin_captured}"
+    "ecs-007-to-admin"                                = "flag{ecs_007_admin_captured}"
+    "ecs-008-to-admin"                                = "flag{ecs_008_admin_captured}"
+    "ecs-009-to-admin"                                = "flag{ecs_009_admin_captured}"
+    "github-oidc-cross-account-pivot-to-bucket"       = "flag{github_oidc_cross_account_bucket_accessed}"
+    "glue-001-to-admin"                               = "flag{glue_001_admin_captured}"
+    "glue-001-to-bucket"                              = "flag{glue_001_bucket_accessed}"
+    "glue-002-to-admin"                               = "flag{glue_002_admin_captured}"
+    "glue-002-to-bucket"                              = "flag{glue_002_bucket_accessed}"
+    "glue-003-to-admin"                               = "flag{glue_003_admin_captured}"
+    "glue-004-to-admin"                               = "flag{glue_004_admin_captured}"
+    "glue-005-to-admin"                               = "flag{glue_005_admin_captured}"
+    "glue-006-to-admin"                               = "flag{glue_006_admin_captured}"
+    "glue-007-to-admin"                               = "flag{glue_007_admin_captured}"
+    "iam-001-to-admin"                                = "flag{iam_001_policy_version_self_escalated}"
+    "iam-002-to-admin"                                = "flag{iam_002_admin_key_created}"
+    "iam-002-to-bucket"                               = "flag{iam_002_bucket_access_via_new_keys}"
+    "iam-003-to-admin"                                = "flag{iam_003_admin_captured}"
+    "iam-003-to-bucket"                               = "flag{iam_003_bucket_accessed}"
+    "iam-004-to-admin"                                = "flag{iam_004_admin_captured}"
+    "iam-004-to-bucket"                               = "flag{iam_004_bucket_accessed}"
+    "iam-005-to-admin"                                = "flag{iam_005_self_escalated}"
+    "iam-005-to-bucket"                               = "flag{iam_005_bucket_accessed}"
+    "iam-006-to-admin"                                = "flag{iam_006_admin_captured}"
+    "iam-006-to-bucket"                               = "flag{iam_006_bucket_accessed}"
+    "iam-007-to-admin"                                = "flag{iam_007_admin_captured}"
+    "iam-008-to-admin"                                = "flag{iam_008_admin_captured}"
+    "iam-009-to-admin"                                = "flag{iam_009_admin_captured}"
+    "iam-009-to-bucket"                               = "flag{iam_009_bucket_accessed}"
+    "iam-010-to-admin"                                = "flag{iam_010_admin_captured}"
+    "iam-011-to-admin"                                = "flag{iam_011_admin_captured}"
+    "iam-012-to-admin"                                = "flag{iam_012_trust_policy_updated}"
+    "iam-012-to-bucket"                               = "flag{iam_012_bucket_accessed}"
+    "iam-013-to-admin"                                = "flag{iam_013_admin_captured}"
+    "iam-014-to-admin"                                = "flag{iam_014_admin_captured}"
+    "iam-015-to-admin"                                = "flag{iam_015_admin_captured}"
+    "iam-016-to-admin"                                = "flag{iam_016_admin_captured}"
+    "iam-017-to-admin"                                = "flag{iam_017_admin_captured}"
+    "iam-018-to-admin"                                = "flag{iam_018_admin_captured}"
+    "iam-019-to-admin"                                = "flag{iam_019_admin_captured}"
+    "iam-020-to-admin"                                = "flag{iam_020_admin_captured}"
+    "iam-021-to-admin"                                = "flag{iam_021_admin_captured}"
+    "lambda-001-to-admin"                             = "flag{lambda_001_admin_captured}"
+    "lambda-001-to-bucket"                            = "flag{lambda_001_bucket_accessed}"
+    "lambda-002-to-admin"                             = "flag{lambda_002_admin_captured}"
+    "lambda-002-to-bucket"                            = "flag{lambda_002_bucket_accessed}"
+    "lambda-003-to-admin"                             = "flag{lambda_003_admin_captured}"
+    "lambda-003-to-bucket"                            = "flag{lambda_003_bucket_accessed}"
+    "lambda-004-plus-iam-002-to-admin"                = "flag{lambda_004_iam_002_multi_hop_admin_captured}"
+    "lambda-004-to-admin"                             = "flag{lambda_004_admin_captured}"
+    "lambda-004-to-bucket"                            = "flag{lambda_004_bucket_accessed}"
+    "lambda-005-to-admin"                             = "flag{lambda_005_admin_captured}"
+    "lambda-005-to-bucket"                            = "flag{lambda_005_bucket_accessed}"
+    "lambda-006-to-admin"                             = "flag{lambda_006_admin_captured}"
+    "lambda-006-to-bucket"                            = "flag{lambda_006_bucket_accessed}"
+    "lambda-invoke-update-to-admin"                   = "flag{lambda_invoke_update_cross_account_admin_captured}"
+    "multi-hop-both-sides-to-admin"                   = "flag{multi_hop_both_sides_admin_captured}"
+    "multiple-paths-combined-to-admin"                = "flag{multiple_paths_combined_admin_captured}"
+    "ops-to-prod-simple-role-assumption-to-admin"     = "flag{ops_to_prod_simple_role_assumption_admin_captured}"
+    "passrole-lambda-admin-to-admin"                  = "flag{passrole_lambda_cross_account_admin_captured}"
+    "public-lambda-with-admin-to-admin"               = "flag{public_lambda_admin_role_pwned}"
+    "role-chain-to-s3-to-bucket"                      = "flag{role_chain_s3_bucket_accessed}"
+    "root-trust-role-assumption-to-admin"             = "flag{root_trust_cross_account_admin_captured}"
+    "sagemaker-001-to-admin"                          = "flag{sagemaker_001_admin_captured}"
+    "sagemaker-002-to-admin"                          = "flag{sagemaker_002_admin_captured}"
+    "sagemaker-003-to-admin"                          = "flag{sagemaker_003_admin_captured}"
+    "sagemaker-004-to-admin"                          = "flag{sagemaker_004_admin_captured}"
+    "sagemaker-005-to-admin"                          = "flag{sagemaker_005_admin_captured}"
+    "scheduler-001-to-admin"                          = "flag{eventbridge-scheduler-universal-target-passrole-privesc}"
+    "ssm-001-to-admin"                                = "flag{ssm_001_admin_captured}"
+    "ssm-001-to-bucket"                               = "flag{ssm_001_bucket_accessed}"
+    "ssm-002-to-admin"                                = "flag{ssm_002_admin_captured}"
+    "ssm-002-to-bucket"                               = "flag{ssm_002_bucket_accessed}"
+    "ssm-startsession-ec2-admin-to-admin"             = "flag{ssm_startsession_ec2_admin}"
+    "stepfunctions-002-to-admin"                      = "flag{stepfunctions-updatestatemachine-existing-role-escalation}"
+    "sts-001-to-admin"                                = "flag{sts_001_admin_captured}"
+    "sts-001-to-bucket"                               = "flag{sts_001_bucket_accessed}"
+    "sts-001-to-ecs-002-to-admin-to-admin"            = "flag{sts_001_ecs_002_multi_hop_admin_captured}"
+    "sts-role-chain-to-admin"                         = "flag{role_chain_complete}"
+    "sysdig-8-minutes-to-admin-to-admin"              = "flag{sysdig_8min_admin_captured}"
     "apprunner-001-to-admin"                      = "flag{apprunner_001_admin_captured}"
     "apprunner-002-to-admin"                      = "flag{apprunner_002_admin_captured}"
     "batch-001-to-admin"                          = "flag{batch_001_admin_captured}"
@@ -390,6 +508,36 @@ variable "enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrol
 
 variable "enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke" {
   description = "Enable: single-account → privesc → one-hop → to-admin → bedrock-002-bedrockagentcore-startsession+invoke (Pathfinding.cloud: bedrock-002)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-003-iam-passrole+bedrockagentcore-createagentruntime"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-004-bedrockagentcore-invokeagentcommand"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-005-iam-passrole+bedrockagentcore-createharness"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-006-iam-passrole+bedrockagentcore-createbrowser"
+  type        = bool
+  default     = false
+}
+
+variable "enable_single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → bedrock-007-bedrockagentcore-startbrowsersession+cdp"
   type        = bool
   default     = false
 }
@@ -1021,6 +1169,12 @@ variable "enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin"
 
 variable "enable_cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   description = "Enable: cross-account → dev-to-prod → one-hop → root-trust-role-assumption"
+  type        = bool
+  default     = false
+}
+
+variable "enable_cross_account_dev_to_prod_sts_role_chain_to_admin" {
+  description = "Enable: cross-account → dev-to-prod → multi-hop → sts-role-chain"
   type        = bool
   default     = false
 }

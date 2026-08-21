@@ -390,6 +390,79 @@ module "single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_sta
   flag_value      = lookup(local.effective_flags, "bedrock-002-to-admin", "flag{MISSING}")
 }
 
+module "single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrock_003_iam_passrole_bedrockagentcore_createagentruntime ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-003-iam-passrole+bedrockagentcore-createagentruntime"
+  providers = {
+    aws.prod     = aws.prod
+    aws.attacker = aws.attacker
+  }
+  account_id                   = local.prod_account_id
+  attacker_account_id          = local.attacker_account_id
+  attacker_account_aws_profile = local.effective_attacker_profile
+  environment                  = "prod"
+  resource_suffix              = random_string.resource_suffix.result
+  flag_value                   = lookup(local.effective_flags, "bedrock-003-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-004-bedrockagentcore-invokeagentcommand"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id               = local.prod_account_id
+  prod_account_aws_profile = var.prod_account_aws_profile
+  environment              = "prod"
+  resource_suffix          = random_string.resource_suffix.result
+  flag_value               = lookup(local.effective_flags, "bedrock-004-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrock_005_iam_passrole_bedrockagentcore_createharness ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-005-iam-passrole+bedrockagentcore-createharness"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "bedrock-005-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrock_006_iam_passrole_bedrockagentcore_createbrowser ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-006-iam-passrole+bedrockagentcore-createbrowser"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(local.effective_flags, "bedrock-006-to-admin", "flag{MISSING}")
+}
+
+module "single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/bedrock-007-bedrockagentcore-startbrowsersession+cdp"
+
+  providers = {
+    aws.prod = aws.prod
+  }
+
+  account_id               = local.prod_account_id
+  prod_account_aws_profile = var.prod_account_aws_profile
+  environment              = "prod"
+  resource_suffix          = random_string.resource_suffix.result
+  flag_value               = lookup(local.effective_flags, "bedrock-007-to-admin", "flag{MISSING}")
+}
+
 module "single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles" {
   count  = var.enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles ? 1 : 0
   source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/cognito-identity-001-iam-passrole+cognito-identity-setidentitypoolroles"
@@ -1751,6 +1824,20 @@ module "cross_account_dev_to_prod_one_hop_root_trust_role_assumption" {
   prod_account_id = local.prod_account_id
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(local.effective_flags, "root-trust-role-assumption-to-admin", "flag{MISSING}")
+}
+
+module "cross_account_dev_to_prod_sts_role_chain_to_admin" {
+  count  = var.enable_cross_account_dev_to_prod_sts_role_chain_to_admin ? 1 : 0
+  source = "./modules/scenarios/cross-account/dev-to-prod/multi-hop/sts-role-chain"
+  providers = {
+    aws.dev  = aws.dev
+    aws.prod = aws.prod
+  }
+  dev_account_id        = local.dev_account_id
+  prod_account_id       = local.prod_account_id
+  operations_account_id = local.operations_account_id
+  resource_suffix       = random_string.resource_suffix.result
+  flag_value            = lookup(local.effective_flags, "sts-role-chain-to-admin", "flag{MISSING}")
 }
 
 ##############################################################################
