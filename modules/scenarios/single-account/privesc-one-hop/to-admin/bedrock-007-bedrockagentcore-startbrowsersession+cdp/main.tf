@@ -239,17 +239,42 @@ resource "null_resource" "agentcore_browser" {
       PROFILE="${var.prod_account_aws_profile}"
       if [ -n "$PROFILE" ]; then export AWS_PROFILE="$PROFILE"; fi
 
-      echo "Creating AgentCore Custom Browser '$BROWSER_NAME' in region $REGION..."
-
-      BROWSER_ID=$(aws bedrock-agentcore-control create-browser \
+      # Idempotent: if a browser with this name already exists (e.g. left
+      # over from a prior apply whose local-exec failed after creation but
+      # before the SSM write below), reuse it instead of failing with
+      # ConflictException.
+      EXISTING_ID=$(aws bedrock-agentcore-control list-browsers \
         --region "$REGION" \
-        --name "$BROWSER_NAME" \
-        --execution-role-arn "$ROLE_ARN" \
-        --network-configuration '{"networkMode":"PUBLIC"}' \
-        --query 'browserId' \
-        --output text)
+        --query "browserSummaries[?name=='$BROWSER_NAME'].browserId | [0]" \
+        --output text 2>/dev/null || echo "None")
+
+      if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "None" ]; then
+        echo "Browser '$BROWSER_NAME' already exists — reusing it."
+        BROWSER_ID="$EXISTING_ID"
+      else
+        echo "Creating AgentCore Custom Browser '$BROWSER_NAME' in region $REGION..."
+        BROWSER_ID=$(aws bedrock-agentcore-control create-browser \
+          --region "$REGION" \
+          --name "$BROWSER_NAME" \
+          --execution-role-arn "$ROLE_ARN" \
+          --network-configuration '{"networkMode":"PUBLIC"}' \
+          --query 'browserId' \
+          --output text)
+      fi
 
       echo "Browser ID: $BROWSER_ID"
+
+      # Persist the ID before polling for READY: if the poll below hits the
+      # FAILED branch (or anything else kills this script), the destroy
+      # provisioner can still find and clean up this resource on the next
+      # apply instead of leaving an orphan that blocks recreation.
+      echo "Storing browser ID in SSM at $SSM_PATH..."
+      aws ssm put-parameter \
+        --region "$REGION" \
+        --name "$SSM_PATH" \
+        --value "$BROWSER_ID" \
+        --type "String" \
+        --overwrite
 
       echo "Waiting for Browser to reach READY state (may take several minutes)..."
       for i in $(seq 1 40); do
@@ -268,14 +293,6 @@ resource "null_resource" "agentcore_browser" {
         fi
         sleep 15
       done
-
-      echo "Storing browser ID in SSM at $SSM_PATH..."
-      aws ssm put-parameter \
-        --region "$REGION" \
-        --name "$SSM_PATH" \
-        --value "$BROWSER_ID" \
-        --type "String" \
-        --overwrite
 
       echo "AgentCore Custom Browser created and READY."
     EOT

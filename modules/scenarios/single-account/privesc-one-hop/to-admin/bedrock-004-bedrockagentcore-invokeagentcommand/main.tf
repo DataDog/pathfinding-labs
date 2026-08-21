@@ -319,18 +319,43 @@ resource "null_resource" "agentcore_runtime" {
       PROFILE="${var.prod_account_aws_profile}"
       if [ -n "$PROFILE" ]; then export AWS_PROFILE="$PROFILE"; fi
 
-      echo "Creating AgentCore Runtime '$RUNTIME_NAME' in region $REGION..."
-
-      RUNTIME_ARN=$(aws bedrock-agentcore-control create-agent-runtime \
+      # Idempotent: if a runtime with this name already exists (e.g. left
+      # over from a prior apply whose local-exec failed after creation but
+      # before the SSM write below), reuse it instead of failing with
+      # ConflictException.
+      EXISTING_ARN=$(aws bedrock-agentcore-control list-agent-runtimes \
         --region "$REGION" \
-        --agent-runtime-name "$RUNTIME_NAME" \
-        --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"$IMAGE_URI\"}}" \
-        --role-arn "$ROLE_ARN" \
-        --network-configuration "{\"networkMode\":\"PUBLIC\"}" \
-        --query 'agentRuntimeArn' \
-        --output text)
+        --query "agentRuntimes[?agentRuntimeName=='$RUNTIME_NAME'].agentRuntimeArn | [0]" \
+        --output text 2>/dev/null || echo "None")
+
+      if [ -n "$EXISTING_ARN" ] && [ "$EXISTING_ARN" != "None" ]; then
+        echo "Runtime '$RUNTIME_NAME' already exists — reusing it."
+        RUNTIME_ARN="$EXISTING_ARN"
+      else
+        echo "Creating AgentCore Runtime '$RUNTIME_NAME' in region $REGION..."
+        RUNTIME_ARN=$(aws bedrock-agentcore-control create-agent-runtime \
+          --region "$REGION" \
+          --agent-runtime-name "$RUNTIME_NAME" \
+          --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"$IMAGE_URI\"}}" \
+          --role-arn "$ROLE_ARN" \
+          --network-configuration "{\"networkMode\":\"PUBLIC\"}" \
+          --query 'agentRuntimeArn' \
+          --output text)
+      fi
 
       echo "Runtime ARN: $RUNTIME_ARN"
+
+      # Persist the ARN before polling for READY: if the poll below hits the
+      # FAILED branch (or anything else kills this script), the destroy
+      # provisioner can still find and clean up this resource on the next
+      # apply instead of leaving an orphan that blocks recreation.
+      echo "Storing runtime ARN in SSM at $SSM_PATH..."
+      aws ssm put-parameter \
+        --region "$REGION" \
+        --name "$SSM_PATH" \
+        --value "$RUNTIME_ARN" \
+        --type "String" \
+        --overwrite
 
       echo "Waiting for Runtime to reach READY state (may take several minutes)..."
       for i in $(seq 1 40); do
@@ -349,14 +374,6 @@ resource "null_resource" "agentcore_runtime" {
         fi
         sleep 15
       done
-
-      echo "Storing runtime ARN in SSM at $SSM_PATH..."
-      aws ssm put-parameter \
-        --region "$REGION" \
-        --name "$SSM_PATH" \
-        --value "$RUNTIME_ARN" \
-        --type "String" \
-        --overwrite
 
       echo "AgentCore Runtime created and READY."
     EOT
