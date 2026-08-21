@@ -97,10 +97,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "bedrock-agentcore:CreateAgentRuntime",
           "bedrock-agentcore:CreateAgentRuntimeEndpoint",
           "bedrock-agentcore:CreateWorkloadIdentity",
-          # CreateMemory and GetMemory are called internally by CreateHarness as
-          # part of managed-memory provisioning. No API opt-out exists in the
-          # current SDK; the console's "disable memory" toggle maps to a nested
-          # configuration field that the CLI SDK does not yet expose.
+          # CreateMemory and GetMemory are required even though this scenario
+          # disables memory via `--memory '{"disabled":{}}'` on CreateHarness
+          # (that flag IS exposed by the CLI/API, not console-only). AWS's own
+          # IAM permissions table for CreateHarness lists CreateMemory as
+          # unconditionally required regardless of the memory mode requested.
           "bedrock-agentcore:CreateMemory",
           "bedrock-agentcore:GetMemory",
           # GetAgentRuntime and GetHarness are called internally by CreateHarness
