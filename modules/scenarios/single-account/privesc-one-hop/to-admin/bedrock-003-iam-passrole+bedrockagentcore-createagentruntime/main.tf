@@ -98,11 +98,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
           "bedrock-agentcore:CreateAgentRuntime",
           "bedrock-agentcore:CreateAgentRuntimeEndpoint",
           "bedrock-agentcore:CreateWorkloadIdentity",
-          "bedrock-agentcore:InvokeAgentRuntimeCommand",
-          "bedrock-agentcore:DeleteAgentRuntime",
-          "bedrock-agentcore:DeleteAgentRuntimeEndpoint",
-          "bedrock-agentcore:ListAgentRuntimes",
-          "bedrock-agentcore:ListAgentRuntimeEndpoints"
+          "bedrock-agentcore:InvokeAgentRuntimeCommand"
         ]
         Resource = "*"
       },
