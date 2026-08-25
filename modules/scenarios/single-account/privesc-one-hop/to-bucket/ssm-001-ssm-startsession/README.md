@@ -17,10 +17,10 @@
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ssm-001-to-bucket-starting-user` IAM user to the `pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}` S3 bucket by starting an interactive SSM session on a target EC2 instance and extracting temporary credentials from the Instance Metadata Service (IMDS).
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ssm-001-to-bucket-starting-user` IAM user to the `pl-sensitive-data-ssm-001-{account_id}-{suffix}` S3 bucket by starting an interactive SSM session on a target EC2 instance and extracting temporary credentials from the Instance Metadata Service (IMDS).
 
 - **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-bucket-starting-user`
-- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}`
+- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}`
 
 ### Starting Permissions
 
@@ -72,9 +72,9 @@ plabs apply
 | `arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-bucket-ec2-role` | S3 access role attached to the EC2 instance (target for credential extraction) |
 | `arn:aws:iam::{account_id}:instance-profile/pl-prod-ssm-001-to-bucket-instance-profile` | Instance profile associating the S3 role with the EC2 instance |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with SSM agent and S3 access role attached |
-| `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag (`flag.txt`) |
-| `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
-| `arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}/flag.txt` | CTF flag in the target bucket |
+| `arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}` | Target S3 bucket containing sensitive data and the CTF flag (`flag.txt`) |
+| `arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}/sensitive-data.txt` | Sensitive file in the target bucket |
+| `arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}/flag.txt` | CTF flag in the target bucket |
 
 ### Solution
 

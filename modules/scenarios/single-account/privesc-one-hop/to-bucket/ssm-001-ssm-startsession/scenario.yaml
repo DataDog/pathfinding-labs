@@ -27,7 +27,7 @@ attack_path:
     - "arn:aws:iam::{account_id}:user/pl-prod-ssm-001-to-bucket-starting-user"
     - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
     - "arn:aws:iam::{account_id}:role/pl-prod-ssm-001-to-bucket-ec2-role"
-    - "arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}"
+    - "arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}"
 
   summary: "starting_user → (ssm:StartSession) → EC2 instance → (curl IMDS) → EC2 instance role credentials → sensitive bucket access"
 
