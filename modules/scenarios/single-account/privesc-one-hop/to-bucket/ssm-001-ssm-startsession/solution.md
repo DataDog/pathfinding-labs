@@ -8,7 +8,7 @@ The extracted credentials are time-limited but fully functional AWS credentials 
 
 ## The Challenge
 
-You start as `pl-prod-ssm-001-to-bucket-starting-user` — an IAM user whose credentials were provided via Terraform outputs. This user has `ssm:StartSession` permission but no direct access to the target S3 bucket (`pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}`).
+You start as `pl-prod-ssm-001-to-bucket-starting-user` — an IAM user whose credentials were provided via Terraform outputs. This user has `ssm:StartSession` permission but no direct access to the target S3 bucket (`pl-sensitive-data-ssm-001-{account_id}-{suffix}`).
 
 Somewhere in the account there is an EC2 instance running the SSM agent. That instance has an IAM instance profile attached to it — `pl-prod-ssm-001-to-bucket-ec2-role` — which holds S3 read permissions on the target bucket. Your job is to bridge the gap: get from your IAM user to that S3 bucket by exploiting the SSM session access.
 
@@ -20,7 +20,7 @@ First, confirm your identity and verify that you don't already have direct bucke
 aws sts get-caller-identity --query 'Arn' --output text
 # arn:aws:iam::<account_id>:user/pl-prod-ssm-001-to-bucket-starting-user
 
-aws s3 ls s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>
+aws s3 ls s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>
 # An error occurred (AccessDenied) when calling the ListObjectsV2 operation: ...
 ```
 
@@ -96,11 +96,11 @@ aws sts get-caller-identity
 Now access the target bucket:
 
 ```bash
-aws s3 ls s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/
+aws s3 ls s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/
 # 2024-01-01 00:00:00       1234 sensitive-data.txt
 
-aws s3 cp s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/sensitive-data.txt .
-# download: s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/sensitive-data.txt to ./sensitive-data.txt
+aws s3 cp s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/sensitive-data.txt .
+# download: s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/sensitive-data.txt to ./sensitive-data.txt
 ```
 
 You've successfully accessed the sensitive bucket.
@@ -113,7 +113,7 @@ The target bucket contains `flag.txt` — the CTF flag for this scenario. With t
 aws s3 cp s3://$BUCKET_NAME/flag.txt -
 ```
 
-Replace `$BUCKET_NAME` with the actual bucket name (e.g., `pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>`). The flag value will be printed to stdout.
+Replace `$BUCKET_NAME` with the actual bucket name (e.g., `pl-sensitive-data-ssm-001-<account_id>-<suffix>`). The flag value will be printed to stdout.
 
 ## What Happened
 

