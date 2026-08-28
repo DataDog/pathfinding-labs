@@ -92,18 +92,11 @@ resource "aws_iam_user_policy" "starting_user_policy" {
         Effect = "Allow"
         Action = [
           # CreateHarness is the top-level API; AWS internally sequences the
-          # sub-calls below to provision the Runtime infrastructure and memory.
+          # sub-calls below to provision the Runtime infrastructure.
           "bedrock-agentcore:CreateHarness",
           "bedrock-agentcore:CreateAgentRuntime",
           "bedrock-agentcore:CreateAgentRuntimeEndpoint",
           "bedrock-agentcore:CreateWorkloadIdentity",
-          # CreateMemory and GetMemory are required even though this scenario
-          # disables memory via `--memory '{"disabled":{}}'` on CreateHarness
-          # (that flag IS exposed by the CLI/API, not console-only). AWS's own
-          # IAM permissions table for CreateHarness lists CreateMemory as
-          # unconditionally required regardless of the memory mode requested.
-          "bedrock-agentcore:CreateMemory",
-          "bedrock-agentcore:GetMemory",
           # GetAgentRuntime and GetHarness are called internally by CreateHarness
           # to poll the underlying runtime it provisions, and by the demo to wait
           # until the harness reaches READY before invoking it.

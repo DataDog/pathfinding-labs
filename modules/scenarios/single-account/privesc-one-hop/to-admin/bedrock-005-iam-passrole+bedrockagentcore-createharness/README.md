@@ -33,7 +33,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `bedrock-agentcore:CreateAgentRuntime` on `*` -- required internally by CreateHarness to provision the underlying Runtime
 - `bedrock-agentcore:CreateAgentRuntimeEndpoint` on `*` -- required internally by CreateHarness to create an endpoint for the underlying Runtime
 - `bedrock-agentcore:CreateWorkloadIdentity` on `*` -- required internally by CreateHarness to create the workload identity associated with the Runtime
-- `bedrock-agentcore:GetAgentRuntime` on `*` -- poll the status of the underlying Runtime and confirm it reached READY state before invoking a command
+- `bedrock-agentcore:GetAgentRuntime` on `*` -- required internally by CreateHarness to resolve the Runtime it provisions
+- `bedrock-agentcore:GetHarness` on `*` -- poll the status of the Harness and confirm it reached READY state before invoking a command
 - `bedrock-agentcore:InvokeAgentRuntimeCommand` on `*` -- execute a shell command inside the Harness's Firecracker MicroVM as root
 
 **Helpful** (`pl-prod-bedrock-005-to-admin-starting-user`):
@@ -49,6 +50,7 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
    brew install pathfinding-labs/tap/plabs
    ```
 2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+3. AWS CLI v2.35.7 or newer, which is the first release able to disable harness memory on `create-harness`
 
 ### Deploy with plabs non-interactive
 
@@ -89,8 +91,8 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Retrieve starting user credentials from Terraform outputs
 3. Create an AgentCore Harness passing the privileged target role as the execution role and specifying a foundation model ID
-4. Extract the underlying Runtime ID from the CreateHarness response
-5. Wait for the underlying Runtime to reach READY state by polling GetAgentRuntime
+4. Extract the Harness ARN and Harness ID from the CreateHarness response
+5. Wait for the Harness to reach READY state by polling GetHarness
 6. Invoke a shell command inside the Harness MicroVM that reads MMDS credentials at 169.254.169.254
 7. Extract AccessKeyId, SecretAccessKey, and Token from the MMDS response
 8. Verify successful privilege escalation with `sts:GetCallerIdentity`
