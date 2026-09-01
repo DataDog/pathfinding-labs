@@ -103,9 +103,8 @@ type Model struct {
 	validatingScenarioID  string // scenario ID for demo/cleanup during validation
 
 	// Running command (for cancellation and streaming)
-	runningCmd  *exec.Cmd
-	cmdScanner  *bufio.Scanner
-	cmdWaitDone chan error
+	runningCmd *exec.Cmd
+	cmdScanner *bufio.Scanner
 
 	// Transient status bar message shown after clipboard copy
 	copyToast string
@@ -507,7 +506,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Command finished
 		m.runningCmd = nil
 		m.cmdScanner = nil
-		m.cmdWaitDone = nil
 		m.overlay.SetComplete()
 		if msg.err != nil {
 			// Try to surface a useful auth error from what was captured in the overlay.
@@ -659,10 +657,12 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		// Standard overlay handling
 		if key.Matches(msg, m.keys.Esc) {
-			// If command is running, kill it
+			// If command is running, kill it. Leave m.runningCmd set — the
+			// in-flight readNextLine loop still needs it to reap the process
+			// via cmd.Wait() once the pipe drains; it clears the field itself
+			// on cmdDoneMsg.
 			if m.runningCmd != nil && m.runningCmd.Process != nil {
 				_ = m.runningCmd.Process.Kill()
-				m.runningCmd = nil
 			}
 			m.overlay.Hide()
 			return m, nil
@@ -2345,45 +2345,38 @@ func (m *Model) runCommandStreaming(cmd *exec.Cmd) tea.Cmd {
 	scanner.Buffer(buf, 1024*1024)
 	m.cmdScanner = scanner
 
-	// Set up channel to get command completion status
-	m.cmdWaitDone = make(chan error, 1)
-	go func() {
-		m.cmdWaitDone <- cmd.Wait()
-	}()
-
 	// Start reading output
 	return func() tea.Msg { return m.readNextLine() }
 }
 
-// readNextLine reads the next line of output from the running command
+// readNextLine reads the next line of output from the running command.
+//
+// cmd.Wait() must only be called after the pipe has been fully drained:
+// exec.Cmd closes StdoutPipe's reader as soon as Wait() reaps the process,
+// so calling Wait() concurrently with reading (as this used to do via a
+// background goroutine racing the scanner) can slam the pipe shut while a
+// final burst of output — e.g. terraform's fatal diagnostic block, written
+// right before it exits — is still sitting unread. That's why failures used
+// to show only "[Error: exit status 1]" with none of the actual terraform
+// error text: the goroutine's Wait() call won the race and discarded it.
+// Waiting for Scan() to hit true EOF first (which happens naturally once
+// the child closes its own stdout on exit) before calling Wait() avoids the
+// race entirely.
 func (m *Model) readNextLine() tea.Msg {
 	if m.cmdScanner == nil {
 		return nil
 	}
 
-	// Check if command is done
-	select {
-	case err := <-m.cmdWaitDone:
-		// Drain any remaining output
-		for m.cmdScanner.Scan() {
-			m.overlay.AppendContent(m.cmdScanner.Text())
-		}
-		return cmdDoneMsg{err: err}
-	default:
-		// Try to read a line
-		if m.cmdScanner.Scan() {
-			return cmdOutputMsg{line: m.cmdScanner.Text()}
-		}
-		// No more output but command might still be running
-		// Check again for completion
-		select {
-		case err := <-m.cmdWaitDone:
-			return cmdDoneMsg{err: err}
-		default:
-			// Keep checking
-			return cmdOutputMsg{line: ""}
-		}
+	if m.cmdScanner.Scan() {
+		return cmdOutputMsg{line: m.cmdScanner.Text()}
 	}
+
+	cmd := m.runningCmd
+	m.cmdScanner = nil
+	if cmd == nil {
+		return cmdDoneMsg{err: nil}
+	}
+	return cmdDoneMsg{err: cmd.Wait()}
 }
 
 // recheckCredentials validates all configured AWS profiles asynchronously.
