@@ -109,6 +109,10 @@ type Styles struct {
 	HelpDesc lipgloss.Style
 	HelpSep  lipgloss.Style
 
+	// Settings overlay
+	SettingsCursor lipgloss.Style // highlighted label for the selected settings row
+	SettingsDesc   lipgloss.Style // indented description line under a settings row
+
 	// Filter
 	FilterPrompt lipgloss.Style
 	FilterInput  lipgloss.Style
@@ -306,6 +310,13 @@ func DefaultStyles(darkBackground bool) *Styles {
 	s.HelpSep = lipgloss.NewStyle().
 		Foreground(colorDim).
 		SetString(" · ")
+
+	// Settings overlay
+	s.SettingsCursor = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(colorPrimary)
+	s.SettingsDesc = lipgloss.NewStyle().
+		Foreground(colorDim)
 
 	// Filter
 	s.FilterPrompt = lipgloss.NewStyle().

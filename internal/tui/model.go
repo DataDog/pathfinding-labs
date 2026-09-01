@@ -87,8 +87,8 @@ type Model struct {
 	scenarioConfigInput       textinput.Model // input widget for the config value
 
 	// Simple action confirmation state (for deploy, demo, cleanup, plan)
-	pendingAction      string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
-	pendingScenarioID  string // scenario ID for demo/cleanup actions
+	pendingAction     string // action awaiting confirmation: "deploy", "plan", "demo", "cleanup", "cleanupAll", "deployWarning"
+	pendingScenarioID string // scenario ID for demo/cleanup actions
 
 	// Cleanup queue state (for cleanup all)
 	cleanupQueue       []string // scenario IDs to clean up sequentially
@@ -111,6 +111,10 @@ type Model struct {
 
 	// Transient status bar message for terraform install/update progress
 	tfInstallStatus string
+
+	// Settings overlay state
+	settingsCursor int            // index into settingsItems of the highlighted row
+	settingsItems  []settingsItem // cached rows; rebuilt on open/mutation, not on every cursor move
 }
 
 // Message types for async operations
@@ -1021,6 +1025,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.showDisableTypeChoice()
 
 	case key.Matches(msg, m.keys.Config):
+		m.settingsCursor = 0
 		m.showConfig()
 		return m, nil
 
@@ -1671,7 +1676,6 @@ func (m *Model) showDestroyTypeChoice() tea.Cmd {
 	return nil
 }
 
-
 func (m *Model) executeDestroyScenarios() tea.Cmd {
 	// Disable all enabled scenarios in config
 	m.config.Active().Scenarios.Enabled = nil
@@ -1988,72 +1992,164 @@ func (m *Model) matchesPattern(s, pattern string) bool {
 	return matched
 }
 
+// showConfig rebuilds the settings row list (which shells out to terraform
+// to check deployed state) and opens/redraws the Settings overlay. Only call
+// this on open or after a value actually changes — cursor movement should
+// use rerenderSettingsMenu instead so arrow keys stay responsive.
 func (m *Model) showConfig() {
-	m.overlay.Show(OverlayConfig, "Settings", m.renderSettingsMenu())
+	m.settingsItems = m.buildSettingsItems()
+	m.overlay.Show(OverlayConfig, "Settings", m.renderSettingsMenu(m.settingsItems))
 }
 
-func (m *Model) renderSettingsMenu() string {
-	var sb strings.Builder
+// rerenderSettingsMenu redraws the Settings overlay from the already-built
+// m.settingsItems, without re-running buildSettingsItems (and its terraform
+// state check). Used for cursor movement.
+func (m *Model) rerenderSettingsMenu() {
+	m.overlay.Show(OverlayConfig, "Settings", m.renderSettingsMenu(m.settingsItems))
+}
 
-	// Get environment states
+// settingsItemKind identifies what kind of row a settings entry renders as.
+type settingsItemKind int
+
+const (
+	settingsItemProfile settingsItemKind = iota
+	settingsItemBudget
+	settingsItemToggle
+)
+
+// settingsItem is one selectable row in the Settings overlay.
+type settingsItem struct {
+	kind        settingsItemKind
+	label       string
+	value       string // display value for profile/budget rows
+	description string // shown under the row, especially useful when a toggle is off
+	on          bool   // toggle state; meaningless for profile/budget rows
+	envName     string // for profile rows: "prod"/"dev"/"ops"/"attacker"
+}
+
+// buildSettingsItems returns the fixed, ordered list of rows shown in the
+// Settings overlay. Rebuilt from live config/state on every render so it
+// never drifts from what's actually persisted.
+func (m *Model) buildSettingsItems() []settingsItem {
 	prodEnabled, devEnabled, opsEnabled, attackerEnabled, _ := m.tfvars.GetEnabledEnvironments()
 	deployed := make(map[string]bool)
 	if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 		deployed = m.tfRunner.GetDeployedModules()
 	}
-	prodDeployed := deployed["prod_environment"]
-	devDeployed := deployed["dev_environment"]
-	opsDeployed := deployed["ops_environment"]
 	// Attacker module has no resources in state (it's a pass-through),
-	// so treat it as deployed when enabled and terraform is initialized
+	// so treat it as deployed when enabled and terraform is initialized.
 	attackerDeployed := deployed["attacker_environment"] || attackerEnabled
 
+	ws := m.config.Active()
+
+	attackerDesc := "Optional — for adversary-side infrastructure."
+	if ws.AWS.Attacker.Profile != "" {
+		attackerDesc = ""
+	}
+
+	budgetValue := "Disabled"
+	budgetDesc := "Email alerts at 50%, 80%, 100% of a monthly spend limit."
+	if ws.Budget.Enabled {
+		budgetValue = fmt.Sprintf("Enabled — %s, $%d/month", ws.Budget.Email, ws.Budget.LimitUSD)
+	}
+
+	devModeDesc := "Off — uses the managed copy in ~/.plabs/pathfinding-labs. Enable to develop against a local checkout instead."
+	if ws.DevMode {
+		devModeDesc = fmt.Sprintf("On — using local checkout: %s", ws.DevModePath)
+	}
+
+	betaDesc := "Hidden by default. Enable to reveal tool-testing (detection edge cases) and CTF scenarios."
+	if m.config.IncludeBeta {
+		betaDesc = "Tool-testing and CTF scenarios are visible in the scenario list."
+	}
+
+	return []settingsItem{
+		{
+			kind: settingsItemProfile, envName: "prod", label: "prod",
+			value:       m.valueOrNotSet(ws.AWS.Prod.Profile) + m.envStatusSuffix(prodEnabled, deployed["prod_environment"]),
+			description: "AWS profile for the production/target account.",
+		},
+		{
+			kind: settingsItemProfile, envName: "dev", label: "dev",
+			value:       m.valueOrNotSet(ws.AWS.Dev.Profile) + m.envStatusSuffix(devEnabled, deployed["dev_environment"]),
+			description: "AWS profile for cross-account dev-to-prod scenarios.",
+		},
+		{
+			kind: settingsItemProfile, envName: "ops", label: "ops",
+			value:       m.valueOrNotSet(ws.AWS.Ops.Profile) + m.envStatusSuffix(opsEnabled, deployed["ops_environment"]),
+			description: "AWS profile for cross-account ops-to-prod scenarios.",
+		},
+		{
+			kind: settingsItemProfile, envName: "attacker", label: "attacker",
+			value:       m.valueOrNotSet(ws.AWS.Attacker.Profile) + m.envStatusSuffix(attackerEnabled, attackerDeployed),
+			description: attackerDesc,
+		},
+		{
+			kind: settingsItemBudget, label: "Budget Alerts",
+			value: budgetValue, description: budgetDesc,
+		},
+		{
+			kind: settingsItemToggle, label: "Dev Mode",
+			on: ws.DevMode, description: devModeDesc,
+		},
+		{
+			kind: settingsItemToggle, label: "Show Tool-Testing & CTF Scenarios",
+			on: m.config.IncludeBeta, description: betaDesc,
+		},
+	}
+}
+
+func (m *Model) renderSettingsMenu(items []settingsItem) string {
+	var sb strings.Builder
+
 	sb.WriteString("AWS Profiles\n")
-	sb.WriteString("----------------------------------------\n\n")
-
-	// Prod
-	sb.WriteString(fmt.Sprintf("  [1] prod:      %s", m.valueOrNotSet(m.config.Active().AWS.Prod.Profile)))
-	sb.WriteString(m.envStatusSuffix(prodEnabled, prodDeployed))
-	sb.WriteString("\n")
-
-	// Dev
-	sb.WriteString(fmt.Sprintf("  [2] dev:       %s", m.valueOrNotSet(m.config.Active().AWS.Dev.Profile)))
-	sb.WriteString(m.envStatusSuffix(devEnabled, devDeployed))
-	sb.WriteString("\n")
-
-	// Ops
-	sb.WriteString(fmt.Sprintf("  [3] ops:       %s", m.valueOrNotSet(m.config.Active().AWS.Ops.Profile)))
-	sb.WriteString(m.envStatusSuffix(opsEnabled, opsDeployed))
-	sb.WriteString("\n")
-
-	// Attacker
-	sb.WriteString(fmt.Sprintf("  [4] attacker:  %s", m.valueOrNotSet(m.config.Active().AWS.Attacker.Profile)))
-	if m.config.Active().AWS.Attacker.Profile == "" {
-		sb.WriteString("  (optional, for adversary-side infrastructure)")
-	} else {
-		sb.WriteString(m.envStatusSuffix(attackerEnabled, attackerDeployed))
+	sb.WriteString("----------------------------------------\n")
+	for i := 0; i < 4; i++ {
+		sb.WriteString(m.renderSettingsRow(items[i], i))
 	}
-	sb.WriteString("\n")
 
-	// Budget Alerts section
-	sb.WriteString("\n\nBudget Alerts (Cost Protection)\n")
-	sb.WriteString("----------------------------------------\n\n")
+	sb.WriteString("\nBudget Alerts (Cost Protection)\n")
+	sb.WriteString("----------------------------------------\n")
+	sb.WriteString(m.renderSettingsRow(items[4], 4))
 
-	if m.config.Active().Budget.Enabled {
-		sb.WriteString("  [b] Status:  Enabled\n")
-		sb.WriteString(fmt.Sprintf("      Email:   %s\n", m.config.Active().Budget.Email))
-		sb.WriteString(fmt.Sprintf("      Limit:   $%d/month\n", m.config.Active().Budget.LimitUSD))
-	} else {
-		sb.WriteString("  [b] Status:  Disabled\n")
-		sb.WriteString("      (alerts at 50%, 80%, 100% spend)\n")
-	}
+	sb.WriteString("\nPreferences\n")
+	sb.WriteString("----------------------------------------\n")
+	sb.WriteString(m.renderSettingsRow(items[5], 5))
+	sb.WriteString(m.renderSettingsRow(items[6], 6))
 
 	sb.WriteString("\n----------------------------------------\n")
-	sb.WriteString("Press 1/2/3/4 to change a profile\n")
-	sb.WriteString("Press b to configure budget alerts\n")
-	sb.WriteString("Press Esc to close\n")
+	sb.WriteString("↑/↓ move   enter/space toggle or edit   esc/q close\n")
 
 	return sb.String()
+}
+
+// renderSettingsRow renders one row (plus its description line) of the
+// Settings overlay, highlighting it if it's the currently selected row.
+func (m *Model) renderSettingsRow(item settingsItem, index int) string {
+	selected := index == m.settingsCursor
+	cursor := "  "
+	if selected {
+		cursor = "> "
+	}
+
+	var line string
+	switch item.kind {
+	case settingsItemToggle:
+		indicator := m.styles.DisabledIndicator.Render()
+		if item.on {
+			indicator = m.styles.EnabledIndicator.Render()
+		}
+		line = fmt.Sprintf("%s%s %s", cursor, indicator, item.label)
+	default:
+		line = fmt.Sprintf("%s%-10s %s", cursor, item.label+":", item.value)
+	}
+
+	if selected {
+		line = m.styles.SettingsCursor.Render(line)
+	}
+
+	desc := m.styles.SettingsDesc.Render("    " + item.description)
+	return line + "\n" + desc + "\n\n"
 }
 
 func (m *Model) envStatusSuffix(enabled, deployed bool) string {
@@ -2075,6 +2171,21 @@ func (m *Model) valueOrNotSet(v string) string {
 // handleSettingsKeys handles key presses in the settings overlay
 func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "up", "k":
+		if m.settingsCursor > 0 {
+			m.settingsCursor--
+		}
+		m.rerenderSettingsMenu()
+		return m, nil
+	case "down", "j":
+		if m.settingsCursor < len(m.settingsItems)-1 {
+			m.settingsCursor++
+		}
+		m.rerenderSettingsMenu()
+		return m, nil
+	case "enter", " ":
+		return m.activateSettingsItem(m.settingsItems[m.settingsCursor])
+	// Legacy quick-jump aliases, kept for muscle memory.
 	case "1":
 		m.overlay.Hide()
 		return m, m.runProfileWizard("prod")
@@ -2090,11 +2201,84 @@ func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "b", "B":
 		m.overlay.Hide()
 		return m, m.runBudgetWizard()
-	case "esc":
+	case "esc", "q":
 		m.overlay.Hide()
+		m.settingsCursor = 0
 		return m, nil
 	}
 	return m, nil
+}
+
+// activateSettingsItem performs the action for the currently selected
+// settings row: launching a sub-wizard for profile/budget rows, or flipping
+// a boolean in place for toggle rows.
+func (m *Model) activateSettingsItem(item settingsItem) (tea.Model, tea.Cmd) {
+	switch item.kind {
+	case settingsItemProfile:
+		m.overlay.Hide()
+		return m, m.runProfileWizard(item.envName)
+	case settingsItemBudget:
+		m.overlay.Hide()
+		return m, m.runBudgetWizard()
+	case settingsItemToggle:
+		return m.toggleSettingsItem(item)
+	}
+	return m, nil
+}
+
+// toggleSettingsItem flips a boolean setting in place, persists it, and
+// re-renders the Settings overlay so the new state is visible immediately.
+func (m *Model) toggleSettingsItem(item settingsItem) (tea.Model, tea.Cmd) {
+	switch item.label {
+	case "Dev Mode":
+		return m.toggleDevMode()
+	case "Show Tool-Testing & CTF Scenarios":
+		return m.toggleIncludeBeta()
+	}
+	return m, nil
+}
+
+// toggleDevMode flips WorkspaceConfig.DevMode. Enabling it auto-detects the
+// pathfinding-labs repo root the same way `plabs config set dev-mode true`
+// does; disabling it just clears the path.
+func (m *Model) toggleDevMode() (tea.Model, tea.Cmd) {
+	ws := m.config.Active()
+	if ws.DevMode {
+		ws.DevMode = false
+		ws.DevModePath = ""
+	} else {
+		path, err := config.DetectDevModePath()
+		if err != nil {
+			m.overlay.Show(OverlayError, "Dev Mode", err.Error())
+			return m, nil
+		}
+		ws.DevMode = true
+		ws.DevModePath = path
+		ws.Initialized = true
+	}
+
+	if err := m.config.Save(); err != nil {
+		m.overlay.Show(OverlayError, "Dev Mode", fmt.Sprintf("Failed to save config: %v", err))
+		return m, nil
+	}
+
+	m.showConfig()
+	return m, nil
+}
+
+// toggleIncludeBeta flips the global IncludeBeta preference, which controls
+// whether tool-testing and CTF scenarios (both marked status: "beta") are
+// visible, and reloads scenarios so the change is reflected immediately.
+func (m *Model) toggleIncludeBeta() (tea.Model, tea.Cmd) {
+	m.config.IncludeBeta = !m.config.IncludeBeta
+
+	if err := m.config.Save(); err != nil {
+		m.overlay.Show(OverlayError, "Show Tool-Testing & CTF Scenarios", fmt.Sprintf("Failed to save config: %v", err))
+		return m, nil
+	}
+
+	m.showConfig()
+	return m, m.loadScenarios
 }
 
 // profileWizardMsg is sent when the profile wizard completes

@@ -208,30 +208,13 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	case "dev-mode":
 		lowerVal := strings.ToLower(value)
 		if lowerVal == "true" || lowerVal == "1" || lowerVal == "yes" {
-			cwd, err := os.Getwd()
+			path, err := config.DetectDevModePath()
 			if err != nil {
-				return fmt.Errorf("failed to get current directory: %w", err)
+				return err
 			}
-			dir := cwd
-			found := false
-			for i := 0; i < 5; i++ {
-				scenariosPath := filepath.Join(dir, "modules", "scenarios")
-				if _, err := os.Stat(scenariosPath); err == nil {
-					ws.DevMode = true
-					ws.DevModePath = dir
-					ws.Initialized = true
-					found = true
-					break
-				}
-				parentDir := filepath.Dir(dir)
-				if parentDir == dir {
-					break
-				}
-				dir = parentDir
-			}
-			if !found {
-				return fmt.Errorf("cannot enable dev mode: not in a pathfinding-labs repository\n\nRun this command from within the cloned pathfinding-labs directory")
-			}
+			ws.DevMode = true
+			ws.DevModePath = path
+			ws.Initialized = true
 		} else if lowerVal == "false" || lowerVal == "0" || lowerVal == "no" {
 			ws.DevMode = false
 			ws.DevModePath = ""

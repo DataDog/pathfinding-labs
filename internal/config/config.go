@@ -72,6 +72,30 @@ type Config struct {
 	Workspaces map[string]*WorkspaceConfig `yaml:"workspaces"`
 }
 
+// DetectDevModePath walks up from the current working directory looking for
+// a pathfinding-labs checkout (identified by a modules/scenarios directory),
+// checking up to 5 parent directories. Returns the repo root on success, or
+// an error if no checkout was found.
+func DetectDevModePath() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	dir := cwd
+	for i := 0; i < 5; i++ {
+		scenariosPath := filepath.Join(dir, "modules", "scenarios")
+		if _, err := os.Stat(scenariosPath); err == nil {
+			return dir, nil
+		}
+		parentDir := filepath.Dir(dir)
+		if parentDir == dir {
+			break
+		}
+		dir = parentDir
+	}
+	return "", fmt.Errorf("cannot enable dev mode: not in a pathfinding-labs repository\n\nRun this command from within the cloned pathfinding-labs directory")
+}
+
 // Active returns the WorkspaceConfig for the currently active workspace.
 // Always returns a non-nil pointer; creates the workspace entry if missing.
 func (c *Config) Active() *WorkspaceConfig {
@@ -294,15 +318,15 @@ func newDefaultConfig() *Config {
 // flatConfig mirrors the OLD (pre-workspace) Config struct for reading legacy files.
 // Used only during migration; never written to disk.
 type flatConfig struct {
-	DevMode         bool                           `yaml:"dev_mode"`
-	DevModePath     string                         `yaml:"dev_mode_path,omitempty"`
-	AWS             AWSConfig                      `yaml:"aws"`
-	Scenarios       ScenariosConfig                `yaml:"scenarios"`
-	Budget          BudgetConfig                   `yaml:"budget,omitempty"`
-	ScenarioConfigs map[string]map[string]string   `yaml:"scenario_configs,omitempty"`
-	Flags           map[string]string              `yaml:"flags,omitempty"`
-	IncludeBeta     bool                           `yaml:"include_beta"`
-	Initialized     bool                           `yaml:"initialized"`
+	DevMode         bool                         `yaml:"dev_mode"`
+	DevModePath     string                       `yaml:"dev_mode_path,omitempty"`
+	AWS             AWSConfig                    `yaml:"aws"`
+	Scenarios       ScenariosConfig              `yaml:"scenarios"`
+	Budget          BudgetConfig                 `yaml:"budget,omitempty"`
+	ScenarioConfigs map[string]map[string]string `yaml:"scenario_configs,omitempty"`
+	Flags           map[string]string            `yaml:"flags,omitempty"`
+	IncludeBeta     bool                         `yaml:"include_beta"`
+	Initialized     bool                         `yaml:"initialized"`
 }
 
 // migrateFlat converts the old flat config format to the new workspace-aware format.

@@ -229,7 +229,9 @@ func (o *Overlay) View(termWidth, termHeight int) string {
 		sb.WriteString(o.styles.OverlayDimmed.Render("Running... (↑/↓ scroll, Esc cancel)"))
 	} else if o.wasRunning {
 		sb.WriteString(o.styles.OverlayDimmed.Render("[Done - press Enter to close]"))
-	} else {
+	} else if o.overlayType != OverlayConfig {
+		// OverlayConfig renders its own footer (Enter/Space act on the
+		// selected row there, not close the overlay).
 		sb.WriteString(o.styles.OverlayDimmed.Render("[Press Enter to close]"))
 	}
 
