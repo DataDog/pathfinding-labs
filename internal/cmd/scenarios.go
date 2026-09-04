@@ -114,7 +114,7 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load deployment state for 4-state indicators and --deployed filter
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	var outputs terraform.Outputs
 	var deployedModules map[string]bool
 

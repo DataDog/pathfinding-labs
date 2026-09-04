@@ -71,7 +71,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get deployment status
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	var outputs terraform.Outputs
 	var deployedModules map[string]bool
 

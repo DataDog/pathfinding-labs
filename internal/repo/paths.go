@@ -14,6 +14,9 @@ const (
 	BinDir = "bin"
 	// WorkspacesDir is the directory containing named workspace repos
 	WorkspacesDir = "workspaces"
+	// StateDir is the directory containing canonical terraform state files,
+	// one per workspace, shared between dev mode and normal mode
+	StateDir = "state"
 	// ConfigFile is the name of the CLI config file (single source of truth)
 	ConfigFile = "plabs.yaml"
 	// LegacyConfigFile is the old config file name (for migration)
@@ -31,6 +34,7 @@ type Paths struct {
 	ConfigPath   string // ~/.plabs/plabs.yaml (ALWAYS here, single source of truth)
 	TerraformDir string // Where terraform runs (changes based on mode)
 	TFVarsPath   string // terraform.tfvars inside TerraformDir
+	StatePath    string // Canonical terraform.tfstate path (ALWAYS here, independent of mode)
 }
 
 // GetPaths returns the paths for the current user
@@ -52,6 +56,7 @@ func GetPaths() (*Paths, error) {
 		ConfigPath:   filepath.Join(plabsRoot, ConfigFile),
 		TerraformDir: repoPath, // Default to normal mode
 		TFVarsPath:   filepath.Join(repoPath, "terraform.tfvars"),
+		StatePath:    filepath.Join(plabsRoot, StateDir, "terraform.tfstate"),
 	}, nil
 }
 
@@ -77,16 +82,20 @@ func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string
 	binPath := filepath.Join(plabsRoot, BinDir)
 	configPath := filepath.Join(plabsRoot, ConfigFile)
 
-	// Compute the repo path for this workspace.
-	// "default" keeps the original path for zero-migration backward compat.
-	var repoPath string
+	// Compute the repo path and canonical state path for this workspace.
+	// "default" keeps the original paths for zero-migration backward compat.
+	var repoPath, statePath string
 	if workspaceName == "" || workspaceName == "default" {
 		repoPath = filepath.Join(plabsRoot, RepoDir)
+		statePath = filepath.Join(plabsRoot, StateDir, "terraform.tfstate")
 	} else {
 		repoPath = filepath.Join(plabsRoot, WorkspacesDir, workspaceName, RepoDir)
+		statePath = filepath.Join(plabsRoot, StateDir, workspaceName, "terraform.tfstate")
 	}
 
-	// Dev mode overrides the terraform directory.
+	// Dev mode overrides the terraform directory, but NOT the state path:
+	// state always lives at statePath so switching modes never orphans
+	// resources tracked under the other directory's local state file.
 	terraformDir := repoPath
 	if devMode && devModePath != "" {
 		scenariosPath := filepath.Join(devModePath, "modules", "scenarios")
@@ -103,6 +112,7 @@ func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string
 		ConfigPath:   configPath,
 		TerraformDir: terraformDir,
 		TFVarsPath:   filepath.Join(terraformDir, "terraform.tfvars"),
+		StatePath:    statePath,
 	}, nil
 }
 

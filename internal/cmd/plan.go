@@ -68,7 +68,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	yellow := color.New(color.FgYellow).SprintFunc()
 
 	// Create runner early so we can check state for SLR detection.
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	runner.SetExtraEnv(cfg.Active().GetAttackerTFVarEnv())
 
 	// Detect existing service-linked roles to avoid creation conflicts.

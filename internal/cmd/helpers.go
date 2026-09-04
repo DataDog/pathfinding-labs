@@ -13,18 +13,62 @@ import (
 	"github.com/DataDog/pathfinding-labs/internal/config"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
+	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
 
 // getWorkingPaths returns the paths to use for the current operation.
 // Loads config from ~/.plabs/plabs.yaml and uses the active workspace's
 // dev_mode settings to determine which terraform directory to use.
+//
+// On first call for a workspace that predates the shared-state backend,
+// this also performs a one-time migration of any pre-existing
+// per-directory terraform.tfstate into the workspace's canonical state
+// path, so dev mode and normal mode stop tracking separate state files.
 func getWorkingPaths() (*repo.Paths, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return repo.GetPaths()
 	}
 	ws := cfg.Active()
-	return repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
+	paths, err := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ws.StateMigrated {
+		candidates := []string{paths.RepoPath}
+		if ws.DevModePath != "" {
+			candidates = append(candidates, ws.DevModePath)
+		}
+		migrated, err := terraform.MigrateStateToCanonicalPath(paths.StatePath, candidates)
+		if err != nil {
+			return nil, err
+		}
+		if migrated {
+			fmt.Println(color.New(color.FgCyan).Sprint("One-time migration: moved terraform state to " + paths.StatePath))
+			fmt.Println("Dev mode and normal mode will now share this state file.")
+		}
+
+		ws.StateMigrated = true
+		if err := cfg.Save(); err != nil {
+			return nil, fmt.Errorf("state migration succeeded but failed to save config: %w", err)
+		}
+	}
+
+	// Self-healing, independent of the one-time migration above: whichever
+	// directory is active (managed clone or dev-mode checkout) may still
+	// have a .terraform/ dir from before the local backend was pinned to
+	// StatePath — e.g. because the migration above ran while the *other*
+	// mode was active. Callers only re-run Init when IsInitialized() is
+	// false, so without this, terraform would keep looking for state at
+	// its old implicit per-directory location instead of the canonical
+	// path shared across both modes.
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
+	if err := runner.ReconfigureBackendIfNeeded(); err != nil {
+		return nil, fmt.Errorf("failed to reconfigure terraform backend: %w", err)
+	}
+
+	return paths, nil
 }
 
 // isDevMode returns true if the active workspace has dev mode enabled

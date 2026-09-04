@@ -62,7 +62,7 @@ func runOutput(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	if !runner.IsInitialized() {
 		fmt.Fprintf(os.Stderr, "Error: terraform is not initialized\n")
 		fmt.Fprintf(os.Stderr, "Run 'plabs apply' to deploy your scenarios\n")

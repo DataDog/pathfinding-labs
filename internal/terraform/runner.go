@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -14,14 +15,19 @@ import (
 type Runner struct {
 	tfPath    string
 	workDir   string
+	statePath string // canonical state file path, passed to `terraform init -backend-config`
 	installer *Installer
 	extraEnv  []string // additional env vars injected into every terraform subprocess
 }
 
-// NewRunner creates a new terraform runner
-func NewRunner(binDir, workDir string) *Runner {
+// NewRunner creates a new terraform runner. statePath is the canonical
+// terraform.tfstate location (independent of workDir/dev-mode) that the
+// local backend is pointed at during Init, so dev mode and normal mode
+// share one state file instead of each tracking its own.
+func NewRunner(binDir, workDir, statePath string) *Runner {
 	return &Runner{
 		workDir:   workDir,
+		statePath: statePath,
 		installer: NewInstaller(binDir),
 	}
 }
@@ -53,20 +59,84 @@ func (r *Runner) ensureTerraform() error {
 	return nil
 }
 
-// Init runs terraform init
+// Init runs terraform init. When statePath is set, -reconfigure and
+// -backend-config=path=<statePath> are always passed so the local backend
+// is (re)pointed at the canonical state file on every init, regardless of
+// whether this directory was previously initialized under the old
+// implicit-default-backend behavior. This makes Init idempotent and never
+// interactive (no "did the backend change?" migration prompt).
 func (r *Runner) Init() error {
 	if err := r.ensureTerraform(); err != nil {
 		return err
 	}
 
-	cmd := exec.Command(r.tfPath, "init")
+	args := []string{"init"}
+	if r.statePath != "" {
+		if err := os.MkdirAll(filepath.Dir(r.statePath), 0755); err != nil {
+			return fmt.Errorf("failed to create state directory: %w", err)
+		}
+		args = append(args, "-reconfigure", "-backend-config=path="+r.statePath)
+	}
+
+	cmd := exec.Command(r.tfPath, args...)
 	cmd.Dir = r.workDir
 	cmd.Env = r.buildEnv()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	if r.statePath != "" {
+		if err := r.writeBackendMarker(); err != nil {
+			return fmt.Errorf("terraform initialized but failed to record backend state path: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// backendMarkerFile records, per working directory, which canonical state
+// path that directory's local backend was last configured with. Two
+// different directories (the managed clone and a dev-mode checkout) can
+// independently drift out of sync with statePath — e.g. after switching
+// dev mode on/off following a state migration that only touched whichever
+// directory was active at the time — so this is checked and repaired
+// per-directory rather than once per workspace.
+const backendMarkerFile = ".plabs-backend-state-path"
+
+func (r *Runner) backendMarkerPath() string {
+	return filepath.Join(r.workDir, ".terraform", backendMarkerFile)
+}
+
+func (r *Runner) writeBackendMarker() error {
+	return os.WriteFile(r.backendMarkerPath(), []byte(r.statePath), 0644)
+}
+
+// NeedsBackendReconfigure reports whether this directory's local backend
+// needs to be (re)pointed at r.statePath — true if it was never recorded,
+// or was last configured against a different canonical path.
+func (r *Runner) NeedsBackendReconfigure() bool {
+	if r.statePath == "" {
+		return false
+	}
+	data, err := os.ReadFile(r.backendMarkerPath())
+	if err != nil {
+		return true
+	}
+	return strings.TrimSpace(string(data)) != r.statePath
+}
+
+// ReconfigureBackendIfNeeded runs Init only when NeedsBackendReconfigure is
+// true, so already-correct directories skip the cost of re-running
+// terraform init on every command.
+func (r *Runner) ReconfigureBackendIfNeeded() error {
+	if !r.IsInitialized() || !r.NeedsBackendReconfigure() {
+		return nil
+	}
+	return r.Init()
 }
 
 // Plan runs terraform plan

@@ -204,7 +204,7 @@ func runLocalSync(paths *repo.Paths, localDir string, green, yellow, cyan func(a
 // runTerraformInitAfterUpdate runs terraform init if the workspace is already initialized.
 // Called after a successful update to pick up newly added modules.
 func runTerraformInitAfterUpdate(paths *repo.Paths, green func(a ...interface{}) string) error {
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	if !runner.IsInitialized() {
 		// Not initialized at all yet — init will be run on the next apply/plan.
 		return nil

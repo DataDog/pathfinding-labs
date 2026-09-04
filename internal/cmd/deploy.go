@@ -109,7 +109,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Create runner early — needed for state inspection and bootstrap.
 	// Inject attacker IAM credentials as TF_VAR_* env vars so they are never
 	// written to terraform.tfvars on disk (mirrors TUI behavior).
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	runner.SetExtraEnv(cfg.Active().GetAttackerTFVarEnv())
 
 	// Detect which service-linked roles already exist in the prod account

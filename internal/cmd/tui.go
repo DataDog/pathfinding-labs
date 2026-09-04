@@ -196,7 +196,7 @@ func runTUIInit(paths *repo.Paths) error {
 	// Run terraform init
 	fmt.Println()
 	fmt.Println("Running terraform init...")
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	if err := runner.Init(); err != nil {
 		return fmt.Errorf("terraform init failed: %w", err)
 	}

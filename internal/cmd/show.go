@@ -53,7 +53,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	// Determine enabled and deployed status
 	isEnabled := enabledVars[scenario.Terraform.VariableName]
 
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	var outputs terraform.Outputs
 	var deployedModules map[string]bool
 

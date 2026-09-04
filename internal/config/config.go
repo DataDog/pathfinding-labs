@@ -53,6 +53,12 @@ type WorkspaceConfig struct {
 	// SLRFlags controls which service-linked roles Terraform should create.
 	// Not persisted to YAML -- detected at deploy time and written to tfvars.
 	SLRFlags *ServiceLinkedRoleFlags `yaml:"-"`
+
+	// StateMigrated indicates the one-time move of this workspace's terraform
+	// state into its canonical path (~/.plabs/state/...) has completed, so
+	// dev mode and normal mode share one state file instead of each tracking
+	// its own and orphaning resources when you switch between them.
+	StateMigrated bool `yaml:"state_migrated,omitempty"`
 }
 
 // Config is the top-level structure stored in ~/.plabs/plabs.yaml.

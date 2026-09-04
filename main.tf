@@ -5,6 +5,12 @@ terraform {
       version = "~> 6.0"
     }
   }
+
+  # Path is supplied at init time via `-backend-config=path=...` (plabs
+  # always passes the workspace's canonical state path under ~/.plabs/state/,
+  # regardless of whether terraform is running from the managed clone or a
+  # dev-mode local checkout) so both modes share one state file.
+  backend "local" {}
 }
 
 locals {

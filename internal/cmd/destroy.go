@@ -136,7 +136,7 @@ func destroyScenarios(paths *repo.Paths, cfg *config.Config, green, yellow func(
 	fmt.Println("Running terraform apply to remove scenarios...")
 	fmt.Println()
 
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 	if err := runner.Apply(true); err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
@@ -160,7 +160,7 @@ func destroyEverything(paths *repo.Paths, cfg *config.Config, red, yellow, green
 	fmt.Println()
 
 	// Create runner
-	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir)
+	runner := terraform.NewRunner(paths.BinPath, paths.TerraformDir, paths.StatePath)
 
 	// Check if there's anything to destroy
 	if !runner.IsInitialized() {
