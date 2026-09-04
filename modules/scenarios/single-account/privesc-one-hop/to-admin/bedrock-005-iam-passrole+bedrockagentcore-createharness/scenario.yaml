@@ -60,6 +60,8 @@ permissions:
           resource: "*"
         - permission: "bedrock-agentcore:GetAgentRuntime"
           resource: "*"
+        - permission: "bedrock-agentcore:GetHarness"
+          resource: "*"
         - permission: "bedrock-agentcore:InvokeAgentRuntimeCommand"
           resource: "*"
 
