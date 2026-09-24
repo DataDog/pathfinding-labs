@@ -786,22 +786,27 @@ TYPE BRIEF:
 - References section must include the source blog as the first entry
 ```
 
-### Step 2: Agents to Launch in Parallel
+### Step 2: Agents to Launch
+
+**The delegation strategy differs by cloud.**
+
+---
+
+#### AWS: Launch all 5 agents in parallel
 
 For each sub-agent, pass the full contents of the scenario.yaml, the computed type_brief, AND the computed flag_brief (unless the scenario is tool-testing, in which case include the explicit "No CTF flag" note instead).
 
 Two of the five agents are forked per cloud (per Step 0's selection); the other three are shared and branch inline on the target directory:
 
-1. **scenario-terraform-builder-{cloud}** (`scenario-terraform-builder-aws` or `scenario-terraform-builder-gcp`) - Creates all Terraform files
+1. **scenario-terraform-builder-aws** - Creates all Terraform files
    - Pass: scenario.yaml, type_brief, directory path, provider config.
-   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf (or `gcp/outputs.tf`).
+   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf.
 
 2. **scenario-readme-creator** - Creates README.md, attack_map.yaml, solution.md
    - Pass: scenario.yaml, type_brief, attack path, principals, MITRE mapping, detection guidance.
-   - Shared across clouds — branches inline on resource-identifier terminology (ARN vs. GCP full resource name).
 
-3. **scenario-demo-creator-{cloud}** (`scenario-demo-creator-aws` or `scenario-demo-creator-gcp`) - Creates demo_attack.sh and cleanup_attack.sh
-   - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI/`gcloud` commands needed.
+3. **scenario-demo-creator-aws** - Creates demo_attack.sh and cleanup_attack.sh
+   - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI commands needed.
    - **Slow-provisioning resources**: If `scenario.yaml` has `demo_timeout_seconds` set (> default 300), explicitly tell the demo-creator to include the EXIT/INT/TERM trap pattern that best-effort deletes the provisioned resource on abnormal exit. Canonical reference: `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh` (search for `_glue_demo_exit_handler`). The cleanup script must initiate deletion and verify the API accepted the request, but MUST NOT block waiting for full async deletion.
    - **CRITICAL Standards**:
      - Demo scripts MUST retrieve credentials from grouped Terraform outputs using: `terraform output -json | jq`
@@ -810,16 +815,62 @@ Two of the five agents are forked per cloud (per Step 0's selection); the other 
      - Cleanup scripts MUST NOT use AWS_PROFILE_FLAG variable
 
 4. **project-updator** - Updates project-level integration files
-   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path, target cloud.
-   - Shared across clouds — edits root `main.tf`/`variables.tf`/`outputs.tf` for AWS, `gcp/main.tf`/`gcp/variables.tf`/`gcp/outputs.tf` for GCP.
+   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path, target cloud (AWS).
+   - Edits root `main.tf`/`variables.tf`/`outputs.tf`.
    - **CRITICAL**: The project-updator MUST create a grouped output in the appropriate root outputs.tf that bundles all the scenario module's individual outputs together.
 
 5. **scenario-cost-estimator** - Calculates accurate cloud cost estimates
    - Pass: scenario directory path
-   - Shared across clouds — runs infracost on the Terraform files (infracost supports the `google` provider)
-   - Researches pricing for unsupported resources (Glue, SageMaker, etc. for AWS; unsupported GCP resources as they come up)
+   - Runs infracost on the Terraform files.
+   - Researches pricing for unsupported resources (Glue, SageMaker, etc.)
    - Updates scenario.yaml with accurate `cost_estimate` value (format: `"$X/mo"`)
    - **Note**: Set a placeholder cost_estimate of `"$0/mo"` in scenario.yaml initially; this agent will update it with the accurate value.
+
+---
+
+#### GCP: Use a sequenced 3-phase pipeline
+
+GCP scenarios require a **permission-isolation step** between building the infrastructure and writing the documentation. The required permissions cannot be reliably determined without actually running the demo against the live role — so documentation is written last, with verified ground truth.
+
+**Phase A — Build (parallel):** Launch these two agents simultaneously and wait for both to complete before proceeding.
+
+1. **scenario-terraform-builder-gcp** - Creates all Terraform files
+   - Pass: scenario.yaml, type_brief, directory path.
+   - Tell it to start with a **broad permissions list** in the custom role — include every permission you believe might be needed, erring on the side of too many. The isolation agent will trim it down.
+   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in `gcp/outputs.tf`.
+
+2. **scenario-demo-creator-gcp** - Creates demo_attack.sh and cleanup_attack.sh
+   - Pass: scenario.yaml, type_brief, attack path, resource names, gcloud commands needed.
+   - **CRITICAL Standards** (same as AWS variant):
+     - Demo scripts MUST retrieve config from grouped Terraform outputs using: `terraform output -json | jq`
+     - Cleanup scripts MUST impersonate the admin_cleanup SA, never use static keys
+     - IAM propagation waits MUST be 15 seconds
+
+**Phase B — Permission isolation (sequential):** After Phase A completes and the user has run `plabs apply` to deploy the scenario, launch the permission isolator:
+
+3. **scenario-permission-isolator-gcp** - Discovers and minimizes the required permission set
+   - Pass: `scenario_dir` (absolute path to the scenario module) and `gcp_root` (absolute path to `gcp/`).
+   - This agent runs terraform apply + demo script cycles autonomously. It will take 60–90 minutes for a typical 6-permission scenario. Tell the user upfront.
+   - When it completes, it returns a verified classification table: **Required** vs **Helpful**.
+   - Update `scenario.yaml`'s `permissions.required` and `permissions.helpful` blocks with the verified results before launching Phase C.
+
+**Phase C — Documentation (parallel):** After Phase B returns the verified permission set, launch these three agents simultaneously:
+
+4. **scenario-readme-creator** - Creates README.md, attack_map.yaml, solution.md
+   - Pass: scenario.yaml (updated with verified permissions), type_brief, attack path, principals, MITRE mapping, detection guidance.
+   - Include the isolator's classification table in the brief so the README accurately reflects required vs. helpful permissions.
+
+5. **project-updator** - Updates project-level integration files
+   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path, target cloud (GCP).
+   - Edits `gcp/main.tf`/`gcp/variables.tf`/`gcp/outputs.tf`.
+   - **CRITICAL**: The project-updator MUST create a grouped output in `gcp/outputs.tf` that bundles all the scenario module's individual outputs together.
+
+6. **scenario-cost-estimator** - Calculates accurate cloud cost estimates
+   - Pass: scenario directory path
+   - Runs infracost on the Terraform files (infracost supports the `google` provider).
+   - Updates scenario.yaml with accurate `cost_estimate` value.
+
+---
 
 ### Delegation Format
 
@@ -828,20 +879,28 @@ When delegating, provide a comprehensive prompt to each agent with ALL the infor
 
 ## After Delegation
 
+**For AWS:**
+
 1. Wait for all 5 parallel agents to complete
 2. Review the outputs from each agent
-3. Launch the **scenario-validator-{cloud}** agent (`scenario-validator-aws` or `scenario-validator-gcp`, matching Step 0's selection) to:
+3. Launch **scenario-validator-aws** to:
    - Validate consistency across all files
    - Ensure demo scripts match the Terraform resources
    - Verify README accurately reflects the attack path
    - Check that cleanup script properly removes artifacts
    - Verify cost_estimate was updated by the cost-estimator
    - Fix any inconsistencies found
+4. Report final summary to user with files created, cost estimate, and next steps (terraform init, plan, apply)
 
-4. Report final summary to user with:
-   - Files created
-   - Cost estimate
-   - Next steps (terraform init, plan, apply)
+**For GCP:**
+
+1. Phase A: Wait for scenario-terraform-builder-gcp and scenario-demo-creator-gcp to complete
+2. Prompt the user: *"Phase A complete — Terraform and demo script are ready. Run `plabs apply` to deploy the scenario, then reply here and I'll start the permission isolation loop (~60–90 min unattended)."*
+3. Phase B: After user confirms deployment, launch **scenario-permission-isolator-gcp** and wait for it to complete
+4. Update `scenario.yaml` permissions blocks with the verified results from the isolator
+5. Phase C: Launch scenario-readme-creator, project-updator, and scenario-cost-estimator in parallel and wait for all three
+6. Launch **scenario-validator-gcp** for a final consistency pass
+7. Report final summary to user with files created, verified permission set, cost estimate, and next steps
 
 
 ## Example Orchestration Flow
