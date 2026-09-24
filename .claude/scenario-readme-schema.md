@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.7.1`**
+**Current schema version: `4.8.2`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -12,6 +12,15 @@ This file is the canonical reference for the structure and content of all scenar
 **Companion files:**
 - `.claude/scenario-attackmap-schema.md` -- schema for `attack_map.yaml` (structured attack graph data)
 - `solution.md` -- narrative CTF writeup per scenario (see Solution Format below)
+
+**Resource identifier terminology (cloud-derived from the scenario's directory path, per the fields below):**
+
+| Concept | AWS | GCP |
+|---|---|---|
+| Principal/resource identifier | ARN (e.g., `arn:aws:iam::{account_id}:role/pl-prod-iam-011-to-admin-target-role`) | Full resource name (e.g., `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-to-admin-target-sa@{project_id}.iam.gserviceaccount.com`) |
+| CTF flag storage | SSM Parameter Store (`ssm-parameter`) or S3 object (`s3-object`) | Secret Manager (`secret-manager`) or GCS object (`gcs-object`) |
+
+Wherever this document says "ARN," apply the GCP-column equivalent when the scenario lives under `modules/scenarios/gcp/...`. Never fabricate a placeholder ARN/resource-name for anonymous/public-start scenarios in either cloud -- use a descriptive label instead.
 
 ---
 
@@ -100,11 +109,15 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **Supports Online Mode:** Yes
   <- only if supports_online_mode: true in scenario.yaml
 
-* **CTF Flag Location:** {ssm-parameter|s3-object}
+* **CTF Flag Location:** {ssm-parameter|s3-object|secret-manager|gcs-object}
   <- required on all scenarios EXCEPT those under tool-testing/. Value is the storage mechanism only.
+     **AWS:**
      - `ssm-parameter` -- all to-admin scenarios. The flag lives at `/pathfinding-labs/flags/{scenario-id}` in SSM Parameter Store in the target account.
      - `s3-object` -- all to-bucket scenarios. The flag lives as `flag.txt` inside the scenario's target S3 bucket.
-     The exact path/key is documented in the scenario's `attack_map.yaml` terminal node ARN and is retrievable via terraform outputs.
+     **GCP:**
+     - `secret-manager` -- all to-admin scenarios. The flag lives as the latest version of a `google_secret_manager_secret` in the target project.
+     - `gcs-object` -- all to-bucket scenarios. The flag lives as `flag.txt` inside the scenario's target GCS bucket.
+     The exact path/key is documented in the scenario's `attack_map.yaml` terminal node resource identifier and is retrievable via terraform outputs.
 
 * **Required Preconditions:**
   - {resource}: {description}
@@ -148,7 +161,7 @@ Attack Simulation scenarios omit `Sub-Category`. They include all standard secti
 
 **Fields removed in v3.0.0** (data lives in `attack_map.yaml` and `## Objective`):
 - `Attack Path` -- attack flow is rendered from `attack_map.yaml` edges
-- `Attack Principals` -- principal ARNs are in `attack_map.yaml` nodes
+- `Attack Principals` -- principal resource identifiers (ARNs on AWS, full resource names on GCP) are in `attack_map.yaml` nodes
 - `Required Permissions` -- moved to `### Starting Permissions` section
 - `Helpful Permissions` -- moved to `### Starting Permissions` section
 
@@ -169,8 +182,8 @@ The sentence should name the specific resources (e.g., `pl-prod-ssm-001-to-admin
 Followed by structured context:
 
 ```
-- **Start:** `{starting point -- IAM principal ARN with placeholders, OR public resource URL/description for anonymous-access scenarios}`
-- **Destination resource:** `{target resource ARN with placeholders}`
+- **Start:** `{starting point -- principal resource identifier with placeholders (ARN on AWS, full resource name on GCP), OR public resource URL/description for anonymous-access scenarios}`
+- **Destination resource:** `{target resource identifier with placeholders}`
 ```
 
 **Example (ssm-001, IAM principal start):**
@@ -188,7 +201,7 @@ Your objective is to learn how to exploit a misconfiguration that allows you to 
 - **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ctf-001-chatbot-role`
 ```
 
-For public-start scenarios, the `- **Start:**` line uses a URL or plain description -- not a fabricated IAM ARN. Do not invent ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`.
+For public-start scenarios, the `- **Start:**` line uses a URL or plain description -- not a fabricated identifier. Do not invent ARNs like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`, or their GCP equivalents.
 
 #### `### Starting Permissions`
 
@@ -242,14 +255,25 @@ Do NOT invent a fake ARN (e.g., `arn:aws:sts::{account_id}:assumed-role/unauthen
 
 Container section for deployment instructions. No prose content at this level.
 
-#### `### Prerequisites` -- exact boilerplate, do not vary:
+#### `### Prerequisites` -- exact boilerplate, cloud-derived:
 
+**For AWS scenarios** (scenario directory is NOT under `modules/scenarios/gcp/...`):
 ```
 1. Install the `plabs` CLI:
    ```bash
    brew install pathfinding-labs/tap/plabs
    ```
 2. Configure your AWS profiles in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+```
+
+**For GCP scenarios** (scenario directory under `modules/scenarios/gcp/...`):
+```
+1. Install the `plabs` CLI:
+   ```bash
+   brew install pathfinding-labs/tap/plabs
+   ```
+2. Configure your GCP project and credentials in `~/.plabs/plabs.yaml` (or run `plabs init` if you haven't already)
+3. Make sure your `gcloud` CLI login and Application Default Credentials are the SAME identity: `gcloud auth login --update-adc` (Terraform reads ADC to determine your identity and grants it impersonation rights; demo scripts use the `gcloud` CLI session, so a mismatch causes `--impersonate-service-account` calls to fail)
 ```
 
 #### `### Deploy with plabs non-interactive` -- use the scenario's plabs ID:
@@ -291,7 +315,7 @@ Attack Simulation scenarios have these additional requirements under `## Attack`
 
 #### `### Scenario Specific Resources Created`
 
-Markdown table with columns `ARN` and `Purpose`. Full ARN format with account/region placeholders.
+Markdown table with columns `ARN` and `Purpose` (AWS). For GCP scenarios, use `Resource Identifier` and `Purpose`, with full resource-name format and project/region placeholders.
 
 #### `### Solution`
 
@@ -522,7 +546,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.6.1`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.8.2`)
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

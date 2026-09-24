@@ -1095,6 +1095,12 @@ variable "enable_tool_testing_resource_policy_bypass" {
   default     = false
 }
 
+variable "enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path" {
+  description = "Enable: tool-testing → test-direct-and-indirect-bucket-access-multi-path"
+  type        = bool
+  default     = false
+}
+
 variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
   description = "Enable: tool-testing → test-reverse-blast-radius-direct-and-indirect-through-admin"
   type        = bool
@@ -1109,6 +1115,18 @@ variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_b
 
 variable "enable_tool_testing_test_effective_permissions_evaluation" {
   description = "Enable: tool-testing → test-effective-permissions-evaluation"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_s3_access_via_policy_attachment_type" {
+  description = "Enable: tool-testing → test-s3-access-via-policy-attachment-type"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_s3_read_write_delete_permission_edges" {
+  description = "Enable: tool-testing → test-s3-read-write-delete-permission-edges"
   type        = bool
   default     = false
 }

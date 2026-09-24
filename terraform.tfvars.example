@@ -183,9 +183,12 @@ enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3              
 # TOOL TESTING
 enable_tool_testing_exclusive_resource_policy                                      = false
 enable_tool_testing_resource_policy_bypass                                         = false
+enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path              = false
 enable_tool_testing_test_effective_permissions_evaluation                          = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin    = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket        = false
+enable_tool_testing_test_s3_access_via_policy_attachment_type                      = false
+enable_tool_testing_test_s3_read_write_delete_permission_edges                     = false
 
 # SINGLE-ACCOUNT CSPM-TOXIC-COMBO
 enable_single_account_cspm_toxic_combo_public_lambda_with_admin                    = false

@@ -29,8 +29,9 @@ type KeyMap struct {
 	RunDemo key.Binding
 	Cleanup    key.Binding
 	CleanupAll key.Binding
-	Destroy    key.Binding
-	Config  key.Binding
+	Destroy     key.Binding
+	Config      key.Binding
+	SwitchCloud key.Binding
 
 	// Filter
 	Filter             key.Binding
@@ -144,6 +145,10 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys("s"),
 			key.WithHelp("s", "settings"),
 		),
+		SwitchCloud: key.NewBinding(
+			key.WithKeys("W"),
+			key.WithHelp("Shift+W", "switch cloud"),
+		),
 
 		// Credential actions
 		CopyCredentials: key.NewBinding(
@@ -222,7 +227,7 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Tab, k.Toggle, k.Enable, k.Disable},
 		{k.Deploy, k.Plan, k.RunDemo, k.Cleanup, k.CleanupAll},
-		{k.Destroy, k.Config},
+		{k.Destroy, k.Config, k.SwitchCloud},
 		{k.CopyCredentials, k.CopyCredentialsProfile, k.SpawnShell},
 		{k.Filter, k.ToggleEnabledOnly, k.ToggleDemoActive, k.ToggleCosts},
 		{k.ToggleCollapseAll},

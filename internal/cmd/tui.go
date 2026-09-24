@@ -156,7 +156,11 @@ func runTUIInit(paths *repo.Paths) error {
 	fmt.Println("[5/5] Running setup wizard...")
 
 	wizard := config.NewWizard()
-	newWS, err := wizard.Run()
+	awsSelected, gcpSelected, err := wizard.SelectClouds()
+	if err != nil {
+		return fmt.Errorf("setup wizard failed: %w", err)
+	}
+	newWS, err := wizard.Run(awsSelected, gcpSelected)
 	if err != nil {
 		return fmt.Errorf("setup wizard failed: %w", err)
 	}

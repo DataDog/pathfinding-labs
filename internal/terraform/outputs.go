@@ -147,11 +147,18 @@ func (o Outputs) GetDeployedScenarios() []string {
 	return deployed
 }
 
-// GetAccountIDs returns the derived account IDs from terraform outputs
+// GetAccountIDs returns the derived account or project IDs from terraform outputs.
+// For AWS roots it reads *_account_id outputs; for GCP roots it reads gcp_project_id.
 func (o Outputs) GetAccountIDs() (prod, dev, ops, attacker string) {
 	prod, _ = o.Get("prod_account_id")
 	dev, _ = o.Get("dev_account_id")
 	ops, _ = o.Get("operations_account_id")
 	attacker, _ = o.Get("attacker_account_id")
+
+	// GCP roots expose gcp_project_id rather than per-environment account IDs.
+	if prod == "" {
+		prod, _ = o.Get("gcp_project_id")
+	}
+
 	return prod, dev, ops, attacker
 }

@@ -1,0 +1,347 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rwd-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user can assume the four role-based test principals via sts:AssumeRole.
+        The goal of this scenario is not exploitation -- it is to validate that a
+        graph/CSPM tool generates can_read/can_write/can_delete edges into the target
+        bucket with exact per-principal granularity across four non-overlapping
+        permission tiers.
+
+    - id: user-read-only
+      label: "IAM User (read-only)"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-read-only"
+      description: >
+        An IAM user granted only s3:GetObject and s3:ListBucket on the target bucket.
+        Holds no write or delete permission of any kind.
+
+    - id: role-read-only
+      label: "IAM Role (read-only)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-only"
+      description: >
+        An IAM role granted only s3:GetObject and s3:ListBucket on the target bucket.
+        Assumed via the starting user's sts:AssumeRole permission. Holds no write or
+        delete permission of any kind.
+
+    - id: user-write-only
+      label: "IAM User (write-only)"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-write-only"
+      description: >
+        An IAM user granted only s3:PutObject on the target bucket. Cannot read or
+        delete any object, including the ones it writes itself.
+
+    - id: role-write-only
+      label: "IAM Role (write-only)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-write-only"
+      description: >
+        An IAM role granted only s3:PutObject on the target bucket. Assumed via the
+        starting user's sts:AssumeRole permission. Cannot read or delete any object,
+        including the ones it writes itself.
+
+    - id: user-delete-only
+      label: "IAM User (delete-only)"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-delete-only"
+      description: >
+        An IAM user granted only s3:DeleteObject on the target bucket. Cannot read or
+        write any object; can only remove an object it already knows the key of.
+
+    - id: role-delete-only
+      label: "IAM Role (delete-only)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-delete-only"
+      description: >
+        An IAM role granted only s3:DeleteObject on the target bucket. Assumed via the
+        starting user's sts:AssumeRole permission. Cannot read or write any object; can
+        only remove an object it already knows the key of.
+
+    - id: user-read-write-delete
+      label: "IAM User (full CRUD)"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-read-write-delete"
+      description: >
+        An IAM user granted the full set: s3:GetObject, s3:PutObject, s3:DeleteObject,
+        and s3:ListBucket on the target bucket. This is the highest-blast-radius
+        principal in the scenario.
+
+    - id: role-read-write-delete
+      label: "IAM Role (full CRUD)"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-write-delete"
+      description: >
+        An IAM role granted the full set: s3:GetObject, s3:PutObject, s3:DeleteObject,
+        and s3:ListBucket on the target bucket. Assumed via the starting user's
+        sts:AssumeRole permission. This is the highest-blast-radius principal in the
+        scenario.
+
+    - id: target-bucket
+      label: "Test S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+      description: >
+        The target S3 bucket used to validate that read, write, and delete access are
+        each inferred independently and precisely. It is pre-seeded with one object
+        (seed-object.txt) so that read-only and delete-only principals have something to act
+        on. A correct graph or CSPM tool must produce a distinct can_read, can_write,
+        and can_delete edge per principal that matches its actual granted tier exactly
+        -- no principal should show an edge it was not actually granted.
+
+  edges:
+    - from: starting-principal
+      to: user-read-only
+      label: "Direct credentials (read-only)"
+      description: >
+        This test principal is a separate IAM user, already provisioned with its own
+        access keys as a second identity you control. It holds only s3:GetObject and
+        s3:ListBucket -- no escalation step is required to reach it.
+      hints:
+        - "Retrieve this user's access key pair from Terraform outputs and export them as your active credentials -- the user already has read-only access to the seeded object, with no write or delete permission."
+      commands:
+        - description: "Export credentials for the read-only user"
+          command: "export AWS_ACCESS_KEY_ID=<user_read_only_access_key_id>; export AWS_SECRET_ACCESS_KEY=<user_read_only_secret_access_key>"
+
+    - from: starting-principal
+      to: role-read-only
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes this role, which carries only s3:GetObject and
+        s3:ListBucket on the target bucket.
+      hints:
+        - "Use sts:AssumeRole with the starting user's credentials to obtain temporary credentials for this role -- it mirrors the read-only user's exact permission set."
+      commands:
+        - description: "Assume the read-only role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-only --role-session-name test-session"
+
+    - from: starting-principal
+      to: user-write-only
+      label: "Direct credentials (write-only)"
+      description: >
+        This test principal is a separate IAM user, already provisioned with its own
+        access keys. It holds only s3:PutObject -- no read or delete permission.
+      hints:
+        - "Retrieve this user's access key pair from Terraform outputs -- it can write new objects but cannot read back or delete anything, including what it just wrote."
+      commands:
+        - description: "Export credentials for the write-only user"
+          command: "export AWS_ACCESS_KEY_ID=<user_write_only_access_key_id>; export AWS_SECRET_ACCESS_KEY=<user_write_only_secret_access_key>"
+
+    - from: starting-principal
+      to: role-write-only
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes this role, which carries only s3:PutObject on the
+        target bucket.
+      hints:
+        - "Use sts:AssumeRole to obtain temporary credentials for this role -- it mirrors the write-only user's exact permission set."
+      commands:
+        - description: "Assume the write-only role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rwd-role-write-only --role-session-name test-session"
+
+    - from: starting-principal
+      to: user-delete-only
+      label: "Direct credentials (delete-only)"
+      description: >
+        This test principal is a separate IAM user, already provisioned with its own
+        access keys. It holds only s3:DeleteObject -- no read or write permission.
+      hints:
+        - "Retrieve this user's access key pair from Terraform outputs -- it can delete an object by key but cannot read its contents or write new ones."
+      commands:
+        - description: "Export credentials for the delete-only user"
+          command: "export AWS_ACCESS_KEY_ID=<user_delete_only_access_key_id>; export AWS_SECRET_ACCESS_KEY=<user_delete_only_secret_access_key>"
+
+    - from: starting-principal
+      to: role-delete-only
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes this role, which carries only s3:DeleteObject on the
+        target bucket.
+      hints:
+        - "Use sts:AssumeRole to obtain temporary credentials for this role -- it mirrors the delete-only user's exact permission set."
+      commands:
+        - description: "Assume the delete-only role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rwd-role-delete-only --role-session-name test-session"
+
+    - from: starting-principal
+      to: user-read-write-delete
+      label: "Direct credentials (full CRUD)"
+      description: >
+        This test principal is a separate IAM user, already provisioned with its own
+        access keys. It holds the full set: s3:GetObject, s3:PutObject,
+        s3:DeleteObject, and s3:ListBucket.
+      hints:
+        - "Retrieve this user's access key pair from Terraform outputs -- unlike the other three tiers, this one can read, write, and delete freely."
+      commands:
+        - description: "Export credentials for the full-CRUD user"
+          command: "export AWS_ACCESS_KEY_ID=<user_read_write_delete_access_key_id>; export AWS_SECRET_ACCESS_KEY=<user_read_write_delete_secret_access_key>"
+
+    - from: starting-principal
+      to: role-read-write-delete
+      label: "sts:AssumeRole"
+      description: >
+        The starting user assumes this role, which carries the full set: s3:GetObject,
+        s3:PutObject, s3:DeleteObject, and s3:ListBucket on the target bucket.
+      hints:
+        - "Use sts:AssumeRole to obtain temporary credentials for this role -- it mirrors the full-CRUD user's exact permission set."
+      commands:
+        - description: "Assume the full-CRUD role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-write-delete --role-session-name test-session"
+
+    - from: user-read-only
+      to: target-bucket
+      label: "s3:GetObject"
+      description: >
+        Using this principal's credentials, read the pre-seeded object and confirm
+        that write and delete attempts both fail with AccessDenied.
+      hints:
+        - "Read the pre-seeded object with s3:GetObject, then attempt a s3:PutObject and a s3:DeleteObject against the same bucket -- both should fail with AccessDenied since only read was granted."
+      commands:
+        - description: "Read the pre-seeded object"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Confirm write is denied"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/test.txt"
+        - description: "Confirm delete is denied"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key seed-object.txt"
+
+    - from: role-read-only
+      to: target-bucket
+      label: "s3:GetObject"
+      description: >
+        Using the temporary credentials from the assumed role, read the pre-seeded
+        object and confirm that write and delete attempts both fail with AccessDenied.
+      hints:
+        - "Read the pre-seeded object with s3:GetObject, then attempt a s3:PutObject and a s3:DeleteObject against the same bucket -- both should fail with AccessDenied since only read was granted."
+      commands:
+        - description: "Read the pre-seeded object"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Confirm write is denied"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/test.txt"
+        - description: "Confirm delete is denied"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key seed-object.txt"
+
+    - from: user-write-only
+      to: target-bucket
+      label: "s3:PutObject"
+      description: >
+        Using this principal's credentials, write a new test object and confirm that
+        read and delete attempts both fail with AccessDenied, even against the object
+        it just wrote.
+      hints:
+        - "Write a new object with s3:PutObject, then try to read it back and delete it -- both should fail with AccessDenied, since write access does not imply either read or delete."
+      commands:
+        - description: "Write a test object"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/write-only-test.txt"
+        - description: "Confirm read is denied"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/write-only-test.txt -"
+        - description: "Confirm delete is denied"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key write-only-test.txt"
+
+    - from: role-write-only
+      to: target-bucket
+      label: "s3:PutObject"
+      description: >
+        Using the temporary credentials from the assumed role, write a new test object
+        and confirm that read and delete attempts both fail with AccessDenied.
+      hints:
+        - "Write a new object with s3:PutObject, then try to read it back and delete it -- both should fail with AccessDenied, since write access does not imply either read or delete."
+      commands:
+        - description: "Write a test object"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/write-only-test.txt"
+        - description: "Confirm read is denied"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/write-only-test.txt -"
+        - description: "Confirm delete is denied"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key write-only-test.txt"
+
+    - from: user-delete-only
+      to: target-bucket
+      label: "s3:DeleteObject"
+      description: >
+        Using this principal's credentials, delete a disposable object and confirm
+        that read and write attempts both fail with AccessDenied.
+      hints:
+        - "Attempt s3:GetObject and s3:PutObject first to confirm both are denied, then call s3:DeleteObject against a disposable object key -- only the delete should succeed."
+      commands:
+        - description: "Confirm read is denied"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Confirm write is denied"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/test.txt"
+        - description: "Delete a disposable object left for this test"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key delete-only-test.txt"
+
+    - from: role-delete-only
+      to: target-bucket
+      label: "s3:DeleteObject"
+      description: >
+        Using the temporary credentials from the assumed role, delete a disposable
+        object and confirm that read and write attempts both fail with AccessDenied.
+      hints:
+        - "Attempt s3:GetObject and s3:PutObject first to confirm both are denied, then call s3:DeleteObject against a disposable object key -- only the delete should succeed."
+      commands:
+        - description: "Confirm read is denied"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Confirm write is denied"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/test.txt"
+        - description: "Delete a disposable object left for this test"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key delete-only-test.txt"
+
+    - from: user-read-write-delete
+      to: target-bucket
+      label: "s3:GetObject / s3:PutObject / s3:DeleteObject"
+      description: >
+        Using this principal's credentials, list, read, write, and delete objects in
+        the target bucket, confirming that all four action categories succeed.
+      hints:
+        - "This principal has no restrictions -- list the bucket, read the seeded object, write a new one, then delete it, and confirm every call succeeds."
+      commands:
+        - description: "List the target bucket"
+          command: "aws s3 ls s3://pl-rwd-bucket-{account_id}-{suffix}/"
+        - description: "Read the pre-seeded object"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Write a test object"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/rwd-test.txt"
+        - description: "Delete the test object"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key rwd-test.txt"
+
+    - from: role-read-write-delete
+      to: target-bucket
+      label: "s3:GetObject / s3:PutObject / s3:DeleteObject"
+      description: >
+        Using the temporary credentials from the assumed role, list, read, write, and
+        delete objects in the target bucket, confirming that all four action
+        categories succeed.
+      hints:
+        - "This principal has no restrictions -- list the bucket, read the seeded object, write a new one, then delete it, and confirm every call succeeds."
+      commands:
+        - description: "List the target bucket"
+          command: "aws s3 ls s3://pl-rwd-bucket-{account_id}-{suffix}/"
+        - description: "Read the pre-seeded object"
+          command: "aws s3 cp s3://pl-rwd-bucket-{account_id}-{suffix}/seed-object.txt -"
+        - description: "Write a test object"
+          command: "aws s3 cp test.txt s3://pl-rwd-bucket-{account_id}-{suffix}/rwd-test.txt"
+        - description: "Delete the test object"
+          command: "aws s3api delete-object --bucket pl-rwd-bucket-{account_id}-{suffix} --key rwd-test.txt"

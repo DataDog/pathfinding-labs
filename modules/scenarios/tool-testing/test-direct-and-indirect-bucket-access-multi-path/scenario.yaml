@@ -1,0 +1,145 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+status: "beta"
+name: "test-direct-and-indirect-bucket-access-multi-path"
+title: "Direct and Indirect Bucket Access via Multiple Reachability Paths"
+description: "Tool testing scenario with 5 principals demonstrating direct S3 bucket access alongside two distinct indirect-access mechanisms (sts:AssumeRole and iam:UpdateAssumeRolePolicy trust-policy bypass) in a single module, to validate that graph/CSPM tools surface ALL reachable principals for a target bucket at once, not just the ones with direct policy grants"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    # Direct access
+    - "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-direct"
+
+    # Indirect via sts:AssumeRole
+    - "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-assumer"
+    - "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-trusted"
+
+    # Indirect via iam:UpdateAssumeRolePolicy trust-policy bypass
+    - "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-trustbypass"
+    - "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-untrusted"
+
+    # Target Resource
+    - "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}"
+
+  summary: "Three independent starting principals reach the same S3 bucket through three different mechanisms: pl-prod-dimp-user-direct has a direct policy grant on the bucket; pl-prod-dimp-user-assumer holds only sts:AssumeRole on pl-prod-dimp-role-trusted (which already trusts it and already has bucket access); pl-prod-dimp-user-trustbypass holds iam:UpdateAssumeRolePolicy + sts:AssumeRole on pl-prod-dimp-role-untrusted (which initially trusts only ec2.amazonaws.com and has bucket access) and must rewrite the role's trust policy to add itself before it can assume it. A tool asked 'who can access this bucket' must surface all three starting users at once."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-dimp-user-direct"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}"
+
+    - principal: "pl-prod-dimp-user-assumer"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-trusted"
+
+    - principal: "pl-prod-dimp-role-trusted"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}"
+
+    - principal: "pl-prod-dimp-user-trustbypass"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:UpdateAssumeRolePolicy"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-untrusted"
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-untrusted"
+
+    - principal: "pl-prod-dimp-role-untrusted"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}"
+
+  helpful:
+    - principal: "pl-prod-dimp-user-direct"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+
+    - principal: "pl-prod-dimp-user-assumer"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+
+    - principal: "pl-prod-dimp-user-trustbypass"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+
+# =============================================================================
+# TEST GROUPS
+# =============================================================================
+test_groups:
+  reachability_path:
+    total: 3
+    categories:
+      - name: "Direct"
+        count: 1
+        description: "pl-prod-dimp-user-direct has a policy granting bucket access directly on the user"
+      - name: "Indirect via sts:AssumeRole"
+        count: 1
+        description: "pl-prod-dimp-user-assumer holds only sts:AssumeRole on pl-prod-dimp-role-trusted, which already trusts it and already has bucket access"
+      - name: "Indirect via iam:UpdateAssumeRolePolicy trust-policy bypass"
+        count: 1
+        description: "pl-prod-dimp-user-trustbypass holds iam:UpdateAssumeRolePolicy + sts:AssumeRole on pl-prod-dimp-role-untrusted, which initially trusts only ec2.amazonaws.com; the user must rewrite the trust policy to add itself before assuming the role"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1548 - Abuse Elevation Control Mechanism"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path"
+  module_path: "modules/scenarios/tool-testing/test-direct-and-indirect-bucket-access-multi-path"

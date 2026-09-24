@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/DataDog/pathfinding-labs/internal/aws"
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/gcp"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
@@ -101,6 +103,8 @@ type Model struct {
 	validatingCredentials bool   // true while checking AWS credentials
 	validatingForAction   string // the action we're validating for
 	validatingScenarioID  string // scenario ID for demo/cleanup during validation
+	gcpReauthAttempted    bool   // true once the user has chosen a GCP reauth option for the current validation cycle, so we retry at most once
+	choosingGCPReauthType bool   // true while asking the user which gcloud login to run (ADC only vs. both)
 
 	// Running command (for cancellation and streaming)
 	runningCmd *exec.Cmd
@@ -131,8 +135,24 @@ type resourcesLoadedMsg struct {
 
 type credentialsValidatedMsg struct {
 	valid   bool
-	profile string
+	profile string // non-empty → AWS profile name (used for profile-specific error message)
+	title   string // overlay title; defaults to "AWS Credentials" when empty
+	message string // overlay body; generated from profile/err when empty
+	cloud   string // "gcp" marks a failure that can be resolved by the user picking a gcloud reauth option
 	err     error
+}
+
+// gcpReauthDoneMsg is sent when the user-chosen `gcloud auth ...` login
+// process exits.
+type gcpReauthDoneMsg struct {
+	err error
+}
+
+// gcpAuthStatusMsg carries the result of an async check of the real local
+// GCP credential state (shells out to gcloud, so must never run inline
+// during a render).
+type gcpAuthStatusMsg struct {
+	status gcp.AuthStatus
 }
 
 type cmdOutputMsg struct {
@@ -257,6 +277,7 @@ func (m *Model) Init() tea.Cmd {
 		tea.EnterAltScreen,
 		m.ensureTerraformCmd(),
 		m.loadScenarios,
+		m.checkGCPAuthStatusCmd(),
 	)
 }
 
@@ -271,6 +292,15 @@ func (m *Model) ensureTerraformCmd() tea.Cmd {
 	}
 }
 
+// checkGCPAuthStatusCmd asynchronously inspects the local machine's real GCP
+// credential state (shells out to gcloud) for the environment pane's Auth
+// line. Safe to fire regardless of active cloud; harmless for AWS users.
+func (m *Model) checkGCPAuthStatusCmd() tea.Cmd {
+	return func() tea.Msg {
+		return gcpAuthStatusMsg{status: gcp.CheckAuthStatus()}
+	}
+}
+
 // loadScenarios loads scenarios from the filesystem
 func (m *Model) loadScenarios() tea.Msg {
 	// Load config from canonical location
@@ -282,8 +312,10 @@ func (m *Model) loadScenarios() tea.Msg {
 	// Create terraform components
 	runner := terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir, m.paths.StatePath)
 
-	// Discover scenarios
-	discovery := scenarios.NewDiscovery(m.paths.ScenariosPath()).WithIncludeBeta(cfg.IncludeBeta)
+	// Discover scenarios, filtered to whichever cloud is currently active
+	discovery := scenarios.NewDiscovery(m.paths.ScenariosPath()).
+		WithIncludeBeta(cfg.IncludeBeta).
+		WithCloud(cfg.Active().ActiveCloudOrDefault())
 	allScenarios, err := discovery.DiscoverAll()
 	if err != nil {
 		return errMsg{err}
@@ -365,7 +397,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.config = cfg
 		m.tfvars = terraform.NewTFVars(m.paths.TFVarsPath)
 		m.tfRunner = terraform.NewRunner(m.paths.BinPath, m.paths.TerraformDir, m.paths.StatePath)
-		m.discovery = scenarios.NewDiscovery(m.paths.ScenariosPath()).WithIncludeBeta(cfg.IncludeBeta)
+		m.discovery = scenarios.NewDiscovery(m.paths.ScenariosPath()).
+			WithIncludeBeta(cfg.IncludeBeta).
+			WithCloud(cfg.Active().ActiveCloudOrDefault())
 		m.allScenarios = msg.scenarios
 
 		// Recalculate layout now that config is available
@@ -382,13 +416,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.environment.SetEnabledStatus(prodEnabled, devEnabled, opsEnabled, attackerEnabled)
 		}
 
-		// Load deployed states for environments
+		// Load deployed states for environments.
+		// GCP terraform module names carry a "gcp_" prefix (e.g. gcp_prod_environment).
 		if m.tfRunner != nil && m.tfRunner.IsInitialized() {
 			deployed := m.tfRunner.GetDeployedModules()
+			envPrefix := ""
+			if cfg != nil && cfg.Active().ActiveCloudOrDefault() == "gcp" {
+				envPrefix = "gcp_"
+			}
 			m.environment.SetDeploymentStatus(
-				deployed["prod_environment"],
-				deployed["dev_environment"],
-				deployed["ops_environment"],
+				deployed[envPrefix+"prod_environment"],
+				deployed[envPrefix+"dev_environment"],
+				deployed[envPrefix+"ops_environment"],
 				deployed["attacker_environment"],
 			)
 		}
@@ -465,20 +504,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDetails()
 		return m, nil
 
+	case gcpAuthStatusMsg:
+		m.environment.SetGCPAuthStatus(msg.status)
+		return m, nil
+
 	case credentialsValidatedMsg:
 		m.validatingCredentials = false
 		if !msg.valid {
-			// Show error and reset state
-			if msg.profile == "" {
-				m.overlay.Show(OverlayError, "AWS Credentials", "No AWS profile configured.\n\nRun 'plabs init' to configure.")
-			} else {
-				m.overlay.Show(OverlayError, "AWS Credentials",
-					fmt.Sprintf("Profile '%s' needs to be re-authenticated before you can proceed.\n\nRe-authenticate using your usual method (e.g. aws sso login, aws-vault, aws-sso-util), then try again.", msg.profile))
+			// GCP failures can be fixed by (re-)authenticating, but which login
+			// to run is the user's call, not ours: `gcloud auth login
+			// --update-adc` sets both the CLI-session and ADC credential stores
+			// to the same identity in one step, while `gcloud auth
+			// application-default login` only updates ADC. Ask once per
+			// validation cycle rather than silently picking one — an unattended
+			// choice here could reassign the user's gcloud CLI identity without
+			// their say.
+			if msg.cloud == "gcp" && !m.gcpReauthAttempted {
+				m.choosingGCPReauthType = true
+				return m, nil
 			}
+			m.gcpReauthAttempted = false
+			// Show error and reset state. Use cloud-specific title/message when
+			// provided; fall back to the AWS-specific defaults otherwise.
+			title := msg.title
+			body := msg.message
+			if title == "" {
+				title = "AWS Credentials"
+			}
+			if body == "" {
+				if msg.profile == "" {
+					body = "No AWS profile configured.\n\nRun 'plabs init' to configure."
+				} else {
+					body = fmt.Sprintf("Profile '%s' needs to be re-authenticated before you can proceed.\n\nRe-authenticate using your usual method (e.g. aws sso login, aws-vault, aws-sso-util), then try again.", msg.profile)
+				}
+			}
+			m.overlay.Show(OverlayError, title, body)
 			m.validatingForAction = ""
 			m.validatingScenarioID = ""
 			return m, nil
 		}
+		m.gcpReauthAttempted = false
 		// Credentials valid - proceed with the action
 		action := m.validatingForAction
 		m.validatingForAction = ""
@@ -497,6 +562,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.executeCleanupQueue()
 		}
 		return m, nil
+
+	case gcpReauthDoneMsg:
+		if msg.err != nil {
+			m.validatingCredentials = false
+			m.gcpReauthAttempted = false
+			m.validatingForAction = ""
+			m.validatingScenarioID = ""
+			m.overlay.Show(OverlayError, "GCP Credentials",
+				"gcloud login failed or was cancelled.\n\nRun one of these manually and try again:\n\n"+
+					"  gcloud auth login --update-adc   (CLI session + ADC, same identity)\n"+
+					"  gcloud auth application-default login   (ADC only)")
+			return m, nil
+		}
+		// Login succeeded — re-validate to confirm the new token actually
+		// works (and covers the project-access check), then proceed, and
+		// refresh the environment pane's Auth line with the new state.
+		return m, tea.Batch(m.validateCredentialsAsync(), m.checkGCPAuthStatusCmd())
 
 	case cmdOutputMsg:
 		// Append output line to overlay (skip empty lines from polling)
@@ -600,6 +682,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Success - reload to refresh state
+		return m, m.loadScenarios
+
+	case gcpProfileWizardMsg:
+		if msg.err != nil {
+			m.overlay.Show(OverlayError, "Project Change", fmt.Sprintf("Error: %v", msg.err))
+			return m, nil
+		}
+
+		if err := m.validateAndSetGCPProject(msg.envName, msg.newProjectID); err != nil {
+			m.overlay.Show(OverlayError, "Project Change", err.Error())
+			return m, nil
+		}
+
 		return m, m.loadScenarios
 
 	case budgetWizardMsg:
@@ -778,6 +873,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Start credential validation for cleanupAll
 			m.validatingForAction = "cleanupAll"
 			m.validatingCredentials = true
+			m.gcpReauthAttempted = false
 			return m, m.validateCredentialsAsync()
 		case msg.Type == tea.KeyEnter:
 			// Deploy anyway without cleanup
@@ -785,6 +881,7 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pendingAction = ""
 			m.validatingForAction = "deploy"
 			m.validatingCredentials = true
+			m.gcpReauthAttempted = false
 			return m, m.validateCredentialsAsync()
 		}
 		// Ignore other keys while warning
@@ -803,11 +900,38 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.validatingForAction = m.pendingAction
 			m.validatingScenarioID = m.pendingScenarioID
 			m.validatingCredentials = true
+			m.gcpReauthAttempted = false
 			m.pendingAction = ""
 			m.pendingScenarioID = ""
 			return m, m.validateCredentialsAsync()
 		}
 		// Ignore other keys while confirming
+		return m, nil
+	}
+
+	// Handle GCP reauth type choice — always ask which login to run rather
+	// than picking one automatically, since --update-adc can reassign the
+	// user's gcloud CLI identity and that must be their decision.
+	if m.choosingGCPReauthType {
+		switch msg.String() {
+		case "1":
+			m.choosingGCPReauthType = false
+			m.gcpReauthAttempted = true
+			m.validatingCredentials = true
+			return m, m.runGCPReauth("adc")
+		case "2":
+			m.choosingGCPReauthType = false
+			m.gcpReauthAttempted = true
+			m.validatingCredentials = true
+			return m, m.runGCPReauth("both")
+		case "esc", "q":
+			m.choosingGCPReauthType = false
+			m.gcpReauthAttempted = false
+			m.validatingForAction = ""
+			m.validatingScenarioID = ""
+			return m, nil
+		}
+		// Ignore other keys while choosing
 		return m, nil
 	}
 
@@ -1028,6 +1152,9 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.settingsCursor = 0
 		m.showConfig()
 		return m, nil
+
+	case key.Matches(msg, m.keys.SwitchCloud):
+		return m, m.switchCloud()
 
 	case key.Matches(msg, m.keys.CopyCredentials):
 		if m.details.HasCreds() {
@@ -1440,22 +1567,28 @@ func (m *Model) executeDeploy() tea.Cmd {
 		// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
 		// If Terraform already owns the SLR in state, keep create=true — flipping it to
 		// false would make count=0 and cause Terraform to destroy the SLR.
-		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
-			inState := &aws.ServiceLinkedRoleStatus{}
-			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
-				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
-					inState = aws.SLRInState(stateResources)
+		//
+		// AWS-only: shells out to the AWS CLI, which can trigger an SSO/device-auth
+		// browser flow. Must never run when the active cloud is GCP, even if an AWS
+		// profile is still configured from a previous cloud switch.
+		if m.config.Active().ActiveCloudOrDefault() == "aws" {
+			if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
+				inState := &aws.ServiceLinkedRoleStatus{}
+				if m.tfRunner != nil && m.tfRunner.IsInitialized() {
+					if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
+						inState = aws.SLRInState(stateResources)
+					}
 				}
-			}
-			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
-				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
-				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
-				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
-				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
-				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+				m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
+					CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+					CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+					CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+					CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+					CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+					CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+					CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
+					CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+				}
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -1478,22 +1611,26 @@ func (m *Model) executePlan() tea.Cmd {
 		m.config = freshCfg
 	}
 	if m.config != nil {
-		if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
-			inState := &aws.ServiceLinkedRoleStatus{}
-			if m.tfRunner != nil && m.tfRunner.IsInitialized() {
-				if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
-					inState = aws.SLRInState(stateResources)
+		// AWS-only: see comment in executeDeploy — never shell out to the AWS CLI
+		// when the active cloud is GCP.
+		if m.config.Active().ActiveCloudOrDefault() == "aws" {
+			if slrStatus, err := aws.DetectExistingServiceLinkedRoles(m.config.Active().AWS.Prod.Profile); err == nil {
+				inState := &aws.ServiceLinkedRoleStatus{}
+				if m.tfRunner != nil && m.tfRunner.IsInitialized() {
+					if stateResources, stateErr := m.tfRunner.StateList(); stateErr == nil {
+						inState = aws.SLRInState(stateResources)
+					}
 				}
-			}
-			m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
-				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
-				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
-				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
-				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
-				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+				m.config.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
+					CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+					CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+					CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+					CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+					CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+					CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+					CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
+					CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+				}
 			}
 		}
 		_ = m.config.Active().SyncTFVars(m.paths.TerraformDir)
@@ -2008,13 +2145,52 @@ func (m *Model) rerenderSettingsMenu() {
 	m.overlay.Show(OverlayConfig, "Settings", m.renderSettingsMenu(m.settingsItems))
 }
 
+// switchCloud toggles the active cloud between aws and gcp, persists the
+// change to config, rebuilds m.paths for the new Terraform root, and
+// triggers a scenario reload so the TUI reflects the new cloud context.
+func (m *Model) switchCloud() tea.Cmd {
+	if m.config == nil {
+		return nil
+	}
+
+	ws := m.config.Active()
+	currentCloud := ws.ActiveCloudOrDefault()
+
+	newCloud := "gcp"
+	if currentCloud == "gcp" {
+		newCloud = "aws"
+	}
+
+	ws.ActiveCloud = newCloud
+	if err := m.config.Save(); err != nil {
+		m.overlay.Show(OverlayError, "Switch Cloud", fmt.Sprintf("Failed to save config: %v", err))
+		return nil
+	}
+
+	// Rebuild paths so TerraformDir, TFVarsPath, and StatePath point at the
+	// new cloud's root (gcp/ for GCP, repo root for AWS).
+	newPaths, err := repo.GetPathsForWorkspaceAndCloud(m.config.ActiveName(), newCloud, ws.DevMode, ws.DevModePath)
+	if err != nil {
+		m.overlay.Show(OverlayError, "Switch Cloud", fmt.Sprintf("Failed to resolve paths: %v", err))
+		return nil
+	}
+	m.paths = newPaths
+
+	// Update the header immediately so it doesn't lag behind the reload.
+	m.info.SetActiveCloud(newCloud)
+
+	return m.loadScenarios
+}
+
 // settingsItemKind identifies what kind of row a settings entry renders as.
 type settingsItemKind int
 
 const (
 	settingsItemProfile settingsItemKind = iota
+	settingsItemGCPProject
 	settingsItemBudget
 	settingsItemToggle
+	settingsItemCloud
 )
 
 // settingsItem is one selectable row in the Settings overlay.
@@ -2024,7 +2200,8 @@ type settingsItem struct {
 	value       string // display value for profile/budget rows
 	description string // shown under the row, especially useful when a toggle is off
 	on          bool   // toggle state; meaningless for profile/budget rows
-	envName     string // for profile rows: "prod"/"dev"/"ops"/"attacker"
+	envName     string // for profile/GCP project rows: "prod"/"dev"/"ops"/"attacker"
+	section     string // header printed above this row when it differs from the previous row's
 }
 
 // buildSettingsItems returns the fixed, ordered list of rows shown in the
@@ -2063,59 +2240,98 @@ func (m *Model) buildSettingsItems() []settingsItem {
 		betaDesc = "Tool-testing and CTF scenarios are visible in the scenario list."
 	}
 
-	return []settingsItem{
-		{
-			kind: settingsItemProfile, envName: "prod", label: "prod",
-			value:       m.valueOrNotSet(ws.AWS.Prod.Profile) + m.envStatusSuffix(prodEnabled, deployed["prod_environment"]),
-			description: "AWS profile for the production/target account.",
-		},
-		{
-			kind: settingsItemProfile, envName: "dev", label: "dev",
-			value:       m.valueOrNotSet(ws.AWS.Dev.Profile) + m.envStatusSuffix(devEnabled, deployed["dev_environment"]),
-			description: "AWS profile for cross-account dev-to-prod scenarios.",
-		},
-		{
-			kind: settingsItemProfile, envName: "ops", label: "ops",
-			value:       m.valueOrNotSet(ws.AWS.Ops.Profile) + m.envStatusSuffix(opsEnabled, deployed["ops_environment"]),
-			description: "AWS profile for cross-account ops-to-prod scenarios.",
-		},
-		{
-			kind: settingsItemProfile, envName: "attacker", label: "attacker",
-			value:       m.valueOrNotSet(ws.AWS.Attacker.Profile) + m.envStatusSuffix(attackerEnabled, attackerDeployed),
-			description: attackerDesc,
-		},
-		{
-			kind: settingsItemBudget, label: "Budget Alerts",
-			value: budgetValue, description: budgetDesc,
-		},
-		{
-			kind: settingsItemToggle, label: "Dev Mode",
+	var items []settingsItem
+
+	// Only the active cloud's account settings are shown here — switch
+	// clouds (Shift+W, or the Active Cloud row below) to edit the other
+	// cloud's accounts.
+	if ws.ActiveCloudOrDefault() == "gcp" {
+		items = append(items,
+			settingsItem{
+				kind: settingsItemGCPProject, envName: "prod", label: "prod", section: "GCP Projects",
+				value:       m.valueOrNotSet(ws.GCP.Prod.ProjectID),
+				description: "GCP project ID for the production/target project.",
+			},
+			settingsItem{
+				kind: settingsItemGCPProject, envName: "dev", label: "dev", section: "GCP Projects",
+				value:       m.valueOrNotSet(ws.GCP.Dev.ProjectID),
+				description: "GCP project ID for cross-account dev-to-prod scenarios.",
+			},
+			settingsItem{
+				kind: settingsItemGCPProject, envName: "ops", label: "ops", section: "GCP Projects",
+				value:       m.valueOrNotSet(ws.GCP.Ops.ProjectID),
+				description: "GCP project ID for cross-account ops-to-prod scenarios.",
+			},
+		)
+	} else {
+		items = append(items,
+			settingsItem{
+				kind: settingsItemProfile, envName: "prod", label: "prod", section: "AWS Profiles",
+				value:       m.valueOrNotSet(ws.AWS.Prod.Profile) + m.envStatusSuffix(prodEnabled, deployed["prod_environment"]),
+				description: "AWS profile for the production/target account.",
+			},
+			settingsItem{
+				kind: settingsItemProfile, envName: "dev", label: "dev", section: "AWS Profiles",
+				value:       m.valueOrNotSet(ws.AWS.Dev.Profile) + m.envStatusSuffix(devEnabled, deployed["dev_environment"]),
+				description: "AWS profile for cross-account dev-to-prod scenarios.",
+			},
+			settingsItem{
+				kind: settingsItemProfile, envName: "ops", label: "ops", section: "AWS Profiles",
+				value:       m.valueOrNotSet(ws.AWS.Ops.Profile) + m.envStatusSuffix(opsEnabled, deployed["ops_environment"]),
+				description: "AWS profile for cross-account ops-to-prod scenarios.",
+			},
+			settingsItem{
+				kind: settingsItemProfile, envName: "attacker", label: "attacker", section: "AWS Profiles",
+				value:       m.valueOrNotSet(ws.AWS.Attacker.Profile) + m.envStatusSuffix(attackerEnabled, attackerDeployed),
+				description: attackerDesc,
+			},
+			settingsItem{
+				kind: settingsItemBudget, label: "Budget Alerts", section: "Budget Alerts (Cost Protection)",
+				value: budgetValue, description: budgetDesc,
+			},
+		)
+	}
+
+	items = append(items,
+		settingsItem{
+			kind: settingsItemToggle, label: "Dev Mode", section: "Preferences",
 			on: ws.DevMode, description: devModeDesc,
 		},
-		{
-			kind: settingsItemToggle, label: "Show Tool-Testing & CTF Scenarios",
+		settingsItem{
+			kind: settingsItemToggle, label: "Show Tool-Testing & CTF Scenarios", section: "Preferences",
 			on: m.config.IncludeBeta, description: betaDesc,
 		},
+	)
+
+	// Only show the Active Cloud row once GCP has actually been configured
+	// (or is currently active) — AWS-only users see no change to this menu.
+	if ws.GCP.Prod.ProjectID != "" || ws.ActiveCloudOrDefault() == "gcp" {
+		items = append(items, settingsItem{
+			kind: settingsItemCloud, label: "Active Cloud", section: "Preferences",
+			value: ws.ActiveCloudOrDefault(),
+			description: "Which cloud plabs commands and this TUI target (Shift+W to switch). " +
+				"Restart plabs after changing this for the change to fully take effect.",
+		})
 	}
+
+	return items
 }
 
 func (m *Model) renderSettingsMenu(items []settingsItem) string {
 	var sb strings.Builder
 
-	sb.WriteString("AWS Profiles\n")
-	sb.WriteString("----------------------------------------\n")
-	for i := 0; i < 4; i++ {
-		sb.WriteString(m.renderSettingsRow(items[i], i))
+	lastSection := ""
+	for i, item := range items {
+		if item.section != lastSection {
+			if i > 0 {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(item.section)
+			sb.WriteString("\n----------------------------------------\n")
+			lastSection = item.section
+		}
+		sb.WriteString(m.renderSettingsRow(item, i))
 	}
-
-	sb.WriteString("\nBudget Alerts (Cost Protection)\n")
-	sb.WriteString("----------------------------------------\n")
-	sb.WriteString(m.renderSettingsRow(items[4], 4))
-
-	sb.WriteString("\nPreferences\n")
-	sb.WriteString("----------------------------------------\n")
-	sb.WriteString(m.renderSettingsRow(items[5], 5))
-	sb.WriteString(m.renderSettingsRow(items[6], 6))
 
 	sb.WriteString("\n----------------------------------------\n")
 	sb.WriteString("↑/↓ move   enter/space toggle or edit   esc/q close\n")
@@ -2217,11 +2433,16 @@ func (m *Model) activateSettingsItem(item settingsItem) (tea.Model, tea.Cmd) {
 	case settingsItemProfile:
 		m.overlay.Hide()
 		return m, m.runProfileWizard(item.envName)
+	case settingsItemGCPProject:
+		m.overlay.Hide()
+		return m, m.runGCPProfileWizard(item.envName)
 	case settingsItemBudget:
 		m.overlay.Hide()
 		return m, m.runBudgetWizard()
 	case settingsItemToggle:
 		return m.toggleSettingsItem(item)
+	case settingsItemCloud:
+		return m.cycleActiveCloud()
 	}
 	return m, nil
 }
@@ -2259,6 +2480,28 @@ func (m *Model) toggleDevMode() (tea.Model, tea.Cmd) {
 
 	if err := m.config.Save(); err != nil {
 		m.overlay.Show(OverlayError, "Dev Mode", fmt.Sprintf("Failed to save config: %v", err))
+		return m, nil
+	}
+
+	m.showConfig()
+	return m, nil
+}
+
+// cycleActiveCloud flips WorkspaceConfig.ActiveCloud between "aws" and "gcp".
+// Unlike toggleIncludeBeta, this does not reload scenarios in place: m.paths
+// (and the m.tfRunner/m.discovery built from it) are fixed for the lifetime
+// of the TUI process, so a cloud switch only takes full effect on restart —
+// the same limitation toggleDevMode already has for DevModePath changes.
+func (m *Model) cycleActiveCloud() (tea.Model, tea.Cmd) {
+	ws := m.config.Active()
+	if ws.ActiveCloudOrDefault() == "aws" {
+		ws.ActiveCloud = "gcp"
+	} else {
+		ws.ActiveCloud = "aws"
+	}
+
+	if err := m.config.Save(); err != nil {
+		m.overlay.Show(OverlayError, "Active Cloud", fmt.Sprintf("Failed to save config: %v", err))
 		return m, nil
 	}
 
@@ -2337,6 +2580,63 @@ func (m *Model) runProfileWizard(envName string) tea.Cmd {
 				return profileWizardMsg{envName: envName, err: err}
 			}
 			return profileWizardMsg{envName: envName, err: fmt.Errorf("wizard cancelled")}
+		}
+	})
+}
+
+// gcpProfileWizardMsg is sent when the GCP project ID wizard completes.
+type gcpProfileWizardMsg struct {
+	envName      string
+	newProjectID string
+	err          error
+}
+
+// gcpWizardCmd wraps the GCP project wizard execution for tea.Exec.
+type gcpWizardCmd struct {
+	envName          string
+	currentProjectID string
+	result           chan gcpProfileWizardMsg
+}
+
+func (w *gcpWizardCmd) Run() error {
+	wizard := config.NewWizard()
+	newProjectID, err := wizard.RunForGCPEnvironment(w.envName, w.currentProjectID)
+	w.result <- gcpProfileWizardMsg{envName: w.envName, newProjectID: newProjectID, err: err}
+	return nil
+}
+
+func (w *gcpWizardCmd) SetStdin(r io.Reader)   {}
+func (w *gcpWizardCmd) SetStdout(wr io.Writer) {}
+func (w *gcpWizardCmd) SetStderr(wr io.Writer) {}
+
+// runGCPProfileWizard runs the wizard for a single GCP environment's project ID.
+func (m *Model) runGCPProfileWizard(envName string) tea.Cmd {
+	var currentProjectID string
+	switch envName {
+	case "prod":
+		currentProjectID = m.config.Active().GCP.Prod.ProjectID
+	case "dev":
+		currentProjectID = m.config.Active().GCP.Dev.ProjectID
+	case "ops":
+		currentProjectID = m.config.Active().GCP.Ops.ProjectID
+	}
+
+	resultChan := make(chan gcpProfileWizardMsg, 1)
+	cmd := &gcpWizardCmd{
+		envName:          envName,
+		currentProjectID: currentProjectID,
+		result:           resultChan,
+	}
+
+	return tea.Exec(cmd, func(err error) tea.Msg {
+		select {
+		case msg := <-resultChan:
+			return msg
+		default:
+			if err != nil {
+				return gcpProfileWizardMsg{envName: envName, err: err}
+			}
+			return gcpProfileWizardMsg{envName: envName, err: fmt.Errorf("wizard cancelled")}
 		}
 	})
 }
@@ -2423,8 +2723,14 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 		return fmt.Errorf("invalid profile '%s': %v", newProfile, err)
 	}
 
-	// If environment is enabled, check if account ID matches
-	if isEnabled {
+	// If environment is enabled and a profile was already configured for it,
+	// check that the new profile points at the same account. currentProfile
+	// can be empty here even when isEnabled is true — GetEnabledEnvironments
+	// defaults an environment (prod especially) to enabled when its
+	// terraform.tfvars doesn't exist yet, which is exactly the state of a
+	// cloud that's never been configured before. There's no deployed account
+	// to protect in that case, so skip the guard.
+	if isEnabled && currentProfile != "" {
 		currentAccountID, _ := m.getAccountIDForProfile(currentProfile)
 		if newAccountID != currentAccountID {
 			return fmt.Errorf("cannot change to different account while %s is enabled.\nDisable the %s environment first, then change the profile.", envName, envName)
@@ -2456,6 +2762,37 @@ func (m *Model) validateAndSetProfile(envName, newProfile string) error {
 	return nil
 }
 
+// validateAndSetGCPProject sets the GCP project ID for envName and persists
+// it. Unlike validateAndSetProfile there's no live account-ID lookup to
+// cross-check against — GCP auth comes from Application Default Credentials
+// rather than a named profile, so there's nothing to validate beyond
+// non-emptiness (already enforced by the wizard's input validator).
+func (m *Model) validateAndSetGCPProject(envName, newProjectID string) error {
+	if newProjectID == "" {
+		return fmt.Errorf("project ID cannot be empty")
+	}
+
+	ws := m.config.Active()
+	switch envName {
+	case "prod":
+		ws.GCP.Prod.ProjectID = newProjectID
+	case "dev":
+		ws.GCP.Dev.ProjectID = newProjectID
+	case "ops":
+		ws.GCP.Ops.ProjectID = newProjectID
+	}
+
+	if err := m.config.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %v", err)
+	}
+
+	if err := ws.SyncTFVars(m.paths.TerraformDir); err != nil {
+		return fmt.Errorf("failed to sync tfvars: %v", err)
+	}
+
+	return nil
+}
+
 // getAccountIDForProfile calls AWS to get the account ID for a profile
 func (m *Model) getAccountIDForProfile(profile string) (string, error) {
 	result := aws.ValidateProfile(profile)
@@ -2465,11 +2802,16 @@ func (m *Model) getAccountIDForProfile(profile string) (string, error) {
 	return result.AccountID, nil
 }
 
-// validateCredentialsAsync returns a tea.Cmd that validates AWS credentials asynchronously
+// validateCredentialsAsync returns a tea.Cmd that validates credentials
+// asynchronously, dispatching to the appropriate cloud check.
 func (m *Model) validateCredentialsAsync() tea.Cmd {
 	return func() tea.Msg {
 		if m.config == nil {
 			return credentialsValidatedMsg{valid: false, err: fmt.Errorf("configuration not loaded")}
+		}
+
+		if m.config.Active().ActiveCloudOrDefault() != "aws" {
+			return m.validateGCPCredentialsMsg()
 		}
 
 		profile := m.config.Active().AWS.Prod.Profile
@@ -2480,6 +2822,100 @@ func (m *Model) validateCredentialsAsync() tea.Cmd {
 		err := aws.ValidatePrimaryProfile(profile)
 		return credentialsValidatedMsg{valid: err == nil, profile: profile, err: err}
 	}
+}
+
+// validateGCPCredentialsMsg runs the GCP ADC + project-access check and
+// returns a credentialsValidatedMsg with a TUI-friendly error body when it
+// fails, mirroring the AWS profile check above.
+func (m *Model) validateGCPCredentialsMsg() credentialsValidatedMsg {
+	ws := m.config.Active()
+	projectID := ws.GCP.Prod.ProjectID
+
+	// Get an ADC token.
+	tokenOut, err := exec.Command("gcloud", "auth", "application-default", "print-access-token").Output()
+	if err != nil {
+		body := "Application Default Credentials (ADC) are not configured or have expired.\n\n" +
+			"The GCP Terraform provider uses ADC, but demo scripts also need the\n" +
+			"gcloud CLI's own login to match. `gcloud auth login --update-adc` sets\n" +
+			"both as the same identity in one step."
+		return credentialsValidatedMsg{
+			valid:   false,
+			title:   "GCP Credentials",
+			message: body,
+			cloud:   "gcp",
+			err:     fmt.Errorf("GCP ADC not configured"),
+		}
+	}
+	token := strings.TrimSpace(string(tokenOut))
+
+	// If no project configured yet, the token alone is enough to proceed.
+	if projectID == "" {
+		return credentialsValidatedMsg{valid: true}
+	}
+
+	// Verify the token works against the configured project (catches RAPT
+	// expiry and account-mismatch before terraform surfaces a cryptic error).
+	req, err := http.NewRequest("GET",
+		"https://cloudresourcemanager.googleapis.com/v1/projects/"+projectID, nil)
+	if err != nil {
+		// Shouldn't happen; let terraform surface any real error.
+		return credentialsValidatedMsg{valid: true}
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		// Network issue — don't block; terraform will fail with a clear error.
+		return credentialsValidatedMsg{valid: true}
+	}
+	defer func() { _, _ = io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusOK {
+		return credentialsValidatedMsg{valid: true}
+	}
+
+	// Fetch the active gcloud account for a more targeted error message.
+	activeAccount := ""
+	if out, err := exec.Command("gcloud", "auth", "list",
+		"--filter=status:ACTIVE", "--format=value(account)").Output(); err == nil {
+		activeAccount = strings.TrimSpace(string(out))
+	}
+
+	body := fmt.Sprintf(
+		"Your Application Default Credentials cannot access project:\n  %s\n\n",
+		projectID)
+	if activeAccount != "" {
+		body += fmt.Sprintf("Active gcloud account:  %s\n\n", activeAccount)
+	}
+	body += "Re-authenticate with the account that has access to the project."
+
+	return credentialsValidatedMsg{
+		valid:   false,
+		title:   "GCP Credentials",
+		message: body,
+		cloud:   "gcp",
+		err:     fmt.Errorf("GCP credentials cannot access project %s (HTTP %d)", projectID, resp.StatusCode),
+	}
+}
+
+// runGCPReauth runs the gcloud login the user picked from the reauth choice
+// bar. "adc" re-authenticates Application Default Credentials only; "both"
+// runs `gcloud auth login --update-adc`, which sets the CLI-session and ADC
+// credential stores to the same identity in one step — the fix for the
+// mismatch that makes demo scripts fail even after ADC alone is refreshed.
+// tea.ExecProcess suspends the TUI and hands the terminal to gcloud, which
+// opens the browser device/consent flow and waits for approval.
+func (m *Model) runGCPReauth(mode string) tea.Cmd {
+	var cmd *exec.Cmd
+	if mode == "both" {
+		cmd = exec.Command("gcloud", "auth", "login", "--update-adc")
+	} else {
+		cmd = exec.Command("gcloud", "auth", "application-default", "login")
+	}
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return gcpReauthDoneMsg{err: err}
+	})
 }
 
 // buildTerraformEnv returns a clean subprocess environment with any attacker IAM
@@ -2758,6 +3194,11 @@ func (m *Model) View() string {
 		return content + "\n" + m.renderActionConfirmBar()
 	}
 
+	// GCP reauth type choice
+	if m.choosingGCPReauthType {
+		return content + "\n" + m.renderGCPReauthChoiceBar()
+	}
+
 	// Credential validation in progress
 	if m.validatingCredentials {
 		return content + "\n" + m.renderValidatingCredentialsBar()
@@ -2963,8 +3404,12 @@ func (m *Model) renderValidatingCredentialsBar() string {
 	textStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
 	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
 
+	credLabel := "AWS credentials"
+	if m.config != nil && m.config.Active().ActiveCloudOrDefault() == "gcp" {
+		credLabel = "GCP ADC credentials"
+	}
 	return spinnerStyle.Render("⟳ ") +
-		textStyle.Render("Validating AWS credentials...  ") +
+		textStyle.Render("Validating "+credLabel+"...  ") +
 		keyStyle.Render("Esc") +
 		textStyle.Render(" to cancel")
 }
@@ -2992,6 +3437,21 @@ func (m *Model) renderEnablePatternBar() string {
 		promptStyle.Render("Enter pattern: ") +
 		m.patternInput.View() +
 		promptStyle.Render(" (Enter to confirm, Esc to cancel)")
+}
+
+func (m *Model) renderGCPReauthChoiceBar() string {
+	warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")).Bold(true)
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4"))
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF"))
+
+	return warnStyle.Render("GCP AUTH ") +
+		promptStyle.Render("Which login? ") +
+		keyStyle.Render("[1]") +
+		dimStyle.Render(" ADC only (application-default login)  ") +
+		keyStyle.Render("[2]") +
+		dimStyle.Render(" ADC + CLI login (--update-adc)  ") +
+		dimStyle.Render("(Esc to cancel)")
 }
 
 func (m *Model) renderDisableTypeChoiceBar() string {

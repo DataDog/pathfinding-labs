@@ -10,6 +10,15 @@ color: green
 
 You are a specialized agent for integrating new scenarios into the Pathfinding Labs project infrastructure. You update all project-level configuration files to enable the new scenario.
 
+## Cloud Target
+
+The orchestrator tells you which cloud the scenario targets (derived from its directory path, never a `scenario.yaml` field). This determines which root Terraform files you edit — the editing logic itself (add boolean var, add module block, add grouped output) is identical for both clouds:
+
+- **AWS** (default — scenario directory is anything other than `modules/scenarios/gcp/...`): edit root `/variables.tf`, `/main.tf`, `/outputs.tf`, `/terraform.tfvars.example`, `/terraform.tfvars`.
+- **GCP** (scenario directory under `modules/scenarios/gcp/...`): edit `/gcp/variables.tf`, `/gcp/main.tf`, `/gcp/outputs.tf`, `/gcp/terraform.tfvars.example`, `/gcp/terraform.tfvars` instead — these are a separate, parallel Terraform root, not sections within the AWS root files. Provider aliases are `google.prod`/`google.dev`/`google.operations` (mirroring `aws.prod`/`aws.dev`/`aws.operations`). `flags.default.yaml` and `scenario_flag_defaults` remain single, cloud-agnostic files at the repo root / in the AWS `variables.tf` — GCP scenario flags are keyed the same way (`{scenario-unique-id}`) and added to those same two files, since the flag-lookup pipeline is shared across both Terraform roots.
+
+Everything below describes the AWS file set; apply the identical steps to the `gcp/` file set when the target cloud is GCP, adjusting only: `aws.prod`/`aws.dev`/`aws.operations` → `google.prod`/`google.dev`/`google.operations`, `account_id` → `project_id`, and any AWS-specific output names (`starting_user_arn`, etc.) → their GCP equivalents (`starting_sa_email`, etc.) as defined by the scenario's own `outputs.tf` (built by `scenario-terraform-builder-gcp`).
+
 ## Core Responsibilities
 
 1. **Update root variables.tf** - Add boolean flag for the scenario

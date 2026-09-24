@@ -38,17 +38,23 @@ var configSetCmd = &cobra.Command{
 	Short: "Set a configuration value",
 	Long: `Set a configuration value.
 
-Available keys:
-  prod-profile       Production AWS CLI profile
-  prod-region        Production AWS region
-  dev-profile        Development AWS CLI profile
-  dev-region         Development AWS region
-  ops-profile        Operations AWS CLI profile
-  ops-region         Operations AWS region
-  attacker-profile   Attacker AWS CLI profile
-  attacker-region    Attacker AWS region
-  dev-mode           Enable/disable development mode (true/false)
-  include-beta       Show beta scenarios in listings and TUI (true/false)`,
+Available keys (AWS):
+  prod-profile            Production AWS CLI profile
+  prod-region             Production AWS region
+  dev-profile             Development AWS CLI profile
+  dev-region              Development AWS region
+  ops-profile             Operations AWS CLI profile
+  ops-region              Operations AWS region
+  attacker-profile        Attacker AWS CLI profile
+  attacker-region         Attacker AWS region
+
+Available keys (GCP):
+  gcp-project-id          GCP project ID for the prod environment
+  gcp-region              GCP region (default: us-central1)
+
+Available keys (general):
+  dev-mode                Enable/disable development mode (true/false)
+  include-beta            Show beta scenarios in listings and TUI (true/false)`,
 	Args: cobra.ExactArgs(2),
 	RunE: runConfigSet,
 }
@@ -230,6 +236,10 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		ws.DevMode = true
 		ws.DevModePath = value
 		ws.Initialized = true
+	case "gcp-project-id":
+		ws.GCP.Prod.ProjectID = value
+	case "gcp-region":
+		ws.GCP.Prod.Region = value
 	case "include-beta":
 		// include-beta is a global preference, not workspace-scoped
 		lowerVal := strings.ToLower(value)
@@ -241,7 +251,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("invalid value for include-beta: %s (use true/false)", value)
 		}
 	default:
-		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, dev-mode, dev-mode-path, include-beta", key)
+		return fmt.Errorf("unknown configuration key: %s\n\nValid keys: prod-profile, prod-region, dev-profile, dev-region, ops-profile, ops-region, attacker-profile, attacker-region, gcp-project-id, gcp-region, dev-mode, dev-mode-path, include-beta", key)
 	}
 
 	if err := cfg.Save(); err != nil {
@@ -249,7 +259,7 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	}
 
 	// Regenerate terraform.tfvars (best-effort)
-	if paths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath); pathErr == nil {
+	if paths, pathErr := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), ws.ActiveCloudOrDefault(), ws.DevMode, ws.DevModePath); pathErr == nil {
 		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
 			_ = ws.SyncTFVars(paths.TerraformDir)
 		}
@@ -269,7 +279,7 @@ func runConfigSync(cmd *cobra.Command, args []string) error {
 	}
 
 	ws := cfg.Active()
-	paths, err := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
+	paths, err := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), ws.ActiveCloudOrDefault(), ws.DevMode, ws.DevModePath)
 	if err != nil {
 		return fmt.Errorf("failed to get paths: %w", err)
 	}
@@ -377,7 +387,7 @@ func runScenarioConfigSet(scenarioName, key, value string) error {
 	}
 
 	// Sync tfvars (best-effort: dir may not exist yet)
-	if paths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath); pathErr == nil {
+	if paths, pathErr := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), ws.ActiveCloudOrDefault(), ws.DevMode, ws.DevModePath); pathErr == nil {
 		if _, statErr := os.Stat(paths.TerraformDir); statErr == nil {
 			_ = ws.SyncTFVars(paths.TerraformDir)
 		}

@@ -4,6 +4,77 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.8.2 — 2026-09-24
+
+Patch: fixed the GCP `### Prerequisites` boilerplate's step 3, which referenced a nonexistent `operator_identity` Terraform variable.
+
+**Changes:**
+- Step 3 of the GCP `### Prerequisites` boilerplate now instructs `gcloud auth login --update-adc` (unifying the CLI-session and ADC credential stores as the same identity) instead of setting a Terraform variable that doesn't exist anywhere in the GCP module design.
+
+**Why:** `operator_identity` was never a real variable — GCP modules auto-detect the deployer identity from ADC via `data.google_client_openid_userinfo.deployer` (see `scenario-terraform-builder-gcp.md`). The stale instruction surfaced during a review of GCP auth UX ahead of building a second GCP lab; demo scripts fail when the gcloud CLI session and ADC are different identities, and `--update-adc` is the one-step fix for both.
+
+**Migration rules:**
+- PATCH — wording-only fix. Existing GCP scenario READMEs (currently just gcp-iam-001) should be hand-updated to match; no schema structure changed.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    Update gcp-iam-001/README.md Prerequisites step 3 to reference
+    `gcloud auth login --update-adc` instead of `operator_identity`.
+```
+
+---
+
+## 4.8.1 — 2026-09-21
+
+Patch: added GCP-specific `### Prerequisites` boilerplate, surfaced by the first real GCP scenario (gcp-iam-001) going through validation.
+
+**Changes:**
+- `### Prerequisites` section now has two variants: the existing AWS boilerplate (unchanged) and a new GCP boilerplate that references "GCP project and credentials" instead of "AWS profiles" and adds a step for setting `operator_identity` from `gcloud config get-value account`. Cloud is derived from the scenario's directory path, same as all other GCP branches in this schema.
+
+**Why:** gcp-iam-001's README Prerequisites section incorrectly said "Configure your AWS profiles" because the schema template had no GCP variant. The GCP wording is now explicit so future GCP scenario READMEs won't need a manual correction.
+
+**Migration rules:**
+- PATCH — only gcp-iam-001's README is affected. No existing AWS READMEs change.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    Update gcp-iam-001/README.md Prerequisites section to use the new GCP boilerplate.
+    No changes required to any AWS scenario READMEs.
+```
+
+---
+
+## 4.8.0 — 2026-09-21
+
+Minor: generalized the AWS-only `ARN` terminology to a cloud-derived resource-identifier concept, and added GCP values for CTF flag storage, ahead of the first GCP scenario going live.
+
+**Changes:**
+- Added a "Resource identifier terminology" table near the top of the schema mapping AWS concepts (ARN, `ssm-parameter`/`s3-object` flag storage) to their GCP equivalents (full resource name, `secret-manager`/`gcs-object` flag storage). Cloud is derived from the scenario's directory path (`modules/scenarios/gcp/...` → GCP), never a `scenario.yaml` field — same convention as pathfinding.cloud and the rest of the pathfinding-labs `.claude/` tooling.
+- **`* **CTF Flag Location:**`** -- allowed values expanded from `{ssm-parameter|s3-object}` to `{ssm-parameter|s3-object|secret-manager|gcs-object}`.
+- **`### Scenario Specific Resources Created`** table -- AWS scenarios keep the `ARN` column; GCP scenarios use a `Resource Identifier` column instead.
+- Existing AWS-specific wording, examples, and the "do not fabricate an ARN for anonymous starts" rule are unchanged — this is additive, not a rename of any AWS-facing field.
+
+**Motivation:**
+- The first real GCP scenario (service account impersonation, tracked separately) needed a README schema that doesn't assume ARNs everywhere. Following pathfinding.cloud's precedent: infer cloud from path, keep an inline terminology table rather than forking this schema doc per cloud (unlike the deeply-procedural Terraform/demo/validator agents, which were forked).
+
+**Migration rules:**
+- MINOR -- no existing (all-AWS) READMEs change; the new GCP values are additive and only apply to scenarios that don't exist yet.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    No changes required to existing READMEs. New GCP scenarios under
+    modules/scenarios/gcp/... use the GCP column of the resource identifier
+    terminology table and the secret-manager/gcs-object flag location values.
+```
+
+---
+
 ## 4.7.1 — 2026-05-15
 
 Patch: clarified when `Pathfinding.cloud ID` should and should not appear.

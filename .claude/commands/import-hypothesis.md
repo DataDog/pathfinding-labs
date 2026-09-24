@@ -30,13 +30,13 @@ Delegates to `/workflows:scenario-orchestrator` in **research hypothesis mode**,
 3. Classifies the hypothesis into the labs taxonomy (category, sub_category, path_type, target). Asks if ambiguous.
 4. **Presents a validation summary to the user** (canonical ID, directory path, classification, required permissions, attack path summary) and waits for approval before proceeding.
 5. Creates `scenario.yaml` at the current schema version with `required_preconditions` mapped from the research prerequisite categories. Strips any flag-revealing permissions from the helpful permissions list.
-6. **Concurrently delegates** to the same 5 specialized agents used by the standard scenario orchestrator, each receiving a `RESEARCH CONTEXT` block with the source directory path so they can read the research files directly:
-   - `scenario-terraform-builder` — reads research `terraform/main.tf` as a proof-of-concept reference for a full labs-convention rebuild
-   - `scenario-demo-creator` — reads research `demo_attack.sh` as ground truth for attack ordering, sleeps, and region handling
+6. **Concurrently delegates** to the same 5 specialized agents used by the standard scenario orchestrator, each receiving a `RESEARCH CONTEXT` block with the source directory path so they can read the research files directly. `pathfinding-research-agent` only discovers AWS IAM privesc paths, so this always routes to the `-aws` agent variants:
+   - `scenario-terraform-builder-aws` — reads research `terraform/main.tf` as a proof-of-concept reference for a full labs-convention rebuild
+   - `scenario-demo-creator-aws` — reads research `demo_attack.sh` as ground truth for attack ordering, sleeps, and region handling
    - `scenario-readme-creator` — reads research `REPORT.md` and `demo_attack.sh` for exploitation steps and proof methodology
    - `project-updator` — wires the new module into root `variables.tf`, `main.tf`, `outputs.tf`
    - `scenario-cost-estimator` — runs infracost on the generated Terraform
-7. Runs `scenario-validator` against the new module and reports the result.
+7. Runs `scenario-validator-aws` against the new module and reports the result.
 
 The command does NOT run `/test-scenarios` automatically — that requires AWS credentials and costs real time. After this command completes, run `/test-scenarios <id>-<target>` to validate end-to-end.
 

@@ -1,8 +1,17 @@
 # Pathfinding Labs Attack Map Schema
 
-**Current schema version: `1.7.0`**
+**Current schema version: `1.8.1`**
 
 See `.claude/scenario-attackmap-changelog.md` for version history and migration rules.
+
+**Resource identifier terminology (cloud-derived from the scenario's directory path):** the `arn` field name is kept as-is for backward compatibility with ~250 existing AWS scenarios, but on GCP scenarios (`modules/scenarios/gcp/...`) it holds a full GCP resource name instead of a literal ARN string:
+
+| Concept | AWS (`arn` field value) | GCP (`arn` field value) |
+|---|---|---|
+| Principal/resource identifier | `arn:aws:iam::{account_id}:role/pl-prod-iam-011-to-admin-target-role` | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-to-admin-target-sa@{project_id}.iam.gserviceaccount.com` |
+| CTF flag terminal node | `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/{scenario-id}` (to-admin) or an `s3-bucket` node (to-bucket) | Full resource name of a `google_secret_manager_secret` version (to-admin) or a `gcs-bucket` node (to-bucket) |
+
+Never fabricate a placeholder identifier for anonymous/public-start scenarios in either cloud -- the `arn` field must hold the real identifier of the public resource.
 
 This file is the canonical reference for the structure and content of all scenario `attack_map.yaml` files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file when creating or extracting attack maps. Update this file when the standard changes.
 
@@ -40,11 +49,11 @@ attackMap:
 | `id` | Yes | Unique identifier within this attack map (e.g., `starting-principal`, `target-role`) |
 | `label` | Yes | Short display label (2-4 words) |
 | `type` | Yes | `principal` or `resource` |
-| `subType` | Yes | `iam-user`, `iam-role`, `iam-group`, `apprunner-service`, `lambda-function`, `ec2-instance`, `ecs-task`, `s3-bucket`, `glue-job`, `codebuild-project`, `cloudformation-stack`, `sagemaker-notebook`, `ssm-document`, `ssm-parameter`, `bedrock-agent`, etc. |
+| `subType` | Yes | **AWS:** `iam-user`, `iam-role`, `iam-group`, `apprunner-service`, `lambda-function`, `ec2-instance`, `ecs-task`, `s3-bucket`, `glue-job`, `codebuild-project`, `cloudformation-stack`, `sagemaker-notebook`, `ssm-document`, `ssm-parameter`, `bedrock-agent`, etc. **GCP:** `service-account`, `gcs-bucket`, `cloud-function`, `cloud-run-service`, `secret-manager-secret`, etc. (GCP `subType` values follow the same pattern — use the obvious resource-type slug for any GCP resource not listed here.) |
 | `isTarget` | No (default `false`) | Boolean. Exactly one node per map must have `isTarget: true` -- the final destination of the attack path (typically the CTF flag resource). Mutually exclusive with `isAttackerControlled` and with `isAdmin`. |
 | `isAttackerControlled` | No (default `false`) | Boolean. Set to `true` on nodes representing infrastructure the attacker owns or controls (e.g., a script-hosting bucket, an exfil destination, a C2 endpoint). These nodes are NOT victim misconfigurations. A node cannot be both `isTarget` and `isAttackerControlled`. |
 | `isAdmin` | No (default `false`) | Boolean. Set to `true` on `type: principal` nodes that **already hold** administrator-equivalent permissions in their account (e.g., `AdministratorAccess` managed policy, wildcard inline policy). The frontend uses this to render admin-equivalent pivots distinctly. Mutually exclusive with `isTarget: true` on the same node — once flag resources became the canonical terminal, admin principals are pivots, not targets. Not mutually exclusive with `isAttackerControlled`. **Do NOT set this on a principal that starts without admin but gains it via a self-loop edge** — use `grantsAdmin: true` on that edge instead (see Edge Schema). |
-| `arn` | Yes | Full ARN with `{account_id}` and `{region}` placeholders |
+| `arn` | Yes | Full ARN with `{account_id}` and `{region}` placeholders (AWS scenarios). For GCP scenarios, holds the full GCP resource name with `{project_id}` placeholders instead -- see the resource identifier terminology table above. |
 | `access` | No (required on entry-point nodes) | Structured entry point for frontend display. Present only on nodes that represent a reachable starting point (public or internal network, or pre-given credentials). See Access Object below. |
 | `description` | Yes | Second-person narrative. Starting node MUST begin with the standard prologue paragraph (see below). |
 
@@ -257,7 +266,7 @@ Rules for these nodes:
 
 Every scenario (except those under `tool-testing/`) ends with a CTF flag that the attacker must retrieve. The flag is the `isTarget: true` node.
 
-**to-admin scenarios:**
+**to-admin scenarios (AWS):**
 - Add a new node representing the flag SSM parameter:
   - `type: resource`
   - `subType: ssm-parameter`
@@ -267,10 +276,19 @@ Every scenario (except those under `tool-testing/`) ends with a CTF flag that th
 - The admin principal (`iam-role` or `iam-user` that holds `AdministratorAccess` or equivalent) takes `isAdmin: true` instead of `isTarget: true`.
 - Add a final edge from the admin principal to the SSM parameter node, labeled "Read CTF flag" (or similar). The edge's `commands` array includes an `aws ssm get-parameter --name /pathfinding-labs/flags/{scenario-id}` command.
 
-**to-bucket scenarios:**
+**to-admin scenarios (GCP):**
+- Same pattern, substituting a `google_secret_manager_secret` node:
+  - `subType: secret-manager-secret`
+  - `arn`: full resource name of the secret version, e.g. `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-prod-{scenario-id}-flag/versions/latest`
+  - The admin-equivalent service account takes `isAdmin: true`; the final edge's `commands` array includes a `gcloud secrets versions access latest --secret=pl-prod-{scenario-id}-flag` command.
+
+**to-bucket scenarios (AWS):**
 - The existing target bucket keeps `isTarget: true` — it is still the terminal resource. No new node is added.
 - The flag lives inside the bucket as `flag.txt`. The final edge's `commands` array gains a `aws s3 cp s3://{bucket}/flag.txt -` entry to retrieve it.
 - Any mid-chain principal nodes that reach administrator-equivalent permissions before arriving at the bucket take `isAdmin: true`.
+
+**to-bucket scenarios (GCP):**
+- Same pattern with the target `subType: gcs-bucket` node; the flag lives inside as `flag.txt`, retrieved with `gsutil cat gs://{bucket}/flag.txt` in the final edge's `commands` array.
 
 **Tool-testing scenarios:** exempt from the flag terminal pattern. These scenarios exist for detection-engine testing, not CTF gameplay; their attack maps follow pre-1.4.0 rules (admin role may take `isTarget: true`).
 

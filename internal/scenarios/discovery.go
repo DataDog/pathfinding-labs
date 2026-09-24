@@ -10,7 +10,8 @@ import (
 // Discovery handles finding and loading scenarios from the filesystem
 type Discovery struct {
 	basePath    string
-	IncludeBeta bool // When false, scenarios with status "beta" are hidden
+	IncludeBeta bool   // When false, scenarios with status "beta" are hidden
+	Cloud       string // When non-empty, only scenarios matching this cloud are returned
 }
 
 // NewDiscovery creates a new scenario discovery instance
@@ -22,6 +23,14 @@ func NewDiscovery(basePath string) *Discovery {
 // Returns the receiver for chaining: scenarios.NewDiscovery(path).WithIncludeBeta(true)
 func (d *Discovery) WithIncludeBeta(v bool) *Discovery {
 	d.IncludeBeta = v
+	return d
+}
+
+// WithCloud restricts discovery results to scenarios matching the given cloud
+// (e.g. "aws", "gcp"). An empty string means no filtering. Returns the
+// receiver for chaining: scenarios.NewDiscovery(path).WithCloud("gcp")
+func (d *Discovery) WithCloud(cloud string) *Discovery {
+	d.Cloud = cloud
 	return d
 }
 
@@ -52,6 +61,11 @@ func (d *Discovery) DiscoverAll() ([]*Scenario, error) {
 
 		// Skip beta scenarios unless explicitly opted in
 		if scenario.IsBeta() && !d.IncludeBeta {
+			return nil
+		}
+
+		// Skip scenarios that don't match the requested cloud, if filtering is active
+		if d.Cloud != "" && scenario.Cloud != d.Cloud {
 			return nil
 		}
 

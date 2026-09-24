@@ -1,0 +1,80 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "gcp-cloudfunctions-001-iam-serviceaccountsactas+cloudfunctions-functionscreate"
+title: "Cloud Function Creation with actAs to Admin"
+description: "Service account with iam.serviceAccounts.actAs on a privileged target service account, plus cloudfunctions.functions.create/sourceCodeSet and run.routes.invoke, can deploy and invoke a new 2nd-gen Cloud Function running as that service account, exfiltrating its OAuth token from the metadata server to inherit its roles/editor project permissions"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "gcp-cloudfunctions-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-start@{project_id}.iam.gserviceaccount.com"
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com"
+
+  summary: "starting_sa -> (iam.serviceAccounts.actAs + cloudfunctions.functions.create/.sourceCodeSet + run.routes.invoke via minimal custom role) -> deploys and invokes a new 2nd-gen Cloud Function running as target_sa -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/editor) -> Project Admin"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-cf001-start"
+      principal_type: "service-account"
+      permissions:
+        - permission: "iam.serviceAccounts.actAs"
+          resource: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com"
+        - permission: "cloudfunctions.functions.create"
+          resource: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/-"
+        - permission: "cloudfunctions.functions.sourceCodeSet"
+          resource: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/-"
+        - permission: "run.routes.invoke"
+          resource: "//run.googleapis.com/projects/{project_id}/locations/-/services/-"
+
+  helpful:
+    - principal: "pl-prod-cf001-start"
+      principal_type: "service-account"
+      permissions:
+        - permission: "cloudfunctions.functions.get"
+          purpose: "Required by gcloud functions deploy — checks whether the function already exists (create vs. update) before submitting"
+        - permission: "cloudfunctions.operations.get"
+          purpose: "Required by gcloud functions deploy — polls the deploy long-running operation (no --async flag exists for gen2)"
+        - permission: "resourcemanager.projects.get"
+          purpose: "Required by gcloud functions deploy — calls GET /v1/projects/{id} unconditionally as a preflight; unavoidable with the gcloud CLI"
+        - permission: "iam.serviceAccounts.list"
+          purpose: "Enumerate other service accounts in the project to identify impersonation targets"
+        - permission: "iam.serviceAccounts.getIamPolicy"
+          purpose: "Inspect IAM policy bindings on candidate service accounts to find actAs grants (predefined roles/iam.serviceAccountUser or a custom role granting iam.serviceAccounts.actAs)"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1550.001 - Use Alternate Authentication Material: Application Access Token"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate"
+  module_path: "modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-cloudfunctions-001-iam-serviceaccountsactas+cloudfunctions-functionscreate"

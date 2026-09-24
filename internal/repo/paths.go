@@ -32,9 +32,10 @@ type Paths struct {
 	RepoPath     string // ~/.plabs/pathfinding-labs (cloned repo, used in normal mode)
 	BinPath      string // ~/.plabs/bin
 	ConfigPath   string // ~/.plabs/plabs.yaml (ALWAYS here, single source of truth)
-	TerraformDir string // Where terraform runs (changes based on mode)
+	RootDir      string // Repo root respecting dev mode, independent of active cloud — shared parent of every cloud's Terraform root
+	TerraformDir string // Where terraform runs for the active cloud (changes based on mode and cloud)
 	TFVarsPath   string // terraform.tfvars inside TerraformDir
-	StatePath    string // Canonical terraform.tfstate path (ALWAYS here, independent of mode)
+	StatePath    string // Canonical terraform.tfstate path for the active cloud (ALWAYS here, independent of mode)
 }
 
 // GetPaths returns the paths for the current user
@@ -54,6 +55,7 @@ func GetPaths() (*Paths, error) {
 		RepoPath:     repoPath,
 		BinPath:      filepath.Join(plabsRoot, BinDir),
 		ConfigPath:   filepath.Join(plabsRoot, ConfigFile),
+		RootDir:      repoPath,
 		TerraformDir: repoPath, // Default to normal mode
 		TFVarsPath:   filepath.Join(repoPath, "terraform.tfvars"),
 		StatePath:    filepath.Join(plabsRoot, StateDir, "terraform.tfstate"),
@@ -66,13 +68,28 @@ func GetPathsForMode(devMode bool, devModePath string) (*Paths, error) {
 	return GetPathsForWorkspace("default", devMode, devModePath)
 }
 
-// GetPathsForWorkspace returns workspace-specific paths.
+// GetPathsForWorkspace returns workspace-specific paths for the AWS cloud
+// context. Kept as the AWS-scoped entry point so every pre-existing call
+// site continues to behave identically with zero migration; new,
+// cloud-aware call sites should use GetPathsForWorkspaceAndCloud instead.
+func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string) (*Paths, error) {
+	return GetPathsForWorkspaceAndCloud(workspaceName, "aws", devMode, devModePath)
+}
+
+// GetPathsForWorkspaceAndCloud returns workspace- and cloud-scoped paths.
 //
 // For the "default" workspace, RepoPath is ~/.plabs/pathfinding-labs/ (backward compat).
 // For any other named workspace, RepoPath is ~/.plabs/workspaces/<name>/pathfinding-labs/.
-// When devMode is true and devModePath is valid, TerraformDir is set to devModePath
+// When devMode is true and devModePath is valid, RootDir is set to devModePath
 // regardless of workspace name.
-func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string) (*Paths, error) {
+//
+// cloud selects which Terraform root TerraformDir/TFVarsPath/StatePath point
+// at: "aws" (or "") uses RootDir directly (the repo root, unchanged from
+// before clouds existed); "gcp" uses RootDir/gcp — a separate root module
+// with its own state, so AWS and GCP deployments never share a backend.
+// RootDir/ScenariosPath() are cloud-independent: both clouds' scenario
+// modules are discovered from the same top-level modules/scenarios tree.
+func GetPathsForWorkspaceAndCloud(workspaceName string, cloud string, devMode bool, devModePath string) (*Paths, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -93,15 +110,21 @@ func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string
 		statePath = filepath.Join(plabsRoot, StateDir, workspaceName, "terraform.tfstate")
 	}
 
-	// Dev mode overrides the terraform directory, but NOT the state path:
+	// Dev mode overrides the root directory, but NOT the state path:
 	// state always lives at statePath so switching modes never orphans
 	// resources tracked under the other directory's local state file.
-	terraformDir := repoPath
+	rootDir := repoPath
 	if devMode && devModePath != "" {
 		scenariosPath := filepath.Join(devModePath, "modules", "scenarios")
 		if _, err := os.Stat(scenariosPath); err == nil {
-			terraformDir = devModePath
+			rootDir = devModePath
 		}
+	}
+
+	terraformDir := rootDir
+	if cloud == "gcp" {
+		terraformDir = filepath.Join(rootDir, "gcp")
+		statePath = filepath.Join(filepath.Dir(statePath), "gcp", filepath.Base(statePath))
 	}
 
 	return &Paths{
@@ -110,6 +133,7 @@ func GetPathsForWorkspace(workspaceName string, devMode bool, devModePath string
 		RepoPath:     repoPath,
 		BinPath:      binPath,
 		ConfigPath:   configPath,
+		RootDir:      rootDir,
 		TerraformDir: terraformDir,
 		TFVarsPath:   filepath.Join(terraformDir, "terraform.tfvars"),
 		StatePath:    statePath,
@@ -139,13 +163,16 @@ func (p *Paths) TFVarsExists() bool {
 	return err == nil
 }
 
-// ScenariosPath returns the path to the scenarios directory
-// Uses TerraformDir so it respects dev mode
+// ScenariosPath returns the path to the scenarios directory.
+// Uses RootDir (not TerraformDir) so it respects dev mode but stays the
+// same regardless of which cloud is active — every cloud's scenario
+// modules live under one shared top-level modules/scenarios tree, even
+// though each cloud runs terraform from its own root (TerraformDir).
 func (p *Paths) ScenariosPath() string {
-	return filepath.Join(p.TerraformDir, "modules", "scenarios")
+	return filepath.Join(p.RootDir, "modules", "scenarios")
 }
 
-// IsDevMode returns true if the TerraformDir differs from the default RepoPath
+// IsDevMode returns true if RootDir differs from the default RepoPath
 func (p *Paths) IsDevMode() bool {
-	return p.TerraformDir != p.RepoPath
+	return p.RootDir != p.RepoPath
 }

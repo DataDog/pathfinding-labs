@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/gcp"
 )
 
 // Environment represents an environment that can be selected
@@ -49,6 +50,12 @@ type EnvironmentPane struct {
 	derivedDevAccountID      string
 	derivedOpsAccountID      string
 	derivedAttackerAccountID string
+
+	// gcpAuthStatus holds the last-checked real GCP credential state.
+	// Checked asynchronously (shells out to gcloud) — see checkGCPAuthStatusCmd
+	// in model.go. Zero value renders as "checking...".
+	gcpAuthStatus        gcp.AuthStatus
+	gcpAuthStatusChecked bool
 }
 
 // NewEnvironmentPane creates a new environment pane
@@ -98,6 +105,33 @@ func (e *EnvironmentPane) SetDerivedAccountIDs(prod, dev, ops, attacker string) 
 	e.rebuildEnvironments()
 }
 
+// SetGCPAuthStatus updates the real GCP credential status shown in the
+// environment pane's Auth line.
+func (e *EnvironmentPane) SetGCPAuthStatus(status gcp.AuthStatus) {
+	e.gcpAuthStatus = status
+	e.gcpAuthStatusChecked = true
+	e.rebuildEnvironments()
+}
+
+// gcpAuthStatusLabel renders the environment pane's Auth line from the last
+// checked real GCP credential status.
+func (e *EnvironmentPane) gcpAuthStatusLabel() string {
+	if !e.gcpAuthStatusChecked {
+		return "checking..."
+	}
+	s := e.gcpAuthStatus
+	switch {
+	case s.OK():
+		return fmt.Sprintf("ADC ok (%s)", s.Account)
+	case s.ADCPresent && !s.CLIPresent:
+		return "ADC ok, CLI login missing"
+	case !s.ADCPresent && s.CLIPresent:
+		return fmt.Sprintf("CLI ok (%s), ADC missing", s.Account)
+	default:
+		return "not configured - run gcloud auth login --update-adc"
+	}
+}
+
 // rebuildEnvironments rebuilds the environments list based on current config
 func (e *EnvironmentPane) rebuildEnvironments() {
 	e.environments = nil
@@ -117,50 +151,63 @@ func (e *EnvironmentPane) rebuildEnvironments() {
 		return "" // Will show "Pending first deploy" in the UI
 	}
 
-	// Prod is always available
-	e.environments = append(e.environments, Environment{
-		Name:      "prod",
-		Label:     "Prod",
-		AccountID: getAccountID(e.derivedProdAccountID, ""),
-		Profile:   e.config.Active().AWS.Prod.Profile,
-		Enabled:   e.prodEnabled,
-		Deployed:  e.prodDeployed,
-	})
+	isGCP := e.config.Active().ActiveCloudOrDefault() == "gcp"
 
-	// Dev (if configured)
-	if e.config.Active().AWS.Dev.Profile != "" {
+	if isGCP {
+		// GCP: prod environment is always shown; dev/ops are not yet supported for GCP cross-project.
+		// The Auth line reflects real credential state, not a named profile.
+		gcpProd := e.config.Active().GCP.Prod
 		e.environments = append(e.environments, Environment{
-			Name:      "dev",
-			Label:     "Dev",
-			AccountID: getAccountID(e.derivedDevAccountID, ""),
-			Profile:   e.config.Active().AWS.Dev.Profile,
-			Enabled:   e.devEnabled,
-			Deployed:  e.devDeployed,
+			Name:      "prod",
+			Label:     "Prod",
+			AccountID: getAccountID(e.derivedProdAccountID, gcpProd.ProjectID),
+			Profile:   e.gcpAuthStatusLabel(),
+			Enabled:   e.prodEnabled,
+			Deployed:  e.prodDeployed,
 		})
-	}
+	} else {
+		// AWS: prod always shown; dev/ops/attacker shown when configured.
+		e.environments = append(e.environments, Environment{
+			Name:      "prod",
+			Label:     "Prod",
+			AccountID: getAccountID(e.derivedProdAccountID, ""),
+			Profile:   e.config.Active().AWS.Prod.Profile,
+			Enabled:   e.prodEnabled,
+			Deployed:  e.prodDeployed,
+		})
 
-	// Ops (if configured)
-	if e.config.Active().AWS.Ops.Profile != "" {
-		e.environments = append(e.environments, Environment{
-			Name:      "ops",
-			Label:     "Ops",
-			AccountID: getAccountID(e.derivedOpsAccountID, ""),
-			Profile:   e.config.Active().AWS.Ops.Profile,
-			Enabled:   e.opsEnabled,
-			Deployed:  e.opsDeployed,
-		})
-	}
+		if e.config.Active().AWS.Dev.Profile != "" {
+			e.environments = append(e.environments, Environment{
+				Name:      "dev",
+				Label:     "Dev",
+				AccountID: getAccountID(e.derivedDevAccountID, ""),
+				Profile:   e.config.Active().AWS.Dev.Profile,
+				Enabled:   e.devEnabled,
+				Deployed:  e.devDeployed,
+			})
+		}
 
-	// Attacker (if configured)
-	if e.config.Active().AWS.Attacker.Profile != "" {
-		e.environments = append(e.environments, Environment{
-			Name:      "attacker",
-			Label:     "Attacker",
-			AccountID: getAccountID(e.derivedAttackerAccountID, ""),
-			Profile:   e.config.Active().AWS.Attacker.Profile,
-			Enabled:   e.attackerEnabled,
-			Deployed:  e.attackerDeployed,
-		})
+		if e.config.Active().AWS.Ops.Profile != "" {
+			e.environments = append(e.environments, Environment{
+				Name:      "ops",
+				Label:     "Ops",
+				AccountID: getAccountID(e.derivedOpsAccountID, ""),
+				Profile:   e.config.Active().AWS.Ops.Profile,
+				Enabled:   e.opsEnabled,
+				Deployed:  e.opsDeployed,
+			})
+		}
+
+		if e.config.Active().AWS.Attacker.Profile != "" {
+			e.environments = append(e.environments, Environment{
+				Name:      "attacker",
+				Label:     "Attacker",
+				AccountID: getAccountID(e.derivedAttackerAccountID, ""),
+				Profile:   e.config.Active().AWS.Attacker.Profile,
+				Enabled:   e.attackerEnabled,
+				Deployed:  e.attackerDeployed,
+			})
+		}
 	}
 
 	// Ensure selected is within bounds
@@ -373,19 +420,27 @@ func (e *EnvironmentPane) renderEnvironment(env Environment, isSelected bool) st
 	dotSeparator := e.styles.EnvNotConfigured.Render(" · ")
 	sb.WriteString(fmt.Sprintf("%s%s %s%s%s\n", selectionPrefix, indicator, nameStyle.Render(env.Label), dotSeparator, statusStyle.Render(statusText)))
 
-	// Account ID line (formatted like profile line)
+	// Account/Project ID line
 	displayID := env.AccountID
 	if displayID == "" {
 		displayID = "(pending)"
 	} else if len(displayID) > 12 {
 		displayID = displayID[:12]
 	}
-	accountLabel := fmt.Sprintf("    Account Id: %s", displayID)
+	isGCP := e.config != nil && e.config.Active().ActiveCloudOrDefault() == "gcp"
+	idLabel := "Account Id"
+	if isGCP {
+		idLabel = "Project Id"
+	}
+	accountLabel := fmt.Sprintf("    %s: %s", idLabel, displayID)
 	sb.WriteString(e.styles.EnvNotConfigured.Render(accountLabel))
 	sb.WriteString("\n")
 
-	// Profile line
+	// Profile / credential line
 	profileLabel := fmt.Sprintf("    Profile: %s", env.Profile)
+	if isGCP {
+		profileLabel = fmt.Sprintf("    Auth: %s", env.Profile)
+	}
 	if len(profileLabel) > e.width-6 {
 		profileLabel = profileLabel[:e.width-9] + "..."
 	}

@@ -145,7 +145,7 @@ func runWorkspaceNew(cmd *cobra.Command, args []string) error {
 	// All workspaces share the same flag values (they come from the same upstream repo),
 	// so seeding at creation time means the new workspace never deploys flag{MISSING}.
 	activeWS := cfg.Active()
-	if activePaths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), activeWS.DevMode, activeWS.DevModePath); pathErr == nil {
+	if activePaths, pathErr := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), activeWS.ActiveCloudOrDefault(), activeWS.DevMode, activeWS.DevModePath); pathErr == nil {
 		candidate := filepath.Join(activePaths.TerraformDir, DefaultFlagFileName)
 		if _, statErr := os.Stat(candidate); statErr == nil {
 			_ = newWS.LoadFlagsFromFile(candidate)
@@ -194,7 +194,7 @@ func runWorkspaceSwitch(cmd *cobra.Command, args []string) error {
 
 	// Warn if current workspace has a terraform lock
 	currentWS := cfg.Active()
-	if currentPaths, pathErr := repo.GetPathsForWorkspace(cfg.ActiveName(), currentWS.DevMode, currentWS.DevModePath); pathErr == nil {
+	if currentPaths, pathErr := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), currentWS.ActiveCloudOrDefault(), currentWS.DevMode, currentWS.DevModePath); pathErr == nil {
 		lockFile := currentPaths.TerraformDir + "/.terraform.tfstate.lock.info"
 		if _, statErr := os.Stat(lockFile); statErr == nil {
 			yellow := color.New(color.FgYellow).SprintFunc()
@@ -245,7 +245,7 @@ func runWorkspaceDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	ws := cfg.Workspaces[name]
-	paths, pathErr := repo.GetPathsForWorkspace(name, ws.DevMode, ws.DevModePath)
+	paths, pathErr := repo.GetPathsForWorkspaceAndCloud(name, ws.ActiveCloudOrDefault(), ws.DevMode, ws.DevModePath)
 	if pathErr == nil {
 		stateFile := paths.TerraformDir + "/terraform.tfstate"
 		if info, statErr := os.Stat(stateFile); statErr == nil && info.Size() > 2 {

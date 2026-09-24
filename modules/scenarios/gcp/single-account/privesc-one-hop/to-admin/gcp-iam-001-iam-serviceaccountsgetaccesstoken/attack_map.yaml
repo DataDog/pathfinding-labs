@@ -1,0 +1,90 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that impersonates
+        this service account, exploiting a vulnerable workload running with this
+        service account attached, discovering a service account key in a public GitHub
+        repository, or being granted `iam.serviceAccounts.getAccessToken` on it
+        directly for an unrelated automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no project-level roles of its own -- `sts:GetCallerIdentity`
+        equivalents and `resourcemanager.projects.get` confirm you have no direct
+        administrative access. However, this service account has been granted
+        `iam.serviceAccounts.getAccessToken` on another service account in the
+        project.
+
+    - id: target-sa
+      label: "Privileged Service Account"
+      type: principal
+      subType: service-account
+      isAdmin: true
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com"
+      description: >
+        This service account holds `roles/editor` on the project -- broad,
+        near-administrative permissions covering the majority of GCP resource types
+        -- plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF
+        flag secret (`roles/editor` deliberately excludes secret payload access).
+        Any principal that can impersonate this service account (by minting a
+        short-lived OAuth access token via `generateAccessToken`, authorized by the
+        `iam.serviceAccounts.getAccessToken` permission) inherits both of those
+        grants.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-001-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Retrieving it requires `secretmanager.versions.access` on the
+        secret -- `roles/editor` does NOT grant this, so the privileged service
+        account holds an explicit `roles/secretmanager.secretAccessor` binding on
+        this secret. Your goal is to read this secret's value using the
+        impersonation token you obtained from the target service account.
+
+  edges:
+    - from: starting-principal
+      to: target-sa
+      label: "iam.serviceAccounts.getAccessToken"
+      description: >
+        The starting service account holds `iam.serviceAccounts.getAccessToken` on
+        the privileged target service account, granted here via a minimal custom
+        role (the same capability the predefined `roles/iam.serviceAccountTokenCreator`
+        role bundles, scoped down to just this one permission). This permission
+        allows minting a short-lived OAuth 2.0 access token that authenticates as the
+        target service account, without ever needing a long-lived key for it. Once
+        impersonating, every subsequent API call is authorized as the target service
+        account and inherits its project `roles/editor` permissions.
+      hints:
+        - "iam.serviceAccounts.getAccessToken on another service account lets you mint a short-lived access token that authenticates as that account -- no key file needed. It's the permission behind the predefined roles/iam.serviceAccountTokenCreator role, but can also be granted through a custom role."
+        - "gcloud has a built-in impersonation flag that handles the token exchange for you; you don't need to call the generateAccessToken API directly for most workflows."
+        - "Browse to https://pathfinding.cloud/paths/gcp-iam-001 for technique details."
+      commands:
+        - description: "Mint an impersonated access token for the target service account"
+          command: "gcloud auth print-access-token --impersonate-service-account=pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com"
+        - description: "Confirm the active identity is now the target service account"
+          command: "gcloud auth list --filter=status:ACTIVE --format='value(account)' --impersonate-service-account=pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com"
+
+    - from: target-sa
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the impersonated access token for the target service account, read the
+        flag from Secret Manager. The target service account holds an explicit
+        `roles/secretmanager.secretAccessor` grant on this specific secret
+        (`roles/editor` alone does not grant `secretmanager.versions.access`).
+      hints: []
+      commands:
+        - description: "Retrieve the CTF flag while impersonating the target service account"
+          command: "gcloud secrets versions access latest --secret=pl-gcp-iam-001-flag --impersonate-service-account=pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com"

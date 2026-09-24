@@ -63,9 +63,17 @@ func (d *DetailsPane) ClearCredentials() {
 	d.creds = nil
 }
 
-// HasCreds returns true when the scenario is deployed and credentials are available.
+// HasCreds returns true when the scenario is deployed and has usable starting credentials.
+// For AWS scenarios this requires a non-empty access key ID.
+// For GCP scenarios, impersonation is credential-free so deployed == ready-to-demo.
 func (d *DetailsPane) HasCreds() bool {
-	return d.deployed && d.creds != nil && d.creds.AccessKeyID != ""
+	if !d.deployed {
+		return false
+	}
+	if d.scenario != nil && d.scenario.Cloud == "gcp" {
+		return true
+	}
+	return d.creds != nil && d.creds.AccessKeyID != ""
 }
 
 // Creds returns the current credentials (may be nil).
@@ -340,18 +348,26 @@ func (d *DetailsPane) buildContent() []string {
 		}
 	}
 
-	// Start Learning — always shown, content depends on deployment state
+	// Start Learning — always shown, content depends on deployment state.
+	// GCP scenarios use impersonation instead of static keys, so we check
+	// d.deployed directly rather than requiring d.creds.AccessKeyID != "".
 	lines = append(lines, "")
 	lines = append(lines, sectionStyle.Render("Start Learning (Lab key bindings)"))
 
 	key := d.styles.CredentialKey // orange, same as cost indicators
 	desc := d.styles.HelpDesc
 
-	if d.deployed && d.creds != nil && d.creds.AccessKeyID != "" {
-		lines = append(lines, "  "+key.Render("[x]    ")+"  "+desc.Render("spawn shell with starting credentials"))
-		lines = append(lines, "       "+d.styles.ScenarioDisabled.Render("(type exit to return to TUI)"))
-		lines = append(lines, "  "+key.Render("[y]    ")+"  "+desc.Render("copy credentials as environment variables"))
-		lines = append(lines, "  "+key.Render("[Y]    ")+"  "+desc.Render("copy credentials as ~/.aws/credentials block"))
+	isGCP := d.scenario != nil && d.scenario.Cloud == "gcp"
+	hasAWSCreds := d.creds != nil && d.creds.AccessKeyID != ""
+	showLabActions := d.deployed && (hasAWSCreds || isGCP)
+
+	if showLabActions {
+		if hasAWSCreds {
+			lines = append(lines, "  "+key.Render("[x]    ")+"  "+desc.Render("spawn shell with starting credentials"))
+			lines = append(lines, "       "+d.styles.ScenarioDisabled.Render("(type exit to return to TUI)"))
+			lines = append(lines, "  "+key.Render("[y]    ")+"  "+desc.Render("copy credentials as environment variables"))
+			lines = append(lines, "  "+key.Render("[Y]    ")+"  "+desc.Render("copy credentials as ~/.aws/credentials block"))
+		}
 		if d.scenario.HasDemo() {
 			lines = append(lines, "  "+key.Render("[r]    ")+"  "+desc.Render("run automated attack demo end to end"))
 		}

@@ -627,6 +627,8 @@ CTF scenarios omit `demo_attack.sh` (finding the path is the challenge) and add 
    - Cross-account dev-to-prod: `modules/scenarios/cross-account/dev-to-prod/[one-hop|multi-hop]/scenario-name/`
    - Cross-account ops-to-prod: `modules/scenarios/cross-account/ops-to-prod/one-hop/scenario-name/`
 
+   **For GCP scenarios**: prefix any of the above with `gcp/`, e.g. `modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/scenario-name/`. Cloud is derived from this path prefix — there is no `cloud:` field in `scenario.yaml`. GCP scenarios target a separate Terraform root (`gcp/main.tf`, `gcp/variables.tf`, `gcp/outputs.tf`, `gcp/terraform.tfvars`) rather than the root files described in steps 2-11 below, and use `google.prod`/`google.dev`/`google.operations` provider aliases in place of `aws.prod`/`aws.dev`/`aws.operations`. GCP has no equivalent of the AWS `force_destroy`/`force_detach_policies` mandatory flags — confirmed empirically on gcp-iam-001 (2026-09-21): `google_service_account` has no such argument and `terraform destroy` completes cleanly for impersonation-based scenarios. For scenarios where `demo_attack.sh` creates out-of-band IAM bindings via `gcloud`, `cleanup_attack.sh` is the only line of defense (same as AWS "cleanup first" principle, but without a safety-net flag). See `.claude/agents/scenario-validator-gcp.md` for the full guidance. Use the `/create-scenario` orchestrator (`.claude/commands/workflows/scenario-orchestrator.md`), which asks for the target cloud up front and routes to the `-gcp` agent variants automatically, rather than following steps 2-11 by hand.
+
 2. **Implement Terraform resources** in `main.tf`:
    ```hcl
    # For single-account (prod) scenarios

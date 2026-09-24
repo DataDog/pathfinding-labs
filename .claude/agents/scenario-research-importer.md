@@ -105,7 +105,7 @@ If classification is ambiguous (e.g., the principal count could be 1 or 2 depend
 
 ## Stage 2 — Translate Terraform
 
-Do the rename/strip pass yourself; the rules are mechanical. Then hand the result to `scenario-terraform-builder` for file-splitting and final polishing.
+Do the rename/strip pass yourself; the rules are mechanical. Then hand the result to `scenario-terraform-builder-aws` for file-splitting and final polishing. (`pathfinding-research-agent` only discovers AWS IAM privesc paths, so this always routes to the `-aws` variant.)
 
 **Rename and strip table:**
 
@@ -130,7 +130,7 @@ Do the rename/strip pass yourself; the rules are mechanical. Then hand the resul
 - Every `aws_iam_role` MUST set `force_detach_policies = true`.
 - Every resource MUST set `provider = aws.prod`.
 
-**Delegation:** After your rename pass, write the translated TF to a scratch location and invoke `scenario-terraform-builder` via the Task tool. Provide it the final `scenario.yaml` (Stage 3 output) and the translated TF; instruct it to split into `main.tf` / `variables.tf` / `outputs.tf`, format, and audit naming.
+**Delegation:** After your rename pass, write the translated TF to a scratch location and invoke `scenario-terraform-builder-aws` via the Task tool. Provide it the final `scenario.yaml` (Stage 3 output) and the translated TF; instruct it to split into `main.tf` / `variables.tf` / `outputs.tf`, format, and audit naming.
 
 ## Stage 3 — Generate `scenario.yaml`
 
@@ -172,7 +172,7 @@ Build the YAML directly (do not call `scenario-preconditions-backfiller` — the
 
 ## Stage 4 — Generate `demo_attack.sh` and `cleanup_attack.sh`
 
-Delegate to `scenario-demo-creator` via the Task tool. Provide it the following inputs as a structured brief:
+Delegate to `scenario-demo-creator-aws` via the Task tool. Provide it the following inputs as a structured brief:
 
 1. The new `scenario.yaml` (Stage 3 output)
 2. The translated `main.tf` (Stage 2 output)
@@ -254,7 +254,7 @@ Use `Edit` (not `Write`) for these three root files — never overwrite the whol
 
 ## Stage 6 — Validate
 
-1. Invoke `scenario-validator` via Task on the new scenario directory. Expect zero blocking findings. If it reports issues, surface them to the user and stop — do not auto-fix.
+1. Invoke `scenario-validator-aws` via Task on the new scenario directory. Expect zero blocking findings. If it reports issues, surface them to the user and stop — do not auto-fix.
 2. Suggest the user run `/test-scenarios <id>-<target>` to drive the full `enable → apply → demo → cleanup → disable → apply` cycle. Do not invoke `/test-scenarios` yourself (it's expensive and requires AWS credentials; let the user opt in).
 
 ## Final Report

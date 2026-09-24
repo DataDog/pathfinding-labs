@@ -45,13 +45,19 @@ Work through the three sources in order. Use the first source that yields usable
 
 **When to use**: `pathfinding-cloud-id` is present in scenario.yaml.
 
-**How to find the file**:
+**How to find the file (AWS IDs — bare, e.g. `lambda-003`):**
 ```
 {project_root}/../pathfinding.cloud/data/paths/{service}/{pathfinding-cloud-id}.yaml
 ```
 Where `{service}` is the first segment of the ID (e.g., `lambda-003` → service is `lambda`).
 
-Try that path. If the file doesn't exist, try globbing:
+**How to find the file (GCP IDs — cloud-prefixed, e.g. `gcp-iam-002`):**
+```
+{project_root}/../pathfinding.cloud/data/paths/gcp/{service}/{pathfinding-cloud-id}.yaml
+```
+Where `{service}` is the segment after the `gcp-` prefix (e.g., `gcp-iam-002` → service is `iam`).
+
+Try the appropriate path for the ID's format. If the file doesn't exist, try globbing:
 ```
 {project_root}/../pathfinding.cloud/data/paths/**/{pathfinding-cloud-id}.yaml
 ```
@@ -192,7 +198,7 @@ Use one of four types:
 
 | Type | When to use |
 |------|-------------|
-| `aws-resource` | An AWS resource of a specific type must already exist with certain properties. Identify the resource type as a clean noun phrase (e.g., `"Lambda Function"`, `"CodeBuild Project"`, `"IAM Role"`, `"EC2 Instance"`, `"S3 Bucket"`, `"SageMaker Notebook Instance"`). |
+| `aws-resource` | A cloud resource of a specific type must already exist with certain properties. Identify the resource type as a clean noun phrase (e.g., `"Lambda Function"`, `"CodeBuild Project"`, `"IAM Role"`, `"EC2 Instance"`, `"S3 Bucket"`, `"SageMaker Notebook Instance"` on AWS; `"Service Account"`, `"Cloud Function"`, `"GCS Bucket"` on GCP). The type name `aws-resource` is kept as-is for GCP scenarios too, for the same reason `attack_map.yaml`'s `arn` field keeps its name on GCP — avoids a breaking rename across every existing scenario.yaml for a cosmetic change. |
 | `configuration` | An AWS service configuration setting or default behavior that must hold (not tied to a specific resource's existence, or tied to how an existing resource is configured rather than that it exists). |
 | `network` | A network-level condition: resource must be publicly reachable, VPC endpoint must exist, security group must allow specific traffic. |
 | `external` | A condition outside AWS infrastructure: valid credentials obtained via phishing, access to source code, compromised CI/CD pipeline credentials. |

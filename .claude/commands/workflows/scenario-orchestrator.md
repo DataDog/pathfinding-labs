@@ -15,6 +15,24 @@ Your role is to gather complete requirements from the user so that you can creat
 
 You don't accept any command line arguments. Instead, use a wizard-style flow to gather requirements step by step.
 
+### Step 0: Cloud Provider Selection
+
+Before anything else, ask which cloud this scenario targets:
+
+```
+Which cloud provider is this scenario for?
+
+1. **AWS** - modules/scenarios/single-account, cross-account, tool-testing, ctf, attack-simulation
+2. **GCP** - modules/scenarios/gcp/...
+```
+
+The selected cloud is derived-and-fixed for the rest of the flow — it is never a field in `scenario.yaml`, exactly like pathfinding.cloud infers cloud from a path's directory rather than a redundant schema field. Every directory path, resource-naming template, and sub-agent delegated to below branches on this single choice:
+
+- **AWS** → everything in this document that doesn't explicitly say "GCP" applies as-is (this is the original, default behavior — nothing about the AWS path changes).
+- **GCP** → target directory is `modules/scenarios/gcp/...` (mirroring the AWS taxonomy one level deeper), root Terraform files are `gcp/main.tf`/`gcp/variables.tf`/`gcp/outputs.tf`, and delegation routes to the `-gcp` agent variants (`scenario-terraform-builder-gcp`, `scenario-demo-creator-gcp`, `scenario-validator-gcp`) instead of the `-aws` variants.
+
+**Research Hypothesis Input Mode is AWS-only** — `pathfinding-research-agent` only discovers AWS IAM privesc paths, so if the user selects GCP, skip straight past that mode's entry point.
+
 ### Step 1: Category Selection
 
 First, ask the user to select a category. Present these options:
@@ -189,9 +207,9 @@ RESEARCH CONTEXT (validated pathfinding-research-agent hypothesis):
 
 **Agent-specific reading guidance (append to each agent's brief):**
 
-- **scenario-terraform-builder:** Read `{source_dir}/terraform/main.tf` and `{source_dir}/REPORT.md`. Use the research TF as a proof-of-concept reference showing what resources and permissions the attack needs — perform a full rebuild using labs conventions (provider aliases, naming, flag SSM parameter, force_destroy/force_detach_policies). Do not mechanically rename; rebuild correctly from scratch.
+- **scenario-terraform-builder-aws:** (Research Hypothesis Input Mode is AWS-only — `pathfinding-research-agent` only discovers AWS IAM privesc paths, so this always routes to the `-aws` variant.) Read `{source_dir}/terraform/main.tf` and `{source_dir}/REPORT.md`. Use the research TF as a proof-of-concept reference showing what resources and permissions the attack needs — perform a full rebuild using labs conventions (provider aliases, naming, flag SSM parameter, force_destroy/force_detach_policies). Do not mechanically rename; rebuild correctly from scratch.
 
-- **scenario-demo-creator:** Read `{source_dir}/demo_attack.sh` (primary source) and `{source_dir}/cleanup_attack.sh`. The research demo shows the validated attack sequence — preserve every `sleep` value that differs from the labs default of 15s, every region re-export after credential switches, and every `mktemp`/exit-trap for resource cleanup on failure. Rewrite the scaffolding (credential retrieval from terraform outputs, helper function calls, removal of `=== STEP N ===` markers) to labs conventions while preserving the attack content and timing.
+- **scenario-demo-creator-aws:** Read `{source_dir}/demo_attack.sh` (primary source) and `{source_dir}/cleanup_attack.sh`. The research demo shows the validated attack sequence — preserve every `sleep` value that differs from the labs default of 15s, every region re-export after credential switches, and every `mktemp`/exit-trap for resource cleanup on failure. Rewrite the scaffolding (credential retrieval from terraform outputs, helper function calls, removal of `=== STEP N ===` markers) to labs conventions while preserving the attack content and timing.
 
 - **scenario-readme-creator:** Read `{source_dir}/REPORT.md` for exploitation_steps, proof_methodology, and references. Read `{source_dir}/demo_attack.sh` for the ordering of attack steps to reflect accurately in solution.md.
 
@@ -500,6 +518,8 @@ Examples with path IDs:
 **For Attack Simulation scenarios:**
 - Attack Simulation: `modules/scenarios/attack-simulation/{scenario-name}/`
 
+**For GCP (any category):** prefix every AWS path above with `gcp/`, e.g. `modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/{path-id}-{scenario-name}/`. Same taxonomy, one directory level deeper. Use `gcp-{service}-{NNN}` path IDs (e.g. `gcp-iam-002`) instead of bare AWS IDs.
+
 ### 2. Resource Naming Convention
 
 **For self-escalation and one-hop scenarios (use pathfinding.cloud IDs):**
@@ -540,9 +560,13 @@ Examples:
 - CTF: `enable_ctf_{scenario_name}` (e.g., `enable_ctf_ai_chatbot_to_admin`)
 - Attack Simulation: `enable_attack_simulation_{scenario_name}` (e.g., `enable_attack_simulation_sysdig_8_minutes_to_admin`)
 
+**For GCP:** same patterns, scoped under `gcp/variables.tf` — no redundant `gcp_` prefix beyond the `gcp-` path-ID prefix already carried by the ID itself. Name the `{technique}` segment after the specific IAM **permission** the vulnerable grant checks (mirroring the AWS convention above, e.g. `iam_createaccesskey`), never after a predefined role name — a predefined role (like `roles/iam.serviceAccountTokenCreator`) usually bundles several permissions, only one of which the attack path actually needs, and the vulnerable grant itself must be a minimal custom role scoped to that one permission (see `scenario-terraform-builder-gcp`), not the predefined role. Example: `enable_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken` (permission `iam.serviceAccounts.getAccessToken`) — not `..._serviceaccounttokencreator` (the role name; found and corrected on gcp-iam-001, 2026-09-23).
+
 ### 4. Module Naming
 
 Same pattern as variables, just remove the `enable_` prefix. Example: `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey` → `single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
+
+**For GCP:** same rule, scoped under `gcp/main.tf`.
 
 ### 5. Attack Path Design Rules
 
@@ -591,6 +615,7 @@ permissions:
 
 The first entry in `attack_path.principals` should be a descriptive string (URL or plain description) rather than an IAM ARN. The `- **Start:**` line in the README uses the public URL or a plain description -- never a fabricated ARN like `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`.
 
+**For GCP:** the analogous pattern uses `google_service_account` + impersonation instead of IAM users/roles. Create a starting service account for the scenario: `pl-{env}-{path-id}-to-{target}-starting-sa` (truncate the `{purpose}` segment first if the full name exceeds GCP's 30-character `account_id` limit — see `scenario-terraform-builder-gcp`). When the escalation is impersonation-based, grant the starting SA a **minimal custom role scoped to exactly the permission the attack needs** (e.g. `iam.serviceAccounts.getAccessToken`) on a target SA — never the predefined `roles/iam.serviceAccountTokenCreator`, which bundles several permissions the attack doesn't use (see `scenario-terraform-builder-gcp` for the required custom-role pattern; the predefined role is reserved for the separate, legitimate deployer/demo-mechanics grant, not the modeled vulnerability): `pl-prod-gcp-iam-002-to-admin-starting-sa` → [minimal custom role granting the required permission] on `pl-prod-gcp-iam-002-to-admin-target-sa` → mints a token as the target SA → target SA holds an elevated project role → admin access. There is no GCP equivalent of the AWS user-vs-role branching above — GCP privesc paths are service-account-to-service-account by default. Anonymous/public-start scenarios follow the same modeling as AWS, substituting a GCP-native public entry point (e.g. an unauthenticated Cloud Run/Cloud Function URL) for the public Lambda URL example.
 
 ### 6. Attack Path Diagram Structure
 
@@ -612,9 +637,23 @@ pl-prod-{scenario-shorthand}-starting-user
   → {target}
 ```
 
+**For GCP (self-escalation/one-hop, with path IDs):**
+```
+pl-prod-{path-id}-to-{target}-starting-sa
+  → [{required permission, via minimal custom role} → generateAccessToken]
+  → pl-prod-{path-id}-to-{target}-target-sa
+  → [{elevated project role}]
+  → {target}
+```
+Label the first arrow with the actual IAM **permission** name the custom role grants (e.g. `iam.serviceAccounts.getAccessToken`), not a predefined role name — double-check it's the permission, not the API method name it superficially resembles (see the `getAccessToken`/`generateAccessToken` gotcha in `scenario-terraform-builder-gcp`).
+
 ### 7. Provider Configuration
 - Single account (prod only): `provider = aws.prod`
 - Cross-account: Specify which providers (aws.dev, aws.prod, aws.operations)
+
+**For GCP:**
+- Single project (prod only): `provider = google.prod`
+- Cross-project: Specify which providers (`google.dev`, `google.prod`, `google.operations`)
 
 **Attacker-Controlled Infrastructure Pattern:**
 
@@ -631,6 +670,8 @@ Some scenarios include resources the attacker owns — not victim misconfigurati
 5. **Use attacker credentials in demo scripts** when the script interacts with attacker-controlled resources — use `attacker_admin_user_access_key_id` / `attacker_admin_user_secret_access_key` Terraform outputs, falling back to prod admin if no attacker account is configured.
 
 When no separate attacker account is configured, `aws.attacker` falls back to prod. This is acceptable as a demo convenience — the narrative still applies.
+
+**For GCP:** the same pattern applies with `google.attacker` (falling back to `google.prod` when no separate attacker project is configured) — attacker-controlled GCS buckets/Cloud Functions used as exfiltration or C2 infrastructure follow identical rules (explicit-principal IAM bindings, `isAttackerControlled: true` tagging, no `allUsers`/`allAuthenticatedUsers` bindings on attacker infrastructure).
 
 ### 8. Validate with user
 
@@ -749,15 +790,18 @@ TYPE BRIEF:
 
 For each sub-agent, pass the full contents of the scenario.yaml, the computed type_brief, AND the computed flag_brief (unless the scenario is tool-testing, in which case include the explicit "No CTF flag" note instead).
 
-1. **scenario-terraform-builder** - Creates all Terraform files
+Two of the five agents are forked per cloud (per Step 0's selection); the other three are shared and branch inline on the target directory:
+
+1. **scenario-terraform-builder-{cloud}** (`scenario-terraform-builder-aws` or `scenario-terraform-builder-gcp`) - Creates all Terraform files
    - Pass: scenario.yaml, type_brief, directory path, provider config.
-   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf.
+   - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in root outputs.tf (or `gcp/outputs.tf`).
 
 2. **scenario-readme-creator** - Creates README.md, attack_map.yaml, solution.md
    - Pass: scenario.yaml, type_brief, attack path, principals, MITRE mapping, detection guidance.
+   - Shared across clouds — branches inline on resource-identifier terminology (ARN vs. GCP full resource name).
 
-3. **scenario-demo-creator** - Creates demo_attack.sh and cleanup_attack.sh
-   - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI commands needed.
+3. **scenario-demo-creator-{cloud}** (`scenario-demo-creator-aws` or `scenario-demo-creator-gcp`) - Creates demo_attack.sh and cleanup_attack.sh
+   - Pass: scenario.yaml, type_brief, attack path, resource names, AWS CLI/`gcloud` commands needed.
    - **Slow-provisioning resources**: If `scenario.yaml` has `demo_timeout_seconds` set (> default 300), explicitly tell the demo-creator to include the EXIT/INT/TERM trap pattern that best-effort deletes the provisioned resource on abnormal exit. Canonical reference: `modules/scenarios/single-account/privesc-one-hop/to-admin/glue-001-iam-passrole+glue-createdevendpoint/demo_attack.sh` (search for `_glue_demo_exit_handler`). The cleanup script must initiate deletion and verify the API accepted the request, but MUST NOT block waiting for full async deletion.
    - **CRITICAL Standards**:
      - Demo scripts MUST retrieve credentials from grouped Terraform outputs using: `terraform output -json | jq`
@@ -766,13 +810,14 @@ For each sub-agent, pass the full contents of the scenario.yaml, the computed ty
      - Cleanup scripts MUST NOT use AWS_PROFILE_FLAG variable
 
 4. **project-updator** - Updates project-level integration files
-   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path.
-   - **CRITICAL**: The project-updator MUST create a grouped output in root outputs.tf that bundles all the scenario module's individual outputs together.
+   - Pass: scenario.yaml, type_brief, variable names, module names, scenario description, directory path, target cloud.
+   - Shared across clouds — edits root `main.tf`/`variables.tf`/`outputs.tf` for AWS, `gcp/main.tf`/`gcp/variables.tf`/`gcp/outputs.tf` for GCP.
+   - **CRITICAL**: The project-updator MUST create a grouped output in the appropriate root outputs.tf that bundles all the scenario module's individual outputs together.
 
-5. **scenario-cost-estimator** - Calculates accurate AWS cost estimates
+5. **scenario-cost-estimator** - Calculates accurate cloud cost estimates
    - Pass: scenario directory path
-   - Runs infracost on the Terraform files
-   - Researches pricing for unsupported resources (Glue, SageMaker, etc.)
+   - Shared across clouds — runs infracost on the Terraform files (infracost supports the `google` provider)
+   - Researches pricing for unsupported resources (Glue, SageMaker, etc. for AWS; unsupported GCP resources as they come up)
    - Updates scenario.yaml with accurate `cost_estimate` value (format: `"$X/mo"`)
    - **Note**: Set a placeholder cost_estimate of `"$0/mo"` in scenario.yaml initially; this agent will update it with the accurate value.
 
@@ -785,7 +830,7 @@ When delegating, provide a comprehensive prompt to each agent with ALL the infor
 
 1. Wait for all 5 parallel agents to complete
 2. Review the outputs from each agent
-3. Launch the **scenario-validator** agent to:
+3. Launch the **scenario-validator-{cloud}** agent (`scenario-validator-aws` or `scenario-validator-gcp`, matching Step 0's selection) to:
    - Validate consistency across all files
    - Ensure demo scripts match the Terraform resources
    - Verify README accurately reflects the attack path
@@ -804,7 +849,12 @@ When delegating, provide a comprehensive prompt to each agent with ALL the infor
 User: "I want to create a scenario for iam:PutGroupPolicy privilege escalation"
 
 Orchestrator:
-1. "I'll help create that scenario. Let me ask a few questions:
+1. "Which cloud provider is this scenario for — AWS or GCP?"
+
+User: "AWS"
+
+Orchestrator:
+2. "I'll help create that scenario. Let me ask a few questions:
    - Is this self-escalation (modifying own permissions), one-hop, or multi-hop?
    - Does it escalate to admin access or S3 bucket access?
    - What is the complete attack path?
@@ -813,7 +863,7 @@ Orchestrator:
 User provides details (e.g., self-escalation, to-admin, path ID is iam-011)...
 
 Orchestrator:
-2. "Perfect! I have everything needed. Here's what I'm creating:
+3. "Perfect! I have everything needed. Here's what I'm creating:
    - Category: Privilege Escalation
    - Sub-Category: self-escalation
    - Path Type: self-escalation
@@ -824,18 +874,18 @@ Orchestrator:
 
    I'm now delegating to 5 specialized agents to build this concurrently..."
 
-3. Launches 5 agents in parallel with comprehensive prompts:
-   - scenario-terraform-builder
+4. Launches 5 agents in parallel with comprehensive prompts:
+   - scenario-terraform-builder-aws
    - scenario-readme-creator
-   - scenario-demo-creator
+   - scenario-demo-creator-aws
    - project-updator
    - scenario-cost-estimator
 
-4. Waits for completion
+5. Waits for completion
 
-5. Launches scenario-validator to ensure consistency and verify cost estimate
+6. Launches scenario-validator-aws to ensure consistency and verify cost estimate
 
-6. Reports back to user with summary, cost estimate, and next steps
+7. Reports back to user with summary, cost estimate, and next steps
 
 ## Success Criteria
 

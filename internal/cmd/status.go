@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/gcp"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
 )
@@ -92,7 +93,24 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if cfg != nil {
+	isGCP := cfg != nil && cfg.Active().ActiveCloudOrDefault() == "gcp"
+
+	if cfg != nil && isGCP {
+		printEnvStatus("prod", cfg.Active().GCP.Prod.ProjectID)
+
+		authStatus := gcp.CheckAuthStatus()
+		fmt.Println()
+		switch {
+		case authStatus.OK():
+			fmt.Printf("  %s %-12s %s\n", green("*"), "Auth:", fmt.Sprintf("ADC ok (%s)", authStatus.Account))
+		case authStatus.ADCPresent && !authStatus.CLIPresent:
+			fmt.Printf("  %s %-12s %s\n", yellow("!"), "Auth:", "ADC ok, gcloud CLI login missing")
+		case !authStatus.ADCPresent && authStatus.CLIPresent:
+			fmt.Printf("  %s %-12s %s\n", yellow("!"), "Auth:", fmt.Sprintf("CLI ok (%s), ADC missing", authStatus.Account))
+		default:
+			fmt.Printf("  %s %-12s %s\n", yellow("!"), "Auth:", "not configured - run gcloud auth login --update-adc")
+		}
+	} else if cfg != nil {
 		printEnvStatus("prod", cfg.Active().AWS.Prod.Profile)
 		printEnvStatus("dev", cfg.Active().AWS.Dev.Profile)
 		printEnvStatus("ops", cfg.Active().AWS.Ops.Profile)
