@@ -164,17 +164,33 @@ resource "google_project_iam_custom_role" "cf_update_minimal" {
   project     = var.project_id
   role_id     = "gcp_cloudfunctions_002_cf_update_min"
   title       = "Pathfinding Labs - Minimal Cloud Functions Update"
-  description = "Permissions to update an existing 2nd-gen Cloud Function's code and invoke it. Core: functions.update, sourceCodeSet, run.routes.invoke. CLI mechanics: functions.get, operations.get, projects.get."
+  description = "Permissions to update an existing 2nd-gen Cloud Function's code and invoke it. Core: functions.update, sourceCodeSet, run.routes.invoke. CLI mechanics: functions.get, operations.get, projects.get, builds.get, getIamPolicy."
   permissions = [
-    # Required — demo fails without these
+    # Core attack — required at the raw API level regardless of tooling
     "cloudfunctions.functions.update",
     "cloudfunctions.functions.sourceCodeSet",
     "run.routes.invoke",
-    "cloudfunctions.functions.get",
 
-    # Helpful — gcloud CLI mechanics; demo succeeds without these
+    # gcloud CLI mechanics — not needed with raw API, but required by gcloud
+    # functions deploy and gcloud functions describe:
+    #   cloudfunctions.functions.get     — gcloud reads current config before update
+    #   cloudfunctions.operations.get    — gcloud polls the update LRO
+    #   resourcemanager.projects.get     — gcloud preflight call on every command
+    #   cloudbuild.builds.get            — gcloud's GetDefaultServiceAccount preflight
+    #                                      on Cloud Build API (determines default build SA)
+    #   resourcemanager.projects.getIamPolicy — gcloud validates IAM policy as part of
+    #                                           the deploy flow
+    #   run.services.getIamPolicy        — gcloud reads the Cloud Run service IAM policy
+    #                                      post-deploy to verify invocation settings
+    #   run.services.setIamPolicy        — gcloud sets the Cloud Run service IAM policy
+    #                                      to enforce --no-allow-unauthenticated
+    "cloudfunctions.functions.get",
     "cloudfunctions.operations.get",
     "resourcemanager.projects.get",
+    "cloudbuild.builds.get",
+    "resourcemanager.projects.getIamPolicy",
+    "run.services.getIamPolicy",
+    "run.services.setIamPolicy",
   ]
 }
 
@@ -292,12 +308,6 @@ resource "google_cloudfunctions2_function" "victim" {
 
     # target_sa is used as the build SA so Cloud Build inherits editor access
     # to Artifact Registry, GCS, and the build environment without extra grants.
-    # The demo uses the raw Cloud Functions v2 API (not gcloud) because gcloud
-    # functions deploy makes an extra preflight call to Cloud Build's
-    # GetDefaultServiceAccount endpoint that starting_sa is not granted. The raw
-    # PATCH API checks actAs on the existing build SA (target_sa) but skips the
-    # Cloud Build SA lookup — so starting_sa's roles/iam.serviceAccountUser on
-    # target_sa is the only actAs grant needed.
     service_account = "projects/${var.project_id}/serviceAccounts/${google_service_account.target_sa.email}"
   }
 
