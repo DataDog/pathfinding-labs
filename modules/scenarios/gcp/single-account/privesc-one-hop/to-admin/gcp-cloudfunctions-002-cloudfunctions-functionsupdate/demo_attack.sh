@@ -494,7 +494,7 @@ if $USE_GCLOUD; then
     echo ""
     echo "  These are included in starting_sa's role by Terraform (labeled as gcloud mechanics)."
     echo "  To see the attack with only the true minimum permissions, run:"
-    echo -e "  ${CYAN}\$ $0 --api-only${NC}"
+    echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi
 
 echo -e "\n${YELLOW}To clean up:${NC} ./cleanup_attack.sh"
