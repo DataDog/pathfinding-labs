@@ -148,16 +148,70 @@ cd {scenario_dir} && bash cleanup_attack.sh 2>&1
 
 ## Output
 
+## Phase 3: gcloud-Mechanic Sub-Classification (when applicable)
+
+After Phase 2, if any `HELPFUL` permissions were found AND the demo script's exploit step uses a `gcloud` subcommand (e.g., `gcloud functions deploy`, `gcloud run services update`), run this additional sub-classification to distinguish **gcloud-mechanic** helpers (gcloud preflight/polling only) from **practical** helpers (recon/verification conveniences).
+
+### 3.1 — Check if dual-mode is implemented
+
+```bash
+grep -c 'USE_GCLOUD\|--api-only' {scenario_dir}/demo_attack.sh
+```
+
+If the demo script already has `--api-only` mode (output ≥ 2), skip to 3.3. If not, the `scenario-demo-creator-gcp` agent must add dual-mode first — halt and report.
+
+### 3.2 — Identify candidate gcloud-mechanic permissions
+
+For each HELPFUL permission, check whether it's a known gcloud preflight/polling pattern:
+
+| Permission | gcloud mechanic? | Why |
+|---|---|---|
+| `cloudfunctions.functions.get` | yes | gcloud reads current config before every deploy |
+| `cloudfunctions.operations.get` | yes | gcloud polls the update LRO (no `--async` for gen2) |
+| `resourcemanager.projects.get` | yes | unconditional gcloud preflight on every command |
+| `cloudbuild.builds.get` | yes | gcloud's `GetDefaultServiceAccount` preflight |
+| `resourcemanager.projects.getIamPolicy` | yes | gcloud validates IAM policy during deploy flow |
+| `run.services.getIamPolicy` | yes | gcloud reads Cloud Run IAM post-deploy |
+| `run.services.setIamPolicy` | yes | gcloud enforces `--no-allow-unauthenticated` |
+| `iam.serviceAccounts.list` | no | recon/practical |
+| `iam.serviceAccounts.getIamPolicy` | no | recon/practical |
+
+For permissions NOT in this table, test empirically (3.3).
+
+### 3.3 — Test with --api-only
+
+For each candidate gcloud-mechanic permission `P`:
+
+1. Remove `P` from the custom role's permissions list in `main.tf`
+2. Run `terraform apply -auto-approve`
+3. Run `bash demo_attack.sh --api-only 2>&1`
+4. If exit code 0 → **gcloud-mechanic** (raw API works without `P`)
+5. If exit code non-zero → `P` is needed even by the raw API (re-add it and reclassify)
+
+Restore `P` after testing and apply terraform before testing the next one.
+
+### 3.4 — Final cleanup after Phase 3
+
+```bash
+cd {scenario_dir} && bash cleanup_attack.sh 2>&1
+```
+
+---
+
 ### Update main.tf
 
-Set the custom role's final permissions list to contain ALL permissions (required + helpful), organized with comments so the classification is visible:
+Set the custom role's final permissions list to contain ALL permissions (required + gcloud-mechanic + practical), organized with comments so the classification is visible:
 
 ```hcl
 permissions = [
-  # Required — demo fails without these
+  # Core attack — required at the raw API level regardless of tooling
   "service.resource.verb",
 
-  # Helpful — gcloud CLI mechanics or practical conveniences; demo succeeds without these
+  # gcloud CLI mechanics — not needed with raw API, but required by gcloud
+  #   service.resource.verb  — what gcloud does, why it needs this
+  "service.resource.verb",
+
+  # Practical conveniences — not required for the attack, but helpful for recon/verification
   "service.resource.verb",
 ]
 ```
@@ -171,12 +225,14 @@ PERMISSION ISOLATION RESULTS
 =============================
 Scenario: {scenario_dir name}
 
-REQUIRED (demo fails without these):
+REQUIRED (core attack — demo fails without these, even with --api-only):
   - permission.one
   - permission.two
 
-HELPFUL (demo succeeds without these):
-  - permission.three   [gcloud-only or practical — see note]
+GCLOUD-MECHANIC (gcloud CLI preflight/polling only — demo passes with --api-only without these):
+  - permission.three   [description of what gcloud call requires it]
+
+PRACTICAL (helpful for recon/verification — demo passes without them):
   - permission.four
 
 DISCOVERY ORDER (sequence errors first appeared):
@@ -187,14 +243,13 @@ DISCOVERY ORDER (sequence errors first appeared):
 TIMING:
   Discovery iterations: N
   Isolation iterations: N
+  Phase 3 iterations: N
   Total wall time: ~N minutes
 
-NOTE: "Helpful" permissions fall into two sub-types:
-  - gcloud-only: the gcloud CLI adds a preflight or polling call that isn't
-    needed by the raw API. Run poc_raw_api.py without the permission to confirm.
-  - practical: needed for reliable operation (e.g. LRO polling) but avoidable
-    with a sleep + alternate lookup.
-  The orchestrator will ask the human to classify helpers further if needed.
+NOTE: gcloud-mechanic permissions are included in the custom role (so the
+  default gcloud-mode demo works) but labeled as gcloud-only in scenario.yaml
+  with purpose: "Required by gcloud [subcommand] only — not needed with the raw API".
+  The demo script's --api-only flag exercises the core-only permission surface.
 ```
 
 ---

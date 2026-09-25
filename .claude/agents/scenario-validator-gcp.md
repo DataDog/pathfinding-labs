@@ -172,6 +172,38 @@ Check for:
 - Final verification of escalated permissions
 - Clear summary at the end
 
+#### Validate dual-mode implementation (gcloud + --api-only)
+
+When a scenario's exploit step uses `gcloud` (e.g., `gcloud functions deploy`, `gcloud run services update`), the demo script MUST implement the dual-mode pattern. Check for:
+
+1. **`USE_GCLOUD` flag parsing at the top** (before Step 1):
+   ```bash
+   grep -n 'USE_GCLOUD' demo_attack.sh | head -5
+   ```
+   Must include `USE_GCLOUD=true` default and `--api-only` → `USE_GCLOUD=false` override. Flag as an error if absent.
+
+2. **Exploit step branches on `$USE_GCLOUD`**:
+   ```bash
+   grep -n 'USE_GCLOUD\|api-only\|--api-only' demo_attack.sh
+   ```
+   The gcloud mode and raw-API mode implementations must both be present in the exploit step. Flag as an error if the exploit step has no branching.
+
+3. **End-of-gcloud-run note** listing gcloud-mechanic permissions and pointing to `--api-only`:
+   ```bash
+   grep -n 'gcloud.*raw API\|api-only\|./demo_attack.sh --api-only' demo_attack.sh
+   ```
+   This note must appear inside `if $USE_GCLOUD; then`. Flag as an error if absent.
+
+4. **`./demo_attack.sh --api-only` literal** in the tip — never `$0`:
+   ```bash
+   grep -n '\$0' demo_attack.sh
+   ```
+   `$0` expands to the full absolute path when invoked via `plabs demo`. Any occurrence of `$0` in an end-of-demo message is an error — replace with `./demo_attack.sh`.
+
+5. **gcloud-mechanic permissions labeled correctly in `scenario.yaml`**: For each permission listed in the end-of-gcloud-run note, check that `scenario.yaml` has a matching `helpful` permission with `purpose` containing "gcloud" AND "only" AND "not needed with the raw API" (case-insensitive). Flag any gcloud-only permission whose purpose doesn't clearly identify it as gcloud-only.
+
+**Scenarios that do NOT need dual-mode**: if the exploit step doesn't use a `gcloud` subcommand that makes extra preflight/polling calls (e.g., it only uses `gcloud` for lightweight reads like `gcloud iam service-accounts list`), dual-mode is not required. Apply this check only to scenarios where gcloud performs a mutating or long-running operation.
+
 #### Validate command display conventions (three-function pattern)
 
 GCP demos use three display functions, not two. Verify all three are defined:

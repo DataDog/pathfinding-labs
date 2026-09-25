@@ -302,6 +302,55 @@ gcloud auth print-access-token --impersonate-service-account="$STARTING_SA_EMAIL
 
 This requires the identity running the demo (the deployer — whoever ran `terraform apply`, auto-detected via `data.google_client_openid_userinfo.deployer`) to itself hold `roles/iam.serviceAccountTokenCreator` on the starting SA — this grant is what `google_service_account_iam_member.starting_sa_deployer_impersonation` provisions above. The `deployer_email` output tells the demo script who holds this grant so it can warn if the current active `gcloud` account has changed.
 
+## gcloud-Mechanic Permissions in Custom Roles
+
+When the exploit step uses `gcloud` CLI (e.g., `gcloud functions deploy`, `gcloud run services update`), gcloud makes additional preflight and polling calls beyond the raw REST API minimum. These "gcloud-mechanic" permissions must be included in the starting SA's custom role so the demo works, but they are NOT part of the core attack's permission surface.
+
+**Include ALL permissions in the custom role** — both core (raw API) and gcloud-mechanic — but use a comment block to clearly distinguish them:
+
+```hcl
+resource "google_project_iam_custom_role" "starting_sa_role" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "gcp_cf002_starting_sa_role"
+  title       = "Pathfinding Labs - Starting SA Role (gcp-cloudfunctions-002)"
+  description = "Minimal role for the Cloud Functions update attack path"
+
+  permissions = [
+    # Core attack — required at the raw API level regardless of tooling
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.sourceCodeSet",
+    "run.routes.invoke",
+
+    # gcloud CLI mechanics — not needed with raw API, but required by gcloud
+    #   cloudfunctions.functions.get     — gcloud reads current config before update
+    #   cloudfunctions.operations.get    — gcloud polls the update LRO
+    #   resourcemanager.projects.get     — gcloud preflight on every command
+    #   cloudbuild.builds.get            — gcloud's GetDefaultServiceAccount preflight
+    #   resourcemanager.projects.getIamPolicy — gcloud validates IAM policy
+    #   run.services.getIamPolicy        — gcloud reads Cloud Run IAM post-deploy
+    #   run.services.setIamPolicy        — gcloud sets Cloud Run IAM for --no-allow-unauthenticated
+    "cloudfunctions.functions.get",
+    "cloudfunctions.operations.get",
+    "resourcemanager.projects.get",
+    "cloudbuild.builds.get",
+    "resourcemanager.projects.getIamPolicy",
+    "run.services.getIamPolicy",
+    "run.services.setIamPolicy",
+  ]
+}
+```
+
+**Why all permissions go in the role:** The demo defaults to `gcloud` mode (clearest for learning), so the role must include everything gcloud needs. The `--api-only` flag exercises the core permissions only — the role simply includes more than the raw minimum, which is intentional.
+
+**How gcloud-mechanic permissions are documented elsewhere:**
+
+- **`scenario.yaml`**: List them in `permissions.helpful` with a `purpose` field that explicitly says they are "Required by gcloud [subcommand] only — not needed with the raw API". This distinguishes them from recon/practical helpful permissions.
+- **`demo_attack.sh`**: The end-of-gcloud-run note (see `scenario-demo-creator-gcp.md`) enumerates them so the reader understands the gcloud vs. raw API delta.
+- **comment block in `main.tf`**: The comment above serves as the authoritative reference for why each gcloud-mechanic permission is present.
+
+**Identifying gcloud-mechanic permissions:** If you're unsure whether a permission is core or gcloud-mechanic, run `scenario-permission-isolator-gcp` first with the full working set, then test with `--api-only` to verify which permissions can be dropped when the raw API path is used instead.
+
 ## Resource Lifecycle / Destroy Hygiene
 
 AWS's mandatory rule is `force_destroy = true` on every `aws_iam_user` and `force_detach_policies = true` on every `aws_iam_role`, because demo scripts mutate IAM out-of-band (attaching policies/keys) as the proof of escalation, and `terraform destroy` fails without these flags.
