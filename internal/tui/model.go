@@ -2401,19 +2401,14 @@ func (m *Model) handleSettingsKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter", " ":
 		return m.activateSettingsItem(m.settingsItems[m.settingsCursor])
-	// Legacy quick-jump aliases, kept for muscle memory.
-	case "1":
+	// Legacy quick-jump aliases for AWS profile wizards — only valid in AWS mode.
+	case "1", "2", "3", "4":
+		if m.config.Active().ActiveCloudOrDefault() != "aws" {
+			return m, nil
+		}
+		shortcut := map[string]string{"1": "prod", "2": "dev", "3": "ops", "4": "attacker"}
 		m.overlay.Hide()
-		return m, m.runProfileWizard("prod")
-	case "2":
-		m.overlay.Hide()
-		return m, m.runProfileWizard("dev")
-	case "3":
-		m.overlay.Hide()
-		return m, m.runProfileWizard("ops")
-	case "4":
-		m.overlay.Hide()
-		return m, m.runProfileWizard("attacker")
+		return m, m.runProfileWizard(shortcut[msg.String()])
 	case "b", "B":
 		m.overlay.Hide()
 		return m, m.runBudgetWizard()
@@ -3009,6 +3004,11 @@ func (m *Model) recheckCredentials() tea.Cmd {
 			return credRecheckMsg{}
 		}
 		ws := m.config.Active()
+
+		// GCP mode has no AWS profiles to check.
+		if ws.ActiveCloudOrDefault() != "aws" {
+			return credRecheckMsg{}
+		}
 
 		// During destroy, plabs switches attacker to the setup profile — check that one.
 		attackerProfile := ws.AWS.Attacker.Profile
