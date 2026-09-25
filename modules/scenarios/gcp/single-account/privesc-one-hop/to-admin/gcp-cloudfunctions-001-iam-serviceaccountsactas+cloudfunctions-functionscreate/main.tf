@@ -166,26 +166,46 @@ resource "google_service_account_iam_member" "vulnerable_actas_grant" {
 #      functions.invoke is needed when using identity-token + curl directly)
 #
 # gcloud CLI mechanic permissions (not needed with raw API calls, but required
-# because gcloud functions deploy does extra preflight work — confirmed by
-# stripping to the raw API call surface and testing each permission individually):
+# because gcloud functions deploy does extra preflight work):
 #   - cloudfunctions.functions.get      — gcloud checks create vs update before submitting
 #   - cloudfunctions.operations.get     — gcloud polls the deploy LRO (no --async flag exists)
 #   - resourcemanager.projects.get      — gcloud calls GET /v1/projects/{id} unconditionally
+#   - cloudbuild.builds.get             — gcloud's GetDefaultServiceAccount preflight
+#   - resourcemanager.projects.getIamPolicy — gcloud validates the project IAM policy
+#   - run.services.getIamPolicy         — gcloud reads Cloud Run IAM policy post-deploy
+#   - run.services.setIamPolicy         — gcloud sets Cloud Run IAM for --no-allow-unauthenticated
 resource "google_project_iam_custom_role" "cloudfunctions_deploy_minimal" {
   provider = google.prod
   project  = var.project_id
   role_id  = "${replace(local.path_id, "-", "_")}_cf_deploy_min"
   title    = "Pathfinding Labs - Minimal Cloud Functions Deploy"
-  description = "Grants the permissions needed to deploy a 2nd-gen Cloud Function as a target SA and invoke it: core attack (functions.create/.sourceCodeSet, run.routes.invoke) plus gcloud CLI mechanics (functions.get, operations.get, resourcemanager.projects.get)."
+  description = "Permissions to create a new 2nd-gen Cloud Function running as target SA and invoke it. Core: functions.create, sourceCodeSet, run.routes.invoke. CLI mechanics: functions.get, operations.get, projects.get, builds.get, getIamPolicy."
   permissions = [
-    # Core attack
+    # Core attack — required at the raw API level regardless of tooling
     "cloudfunctions.functions.create",
     "cloudfunctions.functions.sourceCodeSet",
     "run.routes.invoke",
-    # gcloud CLI mechanics
+
+    # gcloud CLI mechanics — not needed with raw API, but required by gcloud
+    # functions deploy and gcloud functions describe:
+    #   cloudfunctions.functions.get     — gcloud checks create vs update before submitting
+    #   cloudfunctions.operations.get    — gcloud polls the deploy LRO (no --async flag exists)
+    #   resourcemanager.projects.get     — gcloud preflight call on every command
+    #   cloudbuild.builds.get            — gcloud's GetDefaultServiceAccount preflight
+    #                                      on Cloud Build API (determines default build SA)
+    #   resourcemanager.projects.getIamPolicy — gcloud validates IAM policy as part of
+    #                                           the deploy flow
+    #   run.services.getIamPolicy        — gcloud reads the Cloud Run service IAM policy
+    #                                      post-deploy to verify invocation settings
+    #   run.services.setIamPolicy        — gcloud sets the Cloud Run service IAM policy
+    #                                      to enforce --no-allow-unauthenticated
     "cloudfunctions.functions.get",
     "cloudfunctions.operations.get",
     "resourcemanager.projects.get",
+    "cloudbuild.builds.get",
+    "resourcemanager.projects.getIamPolicy",
+    "run.services.getIamPolicy",
+    "run.services.setIamPolicy",
   ]
 }
 
