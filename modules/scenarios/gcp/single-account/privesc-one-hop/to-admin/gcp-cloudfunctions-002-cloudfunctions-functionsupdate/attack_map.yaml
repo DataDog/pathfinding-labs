@@ -1,0 +1,160 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that deploys on
+        behalf of this service account, exploiting a vulnerable workload running with
+        this service account attached, discovering a service account key in a public
+        GitHub repository, or being granted deployment permissions on it directly for
+        an unrelated automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no project-level roles of its own. However, it has been
+        granted `iam.serviceAccounts.actAs` on a second service account in the
+        project, plus `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`,
+        and `run.routes.invoke` at the project level -- all delivered through a minimal
+        custom role. There is also a pre-deployed Cloud Function in this project that
+        already runs as the privileged target service account, serving benign
+        hello-world code. The attacker does not need to create anything new -- they
+        only need to replace what is already there.
+
+    - id: victim-cloud-function
+      label: "Victim Cloud Function"
+      type: resource
+      subType: cloud-function
+      arn: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/pl-cf002-victim-{resource_suffix}"
+      description: >
+        A pre-existing 2nd-generation Cloud Function deployed by Terraform as part of
+        the scenario setup. It is currently serving benign hello-world code, but it has
+        been running as the privileged target service account since it was first
+        deployed -- the attacker does not need to change the attached SA, only the
+        code. Replacing the function's source with a token-exfiltration payload turns
+        this innocent function into a credential thief: any HTTP handler running inside
+        it executes with the target service account's identity, and can reach the GCE
+        metadata server to retrieve that identity's OAuth access token.
+
+        The update is performed via the raw Cloud Functions v2 REST API (PATCH endpoint)
+        rather than `gcloud functions deploy` because `gcloud` makes an extra preflight
+        call to the Cloud Build `GetDefaultServiceAccount` endpoint that the starting
+        service account is not granted. The raw PATCH API skips this gcloud-specific
+        step and succeeds with only `cloudfunctions.functions.update`,
+        `cloudfunctions.functions.sourceCodeSet`, and `iam.serviceAccounts.actAs` --
+        the true minimal permission set.
+
+    - id: target-sa
+      label: "Privileged Service Account"
+      type: principal
+      subType: service-account
+      isAdmin: true
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com"
+      description: >
+        This service account holds `roles/editor` on the project -- broad,
+        near-administrative permissions covering the majority of GCP resource types
+        -- plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF
+        flag secret (`roles/editor` deliberately excludes secret payload access). It
+        has been the runtime identity of the victim Cloud Function since Terraform
+        deployed it. By replacing the function's code and invoking the updated
+        function, the attacker exfiltrates this service account's OAuth access token
+        from the metadata server, inheriting both the project-wide `roles/editor`
+        permissions and the secret-specific `secretAccessor` grant.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudfunctions-002-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Retrieving it requires `secretmanager.versions.access` on the
+        secret -- `roles/editor` does NOT grant this, so the privileged service
+        account holds an explicit `roles/secretmanager.secretAccessor` binding on
+        this secret. Your goal is to read this secret's value using the exfiltrated
+        access token you obtained from the updated Cloud Function's HTTP response.
+
+  edges:
+    - from: starting-principal
+      to: victim-cloud-function
+      label: "cloudfunctions.functions.update + sourceCodeSet + actAs"
+      description: >
+        The starting service account holds `iam.serviceAccounts.actAs` on the
+        privileged target service account (via `roles/iam.serviceAccountUser`) plus
+        `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`,
+        and `run.routes.invoke` at the project level (via a minimal custom role).
+        The victim function is already deployed and already runs as the target SA --
+        no creation step is needed.
+
+        The raw Cloud Functions v2 REST API is used instead of `gcloud functions deploy`
+        because `gcloud` makes an extra preflight call to Cloud Build's
+        `GetDefaultServiceAccount` endpoint that the starting SA is not granted. The
+        raw PATCH API skips this gcloud-specific step entirely.
+
+        The exploit proceeds in three raw API calls: (1) call `generateUploadUrl` to
+        obtain a signed GCS URL for the new source archive (`sourceCodeSet` permission);
+        (2) PUT the malicious zip directly to that signed URL; (3) PATCH the function
+        with `updateMask=buildConfig.source,buildConfig.entryPoint` to point at the
+        new source while leaving the runtime SA (`target_sa`) unchanged (`update` +
+        `actAs` permissions). After Cloud Build compiles and deploys the new code, the
+        function returns to ACTIVE state running the token-exfiltration payload.
+        Invoking the function via its Cloud Run URL using an OIDC identity token
+        (`run.routes.invoke`) returns the target SA's OAuth access token in the HTTP
+        response body.
+      hints:
+        - "The victim function is already running as the privileged target service account -- you don't need to attach a new identity. Your `cloudfunctions.functions.update` grant means you can replace what the function *does*, while `iam.serviceAccounts.actAs` on the existing runtime SA satisfies the actAs check the PATCH API performs on every buildConfig update, even code-only ones."
+        - "Use the raw Cloud Functions v2 REST API rather than `gcloud functions deploy`: first call `generateUploadUrl` (requires `cloudfunctions.functions.sourceCodeSet`) to get a presigned GCS URL, PUT your malicious zip to that URL, then PATCH the function with `updateMask=buildConfig.source,buildConfig.entryPoint` pointing at the new source. The `gcloud` CLI makes an extra Cloud Build preflight call the starting SA is not granted, so the raw PATCH is the only viable path."
+        - "Browse to https://pathfinding.cloud/paths/gcp-cloudfunctions-002 for technique details."
+      commands:
+        - description: "Mint a bearer token for the starting service account via impersonation"
+          command: "ACCESS_TOKEN=$(gcloud auth print-access-token --impersonate-service-account=pl-prod-cf002-start@{project_id}.iam.gserviceaccount.com)"
+        - description: "Request a presigned upload URL for the new source archive (cloudfunctions.functions.sourceCodeSet)"
+          command: "curl -s -X POST -H \"Authorization: Bearer $ACCESS_TOKEN\" -H \"Content-Type: application/json\" -d '{}' \"https://cloudfunctions.googleapis.com/v2/projects/{project_id}/locations/{region}/functions:generateUploadUrl\""
+        - description: "Upload the malicious source zip to the presigned GCS URL"
+          command: "curl -s -o /dev/null -w \"%{http_code}\" -X PUT -H \"Content-Type: application/zip\" --data-binary \"@src.zip\" \"$UPLOAD_URL\""
+        - description: "PATCH the function to replace source and entry point while leaving the runtime SA unchanged (cloudfunctions.functions.update + iam.serviceAccounts.actAs)"
+          command: "curl -s -X PATCH -H \"Authorization: Bearer $ACCESS_TOKEN\" -H \"Content-Type: application/json\" \"https://cloudfunctions.googleapis.com/v2/projects/{project_id}/locations/{region}/functions/pl-cf002-victim-{resource_suffix}?updateMask=buildConfig.source,buildConfig.entryPoint\" -d '{\"buildConfig\": {\"entryPoint\": \"exfiltrate_token\", \"source\": {\"storageSource\": {\"bucket\": \"$UPLOAD_BUCKET\", \"object\": \"$UPLOAD_OBJ\"}}}}'"
+        - description: "Invoke the updated function using an OIDC identity token scoped to its Cloud Run URL (run.routes.invoke)"
+          command: "ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=pl-prod-cf002-start@{project_id}.iam.gserviceaccount.com --audiences=$FUNCTION_URL); curl -H \"Authorization: Bearer $ID_TOKEN\" $FUNCTION_URL"
+
+    - from: victim-cloud-function
+      to: target-sa
+      label: "Exfiltrate OAuth token"
+      description: >
+        The invoked function queries its local metadata server
+        (`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token`)
+        and returns the target service account's short-lived OAuth access token in
+        its HTTP response body. The function's runtime SA has not changed -- only its
+        code has. Every subsequent API call made with that token is authorized as the
+        target service account, inheriting its project `roles/editor` permissions and
+        the explicit `roles/secretmanager.secretAccessor` binding on the CTF flag
+        secret.
+      hints: []
+      commands: []
+
+    - from: target-sa
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the exfiltrated OAuth access token for the target service account, read
+        the flag from Secret Manager. The target service account holds an explicit
+        `roles/secretmanager.secretAccessor` grant on this specific secret
+        (`roles/editor` alone does not grant `secretmanager.versions.access`). Use the
+        raw bearer token directly against the Secret Manager REST API -- it is not a
+        gcloud impersonation session, so it cannot be passed to
+        `--impersonate-service-account`; it must be sent as an `Authorization: Bearer`
+        header to the REST endpoint.
+      hints:
+        - "The token you exfiltrated from the function's HTTP response is a raw OAuth bearer token, not a gcloud impersonation session -- use it directly as an Authorization header against the Secret Manager REST API rather than trying to pass it to --impersonate-service-account."
+        - "Secret Manager's REST API accepts a `:access` suffix on a secret version resource name; the bearer token alone is sufficient authorization since the target service account holds secretAccessor on that secret."
+      commands:
+        - description: "Retrieve the CTF flag using the exfiltrated access token via the Secret Manager REST API"
+          command: "curl -s -H \"Authorization: Bearer $EXFILTRATED_TOKEN\" \"https://secretmanager.googleapis.com/v1/projects/{project_id}/secrets/pl-gcp-cloudfunctions-002-flag/versions/latest:access\""
+        - description: "Decode the base64-encoded secret payload to read the flag value"
+          command: "echo \"$ENCODED_PAYLOAD\" | openssl base64 -d -A"

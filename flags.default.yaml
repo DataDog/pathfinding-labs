@@ -146,6 +146,7 @@ flags:
   stepfunctions-002-to-admin: "flag{stepfunctions-updatestatemachine-existing-role-escalation}"
   ssm-startsession-ec2-admin-to-admin: "flag{ssm_startsession_ec2_admin}"
   gcp-cloudfunctions-001-to-admin: "flag{gcp_cloudfunctions_001_admin_captured}"
+  gcp-cloudfunctions-002-to-admin: "flag{gcp_cloudfunctions_002_admin_captured}"
   gcp-iam-001-to-admin: "flag{gcp_iam_001_admin_captured}"
   sts-001-to-admin: "flag{sts_001_admin_captured}"
   sts-001-to-bucket: "flag{sts_001_bucket_accessed}"

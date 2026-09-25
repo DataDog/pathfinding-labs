@@ -64,6 +64,12 @@ variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_
   default     = false
 }
 
+variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate" {
+  description = "Enable: gcp single-account → privesc-one-hop → to-admin → gcp-cloudfunctions-002-cloudfunctions-functionsupdate"
+  type        = bool
+  default     = false
+}
+
 variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken" {
   description = "Enable: gcp single-account → privesc-one-hop → to-admin → gcp-iam-001-iam-serviceaccountsgetaccesstoken"
   type        = bool

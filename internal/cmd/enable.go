@@ -70,8 +70,10 @@ func runEnable(cmd *cobra.Command, args []string) error {
 
 	singleAccountMode := cfg.Active().IsSingleAccountMode()
 
-	// Discover scenarios
-	discovery := newDiscovery(paths.ScenariosPath())
+	// Discover scenarios across ALL clouds — enable is an explicit intent command,
+	// so it should find any scenario regardless of the current active_cloud. The
+	// active cloud is updated further down based on what was actually enabled.
+	discovery := scenarios.NewDiscovery(paths.ScenariosPath())
 
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
@@ -222,6 +224,31 @@ func runEnable(cmd *cobra.Command, args []string) error {
 	// Update config with enabled scenarios
 	for _, s := range toEnable {
 		cfg.Active().EnableScenario(s.Terraform.VariableName)
+	}
+
+	// Auto-switch active cloud when all newly enabled scenarios belong to the same cloud.
+	// This ensures subsequent `plabs apply` validates the right cloud credentials and
+	// targets the correct Terraform root without requiring a separate config set call.
+	if len(toEnable) > 0 {
+		clouds := make(map[string]bool)
+		for _, s := range toEnable {
+			if s.Cloud != "" {
+				clouds[s.Cloud] = true
+			}
+		}
+		if len(clouds) == 1 {
+			for cloud := range clouds {
+				if cloud != cfg.Active().ActiveCloudOrDefault() {
+					cfg.Active().ActiveCloud = cloud
+					fmt.Printf("%s Switched active cloud to %s\n", yellow("→"), cloud)
+					// Re-derive paths for the new cloud so tfvars sync targets the right root.
+					paths, err = getWorkingPaths()
+					if err != nil {
+						return fmt.Errorf("failed to get paths for cloud %s: %w", cloud, err)
+					}
+				}
+			}
+		}
 	}
 
 	// Save config (single source of truth)
