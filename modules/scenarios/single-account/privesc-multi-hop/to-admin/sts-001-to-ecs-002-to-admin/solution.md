@@ -97,23 +97,36 @@ aws ecs create-cluster \
 
 **Step 2: Find Fargate network configuration**
 
-Fargate tasks require a VPC subnet. The default VPC works fine:
+The prod environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
 
 ```bash
-VPC_ID=$(aws ec2 describe-vpcs \
-    --region $AWS_REGION \
-    --filters "Name=is-default,Values=true" \
-    --query 'Vpcs[0].VpcId' \
-    --output text)
+# Discover the custom network deployed by the prod environment.
+VPC_ID=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-SUBNET_ID=$(aws ec2 describe-subnets \
-    --region $AWS_REGION \
-    --filters "Name=vpc-id,Values=$VPC_ID" \
-    --query 'Subnets[0].SubnetId' \
-    --output text)
+if [[ ! "$VPC_ID" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  exit 1
+fi
 
-echo "VPC: $VPC_ID / Subnet: $SUBNET_ID"
+SUBNET_ID=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+  --filters "Name=vpc-id,Values=$VPC_ID" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$SUBNET_ID" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $VPC_ID." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $VPC_ID"
+echo "Public subnet: $SUBNET_ID"
+# End Pathfinding network discovery.
 ```
+
+The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
 
 **Step 3: Register a task definition with the admin role**
 

@@ -46,7 +46,7 @@ output "security_group_id" {
 }
 
 output "default_subnet_id" {
-  description = "ID of the default subnet for EC2 instance launch"
+  description = "ID of the supplied subnet for EC2 instance launch"
   value       = var.subnet_id
 }
 

@@ -86,7 +86,7 @@ For a narrative, step-by-step walkthrough of this attack (CTF writeup style), se
 The script will:
 1. Retrieve starting user credentials and region from Terraform outputs
 2. Verify the starting user identity and confirm no pre-existing admin access
-3. Look up the latest Amazon Linux 2023 AMI and the default VPC/subnet
+3. Look up the latest Amazon Linux 2023 AMI and the Pathfinding VPC/subnet
 4. Prepare a user-data script that calls `iam:AttachUserPolicy` to attach `AdministratorAccess` to the starting user
 5. Launch an EC2 instance with the admin instance profile (`pl-prod-ec2-001-to-admin-instance-profile`) passing the user-data payload
 6. Poll until `AdministratorAccess` is confirmed attached to the starting user (up to 5 minutes)

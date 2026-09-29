@@ -31,8 +31,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:CreateService` on `*` -- deploy a persistent Fargate service that executes the malicious task
 
 **Helpful** (`pl-prod-ecs-001-to-admin-starting-user`):
-- `ec2:DescribeVpcs` -- find the default VPC for ECS service network configuration
-- `ec2:DescribeSubnets` -- find subnets in the default VPC for Fargate awsvpc networking
+- `ec2:DescribeVpcs` -- find the Pathfinding VPC for ECS service network configuration
+- `ec2:DescribeSubnets` -- find subnets in the Pathfinding VPC for Fargate awsvpc networking
 - `ecs:DescribeServices` -- monitor service status and verify service creation
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:ListTasks` -- list tasks in the cluster to get the task ARN for monitoring

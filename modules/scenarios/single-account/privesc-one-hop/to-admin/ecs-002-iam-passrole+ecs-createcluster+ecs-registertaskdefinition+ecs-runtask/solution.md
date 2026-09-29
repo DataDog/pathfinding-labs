@@ -33,26 +33,38 @@ Good. Now let's figure out what you can do.
 
 ## Reconnaissance
 
-The starting user has several helpful permissions for reconnaissance. First, find the network configuration you'll need to run a Fargate task. Fargate requires awsvpc networking — you need a subnet ID:
+The prod environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
 
 ```bash
-# Find the default VPC
-aws ec2 describe-vpcs \
-  --filters "Name=is-default,Values=true" \
-  --query 'Vpcs[0].VpcId' \
-  --output text
+# Discover the custom network deployed by the prod environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
+
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
+# End Pathfinding network discovery.
 ```
 
-Note the VPC ID, then find a subnet within it:
+The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
 
-```bash
-aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=<vpc-id>" \
-  --query 'Subnets[0].SubnetId' \
-  --output text
-```
-
-Save this subnet ID — you will need it when running the task. Also grab the account ID, since you'll be constructing role ARNs:
+Also grab the account ID, since you'll be constructing role ARNs:
 
 ```bash
 aws sts get-caller-identity --query 'Account' --output text
@@ -127,7 +139,7 @@ If the call succeeds, you'll see the task definition ARN in the output. Cruciall
 Now execute the task. Use the cluster you created and the subnet you identified during reconnaissance:
 
 ```bash
-SUBNET_ID="<subnet-id-from-recon>"
+SUBNET_ID="$LAB_SUBNET"
 
 aws ecs run-task \
   --cluster pl-prod-ecs-002-attack-cluster \

@@ -30,11 +30,36 @@ aws iam get-role --role-name pl-prod-ecs-004-to-admin-target-role
 
 You will see `ecs-tasks.amazonaws.com` in the trust policy's `Principal` block. That means you can pass this role to an ECS task definition.
 
-Find a subnet in your default VPC (needed for the Fargate task's network configuration):
+The prod environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
 
 ```bash
-aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text
+# Discover the custom network deployed by the prod environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
+
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
+# End Pathfinding network discovery.
 ```
+
+The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
 
 Save that subnet ID — you will need it when launching the task.
 
@@ -64,7 +89,7 @@ aws ecs run-task \
   --cluster pl-prod-ecs-004-cluster \
   --task-definition pl-prod-ecs-004-privesc \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[<subnet-id>],assignPublicIp=ENABLED}"
+  --network-configuration "awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}"
 ```
 
 The task will provision, start, execute the AWS CLI command, and stop — all within a few seconds. The `AdministratorAccess` policy attachment is permanent on your IAM user even after the task exits.
