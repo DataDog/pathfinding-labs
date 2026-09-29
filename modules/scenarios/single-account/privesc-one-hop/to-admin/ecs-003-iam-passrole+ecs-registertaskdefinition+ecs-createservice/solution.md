@@ -68,16 +68,16 @@ aws ecs register-task-definition --region $AWS_REGION --cli-input-json "{
 
 ### Step 2: Find a Subnet for the Fargate Service
 
-The prod environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
 
 ```bash
-# Discover the custom network deployed by the prod environment.
+# Discover the custom network deployed by the lab environment.
 LAB_VPC=$(aws ec2 describe-vpcs \
   --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
   --query 'Vpcs[].VpcId' --output text) || exit 1
 
 if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
-  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
   exit 1
 fi
 

@@ -51,7 +51,7 @@ aws iam list-instance-profiles \
 
 There it is: `pl-prod-ec2-004-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
 
-Find a recent Amazon Linux 2023 AMI. The prod environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Find a recent Amazon Linux 2023 AMI. The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
 
 ```bash
 # Find the most recent Amazon Linux 2023 AMI
@@ -61,13 +61,13 @@ aws ec2 describe-images \
   --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
   --output text
 
-# Discover the custom network deployed by the prod environment.
+# Discover the custom network deployed by the lab environment.
 LAB_VPC=$(aws ec2 describe-vpcs \
   --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
   --query 'Vpcs[].VpcId' --output text) || exit 1
 
 if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
-  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
   exit 1
 fi
 

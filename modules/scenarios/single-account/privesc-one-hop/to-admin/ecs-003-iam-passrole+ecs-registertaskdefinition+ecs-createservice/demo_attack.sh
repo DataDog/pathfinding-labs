@@ -233,13 +233,13 @@ echo ""
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS service${NC}"
 use_readonly_creds
 
-# Discover the custom network deployed by the prod environment.
+# Discover the custom network deployed by the lab environment.
 LAB_VPC=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
   --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
   --query 'Vpcs[].VpcId' --output text) || exit 1
 
 if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
-  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and prod environment deployment." >&2
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
   exit 1
 fi
 
