@@ -64,8 +64,6 @@ echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
 ```
 
-The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
-
 ## Exploitation
 
 Here is where it gets interesting. The `ecs:RunTask` API has an `--overrides` parameter designed to let callers make minor tweaks to a task at launch time -- change an environment variable, adjust a command argument. But it accepts two particularly powerful overrides: `taskRoleArn` (swaps out the entire IAM role the task runs as) and `containerOverrides.command` (replaces the container's entrypoint command entirely).

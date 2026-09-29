@@ -86,8 +86,6 @@ echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
 ```
 
-The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
-
 Note down the AMI ID and subnet ID -- you will need them when constructing the Spot Instance launch specification.
 
 ## Exploitation

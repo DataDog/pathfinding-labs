@@ -96,8 +96,6 @@ echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
 ```
 
-The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
-
 ### Step 3: Create an ECS Service to Execute the Task
 
 Deploy the task definition as a Fargate service. AWS will launch a task that runs with the admin role's credentials and executes the container command, which attaches `AdministratorAccess` to your user:

@@ -125,8 +125,6 @@ echo "Pathfinding VPC: $VPC_ID"
 echo "Public subnet: $SUBNET_ID"
 ```
 
-The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.
-
 **Step 3: Register a task definition with the admin role**
 
 This is the core of the escalation. You use `iam:PassRole` to attach `pl-prod-sts001-ecs002-admin-role` as the task role. Any container in this task definition automatically receives temporary credentials for that role via the ECS credential provider endpoint at `169.254.170.2`. The container command directly calls `iam:AttachUserPolicy` using those admin credentials to grant `AdministratorAccess` to your starting user:
