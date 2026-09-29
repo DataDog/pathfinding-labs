@@ -200,7 +200,6 @@ fi
 
 echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
-# End Pathfinding network discovery.
 echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 
 # [EXPLOIT] Step 7: Register task definition with admin role (PassRole escalation)

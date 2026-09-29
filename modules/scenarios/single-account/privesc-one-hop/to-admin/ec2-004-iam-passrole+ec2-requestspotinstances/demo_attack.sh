@@ -244,7 +244,6 @@ fi
 
 echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
-# End Pathfinding network discovery.
 echo "Using Region: $AWS_REGION"
 echo -e "${GREEN}✓ Network configuration ready${NC}\n"
 

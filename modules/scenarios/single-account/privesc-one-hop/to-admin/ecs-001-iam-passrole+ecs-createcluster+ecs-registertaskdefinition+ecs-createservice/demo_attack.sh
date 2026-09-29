@@ -214,7 +214,6 @@ fi
 
 echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnets: $SUBNET_1, $SUBNET_2"
-# End Pathfinding network discovery.
 echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 
 # [EXPLOIT] Step 7: Register task definition with admin role

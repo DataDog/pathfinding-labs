@@ -123,7 +123,6 @@ fi
 
 echo "Pathfinding VPC: $VPC_ID"
 echo "Public subnet: $SUBNET_ID"
-# End Pathfinding network discovery.
 ```
 
 The filters select the custom VPC and its named subnet, with automatic public IP assignment enabled. If a result is missing or ambiguous, the checks stop here. You'll use the printed subnet ID in the launch command.

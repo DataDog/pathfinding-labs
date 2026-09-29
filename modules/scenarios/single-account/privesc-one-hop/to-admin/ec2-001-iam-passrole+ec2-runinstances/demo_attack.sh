@@ -236,7 +236,6 @@ fi
 
 echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
-# End Pathfinding network discovery.
 echo "Using Region: $AWS_REGION"
 
 # [EXPLOIT] Launch EC2 instance with admin role

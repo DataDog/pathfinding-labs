@@ -255,7 +255,6 @@ fi
 
 echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
-# End Pathfinding network discovery.
 echo -e "${GREEN}✓ Network configuration identified${NC}\n"
 
 # [EXPLOIT] Run the ECS task
