@@ -36,7 +36,7 @@ aws ecs list-task-definitions --family-prefix pl-prod-ecs-008-existing-task --st
 # arn:aws:ecs:<REGION>:<ACCOUNT_ID>:task-definition/pl-prod-ecs-008-existing-task:1
 ```
 
-The cluster and task definition already exist. The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+There is an existing cluster and a Fargate-compatible task definition. This is your foothold. You also need network configuration to launch a Fargate task -- find a subnet to use:
 
 ```bash
 # Discover the custom network deployed by the lab environment.

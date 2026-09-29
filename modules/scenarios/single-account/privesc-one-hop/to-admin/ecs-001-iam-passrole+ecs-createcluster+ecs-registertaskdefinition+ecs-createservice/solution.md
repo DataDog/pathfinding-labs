@@ -30,7 +30,7 @@ Good — no admin access yet.
 
 ## Reconnaissance
 
-The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Before launching the attack, you need a few pieces of information for Fargate's awsvpc network mode: the `pathfinding` VPC ID and at least one subnet ID. These are read-only API calls.
 
 ```bash
 # Discover the custom network deployed by the lab environment.

@@ -30,7 +30,7 @@ aws iam get-role --role-name pl-prod-ecs-004-to-admin-target-role
 
 You will see `ecs-tasks.amazonaws.com` in the trust policy's `Principal` block. That means you can pass this role to an ECS task definition.
 
-The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Find a subnet in the `pathfinding` VPC (needed for the Fargate task's network configuration):
 
 ```bash
 # Discover the custom network deployed by the lab environment.

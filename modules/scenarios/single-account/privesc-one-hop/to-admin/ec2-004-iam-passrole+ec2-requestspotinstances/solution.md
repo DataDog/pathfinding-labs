@@ -51,7 +51,7 @@ aws iam list-instance-profiles \
 
 There it is: `pl-prod-ec2-004-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
 
-Find a recent Amazon Linux 2023 AMI. The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Before you can launch the instance, you need two more pieces of infrastructure information: an AMI ID and a subnet. Pull the latest Amazon Linux 2023 AMI and a subnet from the `pathfinding` VPC:
 
 ```bash
 # Find the most recent Amazon Linux 2023 AMI

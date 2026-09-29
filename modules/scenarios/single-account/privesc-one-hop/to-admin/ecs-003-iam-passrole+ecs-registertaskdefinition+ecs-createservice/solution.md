@@ -68,7 +68,7 @@ aws ecs register-task-definition --region $AWS_REGION --cli-input-json "{
 
 ### Step 2: Find a Subnet for the Fargate Service
 
-The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Fargate services require a VPC subnet. Locate one from the `pathfinding` VPC:
 
 ```bash
 # Discover the custom network deployed by the lab environment.

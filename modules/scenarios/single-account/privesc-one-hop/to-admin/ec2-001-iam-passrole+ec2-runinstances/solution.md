@@ -78,7 +78,7 @@ EOF
 
 ### Phase 2: Find the AMI and Pathfinding subnet, then launch
 
-Find a recent Amazon Linux 2023 AMI. The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Look up a recent Amazon Linux 2023 AMI and grab the `pathfinding` VPC subnet:
 
 ```bash
 AWS_REGION="us-east-1"  # substitute your region

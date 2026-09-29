@@ -33,7 +33,7 @@ Good. Now let's figure out what you can do.
 
 ## Reconnaissance
 
-The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+The starting user has several helpful permissions for reconnaissance. First, find the network configuration you'll need to run a Fargate task. Fargate requires awsvpc networking — you need a subnet ID:
 
 ```bash
 # Discover the custom network deployed by the lab environment.
@@ -61,7 +61,7 @@ echo "Pathfinding VPC: $LAB_VPC"
 echo "Public subnet: $LAB_SUBNET"
 ```
 
-Also grab the account ID, since you'll be constructing role ARNs:
+Save this subnet ID — you will need it when running the task. Also grab the account ID, since you'll be constructing role ARNs:
 
 ```bash
 aws sts get-caller-identity --query 'Account' --output text

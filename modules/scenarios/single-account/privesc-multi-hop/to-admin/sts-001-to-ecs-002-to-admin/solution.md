@@ -97,7 +97,7 @@ aws ecs create-cluster \
 
 **Step 2: Find Fargate network configuration**
 
-The lab environment creates a custom VPC named `pathfinding` and public subnets. Let's find that network so your workload uses the lab's existing internet connection.
+Fargate tasks require a VPC subnet. Use the `pathfinding` VPC:
 
 ```bash
 # Discover the custom network deployed by the lab environment.
