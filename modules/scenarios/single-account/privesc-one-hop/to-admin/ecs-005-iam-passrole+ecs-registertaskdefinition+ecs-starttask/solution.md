@@ -83,7 +83,7 @@ CONTAINER_INSTANCE_ARN="arn:aws:ecs:<region>:<account_id>:container-instance/pl-
 
 aws ecs start-task \
   --cluster pl-prod-ecs-005-cluster \
-  --task-definition pl-ecs-005-admin-escalation:1 \
+  --task-definition pl-ecs-005-admin-escalation \
   --container-instances "$CONTAINER_INSTANCE_ARN"
 ```
 

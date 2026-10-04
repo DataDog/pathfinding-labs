@@ -89,7 +89,7 @@ aws ecs create-service \
   --region $AWS_REGION \
   --cluster pl-prod-ecs-003-cluster \
   --service-name pl-prod-ecs-003-attack-service \
-  --task-definition pl-ecs-003-admin-escalation:1 \
+  --task-definition pl-ecs-003-admin-escalation \
   --desired-count 1 \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[${DEFAULT_SUBNET}],assignPublicIp=ENABLED}"
