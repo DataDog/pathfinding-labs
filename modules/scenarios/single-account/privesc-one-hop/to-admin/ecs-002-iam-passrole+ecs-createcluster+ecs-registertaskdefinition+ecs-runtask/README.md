@@ -31,8 +31,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:RunTask` on `*` -- execute the task on Fargate
 
 **Helpful** (`pl-prod-ecs-002-to-admin-starting-user`):
-- `ec2:DescribeVpcs` -- find the default VPC for ECS task network configuration
-- `ec2:DescribeSubnets` -- find a subnet in the default VPC for ECS task network configuration
+- `ec2:DescribeVpcs` -- find the Pathfinding VPC for ECS task network configuration
+- `ec2:DescribeSubnets` -- find a subnet in the Pathfinding VPC for ECS task network configuration
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:StopTask` -- stop running tasks during cleanup
 - `ecs:DeregisterTaskDefinition` -- clean up task definition after demonstration

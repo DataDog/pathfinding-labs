@@ -267,7 +267,7 @@ data "aws_ami" "ecs_optimized" {
 }
 
 # Get default VPC for EC2 instance
-# Get default subnets in the VPC
+# Use the VPC and subnet supplied by the lab environment
 # Security group for ECS container instance
 resource "aws_security_group" "container_instance" {
   provider    = aws.prod

@@ -36,20 +36,29 @@ Good. Now let's figure out what you can do.
 The starting user has several helpful permissions for reconnaissance. First, find the network configuration you'll need to run a Fargate task. Fargate requires awsvpc networking — you need a subnet ID:
 
 ```bash
-# Find the default VPC
-aws ec2 describe-vpcs \
-  --filters "Name=is-default,Values=true" \
-  --query 'Vpcs[0].VpcId' \
-  --output text
-```
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-Note the VPC ID, then find a subnet within it:
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
+fi
 
-```bash
-aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=<vpc-id>" \
-  --query 'Subnets[0].SubnetId' \
-  --output text
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 ```
 
 Save this subnet ID — you will need it when running the task. Also grab the account ID, since you'll be constructing role ARNs:
@@ -127,7 +136,7 @@ If the call succeeds, you'll see the task definition ARN in the output. Cruciall
 Now execute the task. Use the cluster you created and the subnet you identified during reconnaissance:
 
 ```bash
-SUBNET_ID="<subnet-id-from-recon>"
+SUBNET_ID="$LAB_SUBNET"
 
 aws ecs run-task \
   --cluster pl-prod-ecs-002-attack-cluster \

@@ -68,16 +68,32 @@ aws ecs register-task-definition --region $AWS_REGION --cli-input-json "{
 
 ### Step 2: Find a Subnet for the Fargate Service
 
-Fargate services require a VPC subnet. Locate one from the default VPC:
+Fargate services require a VPC subnet. Locate one from the `pathfinding` VPC:
 
 ```bash
-DEFAULT_VPC=$(aws ec2 describe-vpcs \
-  --filters "Name=is-default,Values=true" \
-  --query 'Vpcs[0].VpcId' --output text)
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-DEFAULT_SUBNET=$(aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=${DEFAULT_VPC}" \
-  --query 'Subnets[0].SubnetId' --output text)
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 ```
 
 ### Step 3: Create an ECS Service to Execute the Task
@@ -92,7 +108,7 @@ aws ecs create-service \
   --task-definition pl-ecs-003-admin-escalation:1 \
   --desired-count 1 \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[${DEFAULT_SUBNET}],assignPublicIp=ENABLED}"
+  --network-configuration "awsvpcConfiguration={subnets=[${LAB_SUBNET}],assignPublicIp=ENABLED}"
 ```
 
 ### Step 4: Wait for the Task to Complete
