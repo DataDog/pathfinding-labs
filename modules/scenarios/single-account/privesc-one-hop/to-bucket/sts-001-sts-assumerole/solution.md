@@ -51,7 +51,7 @@ aws iam get-role-policy --role-name pl-prod-sts-001-to-bucket-access-role \
 
 The role policy grants `s3:ListBucket`, `s3:GetObject`, and `s3:PutObject` on the target bucket. You have everything you need.
 
-The policy output above shows the full bucket ARN, which ends in your account ID followed by a short random suffix (for example `pl-prod-sts-001-to-bucket-558891026182-itcmij`). Copy that complete bucket name — the suffix cannot be typed from memory — and substitute it for `<BUCKET>` in the commands below.
+The policy output above shows the full bucket ARN, which ends in your account ID followed by a short random suffix (for example `pl-prod-sts-001-to-bucket-558891026182-itcmij`). Copy that complete bucket name and substitute it for `<BUCKET>` in the commands below.
 
 ## Exploitation
 
