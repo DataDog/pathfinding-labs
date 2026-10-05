@@ -34,8 +34,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:ListClusters` -- discover available ECS clusters
 - `ecs:StopTask` -- stop running tasks during cleanup
-- `ec2:DescribeVpcs` -- find default VPC for network configuration
-- `ec2:DescribeSubnets` -- find subnet in default VPC for network configuration
+- `ec2:DescribeVpcs` -- inspect the custom VPC used by the existing container instance
+- `ec2:DescribeSubnets` -- inspect the subnet used by the existing container instance
 - `ec2:DescribeSecurityGroups` -- discover security groups for network configuration
 - `iam:DetachUserPolicy` -- remove admin policy from starting user during cleanup
 - `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies

