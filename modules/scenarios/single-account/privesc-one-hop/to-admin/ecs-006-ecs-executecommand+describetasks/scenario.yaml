@@ -8,6 +8,7 @@ description: "User with ecs:ExecuteCommand and ecs:DescribeTasks can shell into 
 cost_estimate: "$9/mo"
 cost_estimate_when_demo_executed: "$9/mo"
 pathfinding-cloud-id: "ecs-006"
+supports_online_mode: true
 
 # =============================================================================
 # CLASSIFICATION

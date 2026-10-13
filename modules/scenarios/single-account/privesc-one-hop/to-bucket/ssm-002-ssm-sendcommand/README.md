@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ssm_002_ssm_sendcommand`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** ssm-002
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0006 - Credential Access
 * **MITRE Techniques:** T1651 - Cloud Administration Command, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API

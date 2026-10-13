@@ -5,6 +5,7 @@ description: "Principal with iam:PassRole and cognito-identity:SetIdentityPoolRo
 cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: "cognitoidentity-001"
+supports_online_mode: true
 
 category: "Privilege Escalation"
 sub_category: "new-passrole"

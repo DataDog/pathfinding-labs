@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_021_iam_putrolepolicy_iam_updateassumerolepolicy`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-021
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation

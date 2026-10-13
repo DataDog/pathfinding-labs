@@ -8,6 +8,7 @@ description: "Principal with ssm:StartSession can remotely access EC2 instance w
 cost_estimate: "$5/mo"
 cost_estimate_when_demo_executed: "$5/mo"
 pathfinding-cloud-id: "ssm-001"
+supports_online_mode: true
 
 # =============================================================================
 # CLASSIFICATION

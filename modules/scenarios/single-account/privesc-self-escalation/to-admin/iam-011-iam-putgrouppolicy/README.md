@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-011
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials

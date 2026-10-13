@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_sts_001_sts_assumerole`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** sts-001
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object

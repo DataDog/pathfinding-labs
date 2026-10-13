@@ -9,6 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with iam:PassRole and cognito-identity:SetIdentityPoolRoles can bind an admin role to an existing pool's unauthenticated slot, turning it into a public STS credential-vending endpoint
 * **Pathfinding.cloud ID:** cognito-identity-001
+* **Supports Online Mode:** Yes
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_cognito_identity_001_iam_passrole_cognito_identity_setidentitypoolroles`
 * **Schema Version:** 4.7.1
 * **MITRE Tactics:** TA0004 - Privilege Escalation

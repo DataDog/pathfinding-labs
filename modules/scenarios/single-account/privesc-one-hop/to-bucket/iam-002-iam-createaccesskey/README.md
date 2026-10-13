@@ -12,6 +12,7 @@
 * **CTF Flag Location:** s3-object
 * **Schema Version:** 4.1.1
 * **Pathfinding.cloud ID:** iam-002
+* **Supports Online Mode:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1530 - Data from Cloud Storage Object
 

@@ -8,6 +8,7 @@ description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 i
 cost_estimate: "$8/mo"
 cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "ec2-003"
+supports_online_mode: true
 
 # =============================================================================
 # CLASSIFICATION

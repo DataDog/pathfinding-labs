@@ -71,3 +71,4 @@ terraform:
 # DEMO CONFIGURATION
 # =============================================================================
 interactive_demo: true  # Attack grants console access only — capturing the flag requires a manual console login as the target admin user, which the automated demo cannot perform.
+supports_online_mode: true

@@ -10,6 +10,7 @@
 * **Technique:** Three-hop role assumption chain to reach S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3`
 * **Schema Version:** 4.6.0
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object

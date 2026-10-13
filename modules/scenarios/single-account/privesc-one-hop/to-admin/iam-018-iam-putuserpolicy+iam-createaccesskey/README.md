@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_018_iam_putuserpolicy_iam_createaccesskey`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-018
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials

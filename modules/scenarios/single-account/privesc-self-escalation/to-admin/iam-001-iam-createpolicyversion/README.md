@@ -12,6 +12,7 @@
 * **Schema Version:** 4.6.0
 * **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** iam-001
+* **Supports Online Mode:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
 * **MITRE Techniques:** T1098 - Account Manipulation, T1098.001 - Additional Cloud Credentials
 

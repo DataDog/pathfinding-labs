@@ -11,6 +11,7 @@
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_012_iam_updateassumerolepolicy`
 * **Schema Version:** 4.6.0
 * **Pathfinding.cloud ID:** iam-012
+* **Supports Online Mode:** Yes
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1098 - Account Manipulation, T1530 - Data from Cloud Storage Object
