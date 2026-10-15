@@ -59,7 +59,6 @@ The orchestrator will provide you with a complete `scenario.yaml` file. This YAM
 | `remediation.recommendations` | `* **Remediation:** {item1}; {item2}; {item3}` *(semicolon-separated; CSPM scenarios only)* |
 | `ctf.difficulty` | `* **Difficulty:** {beginner\|intermediate\|advanced}` *(CTF scenarios only)* |
 | `ctf.flag_location` | `* **Flag Location:** {value}` *(CTF scenarios only — the legacy prose field)* |
-| `supports_online_mode: true` | `* **Supports Online Mode:** Yes` *(omit line if false/absent)* |
 | *(derived from `target`)* | `* **CTF Flag Location:** {ssm-parameter\|s3-object}` *(required on every scenario EXCEPT tool-testing; `ssm-parameter` for to-admin, `s3-object` for to-bucket)* |
 | `required_preconditions` | `* **Required Preconditions:**` followed by one bullet per entry: `aws-resource` entries render as `  - {resource}: {description}`; all other types render as `  - [{type}] {description}`. Omit the field entirely when `required_preconditions` is absent from scenario.yaml. |
 

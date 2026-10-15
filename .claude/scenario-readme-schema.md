@@ -97,9 +97,6 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **MITRE Tactics:** {TA#### - Name}, {TA#### - Name}
 * **MITRE Techniques:** {T####.### - Name}, {T####.### - Name}
 
-* **Supports Online Mode:** Yes
-  <- only if supports_online_mode: true in scenario.yaml
-
 * **CTF Flag Location:** {ssm-parameter|s3-object}
   <- required on all scenarios EXCEPT those under tool-testing/. Value is the storage mechanism only.
      - `ssm-parameter` -- all to-admin scenarios. The flag lives at `/pathfinding-labs/flags/{scenario-id}` in SSM Parameter Store in the target account.
