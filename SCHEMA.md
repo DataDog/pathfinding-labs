@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.9.0 | 2026-10-15 | Removed the `supports_online_mode` field. Whether a lab can be played online in the browser no longer comes from this repo: pathfinding-backend derives it at runtime from the Cybr Labs catalog (labs Cybr hosts with a browser terminal) and pathfinding.cloud reads it from the backend. Existing `supports_online_mode` lines are ignored and can be deleted. |
 | 1.8.0 | 2026-05-13 | Added `required_preconditions` optional list field: typed objects documenting what must already exist in the account for the attack path to be viable. Each entry has a `type` (`aws-resource`, `network`, `external`, `configuration`), an optional `resource` name (for `aws-resource` entries), and a `description`. This field is the primary differentiator between scenarios that share the same permissions but differ in what pre-existing infrastructure they exploit. Canonical use cases: `existing-passrole` sub_category, `attack-simulation` scenarios, and any path where the attack works because of something that pre-exists rather than something the attacker creates. Optional — omit for `self-escalation`, `new-passrole`, and CTF scenarios. |
 | 1.7.0 | 2026-04-21 | Added `demo_timeout_seconds` and `cleanup_timeout_seconds` optional integer fields: per-scenario overrides of the default harness timeouts in `scripts/run_demos.py` (300s demo, 120s cleanup). Required for any scenario whose demo creates a resource that takes > 2 min to provision (Glue dev endpoints, SageMaker notebooks/processing jobs, CodeBuild projects, EC2 instances, etc.), because the harness uses SIGKILL on timeout — which bash traps cannot catch — leaving the resource orphaned. See "When to Set Timeout Overrides" in Core Metadata for the reference table. Motivated by the glue-001 orphan incident (2026-04-17 to 2026-04-21) that bled ~$55 on an abandoned dev endpoint. |
 | 1.6.0 | 2026-04-18 | Added `supports_online_mode` optional boolean field: indicates whether this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false` (absent = false). Only set to `true` for labs that have been validated and provisioned for online play. |
@@ -78,7 +79,7 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.8.0"
+schema_version: "1.9.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"
@@ -86,7 +87,6 @@ cost_estimate: "$0/mo"
 cost_estimate_when_demo_executed: "$0/mo"
 pathfinding-cloud-id: IAM-005
 interactive_demo: false
-supports_online_mode: false
 # demo_timeout_seconds: 1200      # uncomment + set for slow-provisioning demos
 # cleanup_timeout_seconds: 180    # uncomment + set for slow-provisioning demos
 ```
@@ -103,7 +103,6 @@ supports_online_mode: false
 | `cost_estimate_when_demo_executed` | string | ✅ Yes | Estimated monthly AWS cost while a demo script is actively running (e.g., EC2/Lambda/GPU instances provisioned during the attack). Same format as `cost_estimate`. If the demo creates no additional resources, set equal to `cost_estimate`. |
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
 | `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
-| `supports_online_mode` | bool | No | If `true`, this lab is available to play in the browser via the pathfinding.cloud online lab runner. Defaults to `false`. Only set to `true` after the lab has been validated and provisioned for online play by the Pathfinding team. |
 | `demo_timeout_seconds` | int | No | Override the default 300s demo timeout in `scripts/run_demos.py`. Set when the demo creates a resource that takes > 2 min to provision. See "When to Set Timeout Overrides" below. |
 | `cleanup_timeout_seconds` | int | No | Override the default 120s cleanup timeout in `scripts/run_demos.py`. Set when cleanup needs to verify deletion of a resource that takes noticeable time to tear down. See "When to Set Timeout Overrides" below. |
 
