@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass an admin role to an EventBridge Scheduler one-shot schedule targeting the universal target `arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy`, causing the scheduler to call `iam:AttachUserPolicy` as the passed role and attach `AdministratorAccess` to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_scheduler_001`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** scheduler-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation
@@ -147,7 +147,7 @@ plabs apply
 
 - IAM user with `iam:PassRole` permission on a role that has administrative permissions and trusts `scheduler.amazonaws.com`
 - IAM user with both `scheduler:CreateSchedule` and `iam:PassRole`, forming a privilege escalation path via EventBridge Scheduler universal targets
-- IAM role with `AdministratorAccess` or equivalent permissions that trusts `scheduler.amazonaws.com` — admin roles should never trust the Scheduler service principal
+- IAM role with `AdministratorAccess` or equivalent permissions that trusts `scheduler.amazonaws.com` -- admin roles should never trust the Scheduler service principal
 - Privilege escalation path from IAM user to admin via EventBridge Scheduler universal target invocation
 
 #### Prevention Recommendations
@@ -163,7 +163,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `scheduler:CreateSchedule` -- new EventBridge schedule created; inspect `requestParameters.target.roleArn` — a privileged role ARN is the CloudTrail signal for PassRole abuse via Scheduler; critical when the target ARN contains `aws-sdk:iam:` indicating an IAM manipulation universal target
+- `scheduler:CreateSchedule` -- new EventBridge schedule created; inspect `requestParameters.target.roleArn` -- a privileged role ARN is the CloudTrail signal for PassRole abuse via Scheduler; critical when the target ARN contains `aws-sdk:iam:` indicating an IAM manipulation universal target
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user; critical when the policy is `AdministratorAccess` and the caller is a Scheduler execution role assumed by the `scheduler.amazonaws.com` service principal; the `userAgent` field will show the EventBridge Scheduler service as the caller
 - `iam:AttachRolePolicy` -- managed policy attached to an IAM role; monitor for the same Scheduler caller context pattern when the attacker chooses a role target instead of a user target
 

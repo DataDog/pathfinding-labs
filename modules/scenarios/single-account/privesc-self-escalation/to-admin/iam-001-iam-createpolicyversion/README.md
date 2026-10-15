@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Self-modification via iam:CreatePolicyVersion
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_001_iam_createpolicyversion`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** iam-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence

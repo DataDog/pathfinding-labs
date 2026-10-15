@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Bypass S3 bucket resource policy restrictions by assuming role with bucket access
 * **Terraform Variable:** `enable_tool_testing_resource_policy_bypass`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.7.2
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0005 - Defense Evasion, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 

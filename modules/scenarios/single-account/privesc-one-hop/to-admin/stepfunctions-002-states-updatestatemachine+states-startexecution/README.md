@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with states:UpdateStateMachine and states:StartExecution can replace an existing state machine's definition with malicious ASL that runs under the machine's pre-existing admin role — no iam:PassRole required
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_stepfunctions_002_states_updatestatemachine_states_startexecution`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** stepfunctions-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098 - Account Manipulation, T1578 - Modify Cloud Compute Infrastructure
@@ -147,10 +147,10 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- IAM user `pl-prod-stepfunctions-002-to-admin-starting-user` has `states:UpdateStateMachine` on the state machine `pl-prod-stepfunctions-002-to-admin-statemachine` — combined with `states:StartExecution`, this constitutes a privilege escalation path without requiring `iam:PassRole`
-- State machine `pl-prod-stepfunctions-002-to-admin-statemachine` has an execution role (`pl-prod-stepfunctions-002-to-admin-statemachine-role`) with `AdministratorAccess` — any principal with `states:UpdateStateMachine` on this resource can effectively assume admin without `iam:PassRole`
+- IAM user `pl-prod-stepfunctions-002-to-admin-starting-user` has `states:UpdateStateMachine` on the state machine `pl-prod-stepfunctions-002-to-admin-statemachine` -- combined with `states:StartExecution`, this constitutes a privilege escalation path without requiring `iam:PassRole`
+- State machine `pl-prod-stepfunctions-002-to-admin-statemachine` has an execution role (`pl-prod-stepfunctions-002-to-admin-statemachine-role`) with `AdministratorAccess` -- any principal with `states:UpdateStateMachine` on this resource can effectively assume admin without `iam:PassRole`
 - The combination of `states:UpdateStateMachine + states:StartExecution` on a state machine whose execution role holds sensitive permissions is a standing privilege escalation risk, equivalent to a PassRole bypass
-- `pl-prod-stepfunctions-002-to-admin-statemachine-role` grants `AdministratorAccess` to `states.amazonaws.com` — this service principal can perform any IAM action including `iam:AttachUserPolicy` and `iam:CreateRole`
+- `pl-prod-stepfunctions-002-to-admin-statemachine-role` grants `AdministratorAccess` to `states.amazonaws.com` -- this service principal can perform any IAM action including `iam:AttachUserPolicy` and `iam:CreateRole`
 
 #### Prevention Recommendations
 

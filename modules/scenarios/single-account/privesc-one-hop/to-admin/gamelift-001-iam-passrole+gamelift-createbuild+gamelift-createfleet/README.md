@@ -6,10 +6,10 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Cost Estimate When Demo Executed:** ~$1/mo (EC2 charges while GameLift fleet is active during demo; fleet is deleted by cleanup script)
+* **Cost Estimate When Demo Executed:** $1/mo
 * **Technique:** Upload a malicious game server build and create a GameLift fleet with an admin instance role using `SHARED_CREDENTIAL_FILE` to execute arbitrary code with the admin role's credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_gamelift_001_iam_passrole_gamelift_createbuild_gamelift_createfleet`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** gamelift-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -174,7 +174,7 @@ plabs apply
 #### CloudTrail Events to Monitor
 
 - `gamelift:CreateBuild` -- new GameLift build registered; precursor event establishing the upload target before fleet creation
-- `gamelift:CreateFleet` -- GameLift fleet created; inspect `requestParameters.instanceRoleArn` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via GameLift; high severity when the role has administrative permissions
+- `gamelift:CreateFleet` -- GameLift fleet created; inspect `requestParameters.instanceRoleArn` -- a privileged role ARN here is the CloudTrail signal for PassRole abuse via GameLift; high severity when the role has administrative permissions
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within a GameLift fleet instance; critical when the policy is `AdministratorAccess` and the caller identity is the fleet instance role
 
 #### Detonation logs

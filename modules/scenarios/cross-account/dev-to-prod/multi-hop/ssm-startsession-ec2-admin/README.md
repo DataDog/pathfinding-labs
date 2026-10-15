@@ -8,7 +8,7 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Cross-account privesc: dev user assumes a prod pivot role, exploits ssm:StartSession to access an EC2 instance with an admin instance profile, then retrieves admin credentials via IMDS
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1021.007 - Remote Services: Cloud Services, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 * **CTF Flag Location:** ssm-parameter
@@ -151,7 +151,7 @@ plabs apply
 #### What CSPM tools should detect
 
 - `pl-prod-ssm-ec2-pivot-role` holds `ssm:SendCommand` and `ssm:StartSession` on EC2 instances without any tag-based or resource-level conditions, allowing it to target any SSM-managed instance in the prod account
-- `pl-prod-ssm-ec2-admin-role` is attached as an instance profile to `pl-prod-ssm-ec2-instance` and carries `AdministratorAccess` — an EC2 instance profile with wildcard admin permissions is a high-severity misconfiguration
+- `pl-prod-ssm-ec2-admin-role` is attached as an instance profile to `pl-prod-ssm-ec2-instance` and carries `AdministratorAccess` -- an EC2 instance profile with wildcard admin permissions is a high-severity misconfiguration
 - The cross-account trust on `pl-prod-ssm-ec2-pivot-role` permits assumption by the dev account without an MFA condition or `aws:PrincipalOrgID` constraint, allowing any dev account credential that can reach this role to escalate into prod
 - Graph-based IAM analysis should surface the full chain: dev user → cross-account assume → pivot role → SSM to EC2 → IMDS credential extraction → admin role
 

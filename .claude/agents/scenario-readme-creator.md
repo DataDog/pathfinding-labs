@@ -41,6 +41,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file. This YAM
 |---|---|
 | `description` | `* **Technique:** {value}` |
 | `cost_estimate` | `* **Cost Estimate:** {value}` |
+| `cost_estimate_when_demo_executed` | `* **Cost Estimate When Demo Executed:** {value}` |
 | `category` | `* **Category:** {value}` |
 | `sub_category` | `* **Sub-Category:** {value}` *(privesc self-escalation/one-hop only)* |
 | `path_type` | `* **Path Type:** {value}` |

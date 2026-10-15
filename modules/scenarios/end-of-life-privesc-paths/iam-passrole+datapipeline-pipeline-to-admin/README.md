@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating a Data Pipeline with an admin role to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_passrole_datapipeline_pipeline`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** datapipeline-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence

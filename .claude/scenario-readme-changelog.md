@@ -4,6 +4,36 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.7.2 — 2026-10-15
+
+Patch: defined the two cost fields (idle vs. running) and fixed their required format.
+
+**Changes:**
+- **`* **Cost Estimate:**`** and **`* **Cost Estimate When Demo Executed:**`** -- added explicit definitions. `Cost Estimate` is the *idle* cost of the Terraform resources after `terraform apply` (un-exploited); `Cost Estimate When Demo Executed` is the *running* cost including whatever the demo spins up out-of-band and leaves running. The demo-executed value must be >= the idle value.
+- **Format rule** -- both fields must be `$0/mo` or a whole-dollar monthly figure `$N/mo`. Hourly rates, ranges, tildes, and parenthetical prose (`~$0.01/hr (t3.micro EC2 instance)`, `$3/hr (p3.2xlarge)`, etc.) are no longer allowed; caveats belong in the `### Automated Demo` section or `solution.md`.
+- Added a compliance-checklist item for the cost format, and corrected the checklist's stale schema-version reference (was `4.6.1`) to match the current version.
+
+**Motivation:**
+- Several labs had corrupted or off-format cost values (`Can/mo`, `~$0.01/hr (t3.micro EC2 instance)`, `~$3/hr when GPU instance is running`) that broke the `$x/mo` convention used across the catalog and surfaced as noise on pathfinding.cloud/labs.
+- The idle-vs-running distinction was an unwritten convention; making it explicit keeps transient-resource demos (GPU instances, GameLift/ECS fleets) scored consistently.
+
+**Migration rules:**
+- PATCH -- no section or field structure changes. Only READMEs whose cost lines violate the `$0/mo`/`$N/mo` format need correcting; convert hourly/transient costs to a whole-dollar monthly figure and move any prose caveats into the demo/solution text.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    For any README whose "* **Cost Estimate:**" or
+    "* **Cost Estimate When Demo Executed:**" line is not of the form "$0/mo" or
+    "$N/mo" (whole dollars), rewrite it to that form. Idle cost is the post-apply
+    cost of the Terraform resources; demo-executed cost adds whatever the demo runs
+    out-of-band, and must be >= the idle cost. Remove tildes, hourly rates, ranges,
+    and parenthetical prose; relocate caveats to the Automated Demo or solution text.
+```
+
+---
+
 ## 4.7.1 — 2026-05-15
 
 Patch: clarified when `Pathfinding.cloud ID` should and should not appear.

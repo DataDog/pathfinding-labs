@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Overriding existing ECS task definition commands and task role via ecs:StartTask --overrides to escalate to admin on an already-registered container instance
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_009_iam_passrole_ecs_starttask`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ecs-009
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

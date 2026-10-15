@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $10/mo
 * **Technique:** EC2 userData injection with cloud-init to extract IMDS credentials
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ec2-002
 * **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/ec2-002-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

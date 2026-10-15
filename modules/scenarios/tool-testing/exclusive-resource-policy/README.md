@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Access S3 bucket with exclusive resource policy that denies all except specific role
 * **Terraform Variable:** `enable_tool_testing_exclusive_resource_policy`
-* **Schema Version:** 4.1.1
+* **Schema Version:** 4.7.2
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 

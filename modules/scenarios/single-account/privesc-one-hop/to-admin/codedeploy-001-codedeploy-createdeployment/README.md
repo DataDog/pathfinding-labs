@@ -5,12 +5,12 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Cost Estimate:** ~$0.01/hr (t3.micro EC2 instance)
-* **Cost Estimate When Demo Executed:** ~$0.01/hr (no additional resources created)
+* **Cost Estimate:** $8/mo
+* **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Principal with codedeploy:CreateDeployment can escalate privileges by deploying a malicious revision whose lifecycle hooks execute as the target EC2 instance's admin instance profile
 * **Pathfinding.cloud ID:** codedeploy-001
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1072 - Software Deployment Tools, T1078.004 - Valid Accounts: Cloud Accounts
 * **CTF Flag Location:** ssm-parameter
@@ -155,7 +155,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- IAM user `pl-prod-codedeploy-001-to-admin-starting-user` has `codedeploy:CreateDeployment` scoped to `*` — any deployment group in the account is a valid target, including those backed by admin-role EC2 instances
+- IAM user `pl-prod-codedeploy-001-to-admin-starting-user` has `codedeploy:CreateDeployment` scoped to `*` -- any deployment group in the account is a valid target, including those backed by admin-role EC2 instances
 - EC2 instance with `AdministratorAccess` instance profile (`pl-prod-codedeploy-001-to-admin-ec2-role`) is enrolled in a CodeDeploy deployment group (`pl-prod-codedeploy-001-to-admin-dg`)
 - The combination of a principal with `codedeploy:CreateDeployment` and at least one CodeDeploy deployment group whose target instances hold a privileged instance profile constitutes a complete privilege escalation path — no `iam:PassRole` needed
 - CodeDeploy deployment role (`pl-prod-codedeploy-001-to-admin-deploy-svc-role`) can be leveraged by any principal who can trigger a deployment, not just those with `iam:PassRole` on it
@@ -163,7 +163,7 @@ plabs apply
 
 #### Prevention Recommendations
 
-- Scope `codedeploy:CreateDeployment` to specific CodeDeploy application ARNs using the `codedeploy:Application` condition key rather than allowing `*` — limit who can deploy to any group
+- Scope `codedeploy:CreateDeployment` to specific CodeDeploy application ARNs using the `codedeploy:Application` condition key rather than allowing `*` -- limit who can deploy to any group
 - Use IAM condition keys (e.g., `codedeploy:DeploymentGroupArn`) to restrict `codedeploy:CreateDeployment` to a named set of trusted deployment groups
 - Avoid attaching `AdministratorAccess` or other overly broad managed policies to EC2 instance profiles used as CodeDeploy targets; follow least-privilege and scope to only the permissions the application actually requires
 - Require that CodeDeploy revisions originate from specific trusted S3 buckets in the same AWS account; reject revisions from external accounts using S3 bucket policies and CodeDeploy deployment group configuration

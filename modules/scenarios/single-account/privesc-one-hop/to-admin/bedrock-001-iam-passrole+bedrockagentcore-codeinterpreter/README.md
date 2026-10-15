@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged IAM role to Bedrock code interpreter and extract credentials from MicroVM Metadata Service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_001_iam_passrole_bedrockagentcore_codeinterpreter`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/bedrock-001-to-admin`
 * **Pathfinding.cloud ID:** bedrock-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

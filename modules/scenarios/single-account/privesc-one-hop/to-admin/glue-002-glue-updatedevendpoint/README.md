@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** glue-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation

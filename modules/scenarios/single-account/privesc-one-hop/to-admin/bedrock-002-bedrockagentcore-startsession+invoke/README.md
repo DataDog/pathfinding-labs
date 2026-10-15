@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Access existing code interpreter with privileged role to extract credentials from MicroVM Metadata Service (no iam:PassRole required)
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_002_bedrockagentcore_startsession_invoke`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **CTF Flag Location:** ssm-parameter
 * **Pathfinding.cloud ID:** bedrock-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

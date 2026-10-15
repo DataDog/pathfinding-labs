@@ -5,11 +5,11 @@
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Environments:** prod
-* **Cost Estimate:** Can/mo
-* **Cost Estimate When Demo Executed:** Can/mo
+* **Cost Estimate:** $0/mo
+* **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with bedrock-agentcore:InvokeAgentRuntimeCommand can run root shell commands inside an existing Runtime or Harness microVM and extract its execution role credentials from MMDS
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_004_bedrockagentcore_invokeagentcommand`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** bedrock-004
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -143,7 +143,7 @@ plabs apply
 #### What CSPM tools should detect
 
 - Principals with `bedrock-agentcore:InvokeAgentRuntimeCommand` permission on AgentCore Runtimes or Harnesses that have privileged execution roles
-- Privilege escalation path from a low-privilege principal to a high-privilege runtime without requiring `iam:PassRole` — one permission is sufficient
+- Privilege escalation path from a low-privilege principal to a high-privilege runtime without requiring `iam:PassRole` -- one permission is sufficient
 - Principals with `bedrock-agentcore:*` or unrestricted `InvokeAgentRuntimeCommand` permissions scoped to `*`
 - AgentCore Runtimes configured with IAM Inbound Auth (as opposed to JWT) combined with broad InvokeAgentRuntimeCommand access granted to non-administrative principals — IAM auth is the prerequisite for this attack; JWT-auth resources reject the unauthenticated command channel
 - AgentCore Runtimes and Harnesses with administrative execution roles, analogous to Lambda functions with AdministratorAccess or EC2 instances with over-permissive instance profiles

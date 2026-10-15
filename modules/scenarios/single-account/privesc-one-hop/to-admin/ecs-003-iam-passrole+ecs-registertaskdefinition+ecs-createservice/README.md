@@ -6,10 +6,10 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Cost Estimate When Demo Executed:** $0/mo
+* **Cost Estimate When Demo Executed:** $9/mo
 * **Technique:** ECS service creation with admin role to grant starting user administrative access through persistent task execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_003_iam_passrole_ecs_registertaskdefinition_ecs_createservice`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ecs-003
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution, TA0003 - Persistence

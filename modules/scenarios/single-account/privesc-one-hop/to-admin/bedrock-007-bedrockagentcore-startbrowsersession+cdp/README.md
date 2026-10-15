@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Principal with bedrock-agentcore:StartBrowserSession and ConnectBrowserAutomationStream can drive an existing Custom Browser over CDP to read its execution role credentials from MMDS
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_bedrock_007_bedrockagentcore_startbrowsersession_cdp`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** bedrock-007
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
@@ -147,7 +147,7 @@ plabs apply
 #### What CSPM tools should detect
 
 - Principals with `bedrock-agentcore:StartBrowserSession` and `bedrock-agentcore:ConnectBrowserAutomationStream` permissions combined, where accessible Custom Browsers carry privileged execution roles — the two permissions together are sufficient for credential theft without any `iam:PassRole` or browser creation
-- Privilege escalation path from a low-privilege principal to a high-privilege Custom Browser without requiring `iam:PassRole` — the attacker never needs to provision infrastructure, only to interact with what already exists
+- Privilege escalation path from a low-privilege principal to a high-privilege Custom Browser without requiring `iam:PassRole` -- the attacker never needs to provision infrastructure, only to interact with what already exists
 - AgentCore Custom Browsers with administrative execution roles, analogous to Lambda functions with AdministratorAccess or EC2 instances with over-permissive instance profiles
 - Principals with `bedrock-agentcore:*` or broadly scoped `StartBrowserSession` / `ConnectBrowserAutomationStream` permissions that encompass production Custom Browsers carrying elevated roles
 - Custom Browsers where the attached execution role trusts `bedrock-agentcore.amazonaws.com` and holds sensitive data-plane permissions beyond what the browsing workload requires

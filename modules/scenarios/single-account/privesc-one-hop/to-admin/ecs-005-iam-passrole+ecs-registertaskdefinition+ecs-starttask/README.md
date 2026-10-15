@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** ECS EC2 task execution with admin role using ecs:StartTask to grant starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_005_iam_passrole_ecs_registertaskdefinition_ecs_starttask`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ecs-005
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
