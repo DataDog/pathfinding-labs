@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating an Amplify app connected to a CodeCommit repository containing a malicious amplify.yml build spec that executes shell commands with an admin service role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_amplify_001_iam_passrole_amplify_createapp_amplify_createbranch_amplify_startjob`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** amplify-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

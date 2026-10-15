@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $9/mo
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ecs-006
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

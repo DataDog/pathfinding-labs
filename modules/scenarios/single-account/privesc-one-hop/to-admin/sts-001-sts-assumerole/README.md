@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Direct role assumption via sts:AssumeRole
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sts_001_sts_assumerole`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** sts-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation

@@ -10,7 +10,7 @@
 * **Technique:** Create Data Pipeline with passed role to read sensitive S3 data the starting user cannot access directly; exfiltrate to attacker-controlled S3 bucket in separate account
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_iam_passrole_datapipeline_pipeline`
 * **CTF Flag Location:** s3-object
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** datapipeline-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection, TA0010 - Exfiltration
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1530 - Data from Cloud Storage Object

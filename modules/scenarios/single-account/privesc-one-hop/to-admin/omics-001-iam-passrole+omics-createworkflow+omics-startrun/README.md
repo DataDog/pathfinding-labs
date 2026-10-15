@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass an admin role to an AWS HealthOmics WDL workflow whose task exfiltrates the execution role's temporary credentials to S3, then retrieve and use those credentials to attach AdministratorAccess to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_omics_001_iam_passrole_omics_createworkflow_omics_startrun`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** omics-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -152,7 +152,7 @@ plabs apply
 
 #### What CSPM tools should detect
 
-- IAM user with `iam:PassRole` on a role that has `AdministratorAccess` or equivalent permissions, combined with `omics:CreateWorkflow` and `omics:StartRun` — a complete privilege escalation path through AWS HealthOmics
+- IAM user with `iam:PassRole` on a role that has `AdministratorAccess` or equivalent permissions, combined with `omics:CreateWorkflow` and `omics:StartRun` -- a complete privilege escalation path through AWS HealthOmics
 - IAM role with `AdministratorAccess` whose trust policy allows `omics.amazonaws.com` to assume it — this role can be passed to any HealthOmics workflow as the execution role
 - `iam:PassRole` permission scoped to an administrative role without a `iam:PassedToService` condition key restricting which services the role can be passed to
 
@@ -170,7 +170,7 @@ plabs apply
 #### CloudTrail Events to Monitor
 
 - `omics:CreateWorkflow` -- new HealthOmics workflow definition created; high severity when the caller also holds `iam:PassRole` on high-privilege roles; inspect `requestParameters.name` for attacker-chosen workflow names
-- `omics:StartRun` -- HealthOmics workflow run started; inspect `requestParameters.roleArn` — a privileged or administrative role ARN here is the CloudTrail signal for PassRole abuse via HealthOmics; correlate with a preceding `omics:CreateWorkflow` from the same principal
+- `omics:StartRun` -- HealthOmics workflow run started; inspect `requestParameters.roleArn` -- a privileged or administrative role ARN here is the CloudTrail signal for PassRole abuse via HealthOmics; correlate with a preceding `omics:CreateWorkflow` from the same principal
 - `s3:PutObject` -- credential file written to S3 from within the HealthOmics task context; suspicious when the caller is a HealthOmics execution role identity and the object contains credential-shaped JSON
 - `s3:GetObject` -- attacker retrieving the exfiltrated credential file from the output bucket after workflow completion
 - `iam:AttachUserPolicy` -- `AdministratorAccess` or similar managed policy attached to an IAM user using temporary credentials belonging to a HealthOmics execution role; the caller identity in CloudTrail will be the assumed execution role, not the starting user

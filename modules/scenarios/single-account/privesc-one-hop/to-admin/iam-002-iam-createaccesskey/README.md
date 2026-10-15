@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Creating access keys for privileged users to gain administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_002_iam_createaccesskey`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** iam-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence

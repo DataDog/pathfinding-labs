@@ -105,6 +105,15 @@ ssh -i /tmp/glue-attack-key -o StrictHostKeyChecking=no glue@$ENDPOINT_ADDRESS \
 
 You should see the contents of the bucket listed. The sensitive data is now readable.
 
+## Capture the Flag
+
+The target role's `s3:GetObject` permission on the sensitive bucket already covers the `flag.txt` object placed there, so the same access you just verified is sufficient to read it:
+
+```bash
+ssh -i /tmp/glue-attack-key -o StrictHostKeyChecking=no glue@$ENDPOINT_ADDRESS \
+  "aws s3 cp s3://pl-sensitive-data-glue-002-{account_id}-{suffix}/flag.txt -"
+```
+
 ## What Happened
 
 You exploited the fact that `glue:UpdateDevEndpoint` allows any authorized caller to inject SSH credentials into a running endpoint — without needing to create anything new or pass a role. The endpoint already had a privileged role attached as part of its normal ETL configuration. By adding your SSH key, you essentially promoted yourself to that role through a side door.

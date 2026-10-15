@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass privileged role to AWS Batch job definition and submit a job that grants the starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_batch_001_iam_passrole_batch_registerjobdefinition_batch_submitjob`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** batch-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -175,7 +175,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `batch:RegisterJobDefinition` -- new Batch job definition registered; inspect `requestParameters.containerProperties.jobRoleArn` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via Batch; high severity when the role has administrative permissions
+- `batch:RegisterJobDefinition` -- new Batch job definition registered; inspect `requestParameters.containerProperties.jobRoleArn` -- a privileged role ARN here is the CloudTrail signal for PassRole abuse via Batch; high severity when the role has administrative permissions
 - `batch:SubmitJob` -- Batch job submitted; correlate with a preceding `RegisterJobDefinition` call from the same principal to identify abuse of newly registered definitions
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within a Batch job context; critical when the policy is `AdministratorAccess` and the caller is an ECS task role
 - `iam:PutUserPolicy` -- inline policy added to an IAM user from within a Batch job context; monitor for policies granting broad permissions

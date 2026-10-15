@@ -5,14 +5,14 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Cost Estimate When Demo Executed:** ~$3/hr when GPU instance is running (p3.2xlarge); run cleanup_attack.sh immediately after demo
+* **Cost Estimate When Demo Executed:** $6/mo
 * **Source URL:** https://www.sysdig.com/blog/ai-assisted-cloud-intrusion-achieves-admin-access-in-8-minutes
 * **Source Title:** AI-Assisted Cloud Intrusion Achieves Admin Access in 8 Minutes
 * **Source Author:** Alessandro Brucato and Michael Clark (Sysdig Threat Research Team)
 * **Source Date:** 2026-02-03
 * **Technique:** Recreation of the attack documented by Sysdig Threat Research Team: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes
 * **Terraform Variable:** `enable_attack_simulation_sysdig_8_minutes_to_admin`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0001 - Initial Access, TA0007 - Discovery, TA0004 - Privilege Escalation, TA0003 - Persistence, TA0005 - Defense Evasion, TA0009 - Collection, TA0011 - Impact
 * **MITRE Techniques:** T1552.001 - Credentials In Files, T1087.004 - Cloud Accounts, T1613 - Container and Resource Discovery, T1648 - Serverless Execution, T1098.001 - Additional Cloud Credentials, T1078.004 - Cloud Accounts, T1530 - Data from Cloud Storage Object, T1496 - Resource Hijacking

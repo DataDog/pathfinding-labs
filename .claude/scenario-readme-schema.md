@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.7.1`**
+**Current schema version: `4.7.2`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -82,6 +82,11 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 ```
 
 `Schema Version` must always reflect the schema version in effect when the README was last created or migrated. It is the last required field in the metadata block, appearing after `Terraform Variable` and before any conditional fields.
+
+**Cost fields** -- both are required and must be written as either `$0/mo` or a whole-dollar monthly figure `$N/mo`. Do not use hourly rates, ranges, tildes, or parenthetical prose (e.g. `~$0.01/hr`, `$3/hr (p3.2xlarge)`); put any caveats in the `### Automated Demo` section or `solution.md` instead. The two fields capture idle vs. running cost:
+
+* **Cost Estimate** -- the *idle* cost: what the scenario's Terraform resources cost per month after `terraform apply`, while deployed and un-exploited. Most labs create only IAM principals, policies, and empty buckets, so this is `$0/mo`. It is non-zero only when the Terraform itself stands up standing billable infrastructure (e.g. a running EC2 instance, NAT gateway, or RDS instance).
+* **Cost Estimate When Demo Executed** -- the *running* cost: the idle cost plus whatever the demo creates out-of-band during exploitation and leaves running until something stops it (e.g. a GameLift fleet, an ECS/Fargate service, or a GPU instance). For transient resources that the demo or a built-in safeguard tears down, estimate the monthly figure for the resource's realistic in-demo footprint, rounded to a whole dollar. This value is always greater than or equal to `Cost Estimate`.
 
 **Conditional fields:**
 ```
@@ -519,7 +524,8 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.6.1`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.7.2`)
+- [ ] `Cost Estimate` and `Cost Estimate When Demo Executed` are each `$0/mo` or `$N/mo` (whole-dollar monthly; no hourly rates, ranges, tildes, or parenthetical prose), and the demo-executed value is >= the idle value
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

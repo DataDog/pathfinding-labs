@@ -9,7 +9,8 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey`
-* **Schema Version:** 4.1.1
+* **CTF Flag Location:** s3-object
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ec2-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0009 - Collection
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object

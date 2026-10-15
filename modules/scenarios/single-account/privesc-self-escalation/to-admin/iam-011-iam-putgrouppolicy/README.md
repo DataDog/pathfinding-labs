@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Self-escalation via inline policy addition to own group
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_011_iam_putgrouppolicy`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** iam-011
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence

@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** Start interactive session on EC2 instances with privileged roles to extract credentials via SSM StartSession
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_001_ssm_startsession`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** ssm-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

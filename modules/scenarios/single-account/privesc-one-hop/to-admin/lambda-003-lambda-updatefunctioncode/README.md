@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing Lambda function code to execute malicious logic under privileged execution role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_lambda_003_lambda_updatefunctioncode`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** lambda-003
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence

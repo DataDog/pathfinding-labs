@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multiple privilege escalation techniques combined - EC2, Lambda, and CloudFormation paths to admin
 * **Terraform Variable:** `enable_single_account_privesc_multi_hop_to_admin_multiple_paths_combined`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure, T1648 - Serverless Execution

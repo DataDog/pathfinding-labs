@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Password reset for admin user to gain console access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_006_iam_updateloginprofile`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** iam-006
 * **CTF Flag Location:** ssm-parameter
 * **Interactive Demo:** Yes

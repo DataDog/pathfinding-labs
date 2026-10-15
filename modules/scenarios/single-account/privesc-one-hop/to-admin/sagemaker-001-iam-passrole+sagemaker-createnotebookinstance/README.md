@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with PassRole and CreateNotebookInstance can create notebook with admin role, then access via presigned URL to execute commands with elevated privileges
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_001_iam_passrole_sagemaker_createnotebookinstance`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** sagemaker-001
 * **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/sagemaker-001-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

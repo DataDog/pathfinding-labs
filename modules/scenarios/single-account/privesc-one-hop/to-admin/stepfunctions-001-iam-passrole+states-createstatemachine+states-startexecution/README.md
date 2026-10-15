@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass an admin role to a Step Functions state machine that calls IAM APIs via SDK service integration to attach AdministratorAccess to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_stepfunctions_001_iam_passrole_states_createstatemachine_states_startexecution`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** stepfunctions-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -161,7 +161,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `states:CreateStateMachine` -- new state machine created; inspect `requestParameters.roleArn` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via Step Functions; high severity when the role has administrative permissions and the definition contains `aws-sdk:iam:` resource ARNs indicating IAM manipulation
+- `states:CreateStateMachine` -- new state machine created; inspect `requestParameters.roleArn` -- a privileged role ARN here is the CloudTrail signal for PassRole abuse via Step Functions; high severity when the role has administrative permissions and the definition contains `aws-sdk:iam:` resource ARNs indicating IAM manipulation
 - `states:StartExecution` -- state machine execution started; correlate with a preceding `CreateStateMachine` call from the same principal to identify abuse of newly created state machines
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user; critical when the policy is `AdministratorAccess` and the caller is a Step Functions execution role assumed by the `states.amazonaws.com` service principal
 - `iam:PutUserPolicy` -- inline policy added to an IAM user; monitor for policies granting broad permissions where the caller context is a Step Functions execution role

@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modify another role's inline policy and assume it
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_iam_017_iam_putrolepolicy_sts_assumerole`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** iam-017
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation

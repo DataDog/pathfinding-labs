@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Submit a job to an existing Batch job definition that carries an admin jobRoleArn, overriding the container command to attach AdministratorAccess to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_batch_002_batch_submitjob`
-* **Schema Version:** 4.7.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** batch-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -152,13 +152,13 @@ plabs apply
 #### What CSPM tools should detect
 
 - AWS Batch job definition with `jobRoleArn` set to a role that carries `AdministratorAccess` or equivalent broad permissions
-- IAM user or role with `batch:SubmitJob` permission scoped to `*` — any principal that can submit jobs to this definition can abuse the admin `jobRoleArn` without holding `iam:PassRole`
-- Privilege escalation path from `batch:SubmitJob` alone to admin via an existing Batch job definition with a privileged `jobRoleArn` — CSPM tools that only flag `iam:PassRole + batch:RegisterJobDefinition` chains will miss this path
+- IAM user or role with `batch:SubmitJob` permission scoped to `*` -- any principal that can submit jobs to this definition can abuse the admin `jobRoleArn` without holding `iam:PassRole`
+- Privilege escalation path from `batch:SubmitJob` alone to admin via an existing Batch job definition with a privileged `jobRoleArn` -- CSPM tools that only flag `iam:PassRole + batch:RegisterJobDefinition` chains will miss this path
 - Admin IAM role that trusts `ecs-tasks.amazonaws.com` and is referenced as a `jobRoleArn` in an active Batch job definition
 
 #### Prevention Recommendations
 
-- Never attach `AdministratorAccess` or other broad wildcard policies to roles used as `jobRoleArn` — scope the job role to only the permissions the workload actually needs
+- Never attach `AdministratorAccess` or other broad wildcard policies to roles used as `jobRoleArn` -- scope the job role to only the permissions the workload actually needs
 - Restrict `batch:SubmitJob` to specific job definition ARNs rather than `*`; use IAM resource-level conditions like `batch:JobDefinition` to limit which definitions a principal can submit to
 - Add a resource-based condition on the admin role's trust policy to restrict which job definition ARNs can assume it (using `aws:SourceArn` or a custom condition), preventing arbitrary Batch submissions from inheriting the role
 - Audit all active Batch job definitions and alert whenever `jobRoleArn` references a role with IAM administrative permissions (`iam:*`, `iam:AttachUserPolicy`, `iam:PutRolePolicy`, or managed policies like `AdministratorAccess`)

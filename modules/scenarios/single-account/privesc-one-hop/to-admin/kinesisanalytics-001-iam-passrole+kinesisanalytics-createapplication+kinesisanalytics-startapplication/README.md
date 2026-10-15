@@ -6,10 +6,10 @@
 * **Target:** to-admin
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
-* **Cost Estimate When Demo Executed:** $0/mo
+* **Cost Estimate When Demo Executed:** $166/mo
 * **Technique:** Pass an admin role to an Amazon Managed Service for Apache Flink application running a pre-staged malicious JAR that grants the starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_kinesisanalytics_001_iam_passrole_kinesisanalytics_createapplication_kinesisanalytics_startapplication`
-* **Schema Version:** 4.6.1
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** kinesisanalytics-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -164,7 +164,7 @@ plabs apply
 
 #### CloudTrail Events to Monitor
 
-- `kinesisanalyticsv2:CreateApplication` -- new Managed Apache Flink application created; inspect `requestParameters.serviceExecutionRole` — a privileged role ARN here is the CloudTrail signal for PassRole abuse via Kinesis Analytics; high severity when the role has administrative permissions
+- `kinesisanalyticsv2:CreateApplication` -- new Managed Apache Flink application created; inspect `requestParameters.serviceExecutionRole` -- a privileged role ARN here is the CloudTrail signal for PassRole abuse via Kinesis Analytics; high severity when the role has administrative permissions
 - `kinesisanalyticsv2:StartApplication` -- Flink application started; critical when preceded by a `CreateApplication` event with a privileged `serviceExecutionRole`
 - `iam:AttachUserPolicy` -- managed policy attached to an IAM user from within a Flink application; critical when the policy is `AdministratorAccess` and the caller is a Kinesis Analytics service execution role
 

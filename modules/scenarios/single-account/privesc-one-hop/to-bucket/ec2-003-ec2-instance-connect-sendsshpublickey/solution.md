@@ -130,6 +130,14 @@ aws s3 cp s3://pl-sensitive-data-ec2-003-123456789012-abc123/sensitive-data.txt 
 
 Bucket access confirmed. You successfully read data that the starting user had no direct permission to access.
 
+## Capture the Flag
+
+The `pl-prod-ec2-003-to-bucket-ec2-bucket-role` credentials extracted from IMDS already carry `s3:GetObject` on the target bucket, so the same session that confirmed bucket access can retrieve the flag directly:
+
+```bash
+aws s3 cp s3://pl-sensitive-data-ec2-003-{account_id}-{suffix}/flag.txt -
+```
+
 ## What Happened
 
 The `ec2-instance-connect:SendSSHPublicKey` permission is often granted without much scrutiny because the SSH key is temporary — only valid for 60 seconds. But the key's brevity is irrelevant: during that 60-second window you can SSH into the instance and query the IMDS, which returns credentials that last up to an hour. From that point on you are operating as the EC2 role, not as yourself, and those credentials can be used from anywhere.

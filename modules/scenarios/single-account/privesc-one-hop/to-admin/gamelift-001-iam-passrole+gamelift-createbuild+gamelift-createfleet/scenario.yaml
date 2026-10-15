@@ -6,7 +6,7 @@ name: "iam-passrole+gamelift-createbuild+gamelift-createfleet"
 title: "GameLift Fleet to Admin"
 description: "User with iam:PassRole, gamelift:CreateBuild, and gamelift:CreateFleet can escalate privileges by uploading a malicious game server build and creating a fleet with an admin instance role whose credentials are available to the running process"
 cost_estimate: "$0/mo"
-cost_estimate_when_demo_executed: "~$1/mo"
+cost_estimate_when_demo_executed: "$1/mo"
 pathfinding-cloud-id: "gamelift-001"
 
 # =============================================================================

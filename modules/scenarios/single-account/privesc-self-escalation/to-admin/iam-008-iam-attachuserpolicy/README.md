@@ -9,7 +9,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User self-modification via iam:AttachUserPolicy to attach managed admin policy
 * **Terraform Variable:** `enable_single_account_privesc_self_escalation_to_admin_iam_008_iam_attachuserpolicy`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.7.2
 * **Pathfinding.cloud ID:** iam-008
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0003 - Persistence
