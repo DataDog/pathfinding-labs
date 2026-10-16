@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:PassRole and broad Batch permissions creates entire Batch pipeline from scratch -- compute environment, job queue, job definition with admin jobRoleArn -- and submits a job to escalate to admin
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_batch_003_iam_passrole_batch_createcomputeenvironment_batch_createjobqueue_batch_registerjobdefinition_batch_submitjob`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** batch-003
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

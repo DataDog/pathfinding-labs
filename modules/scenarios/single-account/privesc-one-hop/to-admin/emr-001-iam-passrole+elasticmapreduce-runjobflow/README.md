@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Passing an admin instance profile to an EMR cluster and executing a step via command-runner.jar to attach AdministratorAccess to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_emr_001_iam_passrole_elasticmapreduce_runjobflow`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** emr-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

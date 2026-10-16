@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Cross-account Lambda function code injection to extract admin credentials
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_lambda_invoke_update`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1648 - Serverless Execution, T1552.005 - Cloud Instance Metadata API

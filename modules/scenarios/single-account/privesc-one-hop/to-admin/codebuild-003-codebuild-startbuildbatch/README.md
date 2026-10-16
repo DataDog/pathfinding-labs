@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Exploit existing CodeBuild project with buildspec-override to execute privileged commands
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbuildbatch`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** codebuild-003
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

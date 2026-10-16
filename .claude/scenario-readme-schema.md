@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.7.2`**
+**Current schema version: `4.8.0`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -73,6 +73,7 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **Category:** {Privilege Escalation|CSPM: Misconfig|CSPM: Toxic Combination|Tool Testing|CTF|Attack Simulation}
 * **Path Type:** {self-escalation|one-hop|multi-hop|cross-account|single-condition|toxic-combination|ctf|attack-simulation}
 * **Target:** {to-admin|to-bucket}
+* **Points:** {integer, e.g., 10}
 * **Environments:** {prod|dev|operations|prod, dev}
 * **Cost Estimate:** {value, e.g., "$0/mo"}
 * **Cost Estimate When Demo Executed:** {value, e.g., "$0/mo"}
@@ -80,6 +81,8 @@ The metadata bullet list appears immediately after the H1 title, before any H2 s
 * **Terraform Variable:** `{variable_name}`
 * **Schema Version:** {current version from this file, e.g., 3.0.0}
 ```
+
+**Points** -- the lab's value on the pathfinding.cloud labs leaderboard, a whole number. Seed it from the number of principal hops (single-hop 10, two-hop 20, three-hop 30, and so on); CTF labs are set higher by hand (100 or 200). It must match `points` in `scenario.yaml`. The site's `scripts/generate-labs-json.py` reads it from this line, and pathfinding-backend scores completions from the result. It appears right after `Target` (after `Sub-Category` where that field is present).
 
 `Schema Version` must always reflect the schema version in effect when the README was last created or migrated. It is the last required field in the metadata block, appearing after `Terraform Variable` and before any conditional fields.
 
@@ -524,7 +527,8 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 
 A README is compliant if all of the following are true:
 
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.7.2`)
+- [ ] `* **Points:** {N}` is present in the metadata block, is a whole number, and matches `points` in `scenario.yaml`
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.8.0`)
 - [ ] `Cost Estimate` and `Cost Estimate When Demo Executed` are each `$0/mo` or `$N/mo` (whole-dollar monthly; no hourly rates, ranges, tildes, or parenthetical prose), and the demo-executed value is >= the idle value
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)

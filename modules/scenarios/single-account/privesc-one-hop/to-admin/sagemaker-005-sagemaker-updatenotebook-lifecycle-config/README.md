@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $37/mo
 * **Technique:** User with SageMaker update permissions can inject malicious lifecycle config into existing notebook to execute code with notebook's admin role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_sagemaker_005_sagemaker_updatenotebook_lifecycle_config`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** sagemaker-005
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Execute commands on EC2 instances with privileged roles to extract credentials via SSM SendCommand
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ssm_002_ssm_sendcommand`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** ssm-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement

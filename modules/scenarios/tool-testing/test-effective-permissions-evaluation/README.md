@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 * **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 

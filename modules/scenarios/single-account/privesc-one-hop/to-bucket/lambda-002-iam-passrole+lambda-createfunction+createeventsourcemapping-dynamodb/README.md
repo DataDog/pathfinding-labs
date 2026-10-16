@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass scoped S3-access role to Lambda function, link to DynamoDB stream for passive execution without requiring InvokeFunction permission
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_lambda_002_iam_passrole_lambda_createfunction_createeventsourcemapping_dynamodb`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** lambda-002
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection

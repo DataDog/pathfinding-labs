@@ -11,7 +11,7 @@
 * **Difficulty:** beginner
 * **Flag Location:** ssm-parameter at /pathfinding-labs/flags/ctf-001-to-admin
 * **Terraform Variable:** `enable_ctf_ai_chatbot_to_admin`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0001 - Initial Access, TA0006 - Credential Access, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
 

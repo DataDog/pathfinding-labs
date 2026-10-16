@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Testing security tool capability to identify both direct and indirect S3 bucket access paths in reverse blast radius queries
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0009 - Collection
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object
 

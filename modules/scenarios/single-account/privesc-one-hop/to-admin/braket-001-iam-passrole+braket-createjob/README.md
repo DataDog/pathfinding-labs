@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass an admin role to an Amazon Braket Hybrid Job running a pre-staged malicious Python script that grants the starting user administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_braket_001_iam_passrole_braket_createjob`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** braket-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution

@@ -4,6 +4,31 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.8.0 — 2026-10-16
+
+Minor: added the required `* **Points:**` metadata field.
+
+**Changes:**
+- **`* **Points:** {N}`** -- new required metadata field, placed after `Target`: the lab's value on the pathfinding.cloud labs leaderboard. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30); CTF labs are set higher by hand (100/200). It mirrors the new required `points` field in `scenario.yaml` (SCHEMA.md 1.10.0).
+- Added a compliance-checklist item for it, and moved the checklist's version reference to `4.8.0`.
+
+**Motivation:**
+- The labs leaderboard now ranks learners by total points instead of lab count. pathfinding.cloud's `generate-labs-json.py` reads each lab's points from this field, and pathfinding-backend scores completions from the published `labs.json`, so every lab needs a value.
+
+**Migration rules:**
+- MINOR -- one new required field, no section changes. Every existing README was migrated in the same change (Points added and `Schema Version` set to `4.8.0`).
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    Add "* **Points:** N" after "* **Target:**" (after "* **Sub-Category:**" when
+    present), using the same value as `points` in scenario.yaml, and set
+    "* **Schema Version:**" to 4.8.0.
+```
+
+---
+
 ## 4.7.2 — 2026-10-15
 
 Patch: defined the two cost fields (idle vs. running) and fixed their required format.

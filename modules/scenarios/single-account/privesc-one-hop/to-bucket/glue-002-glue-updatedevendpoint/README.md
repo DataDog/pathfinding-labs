@@ -11,7 +11,7 @@
 * **Technique:** Add SSH public key to existing Glue dev endpoint and access S3 buckets with the endpoint's attached role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint`
 * **CTF Flag Location:** s3-object
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** glue-002
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1021.004 - Remote Services: SSH

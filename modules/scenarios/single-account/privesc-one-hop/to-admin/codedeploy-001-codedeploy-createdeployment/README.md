@@ -11,7 +11,7 @@
 * **Technique:** Principal with codedeploy:CreateDeployment can escalate privileges by deploying a malicious revision whose lifecycle hooks execute as the target EC2 instance's admin instance profile
 * **Pathfinding.cloud ID:** codedeploy-001
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_codedeploy_001_codedeploy_createdeployment`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
 * **MITRE Techniques:** T1072 - Software Deployment Tools, T1078.004 - Valid Accounts: Cloud Accounts
 * **CTF Flag Location:** ssm-parameter

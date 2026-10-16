@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Pass an admin role to an EventBridge Scheduler one-shot schedule targeting the universal target `arn:aws:scheduler:::aws-sdk:iam:attachUserPolicy`, causing the scheduler to call `iam:AttachUserPolicy` as the passed role and attach `AdministratorAccess` to the starting user
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_scheduler_001`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** scheduler-001
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation

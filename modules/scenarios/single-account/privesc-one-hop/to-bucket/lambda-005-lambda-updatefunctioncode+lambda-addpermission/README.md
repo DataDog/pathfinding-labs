@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with lambda:UpdateFunctionCode and lambda:AddPermission can modify existing Lambda function code, grant themselves invoke permission, and read sensitive S3 bucket contents using the function's privileged role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_lambda_005_lambda_updatefunctioncode_lambda_addpermission`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** lambda-005
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection

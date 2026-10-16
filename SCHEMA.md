@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.8.0`
+### Current Version: `1.10.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.10.0 | 2026-10-16 | Added the required `points` integer field: the lab's value on the pathfinding.cloud labs leaderboard, which now ranks learners by total points instead of lab count. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30); CTF labs are set higher by hand. Mirrors the README's `* **Points:**` field (README schema 4.8.0), which is what the site's `generate-labs-json.py` reads. All scenarios were given a value in the same change. |
 | 1.9.0 | 2026-10-15 | Removed the `supports_online_mode` field. Whether a lab can be played online in the browser no longer comes from this repo: pathfinding-backend derives it at runtime from the Cybr Labs catalog (labs Cybr hosts with a browser terminal) and pathfinding.cloud reads it from the backend. Existing `supports_online_mode` lines are ignored and can be deleted. |
 | 1.8.0 | 2026-05-13 | Added `required_preconditions` optional list field: typed objects documenting what must already exist in the account for the attack path to be viable. Each entry has a `type` (`aws-resource`, `network`, `external`, `configuration`), an optional `resource` name (for `aws-resource` entries), and a `description`. This field is the primary differentiator between scenarios that share the same permissions but differ in what pre-existing infrastructure they exploit. Canonical use cases: `existing-passrole` sub_category, `attack-simulation` scenarios, and any path where the attack works because of something that pre-exists rather than something the attacker creates. Optional — omit for `self-escalation`, `new-passrole`, and CTF scenarios. |
 | 1.7.0 | 2026-04-21 | Added `demo_timeout_seconds` and `cleanup_timeout_seconds` optional integer fields: per-scenario overrides of the default harness timeouts in `scripts/run_demos.py` (300s demo, 120s cleanup). Required for any scenario whose demo creates a resource that takes > 2 min to provision (Glue dev endpoints, SageMaker notebooks/processing jobs, CodeBuild projects, EC2 instances, etc.), because the harness uses SIGKILL on timeout — which bash traps cannot catch — leaving the resource orphaned. See "When to Set Timeout Overrides" in Core Metadata for the reference table. Motivated by the glue-001 orphan incident (2026-04-17 to 2026-04-21) that bled ~$55 on an abandoned dev endpoint. |
@@ -79,7 +80,7 @@ The schema follows semantic versioning:
 Fundamental information about the scenario.
 
 ```yaml
-schema_version: "1.9.0"
+schema_version: "1.10.0"
 name: "iam-putuserpolicy"
 title: "IAM PutUserPolicy Self-Escalation to Admin"
 description: "Principal with iam:PutUserPolicy can attach inline admin policy to escalate privileges"

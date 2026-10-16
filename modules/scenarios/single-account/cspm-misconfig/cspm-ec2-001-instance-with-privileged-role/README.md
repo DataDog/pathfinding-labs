@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $5/mo
 * **Technique:** EC2 instance with a highly privileged IAM role attached - validates CSPM detection
 * **Terraform Variable:** `enable_single_account_cspm_misconfig_cspm_ec2_001_instance_with_privileged_role`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** cspm-ec2-001
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
