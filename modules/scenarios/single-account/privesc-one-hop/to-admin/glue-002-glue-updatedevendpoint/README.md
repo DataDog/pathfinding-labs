@@ -4,6 +4,7 @@
 * **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $634/mo
 * **Cost Estimate When Demo Executed:** $634/mo

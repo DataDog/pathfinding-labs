@@ -16,6 +16,7 @@ category: "Privilege Escalation"
 sub_category: "self-escalation"
 path_type: "self-escalation"
 target: "to-bucket"
+points: 10
 environments:
   - "prod"
 

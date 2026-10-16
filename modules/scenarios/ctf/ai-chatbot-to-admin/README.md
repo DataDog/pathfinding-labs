@@ -3,6 +3,7 @@
 * **Category:** CTF
 * **Path Type:** ctf
 * **Target:** to-admin
+* **Points:** 100
 * **Environments:** prod
 * **Cost Estimate:** $1/mo
 * **Cost Estimate When Demo Executed:** $1/mo

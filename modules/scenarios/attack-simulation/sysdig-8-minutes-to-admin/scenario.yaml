@@ -16,6 +16,7 @@ interactive_demo: false
 category: "Attack Simulation"
 path_type: "attack-simulation"
 target: "to-admin"
+points: 30
 environments:
   - "prod"
 

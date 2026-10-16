@@ -4,6 +4,7 @@
 * **Sub-Category:** principal-access
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

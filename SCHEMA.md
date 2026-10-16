@@ -101,6 +101,7 @@ interactive_demo: false
 | `description` | string | ✅ Yes | One-line description of the scenario. Should be concise (< 150 chars). |
 | `cost_estimate` | string | ✅ Yes | Estimated monthly AWS cost while the lab is enabled and idle (no demo running). Always use `"$X/mo"` format rounded to nearest dollar (e.g., `"$0/mo"`, `"$9/mo"`, `"$321/mo"`) |
 | `cost_estimate_when_demo_executed` | string | ✅ Yes | Estimated monthly AWS cost while a demo script is actively running (e.g., EC2/Lambda/GPU instances provisioned during the attack). Same format as `cost_estimate`. If the demo creates no additional resources, set equal to `cost_estimate`. |
+| `points` | int | ✅ Yes | Points this lab is worth on the pathfinding.cloud labs leaderboard. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30, etc.); CTF labs are set higher by hand (100/200). The site's `generate-labs-json.py` reads the matching `* **Points:** N` field from the README metadata block (not this file), so keep the two in sync. |
 | `pathfinding-cloud-id` | string | No | ID of Pathfinding.cloud path ID if one exists. |
 | `interactive_demo` | bool | No | If `true`, the demo script requires terminal input (e.g., SSM session). Defaults to `false`. |
 | `demo_timeout_seconds` | int | No | Override the default 300s demo timeout in `scripts/run_demos.py`. Set when the demo creates a resource that takes > 2 min to provision. See "When to Set Timeout Overrides" below. |

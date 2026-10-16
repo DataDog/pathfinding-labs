@@ -16,6 +16,7 @@ category: "CSPM Misconfiguration"
 sub_category: "Compute"
 path_type: "single-condition"
 target: "to-admin"
+points: 10
 environments:
   - "prod"
 

@@ -4,6 +4,7 @@
 * **Sub-Category:** privilege-chaining
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 20
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

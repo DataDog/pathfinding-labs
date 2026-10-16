@@ -4,6 +4,7 @@
 * **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-bucket
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $5/mo
 * **Cost Estimate When Demo Executed:** $5/mo

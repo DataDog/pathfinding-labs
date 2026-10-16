@@ -3,6 +3,7 @@
 * **Category:** Privilege Escalation
 * **Path Type:** cross-account
 * **Target:** to-bucket
+* **Points:** 20
 * **Environments:** operations, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

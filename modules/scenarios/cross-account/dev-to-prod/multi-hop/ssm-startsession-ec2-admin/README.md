@@ -3,6 +3,7 @@
 * **Category:** Privilege Escalation
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 20
 * **Environments:** dev, prod
 * **Cost Estimate:** $8/mo
 * **Cost Estimate When Demo Executed:** $8/mo

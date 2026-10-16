@@ -4,6 +4,7 @@
 * **Sub-Category:** self-escalation
 * **Path Type:** self-escalation
 * **Target:** to-bucket
+* **Points:** 20
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
