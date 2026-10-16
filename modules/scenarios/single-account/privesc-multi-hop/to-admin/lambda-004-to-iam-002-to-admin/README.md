@@ -3,6 +3,7 @@
 * **Category:** Privilege Escalation
 * **Path Type:** multi-hop
 * **Target:** to-admin
+* **Points:** 20
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

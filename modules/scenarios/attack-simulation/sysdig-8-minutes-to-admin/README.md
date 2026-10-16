@@ -3,6 +3,7 @@
 * **Category:** Attack Simulation
 * **Path Type:** attack-simulation
 * **Target:** to-admin
+* **Points:** 30
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $6/mo

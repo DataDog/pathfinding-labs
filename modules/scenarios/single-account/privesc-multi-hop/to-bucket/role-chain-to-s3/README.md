@@ -4,6 +4,7 @@
 * **Sub-Category:** principal-access
 * **Path Type:** multi-hop
 * **Target:** to-bucket
+* **Points:** 30
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

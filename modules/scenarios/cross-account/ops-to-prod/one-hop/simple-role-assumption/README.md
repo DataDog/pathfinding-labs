@@ -4,6 +4,7 @@
 * **Sub-Category:** cross-account-escalation
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 20
 * **Environments:** operations, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo

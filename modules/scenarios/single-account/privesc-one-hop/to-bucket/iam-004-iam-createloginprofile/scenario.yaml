@@ -16,6 +16,7 @@ category: "Privilege Escalation"
 sub_category: "credential-access"
 path_type: "one-hop"
 target: "to-bucket"
+points: 10
 environments:
   - "prod"
 

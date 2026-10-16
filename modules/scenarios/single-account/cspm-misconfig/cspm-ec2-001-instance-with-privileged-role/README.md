@@ -4,6 +4,7 @@
 * **Sub-Category:** Compute
 * **Path Type:** single-condition
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $5/mo
 * **Cost Estimate When Demo Executed:** $5/mo
