@@ -4,12 +4,13 @@
 * **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-bucket
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Modifying existing Lambda function code to execute malicious logic under privileged execution role with S3 bucket access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_lambda_003_lambda_updatefunctioncode`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** lambda-003
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection

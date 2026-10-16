@@ -4,12 +4,13 @@
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Pass privileged role to AWS Glue dev endpoint for SSH-based command execution
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_001_iam_passrole_glue_createdevendpoint`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** glue-001
 * **CTF Flag Location:** ssm-parameter `/pathfinding-labs/flags/glue-001-to-admin`
 * **MITRE Tactics:** TA0004 - Privilege Escalation

@@ -3,6 +3,7 @@
 * **Category:** Attack Simulation
 * **Path Type:** attack-simulation
 * **Target:** to-admin
+* **Points:** 30
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $6/mo
@@ -12,7 +13,7 @@
 * **Source Date:** 2026-02-03
 * **Technique:** Recreation of the attack documented by Sysdig Threat Research Team: IAM credentials embedded in a private S3 RAG bucket, Lambda code injection, and admin access achieved in under 8 minutes
 * **Terraform Variable:** `enable_attack_simulation_sysdig_8_minutes_to_admin`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0001 - Initial Access, TA0007 - Discovery, TA0004 - Privilege Escalation, TA0003 - Persistence, TA0005 - Defense Evasion, TA0009 - Collection, TA0011 - Impact
 * **MITRE Techniques:** T1552.001 - Credentials In Files, T1087.004 - Cloud Accounts, T1613 - Container and Resource Discovery, T1648 - Serverless Execution, T1098.001 - Additional Cloud Credentials, T1078.004 - Cloud Accounts, T1530 - Data from Cloud Storage Object, T1496 - Resource Hijacking

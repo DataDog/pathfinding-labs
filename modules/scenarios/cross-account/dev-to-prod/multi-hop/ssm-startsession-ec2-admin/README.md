@@ -3,12 +3,13 @@
 * **Category:** Privilege Escalation
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 20
 * **Environments:** dev, prod
 * **Cost Estimate:** $8/mo
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** Cross-account privesc: dev user assumes a prod pivot role, exploits ssm:StartSession to access an EC2 instance with an admin instance profile, then retrieves admin credentials via IMDS
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_ssm_startsession_ec2_admin`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1021.007 - Remote Services: Cloud Services, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API
 * **CTF Flag Location:** ssm-parameter

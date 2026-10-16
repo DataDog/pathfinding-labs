@@ -4,12 +4,13 @@
 * **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $9/mo
 * **Cost Estimate When Demo Executed:** $9/mo
 * **Technique:** Shelling into a running ECS task with an admin role to retrieve credentials from the container metadata service
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_006_ecs_executecommand_describetasks`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** ecs-006
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

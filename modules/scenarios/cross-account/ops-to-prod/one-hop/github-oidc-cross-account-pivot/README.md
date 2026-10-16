@@ -3,12 +3,13 @@
 * **Category:** Privilege Escalation
 * **Path Type:** cross-account
 * **Target:** to-bucket
+* **Points:** 20
 * **Environments:** operations, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** GitHub repo write access enables OIDC assumption of an ops role that pivots cross-account to a prod role with S3 read access on a sensitive bucket.
 * **Terraform Variable:** `enable_cross_account_ops_to_prod_github_oidc_pivot`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0008 - Lateral Movement
 * **MITRE Techniques:** T1078.004 - Valid Accounts: Cloud Accounts, T1550.001 - Use Alternate Authentication Material: Application Access Token

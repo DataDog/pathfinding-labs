@@ -4,12 +4,13 @@
 * **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $634/mo
 * **Cost Estimate When Demo Executed:** $634/mo
 * **Technique:** Add SSH public key to existing Glue dev endpoint and execute commands with the endpoint's administrative role
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_glue_002_glue_updatedevendpoint`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** glue-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation

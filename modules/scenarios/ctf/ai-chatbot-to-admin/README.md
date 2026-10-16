@@ -3,6 +3,7 @@
 * **Category:** CTF
 * **Path Type:** ctf
 * **Target:** to-admin
+* **Points:** 100
 * **Environments:** prod
 * **Cost Estimate:** $1/mo
 * **Cost Estimate When Demo Executed:** $1/mo
@@ -10,7 +11,7 @@
 * **Difficulty:** beginner
 * **Flag Location:** ssm-parameter at /pathfinding-labs/flags/ctf-001-to-admin
 * **Terraform Variable:** `enable_ctf_ai_chatbot_to_admin`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **MITRE Tactics:** TA0001 - Initial Access, TA0006 - Credential Access, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1190 - Exploit Public-Facing Application, T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1059 - Command and Scripting Interpreter
 

@@ -4,12 +4,13 @@
 * **Sub-Category:** privilege-chaining
 * **Path Type:** cross-account
 * **Target:** to-admin
+* **Points:** 40
 * **Environments:** dev, prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Multi-hop privilege escalation across both dev and prod accounts using login profile manipulation
 * **Terraform Variable:** `enable_cross_account_dev_to_prod_multi_hop_multi_hop_both_sides`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **CTF Flag Location:** ssm-parameter
 * **Interactive Demo:** Yes
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0008 - Lateral Movement

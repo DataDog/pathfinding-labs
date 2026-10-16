@@ -4,12 +4,13 @@
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-bucket
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** User with iam:PassRole, lambda:CreateFunction, and lambda:AddPermission can create a new Lambda function with an S3-scoped role, add permission to invoke it, and execute code that reads the target bucket's flag
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_createfunction_lambda_addpermission`
-* **Schema Version:** 4.7.2
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** lambda-006
 * **CTF Flag Location:** s3-object
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0009 - Collection

@@ -16,6 +16,7 @@ category: "Tool Testing"
 sub_category: "reverse-blast-radius"
 path_type: "one-hop"
 target: "to-bucket"
+points: 20
 environments:
   - "prod"
 

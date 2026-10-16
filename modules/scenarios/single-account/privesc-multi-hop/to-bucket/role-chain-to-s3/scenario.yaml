@@ -15,6 +15,7 @@ category: "Privilege Escalation"
 sub_category: "principal-access"
 path_type: "multi-hop"
 target: "to-bucket"
+points: 30
 environments:
   - "prod"
 
