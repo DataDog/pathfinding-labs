@@ -1701,6 +1701,28 @@ module "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
   resource_suffix = random_string.resource_suffix.result
 }
 
+module "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_implicit_admin_access ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-implicit-admin-access"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_hop_depth" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_hop_depth ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-hop-depth"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
 module "tool_testing_test_effective_permissions_evaluation" {
   count  = var.enable_tool_testing_test_effective_permissions_evaluation ? 1 : 0
   source = "./modules/scenarios/tool-testing/test-effective-permissions-evaluation"

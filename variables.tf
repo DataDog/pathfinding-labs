@@ -1107,6 +1107,18 @@ variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_b
   default     = false
 }
 
+variable "enable_tool_testing_test_reverse_blast_radius_implicit_admin_access" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-implicit-admin-access"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_hop_depth" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-hop-depth"
+  type        = bool
+  default     = false
+}
+
 variable "enable_tool_testing_test_effective_permissions_evaluation" {
   description = "Enable: tool-testing → test-effective-permissions-evaluation"
   type        = bool

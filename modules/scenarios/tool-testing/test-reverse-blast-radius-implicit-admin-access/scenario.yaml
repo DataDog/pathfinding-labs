@@ -1,0 +1,105 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-implicit-admin-access"
+title: "Implicit Admin Access to Bucket"
+description: "Tool testing scenario validating that reverse blast radius queries (who can read/write this bucket) include administrators whose access comes only from AdministratorAccess, with no S3-specific permissions"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 20
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "reverse-blast-radius"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-ia-reader-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-ia-writer-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-ia-admin-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-ia-admin-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-ia-no-access-user"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-ia-{account_id}-{suffix}"
+
+  summary: "Explicit access: reader-user (s3:GetObject/ListBucket) and writer-user (s3:PutObject) have S3 statements naming the bucket. Implicit access: admin-user (AdministratorAccess managed policy) and admin-role (inline Action:* Resource:*) have NO S3-specific statements but can read and write the bucket. no-access-user is the negative control. Expected can_read = reader, admin-user, admin-role. Expected can_write = writer, admin-user, admin-role."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-ia-reader-user"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-ia-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-ia-*"
+    - principal: "pl-prod-rbr-ia-writer-user"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-ia-*/*"
+    - principal: "pl-prod-rbr-ia-admin-user"
+      principal_type: "user"
+      permissions:
+        - permission: "*"
+          resource: "*"
+    - principal: "pl-prod-rbr-ia-admin-role"
+      principal_type: "role"
+      permissions:
+        - permission: "*"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-rbr-ia-reader-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity"
+
+admin_definition: "admin-user has the AWS managed AdministratorAccess policy attached and admin-role has an inline policy allowing Action * on Resource *. Neither has any statement that mentions S3 or this bucket, so a tool must treat administrator status as implicit access to every resource."
+
+test_groups:
+  explicit_access:
+    total: 2
+    users: 2
+    roles: 0
+    description: "reader-user (read only) and writer-user (write only) with S3 statements naming the bucket"
+  implicit_admin_access:
+    total: 2
+    users: 1
+    roles: 1
+    description: "admin-user and admin-role reach the bucket only through administrator permissions, with no bucket-specific statement"
+  no_access:
+    total: 1
+    users: 1
+    roles: 0
+    description: "no-access-user has no S3 permissions and must not appear in any bucket access query"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_implicit_admin_access"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-implicit-admin-access"

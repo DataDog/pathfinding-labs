@@ -2159,6 +2159,60 @@ output "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
   sensitive = true
 }
 
+output "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
+  description = "All outputs for test-reverse-blast-radius-implicit-admin-access tool testing scenario"
+  value = var.enable_tool_testing_test_reverse_blast_radius_implicit_admin_access ? {
+    reader_user_name                 = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].reader_user_name
+    reader_user_arn                  = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].reader_user_arn
+    reader_user_access_key_id        = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].reader_user_access_key_id
+    reader_user_secret_access_key    = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].reader_user_secret_access_key
+    writer_user_name                 = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].writer_user_name
+    writer_user_arn                  = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].writer_user_arn
+    writer_user_access_key_id        = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].writer_user_access_key_id
+    writer_user_secret_access_key    = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].writer_user_secret_access_key
+    admin_user_name                  = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_user_name
+    admin_user_arn                   = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_user_arn
+    admin_user_access_key_id         = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_user_access_key_id
+    admin_user_secret_access_key     = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_user_secret_access_key
+    admin_role_name                  = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_role_name
+    admin_role_arn                   = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].admin_role_arn
+    no_access_user_name              = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].no_access_user_name
+    no_access_user_arn               = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].no_access_user_arn
+    no_access_user_access_key_id     = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].no_access_user_access_key_id
+    no_access_user_secret_access_key = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].no_access_user_secret_access_key
+    bucket_name                      = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].bucket_name
+    bucket_arn                       = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].bucket_arn
+    attack_path                      = module.tool_testing_test_reverse_blast_radius_implicit_admin_access[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "tool_testing_test_reverse_blast_radius_hop_depth" {
+  description = "All outputs for test-reverse-blast-radius-hop-depth tool testing scenario"
+  value = var.enable_tool_testing_test_reverse_blast_radius_hop_depth ? {
+    user_a_name              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_a_name
+    user_a_arn               = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_a_arn
+    user_a_access_key_id     = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_a_access_key_id
+    user_a_secret_access_key = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_a_secret_access_key
+    user_b_name              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_b_name
+    user_b_arn               = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_b_arn
+    user_b_access_key_id     = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_b_access_key_id
+    user_b_secret_access_key = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_b_secret_access_key
+    user_c_name              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_c_name
+    user_c_arn               = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_c_arn
+    user_c_access_key_id     = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_c_access_key_id
+    user_c_secret_access_key = module.tool_testing_test_reverse_blast_radius_hop_depth[0].user_c_secret_access_key
+    role_r1_name             = module.tool_testing_test_reverse_blast_radius_hop_depth[0].role_r1_name
+    role_r1_arn              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].role_r1_arn
+    role_r2_name             = module.tool_testing_test_reverse_blast_radius_hop_depth[0].role_r2_name
+    role_r2_arn              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].role_r2_arn
+    bucket_name              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].bucket_name
+    bucket_arn               = module.tool_testing_test_reverse_blast_radius_hop_depth[0].bucket_arn
+    attack_path              = module.tool_testing_test_reverse_blast_radius_hop_depth[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "tool_testing_test_effective_permissions_evaluation" {
   description = "All outputs for test-effective-permissions-evaluation tool testing scenario"
   value = var.enable_tool_testing_test_effective_permissions_evaluation ? {

@@ -1,0 +1,161 @@
+attackMap:
+  nodes:
+    - id: user-a
+      label: "Depth 0 User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-a"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has direct s3:GetObject and s3:ListBucket permissions on the
+        sensitive S3 bucket -- no role assumption required. It is found by a reverse
+        blast radius query at exactly 0 hops.
+
+    - id: user-b
+      label: "Depth 1 User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-b"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no S3 permissions, only sts:AssumeRole on
+        pl-prod-rbr-hd-role-r1. It is found by a reverse blast radius query at exactly
+        1 hop.
+
+    - id: user-c
+      label: "Depth 2 User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-c"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no S3 permissions, only sts:AssumeRole on
+        pl-prod-rbr-hd-role-r2, which in turn can assume pl-prod-rbr-hd-role-r1. It is
+        found by a reverse blast radius query at exactly 2 hops.
+
+    - id: role-r2
+      label: "Depth 1 Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r2"
+      description: >
+        This IAM role has no S3 permissions of its own. Its trust policy allows only
+        pl-prod-rbr-hd-user-c to assume it, and its permission policy allows
+        sts:AssumeRole on pl-prod-rbr-hd-role-r1. It is found by a reverse blast radius
+        query at exactly 1 hop.
+
+    - id: role-r1
+      label: "Depth 0 Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1"
+      description: >
+        This IAM role has direct s3:GetObject and s3:ListBucket permissions on the
+        sensitive S3 bucket. Its trust policy allows only pl-prod-rbr-hd-user-b and
+        pl-prod-rbr-hd-role-r2 to assume it. Every principal that can reach this role,
+        directly or through a chain, inherits its bucket access. The role itself is
+        found by a reverse blast radius query at exactly 0 hops.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-hd-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket, with no bucket policy. Two principals
+        can read it directly (user-a and role-r1), two can reach it with one
+        sts:AssumeRole hop (user-b and role-r2), and one needs two hops (user-c). A
+        complete reverse blast radius query must return all five, which requires a
+        cumulative query with a hop limit of at least 2 or one query per depth.
+
+  edges:
+    - from: user-a
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        User-a has direct IAM permissions to list and read objects from the sensitive
+        S3 bucket. No role assumption is required (depth 0).
+      hints:
+        - "Use s3:ListBucket and s3:GetObject directly -- this user has explicit IAM permissions on the bucket and does not need to assume any role."
+      commands:
+        - description: "List bucket contents as user-a"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-hd-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket as user-a"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-hd-{account_id}-{suffix}/sensitive-data.txt /tmp/rbr-hd-sensitive.txt"
+
+    - from: role-r1
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Role-r1 holds the S3 permissions directly. Any session for this role, however
+        it was obtained, can list and read the bucket (depth 0 for the role itself).
+      hints:
+        - "Once you hold role-r1 session credentials, the bucket permissions apply immediately; export the temporary credentials before calling S3."
+      commands:
+        - description: "List bucket contents using role-r1 credentials"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-hd-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using role-r1 credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-hd-{account_id}-{suffix}/sensitive-data.txt /tmp/rbr-hd-sensitive.txt"
+
+    - from: user-b
+      to: role-r1
+      label: "sts:AssumeRole"
+      description: >
+        User-b assumes role-r1 directly. This is the single hop that puts user-b at
+        depth 1 in a reverse blast radius query.
+      hints:
+        - "Use sts:AssumeRole against role-r1 with user-b's long-term credentials, then export the returned access key, secret key, and session token before touching S3."
+      commands:
+        - description: "Assume role-r1 as user-b"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1 --role-session-name rbr-hd-user-b --query 'Credentials' --output json"
+
+    - from: role-r2
+      to: role-r1
+      label: "sts:AssumeRole"
+      description: >
+        A role-r2 session assumes role-r1. This is the single hop that puts role-r2 at
+        depth 1 in a reverse blast radius query. In this lab the role-r2 session is
+        reached from user-c, giving the second hop of the depth-2 chain.
+      hints:
+        - "From a role-r2 session, call sts:AssumeRole on role-r1 using the role-r2 temporary credentials. Role chaining like this works but limits the new session to a one-hour maximum."
+      commands:
+        - description: "Assume role-r1 using role-r2 session credentials"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1 --role-session-name rbr-hd-user-c-chain --query 'Credentials' --output json"
+
+    - from: user-c
+      to: role-r2
+      label: "sts:AssumeRole"
+      description: >
+        User-c assumes role-r2, which has no S3 permissions itself but can assume
+        role-r1. Together with the role-r2 to role-r1 edge, this makes user-c a depth 2
+        principal.
+      hints:
+        - "Assume role-r2 with user-c's long-term credentials and export the temporary credentials; you then need a second assume-role call from that session to reach the role that actually holds the S3 permissions."
+      commands:
+        - description: "Assume role-r2 as user-c"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r2 --role-session-name rbr-hd-user-c --query 'Credentials' --output json"
