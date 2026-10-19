@@ -8,11 +8,11 @@ This pattern represents a real-world security blind spot. Operators sometimes cr
 
 ## The Challenge
 
-You start as `pl-pathfinding-starting-user-prod`, an IAM user in the prod account with one useful capability: it can assume the `pl-exclusive-bucket-access-role` role.
+You start as `pl-prod-erp-to-bucket-starting-user`, an IAM user in the prod account with one useful capability: it can assume the `pl-exclusive-bucket-access-role` role.
 
 That role's identity policy contains exactly one statement: `s3:ListAllMyBuckets` on `*`. That's it. No `s3:GetObject`, no `s3:PutObject`, no bucket-specific access.
 
-Your goal is to read and write objects in `pl-exclusive-sensitive-data-bucket-{account_id}`.
+Your goal is to read and write objects in `pl-exclusive-sensitive-data-{account_id}-{suffix}`.
 
 ## Reconnaissance
 
@@ -26,7 +26,7 @@ unset AWS_SESSION_TOKEN
 aws sts get-caller-identity
 ```
 
-You should see `pl-pathfinding-starting-user-prod` in the ARN. Now let's see what roles this user can assume:
+You should see `pl-prod-erp-to-bucket-starting-user` in the ARN. Now let's see what roles this user can assume:
 
 ```bash
 aws iam list-roles --query 'Roles[?contains(RoleName, `exclusive`)].{Name:RoleName,Arn:Arn}'
@@ -66,21 +66,21 @@ The role has `s3:ListAllMyBuckets`, so listing buckets works:
 aws s3 ls
 ```
 
-You'll see `pl-exclusive-sensitive-data-bucket-{account_id}` in the output.
+You'll see `pl-exclusive-sensitive-data-{account_id}-{suffix}` in the output.
 
 ### Step 3: Access the exclusive bucket
 
 Try to list objects in the bucket. This is where it gets interesting — the role's identity policy has no S3 bucket-level or object-level permission, yet the resource policy on the bucket grants it:
 
 ```bash
-aws s3 ls s3://pl-exclusive-sensitive-data-bucket-{account_id}
+aws s3 ls s3://pl-exclusive-sensitive-data-{account_id}-{suffix}
 ```
 
 This succeeds. Now read a sensitive file:
 
 ```bash
-aws s3 cp s3://pl-exclusive-sensitive-data-bucket-{account_id}/sensitive-data.txt .
-cat sensitive-data.txt
+aws s3 cp s3://pl-exclusive-sensitive-data-{account_id}-{suffix}/top-secret-data-1.txt .
+cat top-secret-data-1.txt
 ```
 
 ### Step 4: Confirm write access
@@ -89,7 +89,7 @@ You can also write to the bucket:
 
 ```bash
 echo "attacker-controlled data" > /tmp/test-upload.txt
-aws s3 cp /tmp/test-upload.txt s3://pl-exclusive-sensitive-data-bucket-{account_id}/test-upload.txt
+aws s3 cp /tmp/test-upload.txt s3://pl-exclusive-sensitive-data-{account_id}-{suffix}/test-upload.txt
 ```
 
 That upload succeeds because the resource policy grants `s3:PutObject` to this role.
@@ -100,7 +100,7 @@ Retrieve the bucket policy to understand the exclusive-access structure:
 
 ```bash
 aws s3api get-bucket-policy \
-  --bucket pl-exclusive-sensitive-data-bucket-{account_id} \
+  --bucket pl-exclusive-sensitive-data-{account_id}-{suffix} \
   --query Policy \
   --output text | jq '.'
 ```
@@ -108,9 +108,9 @@ aws s3api get-bucket-policy \
 You'll see two statements:
 
 1. **AllowExclusiveBucketAccessRole** — grants `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` to `pl-exclusive-bucket-access-role`
-2. **DenyAllOtherAccess** — denies those same actions to `Principal: "*"` where `aws:PrincipalArn` is not equal to `pl-exclusive-bucket-access-role`
+2. **DenyAllOtherAccess** — denies those same actions to `Principal: "*"` where `aws:PrincipalArn` is not equal to either `pl-exclusive-bucket-access-role` or the IAM role Terraform runs as (the deployer role, exempted so the lab stays manageable)
 
-This is the exclusive-access pattern: allow one principal, deny everyone else. From an effective-permissions standpoint, the role's access to this bucket is entirely invisible unless you examine the bucket policy directly.
+This is the exclusive-access pattern: allow one principal, deny everyone else (apart from the Terraform deployer role). From an effective-permissions standpoint, the role's access to this bucket is entirely invisible unless you examine the bucket policy directly.
 
 ## Verification
 
@@ -122,9 +122,11 @@ export AWS_ACCESS_KEY_ID=<readonly_access_key_id>
 export AWS_SECRET_ACCESS_KEY=<readonly_secret_access_key>
 unset AWS_SESSION_TOKEN
 
-aws s3 ls s3://pl-exclusive-sensitive-data-bucket-{account_id}
+aws s3 ls s3://%s
 # Expected: AccessDenied
 ```
+
+Note that the deployer role Terraform runs as is exempted from the Deny, so it also retains access to this bucket. That is intentional: a reverse blast radius query for the bucket should return both the exclusive role and the deployer role.
 
 The explicit `Deny` in the bucket policy overrides any IAM permissions the readonly user might have, including admin-level permissions. The exclusive pattern enforces hard isolation.
 

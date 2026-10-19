@@ -1,7 +1,7 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.10.0"
 status: "beta"
 name: "resource-policy-bypass"
 title: "Resource Policy Bypass via Role Assumption to Bucket"
@@ -12,8 +12,8 @@ cost_estimate_when_demo_executed: "$0/mo"
 # =============================================================================
 # CLASSIFICATION
 # =============================================================================
-category: "Privilege Escalation"
-sub_category: "principal-access"
+category: "Tool Testing"
+sub_category: "edge-case-detection"
 path_type: "multi-hop"
 target: "to-bucket"
 points: 10
@@ -25,34 +25,36 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
-    - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
-    - "arn:aws:iam::{account_id}:role/pl-prod-bucket-role"
-    - "arn:aws:s3:::pl-restricted-bucket-{account_id}"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rpb-to-bucket-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-bucket-access-role"
+    - "arn:aws:s3:::pl-sensitive-data-{account_id}-{suffix}"
 
-  summary: "starting_user → (AssumeRole) → role_a → (sts:AssumeRole) → bucket_role → bypass resource policy → bucket access"
+  summary: "starting_user → (sts:AssumeRole) → pl-bucket-access-role → (bucket resource policy grants ListBucket/GetObject/PutObject/DeleteObject; identity policy only has s3:ListAllMyBuckets) → sensitive bucket access"
 
 # =============================================================================
 # PERMISSIONS
 # =============================================================================
 permissions:
   required:
-    - principal: "pl-pathfinding-starting-user-prod"
+    - principal: "pl-prod-rpb-to-bucket-starting-user"
       principal_type: "user"
       permissions:
         - permission: "sts:AssumeRole"
-          resource: "arn:aws:iam::*:role/pl-prod-bucket-role"
+          resource: "arn:aws:iam::{account_id}:role/pl-bucket-access-role"
 
   helpful:
-    - principal: "pl-pathfinding-starting-user-prod"
+    - principal: "pl-prod-rpb-to-bucket-starting-user"
       principal_type: "user"
       permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Confirm the current identity"
         - permission: "iam:ListRoles"
           purpose: "Discover roles with bucket access"
         - permission: "s3:GetBucketPolicy"
           purpose: "View bucket resource policy restrictions"
         - permission: "iam:GetRole"
-          purpose: "View role permissions"
+          purpose: "View role trust and attached policies"
+
 # =============================================================================
 # MITRE ATT&CK
 # =============================================================================

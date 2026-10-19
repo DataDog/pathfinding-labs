@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rpb-to-bucket-starting-user"
       access:
         type: assumed-breach-credentials
       description: >
@@ -37,7 +37,7 @@ attackMap:
       type: resource
       subType: s3-bucket
       isTarget: true
-      arn: "arn:aws:s3:::pl-sensitive-data-bucket-{account_id}"
+      arn: "arn:aws:s3:::pl-sensitive-data-{account_id}-{suffix}"
       description: >
         This S3 bucket contains sensitive data. Its resource policy grants the
         pl-bucket-access-role full object access (ListBucket, GetObject, PutObject,
@@ -50,7 +50,7 @@ attackMap:
       label: "sts:AssumeRole"
       description: >
         The starting user assumes pl-bucket-access-role. The role's trust policy
-        allows the pathfinding starting user to assume it.
+        allows the scenario starting user (pl-prod-rpb-to-bucket-starting-user) to assume it.
       hints:
         - "Use sts:AssumeRole to assume the bucket access role. The role's identity policy appears minimal -- the access comes from the S3 bucket resource policy, not the identity policy."
       commands:
@@ -71,6 +71,6 @@ attackMap:
         - description: "List all S3 buckets to discover the sensitive bucket"
           command: "aws s3api list-buckets"
         - description: "Read sensitive data from the bucket via resource policy"
-          command: "aws s3 cp s3://pl-sensitive-data-bucket-{account_id}/sensitive-data.txt -"
+          command: "aws s3 cp s3://pl-sensitive-data-{account_id}-{suffix}/sensitive-data-1.txt -"
         - description: "Write data to the bucket via resource policy"
-          command: "aws s3 cp /tmp/test.txt s3://pl-sensitive-data-bucket-{account_id}/attacker-file.txt"
+          command: "aws s3 cp /tmp/test.txt s3://pl-sensitive-data-{account_id}-{suffix}/attacker-file.txt"

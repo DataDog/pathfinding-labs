@@ -1,7 +1,7 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.0.0"
+schema_version: "1.10.0"
 status: "beta"
 name: "exclusive-resource-policy"
 title: "Exclusive Resource Policy Access to Bucket"
@@ -12,8 +12,8 @@ cost_estimate_when_demo_executed: "$0/mo"
 # =============================================================================
 # CLASSIFICATION
 # =============================================================================
-category: "Privilege Escalation"
-sub_category: "principal-access"
+category: "Tool Testing"
+sub_category: "edge-case-detection"
 path_type: "multi-hop"
 target: "to-bucket"
 points: 10
@@ -25,26 +25,25 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
-    - "arn:aws:iam::{account_id}:role/pl-prod-role-a"
-    - "arn:aws:iam::{account_id}:role/pl-prod-exclusive-role"
-    - "arn:aws:s3:::pl-exclusive-bucket-{account_id}"
+    - "arn:aws:iam::{account_id}:user/pl-prod-erp-to-bucket-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role"
+    - "arn:aws:s3:::pl-exclusive-sensitive-data-{account_id}-{suffix}"
 
-  summary: "starting_user → (AssumeRole) → role_a → (sts:AssumeRole) → exclusive_role → bucket with exclusive policy → bucket access"
+  summary: "starting_user → (sts:AssumeRole) → pl-exclusive-bucket-access-role → bucket access granted only by the bucket resource policy (the role's identity policy has just s3:ListAllMyBuckets; the policy denies everyone except the role and the Terraform deployer role)"
 
 # =============================================================================
 # PERMISSIONS
 # =============================================================================
 permissions:
   required:
-    - principal: "pl-pathfinding-starting-user-prod"
+    - principal: "pl-prod-erp-to-bucket-starting-user"
       principal_type: "user"
       permissions:
         - permission: "sts:AssumeRole"
-          resource: "arn:aws:iam::*:role/pl-prod-exclusive-role"
+          resource: "arn:aws:iam::*:role/pl-exclusive-bucket-access-role"
 
   helpful:
-    - principal: "pl-pathfinding-starting-user-prod"
+    - principal: "pl-prod-erp-to-bucket-starting-user"
       principal_type: "user"
       permissions:
         - permission: "iam:ListRoles"

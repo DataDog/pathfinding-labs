@@ -1,7 +1,7 @@
 # Resource Policy Bypass via Role Assumption to Bucket
 
-* **Category:** Privilege Escalation
-* **Sub-Category:** principal-access
+* **Category:** Tool Testing
+* **Sub-Category:** edge-case-detection
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Points:** 10
@@ -16,17 +16,18 @@
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-pathfinding-starting-user-prod` IAM user to the `pl-sensitive-data-bucket-{account_id}` S3 bucket by assuming the `pl-bucket-access-role` IAM role, which has only `s3:ListAllMyBuckets` in its IAM identity policy but is explicitly granted full object access by the bucket's resource policy.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-rpb-to-bucket-starting-user` IAM user to the `pl-sensitive-data-{account_id}-{suffix}` S3 bucket by assuming the `pl-bucket-access-role` IAM role, which has only `s3:ListAllMyBuckets` in its IAM identity policy but is explicitly granted full object access by the bucket's resource policy.
 
-- **Start:** `arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod`
-- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-bucket-{account_id}`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-rpb-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-{account_id}-{suffix}`
 
 ### Starting Permissions
 
-**Required** (`pl-pathfinding-starting-user-prod`):
+**Required** (`pl-prod-rpb-to-bucket-starting-user`):
 - `sts:AssumeRole` on `arn:aws:iam::*:role/pl-bucket-access-role` -- allows the starting user to assume the role that the bucket's resource policy grants access to
 
-**Helpful** (`pl-pathfinding-starting-user-prod`):
+**Helpful** (`pl-prod-rpb-to-bucket-starting-user`):
+- `sts:GetCallerIdentity` -- confirm the current identity
 - `iam:ListRoles` -- discover roles with bucket access
 - `s3:GetBucketPolicy` -- view bucket resource policy restrictions
 - `iam:GetRole` -- view role permissions
@@ -67,7 +68,7 @@ plabs apply
 | ARN | Purpose |
 |-----|---------|
 | `arn:aws:iam::{account_id}:role/pl-bucket-access-role` | Role that trusts the prod starting user; has only `s3:ListAllMyBuckets` in its IAM policy |
-| `arn:aws:s3:::pl-sensitive-data-bucket-{account_id}` | Sensitive S3 bucket with resource policy granting the bucket access role full object access |
+| `arn:aws:s3:::pl-sensitive-data-{account_id}-{suffix}` | Sensitive S3 bucket with resource policy granting the bucket access role full object access |
 
 ### Solution
 
@@ -92,7 +93,7 @@ The script will:
 #### Resources Created by Attack Script
 
 - Temporary AWS STS session credentials for `pl-bucket-access-role`
-- Transient test file uploaded to `pl-sensitive-data-bucket-{account_id}` (cleaned up by script)
+- Transient test file uploaded to `pl-sensitive-data-{account_id}-{suffix}` (cleaned up by script)
 
 #### With plabs non-interactive
 
@@ -146,7 +147,7 @@ plabs apply
 
 - S3 bucket resource policy grants access to an IAM role that has `s3:ListAllMyBuckets` on `*`, creating a path from that role to sensitive bucket data
 - IAM role (`pl-bucket-access-role`) is assumable by a low-privilege starting user and is explicitly named in an S3 bucket resource policy granting broad object permissions (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`)
-- Resource policy on `pl-sensitive-data-bucket` permits full object access without requiring any corresponding IAM identity policy permission on the bucket, meaning any entity that can assume the role gains data access regardless of their IAM policies
+- Resource policy on `pl-sensitive-data-{account_id}-{suffix}` permits full object access without requiring any corresponding IAM identity policy permission on the bucket, meaning any entity that can assume the role gains data access regardless of their IAM policies
 - Discovery through `s3:ListAllMyBuckets` enables the role to enumerate bucket names, compounding the data exposure risk
 
 #### Prevention Recommendations

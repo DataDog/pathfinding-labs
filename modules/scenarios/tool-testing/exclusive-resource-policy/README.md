@@ -1,7 +1,7 @@
 # Exclusive Resource Policy Access to Bucket
 
-* **Category:** Privilege Escalation
-* **Sub-Category:** principal-access
+* **Category:** Tool Testing
+* **Sub-Category:** edge-case-detection
 * **Path Type:** multi-hop
 * **Target:** to-bucket
 * **Points:** 10
@@ -16,17 +16,17 @@
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-pathfinding-starting-user-prod` IAM user to the `pl-exclusive-sensitive-data-bucket-{account_id}` S3 bucket by assuming the `pl-exclusive-bucket-access-role` role, which has only `s3:ListAllMyBuckets` in its identity policy but gains full read/write access to the bucket through an exclusive resource-based policy that denies all other principals.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-erp-to-bucket-starting-user` IAM user to the `pl-exclusive-sensitive-data-{account_id}-{suffix}` S3 bucket by assuming the `pl-exclusive-bucket-access-role` role, which has only `s3:ListAllMyBuckets` in its identity policy but gains full read/write access to the bucket through an exclusive resource-based policy that denies all other principals.
 
-- **Start:** `arn:aws:iam::{account_id}:user/pl-pathfinding-starting-user-prod`
-- **Destination resource:** `arn:aws:s3:::pl-exclusive-sensitive-data-bucket-{account_id}`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-erp-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-exclusive-sensitive-data-{account_id}-{suffix}`
 
 ### Starting Permissions
 
-**Required** (`pl-pathfinding-starting-user-prod`):
-- `sts:AssumeRole` on `arn:aws:iam::*:role/pl-exclusive-bucket-access-role` -- allows the starting user to assume the exclusive bucket access role
+**Required** (`pl-prod-erp-to-bucket-starting-user`):
+- `sts:AssumeRole` on `arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role` -- allows the starting user to assume the exclusive bucket access role
 
-**Helpful** (`pl-pathfinding-starting-user-prod`):
+**Helpful** (`pl-prod-erp-to-bucket-starting-user`):
 - `iam:ListRoles` -- discover roles with exclusive bucket access
 - `s3:GetBucketPolicy` -- view the bucket resource policy to understand the exclusive-access grant
 
@@ -65,8 +65,8 @@ plabs apply
 
 | ARN | Purpose |
 |-----|---------|
-| `arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role` | Role that trusts the prod starting user; IAM policy contains only `s3:ListAllMyBuckets` |
-| `arn:aws:s3:::pl-exclusive-sensitive-data-bucket-{account_id}` | Bucket with highly sensitive sample data, encryption enabled, and restrictive resource policy |
+| `arn:aws:iam::{account_id}:role/pl-exclusive-bucket-access-role` | Role that trusts `pl-prod-erp-to-bucket-starting-user`; IAM policy contains only `s3:ListAllMyBuckets` |
+| `arn:aws:s3:::pl-exclusive-sensitive-data-{account_id}-{suffix}` | Bucket with sensitive sample objects and a resource policy that allows the role and denies all other principals except the Terraform deployer role |
 
 ### Solution
 
@@ -88,7 +88,7 @@ The script will:
 6. Access the exclusive sensitive bucket through the restrictive resource policy
 7. Read all objects from the exclusive bucket, demonstrating data exfiltration
 8. Write a test object to the exclusive bucket, confirming write access
-9. Retrieve and display the bucket policy, showing the Allow + Deny structure
+9. Retrieve and display the bucket policy, showing the Allow + Deny structure (the Deny exempts the exclusive role and the Terraform deployer role)
 
 #### Resources Created by Attack Script
 
@@ -145,6 +145,7 @@ plabs apply
 #### What CSPM tools should detect
 
 - S3 bucket resource policy grants `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, and `s3:ListBucket` to a specific IAM role while explicitly denying all other principals — creating a hidden exclusive-access channel
+- The Terraform deployer role is also exempt from the Deny, so it retains access to the bucket alongside the exclusive role; a reverse blast radius query for this bucket should return both principals (the exclusive role, and the deployer role via the exemption and its own permissions)
 - IAM role (`pl-exclusive-bucket-access-role`) has no direct S3 permissions in its identity policy yet can fully read and write a sensitive bucket via the bucket resource policy
 - S3 bucket resource policy contains an explicit `Deny` on `Principal: "*"` with a `StringNotEquals` condition on `aws:PrincipalArn` -- a pattern that is easy to misconfigure and creates blind spots in access reviews
 - The combination of a minimal-permission role and an exclusive resource policy means standard IAM analysis tools will underreport actual access

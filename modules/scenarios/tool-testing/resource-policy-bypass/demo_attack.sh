@@ -116,13 +116,8 @@ echo "Current identity:"
 echo "$CURRENT_IDENTITY" | jq '.'
 echo ""
 
-# Check if we're running as the pathfinding starting user
-CURRENT_USER=$(echo "$CURRENT_IDENTITY" | jq -r '.Arn' | cut -d'/' -f2)
-if [ "$CURRENT_USER" != "pl-pathfinding-starting-user-prod" ]; then
-    echo -e "${YELLOW}Note: This demo should be run as the pl-pathfinding-starting-user-prod user for full effect${NC}"
-    echo "Current user: $CURRENT_USER"
-    echo ""
-fi
+# Step 1 is an observation step run as the readonly user; the exploit steps below
+# use the starting user ($STARTING_USER_NAME) credentials.
 
 # Get account ID
 ACCOUNT_ID=$(echo "$CURRENT_IDENTITY" | jq -r '.Account')
