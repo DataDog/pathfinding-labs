@@ -792,7 +792,7 @@ Do NOT include the actual flag value in solution.md.
    * **CTF Flag Location:** ssm-parameter   # for to-admin
    * **CTF Flag Location:** s3-object       # for to-bucket
    ```
-   Placement: after `Supports Online Mode` (or after `Pathfinding.cloud ID` if `Supports Online Mode` is absent). Before MITRE lines.
+   Placement: after `Pathfinding.cloud ID` (or after the last conditional field before it if that is absent). Before MITRE lines.
 3. Add a new row to the `### Scenario Specific Resources Created` table for the flag resource:
    - to-admin: `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/<scenario-unique-id>` — purpose: "CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal"
    - to-bucket: `s3://<bucket>/flag.txt` — purpose: "CTF flag stored as an S3 object in the target bucket"

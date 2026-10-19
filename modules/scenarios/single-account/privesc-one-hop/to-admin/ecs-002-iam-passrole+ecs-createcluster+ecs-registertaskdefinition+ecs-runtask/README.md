@@ -4,12 +4,13 @@
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Passing a privileged role to an attacker-controlled ECS task to gain administrative access
 * **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ecs_002_iam_passrole_ecs_createcluster_ecs_registertaskdefinition_ecs_runtask`
-* **Schema Version:** 4.6.0
+* **Schema Version:** 4.8.0
 * **Pathfinding.cloud ID:** ecs-002
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0002 - Execution
@@ -31,8 +32,8 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `ecs:RunTask` on `*` -- execute the task on Fargate
 
 **Helpful** (`pl-prod-ecs-002-to-admin-starting-user`):
-- `ec2:DescribeVpcs` -- find the default VPC for ECS task network configuration
-- `ec2:DescribeSubnets` -- find a subnet in the default VPC for ECS task network configuration
+- `ec2:DescribeVpcs` -- find the Pathfinding VPC for ECS task network configuration
+- `ec2:DescribeSubnets` -- find a subnet in the Pathfinding VPC for ECS task network configuration
 - `ecs:DescribeTasks` -- monitor task execution status and verify task completion
 - `ecs:StopTask` -- stop running tasks during cleanup
 - `ecs:DeregisterTaskDefinition` -- clean up task definition after demonstration

@@ -9,7 +9,6 @@ cost_estimate: "$8/mo"
 cost_estimate_when_demo_executed: "$8/mo"
 pathfinding-cloud-id: "codedeploy-001"
 interactive_demo: false
-supports_online_mode: false
 demo_timeout_seconds: 1200
 
 # =============================================================================
@@ -19,6 +18,7 @@ category: "Privilege Escalation"
 sub_category: "existing-passrole"
 path_type: "one-hop"
 target: "to-admin"
+points: 10
 environments:
   - "prod"
 

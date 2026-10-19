@@ -16,6 +16,7 @@ cost_estimate_when_demo_executed: "$1/mo"
 category: "CTF"
 path_type: "ctf"
 target: "to-admin"
+points: 100
 environments:
   - "prod"
 

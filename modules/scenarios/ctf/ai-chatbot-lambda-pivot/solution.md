@@ -207,6 +207,16 @@ After capturing the flag, run the cleanup script to restore the data processor L
 ./cleanup_attack.sh
 ```
 
+## Capture the Flag
+
+With the admin credentials of `pl-prod-ctf-002-target-role` still exported, retrieve the flag from SSM Parameter Store:
+
+```bash
+aws ssm get-parameter --name /pathfinding-labs/flags/ctf-002-to-admin --query 'Parameter.Value' --output text
+```
+
+`AdministratorAccess` implicitly grants `ssm:GetParameter` on every resource in the account, so the admin credentials obtained via the Lambda code-injection pivot are sufficient to read the flag without any additional permission grants.
+
 ## What Happened
 
 You executed a three-hop privilege escalation chain. First, you exploited a prompt injection vulnerability in an LLM chatbot to extract the chatbot Lambda's execution role credentials. Those credentials were limited -- no SSM access, no IAM write permissions, no ability to assume other roles directly. But they included `lambda:UpdateFunctionCode` over a second Lambda function that ran with `AdministratorAccess`.

@@ -4,12 +4,13 @@
 * **Sub-Category:** principal-access
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Impersonate a privileged service account via `iam.serviceAccounts.getAccessToken` (granted here through a minimal custom role) to mint an OAuth access token and inherit its `roles/editor` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken`
-* **Schema Version:** 4.8.2
+* **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-iam-001
 * **CTF Flag Location:** secret-manager
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

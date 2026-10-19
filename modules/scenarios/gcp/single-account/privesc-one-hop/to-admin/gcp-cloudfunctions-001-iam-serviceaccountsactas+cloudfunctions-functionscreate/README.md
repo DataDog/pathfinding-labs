@@ -4,12 +4,13 @@
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Deploy a 2nd-generation Cloud Function ("Cloud Run functions") configured to run as a privileged service account via `iam.serviceAccounts.actAs`, invoke it directly, and exfiltrate the function's OAuth access token from the local metadata server to inherit its `roles/editor` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate`
-* **Schema Version:** 4.8.2
+* **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-cloudfunctions-001
 * **CTF Flag Location:** secret-manager
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

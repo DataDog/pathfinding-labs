@@ -4,7 +4,7 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
-## 4.8.2 — 2026-09-24
+## 4.9.2 — 2026-09-24
 
 Patch: fixed the GCP `### Prerequisites` boilerplate's step 3, which referenced a nonexistent `operator_identity` Terraform variable.
 
@@ -26,7 +26,7 @@ migration:
 
 ---
 
-## 4.8.1 — 2026-09-21
+## 4.9.1 — 2026-09-21
 
 Patch: added GCP-specific `### Prerequisites` boilerplate, surfaced by the first real GCP scenario (gcp-iam-001) going through validation.
 
@@ -48,7 +48,7 @@ migration:
 
 ---
 
-## 4.8.0 — 2026-09-21
+## 4.9.0 — 2026-09-21
 
 Minor: generalized the AWS-only `ARN` terminology to a cloud-derived resource-identifier concept, and added GCP values for CTF flag storage, ahead of the first GCP scenario going live.
 
@@ -71,6 +71,61 @@ migration:
     No changes required to existing READMEs. New GCP scenarios under
     modules/scenarios/gcp/... use the GCP column of the resource identifier
     terminology table and the secret-manager/gcs-object flag location values.
+```
+
+---
+
+## 4.8.0 — 2026-10-16
+
+Minor: added the required `* **Points:**` metadata field.
+
+**Changes:**
+- **`* **Points:** {N}`** -- new required metadata field, placed after `Target`: the lab's value on the pathfinding.cloud labs leaderboard. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30); CTF labs are set higher by hand (100/200). It mirrors the new required `points` field in `scenario.yaml` (SCHEMA.md 1.10.0).
+- Added a compliance-checklist item for it, and moved the checklist's version reference to `4.8.0`.
+
+**Motivation:**
+- The labs leaderboard now ranks learners by total points instead of lab count. pathfinding.cloud's `generate-labs-json.py` reads each lab's points from this field, and pathfinding-backend scores completions from the published `labs.json`, so every lab needs a value.
+
+**Migration rules:**
+- MINOR -- one new required field, no section changes. Every existing README was migrated in the same change (Points added and `Schema Version` set to `4.8.0`).
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    Add "* **Points:** N" after "* **Target:**" (after "* **Sub-Category:**" when
+    present), using the same value as `points` in scenario.yaml, and set
+    "* **Schema Version:**" to 4.8.0.
+```
+
+---
+
+## 4.7.2 — 2026-10-15
+
+Patch: defined the two cost fields (idle vs. running) and fixed their required format.
+
+**Changes:**
+- **`* **Cost Estimate:**`** and **`* **Cost Estimate When Demo Executed:**`** -- added explicit definitions. `Cost Estimate` is the *idle* cost of the Terraform resources after `terraform apply` (un-exploited); `Cost Estimate When Demo Executed` is the *running* cost including whatever the demo spins up out-of-band and leaves running. The demo-executed value must be >= the idle value.
+- **Format rule** -- both fields must be `$0/mo` or a whole-dollar monthly figure `$N/mo`. Hourly rates, ranges, tildes, and parenthetical prose (`~$0.01/hr (t3.micro EC2 instance)`, `$3/hr (p3.2xlarge)`, etc.) are no longer allowed; caveats belong in the `### Automated Demo` section or `solution.md`.
+- Added a compliance-checklist item for the cost format, and corrected the checklist's stale schema-version reference (was `4.6.1`) to match the current version.
+
+**Motivation:**
+- Several labs had corrupted or off-format cost values (`Can/mo`, `~$0.01/hr (t3.micro EC2 instance)`, `~$3/hr when GPU instance is running`) that broke the `$x/mo` convention used across the catalog and surfaced as noise on pathfinding.cloud/labs.
+- The idle-vs-running distinction was an unwritten convention; making it explicit keeps transient-resource demos (GPU instances, GameLift/ECS fleets) scored consistently.
+
+**Migration rules:**
+- PATCH -- no section or field structure changes. Only READMEs whose cost lines violate the `$0/mo`/`$N/mo` format need correcting; convert hourly/transient costs to a whole-dollar monthly figure and move any prose caveats into the demo/solution text.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    For any README whose "* **Cost Estimate:**" or
+    "* **Cost Estimate When Demo Executed:**" line is not of the form "$0/mo" or
+    "$N/mo" (whole dollars), rewrite it to that form. Idle cost is the post-apply
+    cost of the Terraform resources; demo-executed cost adds whatever the demo runs
+    out-of-band, and must be >= the idle cost. Remove tildes, hourly rates, ranges,
+    and parenthetical prose; relocate caveats to the Automated Demo or solution text.
 ```
 
 ---

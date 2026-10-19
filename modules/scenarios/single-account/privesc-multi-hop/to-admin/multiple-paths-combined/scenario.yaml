@@ -15,6 +15,7 @@ category: "Privilege Escalation"
 sub_category: "privilege-chaining"
 path_type: "multi-hop"
 target: "to-admin"
+points: 20
 environments:
   - "prod"
 

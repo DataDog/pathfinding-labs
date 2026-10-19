@@ -177,34 +177,43 @@ use_readonly_creds
 export AWS_REGION=$AWS_REGION
 export AWS_DEFAULT_REGION="$AWS_REGION"
 
-# Get default VPC
-show_cmd "ReadOnly" "aws ec2 describe-vpcs --region $AWS_REGION --filters 'Name=is-default,Values=true' --query 'Vpcs[0].VpcId' --output text"
-DEFAULT_VPC=$(aws ec2 describe-vpcs \
-    --region $AWS_REGION \
-    --filters "Name=is-default,Values=true" \
-    --query 'Vpcs[0].VpcId' \
-    --output text)
+# Discover the custom network deployed by the lab environment.
+show_cmd "ReadOnly" "aws ec2 describe-vpcs --region \"$AWS_REGION\" --filters \"Name=tag:Name,Values=pathfinding\" \"Name=is-default,Values=false\" --query 'Vpcs[].VpcId' --output text"
+LAB_VPC=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-if [ "$DEFAULT_VPC" == "None" ] || [ -z "$DEFAULT_VPC" ]; then
-    echo -e "${RED}Error: No default VPC found${NC}"
-    exit 1
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
 fi
 
-echo "Default VPC: $DEFAULT_VPC"
+show_cmd "ReadOnly" "aws ec2 describe-subnets --region \"$AWS_REGION\" --filters \"Name=vpc-id,Values=$LAB_VPC\" \"Name=tag:Name,Values=pathfinding Operational Subnet 1\" \"Name=map-public-ip-on-launch,Values=true\" --query 'Subnets[].SubnetId' --output text"
+SUBNET_1=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
 
-# Get subnets from default VPC
-show_cmd "ReadOnly" "aws ec2 describe-subnets --region $AWS_REGION --filters 'Name=vpc-id,Values=$DEFAULT_VPC' --query 'Subnets[*].SubnetId' --output text"
-SUBNETS=$(aws ec2 describe-subnets \
-    --region $AWS_REGION \
-    --filters "Name=vpc-id,Values=$DEFAULT_VPC" \
-    --query 'Subnets[*].SubnetId' \
-    --output text)
+if [[ ! "$SUBNET_1" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
 
-# Take first two subnets
-SUBNET_1=$(echo $SUBNETS | awk '{print $1}')
-SUBNET_2=$(echo $SUBNETS | awk '{print $2}')
+show_cmd "ReadOnly" "aws ec2 describe-subnets --region \"$AWS_REGION\" --filters \"Name=vpc-id,Values=$LAB_VPC\" \"Name=tag:Name,Values=pathfinding Operational Subnet 2\" \"Name=map-public-ip-on-launch,Values=true\" --query 'Subnets[].SubnetId' --output text"
+SUBNET_2=$(aws ec2 describe-subnets --region "$AWS_REGION" \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 2" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
 
-echo "Using subnets: $SUBNET_1, $SUBNET_2"
+if [[ ! "$SUBNET_2" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 2 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnets: $SUBNET_1, $SUBNET_2"
 echo -e "${GREEN}✓ Retrieved network configuration${NC}\n"
 
 # [EXPLOIT] Step 7: Register task definition with admin role

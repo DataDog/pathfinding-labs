@@ -16,6 +16,7 @@ demo_timeout_seconds: 600
 category: "Privilege Escalation"
 path_type: "cross-account"
 target: "to-admin"
+points: 20
 environments:
   - "dev"
   - "prod"

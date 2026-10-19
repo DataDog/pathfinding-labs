@@ -97,7 +97,7 @@ attackMap:
           command: >
             aws ecs start-task
             --cluster pl-prod-ecs-005-cluster
-            --task-definition pl-ecs-005-admin-escalation:1
+            --task-definition pl-ecs-005-admin-escalation
             --container-instances <CONTAINER_INSTANCE_ARN>
         - description: "Poll task status until STOPPED"
           command: "aws ecs describe-tasks --cluster pl-prod-ecs-005-cluster --tasks <TASK_ARN> --query 'tasks[0].{status:lastStatus,exitCode:containers[0].exitCode}'"

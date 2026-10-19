@@ -4,12 +4,13 @@
 * **Sub-Category:** new-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
+* **Points:** 10
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Replace the source code of an existing 2nd-gen Cloud Function that already runs as a privileged service account via the raw Cloud Functions v2 REST API -- not `gcloud`, which requires extra Cloud Build preflight permissions -- then invoke the updated function to exfiltrate the function's OAuth access token from the local metadata server, inheriting the target service account's `roles/editor` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate`
-* **Schema Version:** 4.8.2
+* **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-cloudfunctions-002
 * **CTF Flag Location:** secret-manager
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access

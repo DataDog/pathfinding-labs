@@ -22,6 +22,7 @@ category: "Privilege Escalation"
 sub_category: "new-passrole"
 path_type: "one-hop"
 target: "to-admin"
+points: 10
 environments:
   - "prod"
 

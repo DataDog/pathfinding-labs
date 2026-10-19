@@ -51,7 +51,7 @@ aws iam list-instance-profiles \
 
 There it is: `pl-prod-ec2-004-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
 
-Before you can launch the instance, you need two more pieces of infrastructure information: an AMI ID and a subnet. Pull the latest Amazon Linux 2023 AMI and a subnet from the default VPC:
+Before you can launch the instance, you need two more pieces of infrastructure information: an AMI ID and a subnet. Pull the latest Amazon Linux 2023 AMI and a subnet from the `pathfinding` VPC:
 
 ```bash
 # Find the most recent Amazon Linux 2023 AMI
@@ -61,17 +61,29 @@ aws ec2 describe-images \
   --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
   --output text
 
-# Get the default VPC
-aws ec2 describe-vpcs \
-  --filters "Name=is-default,Values=true" \
-  --query 'Vpcs[0].VpcId' \
-  --output text
+# Discover the custom network deployed by the lab environment.
+LAB_VPC=$(aws ec2 describe-vpcs \
+  --filters "Name=tag:Name,Values=pathfinding" "Name=is-default,Values=false" \
+  --query 'Vpcs[].VpcId' --output text) || exit 1
 
-# Get a subnet in that VPC
-aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=<default-vpc-id>" \
-  --query 'Subnets[0].SubnetId' \
-  --output text
+if [[ ! "$LAB_VPC" =~ ^vpc-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one custom pathfinding VPC. Check the account, region, and lab environment deployment." >&2
+  exit 1
+fi
+
+LAB_SUBNET=$(aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=$LAB_VPC" \
+    "Name=tag:Name,Values=pathfinding Operational Subnet 1" \
+    "Name=map-public-ip-on-launch,Values=true" \
+  --query 'Subnets[].SubnetId' --output text) || exit 1
+
+if [[ ! "$LAB_SUBNET" =~ ^subnet-[0-9a-f]+$ ]]; then
+  echo "Expected exactly one public Pathfinding Operational Subnet 1 in $LAB_VPC." >&2
+  exit 1
+fi
+
+echo "Pathfinding VPC: $LAB_VPC"
+echo "Public subnet: $LAB_SUBNET"
 ```
 
 Note down the AMI ID and subnet ID -- you will need them when constructing the Spot Instance launch specification.
@@ -121,7 +133,7 @@ LAUNCH_SPEC=$(cat <<EOF
   "NetworkInterfaces": [
     {
       "DeviceIndex": 0,
-      "SubnetId": "<subnet-id>",
+      "SubnetId": "$LAB_SUBNET",
       "AssociatePublicIpAddress": true
     }
   ]
