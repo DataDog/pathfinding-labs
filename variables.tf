@@ -1083,18 +1083,6 @@ variable "enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
 # TOOL TESTING SCENARIOS
 ##############################################################################
 
-variable "enable_tool_testing_exclusive_resource_policy" {
-  description = "Enable: tool-testing → exclusive-resource-policy (tests detection of exclusive resource policy configurations)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_tool_testing_resource_policy_bypass" {
-  description = "Enable: tool-testing → resource-policy-bypass (tests detection of resource policies that bypass IAM)"
-  type        = bool
-  default     = false
-}
-
 variable "enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
   description = "Enable: tool-testing → test-reverse-blast-radius-direct-and-indirect-through-admin"
   type        = bool
@@ -1109,6 +1097,30 @@ variable "enable_tool_testing_test_reverse_blast_radius_implicit_admin_access" {
 
 variable "enable_tool_testing_test_reverse_blast_radius_hop_depth" {
   description = "Enable: tool-testing → test-reverse-blast-radius-hop-depth"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_bucket_policy" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-bucket-policy"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_assume_role_edges" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-assume-role-edges"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_identity_side_block" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-identity-side-block"
+  type        = bool
+  default     = false
+}
+
+variable "enable_tool_testing_test_reverse_blast_radius_escalation" {
+  description = "Enable: tool-testing → test-reverse-blast-radius-escalation"
   type        = bool
   default     = false
 }

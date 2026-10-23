@@ -1,0 +1,67 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-assume-role-edges"
+title: "Reverse Blast Radius Assume-Role Edge Correctness"
+description: "Tool testing scenario validating that the can-assume edge is only drawn when BOTH the caller's identity policy and the role trust policy allow the assumption (and that a root-trust role defers to identity policies)"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 30
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-both"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-identity-only"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-trust-only"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-root-with-identity"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-root-no-identity"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role-root"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-are-{account_id}-{suffix}"
+
+  summary: "Two roles read the bucket. are-both (identity + explicit trust) and are-root-with-identity (identity + root trust) can assume and read; are-identity-only (identity only), are-trust-only (trust only), and are-root-no-identity (root trust but no identity permission) cannot."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-are-both"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role"
+    - principal: "pl-prod-rbr-are-root-with-identity"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role-root"
+  helpful: []
+
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_assume_role_edges"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-assume-role-edges"
