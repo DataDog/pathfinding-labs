@@ -39,6 +39,38 @@ Your objective is to learn how to validate that a security tool includes implici
 **Helpful** (`pl-prod-rbr-ia-reader-user`):
 - `sts:GetCallerIdentity` -- verify current identity
 
+### Expected Results
+
+**What this lab tests:** whether a reverse-blast-radius query for a bucket includes administrators whose access comes only from being an administrator, with no statement that names S3 or the bucket.
+
+**Graph a correct tool should build**
+
+| From | Edge | To |
+|---|---|---|
+| `pl-prod-rbr-ia-reader-user` | can_read | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+| `pl-prod-rbr-ia-writer-user` | can_write | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+| `pl-prod-rbr-ia-admin-user` | is_admin | true |
+| `pl-prod-rbr-ia-admin-user` | can_read | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+| `pl-prod-rbr-ia-admin-user` | can_write | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+| `pl-prod-rbr-ia-admin-role` | is_admin | true |
+| `pl-prod-rbr-ia-admin-role` | can_read | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+| `pl-prod-rbr-ia-admin-role` | can_write | `pl-sensitive-data-rbr-ia-{account_id}-{suffix}` |
+
+**Expected answers**
+
+| Case | Question | Must include | Must not include |
+|---|---|---|---|
+| rbr-ia-001 | Who can read the bucket directly? | `pl-prod-rbr-ia-reader-user`, `pl-prod-rbr-ia-admin-user`, `pl-prod-rbr-ia-admin-role` | `pl-prod-rbr-ia-writer-user`, `pl-prod-rbr-ia-no-access-user` |
+| rbr-ia-002 | Who can write to the bucket directly? | `pl-prod-rbr-ia-writer-user`, `pl-prod-rbr-ia-admin-user`, `pl-prod-rbr-ia-admin-role` | `pl-prod-rbr-ia-reader-user`, `pl-prod-rbr-ia-no-access-user` |
+| rbr-ia-003 | Which principals are administrators? | `pl-prod-rbr-ia-admin-user`, `pl-prod-rbr-ia-admin-role` | `pl-prod-rbr-ia-reader-user`, `pl-prod-rbr-ia-writer-user`, `pl-prod-rbr-ia-no-access-user` |
+
+**Why:**
+- **rbr-ia-001:** reader-user reads through an explicit statement; both admins can read every bucket because `Action: *` covers `s3:GetObject` and no bucket policy denies it. writer-user has only `s3:PutObject`; no-access-user has nothing.
+- **rbr-ia-002:** writer-user writes through an explicit statement; both admins can write every bucket. reader-user can only read.
+- **rbr-ia-003:** control for the two above. If this passes while they fail, the tool classifies admins correctly but does not turn that classification into resource access. admin-user uses a managed policy and admin-role an inline `*:*`, so a split result also shows which grant style was missed.
+
+**Proven by:** `demo_attack.sh`, which reads and writes the bucket as each user with its own credentials, and uses `simulate-principal-policy` for the admin role (which nothing can assume), confirming each expected allow and deny.
+
 ## Self-hosted Lab Setup
 
 ### Prerequisites

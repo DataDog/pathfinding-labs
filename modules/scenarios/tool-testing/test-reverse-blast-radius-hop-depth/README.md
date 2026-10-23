@@ -43,6 +43,37 @@ Your objective is to learn how to validate that a security tool answers "who can
 **Helpful** (`pl-prod-rbr-hd-user-a`):
 - `sts:GetCallerIdentity` -- verify current identity
 
+### Expected Results
+
+**What this lab tests:** whether a reverse-blast-radius query for a bucket returns the right principals at each hop depth, and whether a query limited to one depth silently omits principals at other depths.
+
+**Graph a correct tool should build**
+
+| From | Edge | To |
+|---|---|---|
+| `pl-prod-rbr-hd-user-a` | can_read | `pl-sensitive-data-rbr-hd-{account_id}-{suffix}` |
+| `pl-prod-rbr-hd-role-r1` | can_read | `pl-sensitive-data-rbr-hd-{account_id}-{suffix}` |
+| `pl-prod-rbr-hd-user-b` | can_assume | `pl-prod-rbr-hd-role-r1` |
+| `pl-prod-rbr-hd-role-r2` | can_assume | `pl-prod-rbr-hd-role-r1` |
+| `pl-prod-rbr-hd-user-c` | can_assume | `pl-prod-rbr-hd-role-r2` |
+
+**Expected answers**
+
+| Case | Question | Must include | Must not include |
+|---|---|---|---|
+| rbr-hd-001 | Who can read the bucket directly (0 hops)? | `pl-prod-rbr-hd-user-a`, `pl-prod-rbr-hd-role-r1` | `pl-prod-rbr-hd-user-b`, `pl-prod-rbr-hd-role-r2`, `pl-prod-rbr-hd-user-c` |
+| rbr-hd-002 | Who can read it by assuming exactly one role (1 hop)? | `pl-prod-rbr-hd-user-b`, `pl-prod-rbr-hd-role-r2` | `pl-prod-rbr-hd-user-a`, `pl-prod-rbr-hd-user-c` |
+| rbr-hd-003 | Who can read it by chaining exactly two roles (2 hops)? | `pl-prod-rbr-hd-user-c` | `pl-prod-rbr-hd-user-a`, `pl-prod-rbr-hd-user-b` |
+| rbr-hd-004 | Who can read it by any means, up to 2 hops? | all five principals | (none) |
+
+**Why:**
+- **rbr-hd-001:** only user-a and role-r1 hold `s3:GetObject`/`s3:ListBucket` on the bucket; the others hold only `sts:AssumeRole`.
+- **rbr-hd-002:** user-b and role-r2 each assume role-r1, which reads the bucket. user-a has access but assumes nothing, so a 1-hop-only query correctly omits it -- which is exactly why one depth is not a complete answer.
+- **rbr-hd-003:** user-c reaches the bucket only through role-r2 and then role-r1.
+- **rbr-hd-004:** all five can read the bucket; the complete answer is the union across depths 0, 1, and 2.
+
+**Proven by:** `demo_attack.sh`, which reads the bucket as user-a directly, then as user-b and user-c only after the required `sts:AssumeRole` hops, failing each direct read that should be denied.
+
 ## Self-hosted Lab Setup
 
 ### Prerequisites

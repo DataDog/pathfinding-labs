@@ -37,6 +37,34 @@ Your objective is to learn how to exploit a tool testing scenario that validates
 - `sts:GetCallerIdentity` -- verify current identity
 - `s3:ListAllMyBuckets` -- discover available buckets
 
+### Expected Results
+
+**What this lab tests:** this is a composition of the implicit-admin and hop-depth labs -- whether a tool follows a one-hop assume-role path into an administrator role whose access to the bucket is itself implicit (the admin role has no S3 statement). It is the realistic shape of the admin gap: a user assumes an admin role, and the whole chain disappears if the last edge (admin to bucket) is missing.
+
+**Graph a correct tool should build**
+
+| From | Edge | To |
+|---|---|---|
+| `pl-prod-rbr-admin-user1` | can_read | `pl-sensitive-data-rbr-admin-{account_id}-{suffix}` |
+| `pl-prod-rbr-admin-role3` | is_admin | true |
+| `pl-prod-rbr-admin-role3` | can_read | `pl-sensitive-data-rbr-admin-{account_id}-{suffix}` |
+| `pl-prod-rbr-admin-user2` | can_assume | `pl-prod-rbr-admin-role3` |
+
+**Expected answers**
+
+| Case | Question | Must include | Must not include |
+|---|---|---|---|
+| rbr-admin-001 | Who can read the bucket directly (0 hops)? | `pl-prod-rbr-admin-user1`, `pl-prod-rbr-admin-role3` | `pl-prod-rbr-admin-user2` |
+| rbr-admin-002 | Who can read it by assuming exactly one role (1 hop)? | `pl-prod-rbr-admin-user2` | `pl-prod-rbr-admin-user1`, `pl-prod-rbr-admin-role3` |
+| rbr-admin-003 | Which non-admins can reach an administrator? | `pl-prod-rbr-admin-user2` | `pl-prod-rbr-admin-user1` |
+
+**Why:**
+- **rbr-admin-001:** user1 reads through an explicit statement; role3 can read every bucket as an administrator, so it is a direct reader even though it has no S3-specific statement.
+- **rbr-admin-002:** user2 holds only `sts:AssumeRole` on role3; it reaches the bucket by assuming that admin role. user1 and role3 assume nothing.
+- **rbr-admin-003:** control for rbr-admin-002. If this passes while rbr-admin-002 fails, the tool knows user2 reaches an admin but does not carry that through to the admin's resources -- the missing last edge.
+
+**Proven by:** `demo_attack.sh`, which reads the bucket as user1 directly, then as user2 only after assuming role3, and uses `simulate-principal-policy` to confirm role3's own implicit read.
+
 ## Self-hosted Lab Setup
 
 ### Prerequisites
@@ -155,10 +183,10 @@ plabs apply
 
 When performing reverse blast radius analysis on the sensitive S3 bucket (`pl-sensitive-data-rbr-admin-*`), security tools should identify:
 
-1. **Direct Access Path**:
-   - `pl-prod-rbr-admin-user1` has explicit S3 permissions
-   - Policy grants `s3:ListAllMyBuckets`, `s3:ListBucket`, and `s3:GetObject` on the bucket
-   - This is typically what most tools successfully detect
+1. **Direct Access Paths**:
+   - `pl-prod-rbr-admin-user1` has explicit S3 permissions (`s3:ListBucket`, `s3:GetObject` on the bucket, plus `s3:ListAllMyBuckets`)
+   - `pl-prod-rbr-admin-role3` is also a direct reader: its AdministratorAccess grants implicit read access to every bucket, with no S3-specific statement
+   - user1's explicit path is typically what most tools detect; role3's implicit direct access is already a common miss
 
 2. **Indirect Access Path (Critical Test)**:
    - `pl-prod-rbr-admin-user2` has access via administrative role assumption
