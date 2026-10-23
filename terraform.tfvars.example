@@ -185,7 +185,6 @@ enable_tool_testing_exclusive_resource_policy                                   
 enable_tool_testing_resource_policy_bypass                                         = false
 enable_tool_testing_test_effective_permissions_evaluation                          = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin    = false
-enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket        = false
 enable_tool_testing_test_reverse_blast_radius_hop_depth                            = false
 enable_tool_testing_test_reverse_blast_radius_implicit_admin_access                = false
 

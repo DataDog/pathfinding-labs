@@ -2139,25 +2139,6 @@ output "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
   sensitive = true
 }
 
-output "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
-  description = "All outputs for test-reverse-blast-radius-direct-and-indirect-to-bucket tool testing scenario"
-  value = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket ? {
-    user1_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_name
-    user1_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_arn
-    user1_access_key_id     = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_access_key_id
-    user1_secret_access_key = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_secret_access_key
-    user2_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_name
-    user2_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_arn
-    user2_access_key_id     = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_access_key_id
-    user2_secret_access_key = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_secret_access_key
-    role3_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].role3_name
-    role3_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].role3_arn
-    bucket_name             = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].bucket_name
-    bucket_arn              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].bucket_arn
-    attack_path             = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].attack_path
-  } : null
-  sensitive = true
-}
 
 output "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
   description = "All outputs for test-reverse-blast-radius-implicit-admin-access tool testing scenario"

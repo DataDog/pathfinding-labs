@@ -1690,17 +1690,6 @@ module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
-  count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket ? 1 : 0
-  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-to-bucket"
-  providers = {
-    aws.prod = aws.prod
-  }
-  account_id      = local.prod_account_id
-  environment     = "prod"
-  resource_suffix = random_string.resource_suffix.result
-}
-
 module "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
   count  = var.enable_tool_testing_test_reverse_blast_radius_implicit_admin_access ? 1 : 0
   source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-implicit-admin-access"
