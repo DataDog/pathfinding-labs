@@ -4,6 +4,32 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.9.0 — 2026-10-22
+
+Minor: added the required `### Expected Results` section for Tool Testing scenarios.
+
+**Changes:**
+- **`### Expected Results`** -- new required H3 under `## Objective`, after `### Starting Permissions`, for Tool Testing scenarios only. It states, in tool-agnostic terms, the access graph a correct tool should build (From / Edge / To table), the expected answers to each test case (Case / Question / Must include / Must not include), a one-line Why per case, and what `demo_attack.sh` proves.
+- Added a compliance-checklist item for it and moved the checklist's version reference to `4.9.0`.
+
+**Motivation:**
+- Tool-testing READMEs only described expected behavior in free-form "What CSPM tools should detect" prose, which varied in quality and in places was incomplete. A fixed, query-free structure makes each lab read like a unit test: what it tests, the expected graph, and the exact expected answers.
+
+**Migration rules:**
+- MINOR -- one new section for Tool Testing scenarios. Non-tool-testing READMEs only need `Schema Version` set to `4.9.0`.
+
+```yaml
+migration:
+  tier: llm
+  instructions: >
+    For every README set "* **Schema Version:**" to 4.9.0. For Tool Testing
+    scenarios only, add "### Expected Results" under "## Objective" after
+    "### Starting Permissions", following the exact structure in the schema,
+    derived from the lab's Terraform and demo_attack.sh.
+```
+
+---
+
 ## 4.8.0 — 2026-10-16
 
 Minor: added the required `* **Points:**` metadata field.

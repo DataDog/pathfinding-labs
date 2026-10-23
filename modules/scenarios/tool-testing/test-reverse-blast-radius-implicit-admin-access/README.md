@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Tool testing scenario validating that reverse blast radius queries (who can read/write this bucket) include administrators whose access comes only from AdministratorAccess, with no S3-specific permissions
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_implicit_admin_access`
-* **Schema Version:** 4.8.0
+* **Schema Version:** 4.9.0
 * **MITRE Tactics:** TA0009 - Collection
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object
 

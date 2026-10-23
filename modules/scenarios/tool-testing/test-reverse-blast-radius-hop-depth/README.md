@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Tool testing scenario validating that reverse blast radius queries return principals at every hop depth (direct, 1 hop, 2 hops) and showing that a query limited to N hops omits shallower and deeper principals
 * **Terraform Variable:** `enable_tool_testing_test_reverse_blast_radius_hop_depth`
-* **Schema Version:** 4.8.0
+* **Schema Version:** 4.9.0
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
