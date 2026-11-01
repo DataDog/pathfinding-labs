@@ -137,67 +137,86 @@ resource "google_project_iam_member" "target_sa_admin_role" {
 }
 
 # -----------------------------------------------------------------------------
-# Vulnerable grant: cloudfunctions.functions.update/.sourceCodeSet + run.routes.invoke
-# + gcloud CLI mechanic permissions
+# Vulnerable grant #1: Core attack permissions (raw API minimum)
 # -----------------------------------------------------------------------------
-# Core attack permissions (needed at the raw API level regardless of tooling):
+# Required regardless of tooling — the raw Cloud Functions v2 REST API cannot
+# complete the attack without all four:
 #   - cloudfunctions.functions.update    — replace the function's code/config
 #   - cloudfunctions.functions.sourceCodeSet — upload a new source archive
-#   - run.routes.invoke                  — invoke the gen2 function's HTTPS endpoint
-#     (gen2 functions are backed by Cloud Run; invocation auth is checked by
-#      Cloud Run, not the Cloud Functions API)
-#
-# gcloud CLI mechanic permissions (not needed with raw API calls, but required
-# because gcloud functions deploy does extra preflight work):
-#   - cloudfunctions.functions.get       — gcloud reads current config before submitting update
-#   - cloudfunctions.operations.get      — gcloud polls the update LRO (no --async flag for gen2)
-#   - resourcemanager.projects.get       — gcloud calls GET /v1/projects/{id} unconditionally
+#   - cloudfunctions.operations.get      — poll the update LRO until ACTIVE
+#                                          (gen2 updates are async; no way to
+#                                          know the function is ready without it)
+#   - run.routes.invoke                  — invoke the gen2 function's HTTPS
+#                                          endpoint; gen2 HTTP auth goes through
+#                                          Cloud Run IAM, not the CF API —
+#                                          caller needs run.routes.invoke unless
+#                                          the service allows unauthenticated
 #
 # GCP's UpdateFunction API always checks iam.serviceAccounts.actAs on the
 # function's existing build SA and runtime SA — even for code-only updates.
-# Both SAs are target_sa, so actAs on target_sa is required.
+# Both SAs are target_sa, so actAs on target_sa is required (granted separately
+# via google_service_account_iam_member.vulnerable_actas_grant below).
 # The distinction from cf-001 (create): attacker targets an EXISTING function
-# that already runs as target_sa. Only cloudfunctions.functions.update is
-# needed (not functions.create), but actAs on target_sa is still required.
-resource "google_project_iam_custom_role" "cf_update_minimal" {
+# already running as target_sa — only functions.update is needed, not create.
+resource "google_project_iam_custom_role" "cf_update_required" {
   provider    = google.prod
   project     = var.project_id
-  role_id     = "gcp_cloudfunctions_002_cf_update_min"
-  title       = "Pathfinding Labs - Minimal Cloud Functions Update"
-  description = "Permissions to update an existing 2nd-gen Cloud Function's code and invoke it. Core: functions.update, sourceCodeSet, run.routes.invoke. CLI mechanics: functions.get, operations.get, projects.get, builds.get, getIamPolicy."
+  role_id     = "gcp_cloudfunctions_002_cf_update_req"
+  title       = "Pathfinding Labs - CF Update (Required)"
+  description = "Core attack permissions: functions.update, sourceCodeSet, operations.get (LRO poll), run.routes.invoke. Required at the raw API level regardless of tooling."
   permissions = [
-    # Core attack — required at the raw API level regardless of tooling
     "cloudfunctions.functions.update",
     "cloudfunctions.functions.sourceCodeSet",
-    "run.routes.invoke",
-
-    # gcloud CLI mechanics — not needed with raw API, but required by gcloud
-    # functions deploy and gcloud functions describe:
-    #   cloudfunctions.functions.get     — gcloud reads current config before update
-    #   cloudfunctions.operations.get    — gcloud polls the update LRO
-    #   resourcemanager.projects.get     — gcloud preflight call on every command
-    #   cloudbuild.builds.get            — gcloud's GetDefaultServiceAccount preflight
-    #                                      on Cloud Build API (determines default build SA)
-    #   resourcemanager.projects.getIamPolicy — gcloud validates IAM policy as part of
-    #                                           the deploy flow
-    #   run.services.getIamPolicy        — gcloud reads the Cloud Run service IAM policy
-    #                                      post-deploy to verify invocation settings
-    #   run.services.setIamPolicy        — gcloud sets the Cloud Run service IAM policy
-    #                                      to enforce --no-allow-unauthenticated
-    "cloudfunctions.functions.get",
+    # operations.get is needed even with the raw API: the PATCH call returns an
+    # async LRO and polling GET /v2/{operation_name} is the only way to know
+    # when the function is ACTIVE and ready to invoke.
     "cloudfunctions.operations.get",
-    "resourcemanager.projects.get",
-    "cloudbuild.builds.get",
-    "resourcemanager.projects.getIamPolicy",
-    "run.services.getIamPolicy",
-    "run.services.setIamPolicy",
+    "run.routes.invoke",
   ]
 }
 
-resource "google_project_iam_member" "vulnerable_cloudfunctions_update_grant" {
+resource "google_project_iam_member" "vulnerable_cf_update_required_grant" {
   provider = google.prod
   project  = var.project_id
-  role     = google_project_iam_custom_role.cf_update_minimal.id
+  role     = google_project_iam_custom_role.cf_update_required.id
+  member   = "serviceAccount:${google_service_account.starting_sa.email}"
+}
+
+# -----------------------------------------------------------------------------
+# Vulnerable grant #2: gcloud CLI mechanic permissions (fully minimized)
+# -----------------------------------------------------------------------------
+# These permissions are NOT needed when using the raw Cloud Functions v2 REST
+# API directly (--api-only mode), but gcloud functions deploy issues extra
+# calls that require them. Specifying --build-service-account eliminates four
+# of the seven original gcloud-mechanic permissions (debug trace confirmed):
+#
+#   Eliminated by --build-service-account (not granted here):
+#     cloudbuild.builds.get                 — GetDefaultServiceAccount preflight
+#     resourcemanager.projects.getIamPolicy — project IAM policy validation
+#     run.services.getIamPolicy             — Cloud Run IAM read post-deploy
+#     run.services.setIamPolicy             — Cloud Run IAM set post-deploy
+#
+#   Irreducible when using gcloud functions deploy (granted here):
+#     cloudfunctions.functions.get — gcloud always calls GetFunction before
+#                                    submitting to read current config
+#     resourcemanager.projects.get — gcloud calls GET /v1/projects/{id}
+#                                    unconditionally on every deploy
+resource "google_project_iam_custom_role" "cf_update_gcloud_mechanic" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "gcp_cloudfunctions_002_cf_update_mech"
+  title       = "Pathfinding Labs - CF Update (gcloud Mechanic)"
+  description = "Minimized gcloud CLI mechanic perms (isolated via --build-service-account + debug trace): functions.get (gcloud GetFunction preflight) and resourcemanager.projects.get (unconditional project preflight). Not needed by the raw CF v2 API."
+  permissions = [
+    "cloudfunctions.functions.get",
+    "resourcemanager.projects.get",
+  ]
+}
+
+resource "google_project_iam_member" "vulnerable_cf_update_gcloud_mechanic_grant" {
+  provider = google.prod
+  project  = var.project_id
+  role     = google_project_iam_custom_role.cf_update_gcloud_mechanic.id
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 
