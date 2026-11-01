@@ -1,0 +1,124 @@
+attackMap:
+  nodes:
+    - id: bucket-reader
+      label: "Bucket Reader"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-bucket-reader"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has explicit s3:GetObject and s3:ListBucket permissions on the
+        target bucket, and nothing else. It is the only principal that can read the
+        bucket today without first escalating its privileges.
+
+    - id: cak-user
+      label: "CreateAccessKey User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-cak-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no S3 permissions. Its only permission is iam:CreateAccessKey
+        on pl-prod-rbr-esc-bucket-reader, which lets it mint a fresh access key for the
+        reader and then act as that user to read the bucket. A direct-access query must
+        exclude it; an escalation-aware query must include it.
+
+    - id: attach-self-user
+      label: "AttachUserPolicy User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-attach-self-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no S3 permissions. Its only permission is iam:AttachUserPolicy
+        on itself, which lets it attach the AdministratorAccess managed policy to its own
+        identity and then read the bucket as an administrator. A direct-access query must
+        exclude it; an escalation-aware query must include it.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-esc-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket, with no bucket policy. Exactly one
+        principal can read it today (bucket-reader). Two others hold only IAM
+        permissions but can escalate into read access: cak-user by minting an access key
+        for bucket-reader, and attach-self-user by attaching AdministratorAccess to
+        itself. A direct-only reverse blast radius query returns only bucket-reader; an
+        escalation-aware query returns all three.
+
+  edges:
+    - from: bucket-reader
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        Bucket-reader has explicit IAM permissions to list and read objects in the
+        target bucket. This is the direct read edge, present today with no escalation.
+      hints:
+        - "This user holds explicit S3 read permissions on the bucket, so list and download objects directly -- no escalation needed."
+      commands:
+        - description: "List bucket contents as bucket-reader"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-esc-{account_id}-{suffix}/"
+        - description: "Read an object as bucket-reader"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-esc-{account_id}-{suffix}/sensitive-data.txt -"
+
+    - from: cak-user
+      to: bucket-reader
+      label: "iam:CreateAccessKey"
+      description: >
+        Cak-user holds no S3 access but can mint a new access key for bucket-reader.
+        Creating that key and exporting the returned credentials lets you operate as
+        bucket-reader and inherit its bucket read access. This is why an escalation-aware
+        reverse blast radius query must include cak-user.
+      hints:
+        - "This user cannot read the bucket itself, but it can create an access key for the principal that can. Mint a fresh key for bucket-reader and export the returned credentials to operate as that user."
+        - "Browse to https://pathfinding.cloud/paths/iam-002 for technique details."
+      commands:
+        - description: "Mint a new access key for bucket-reader as cak-user"
+          command: "aws iam create-access-key --user-name pl-prod-rbr-esc-bucket-reader --query 'AccessKey.[AccessKeyId,SecretAccessKey]' --output text"
+        - description: "Read the bucket using the minted bucket-reader credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-esc-{account_id}-{suffix}/sensitive-data.txt -"
+
+    - from: attach-self-user
+      to: attach-self-user
+      label: "iam:AttachUserPolicy"
+      description: >
+        Attach-self-user holds no S3 access but can attach any managed policy to itself.
+        Attaching AdministratorAccess makes it an administrator, which can read every
+        bucket in the account including this one. This self-escalation is why an
+        escalation-aware reverse blast radius query must include attach-self-user.
+      grantsAdmin: true
+      hints:
+        - "This user can attach a managed policy to its own identity. Attach AdministratorAccess to yourself, wait for IAM to propagate, then read the bucket as an administrator."
+        - "Browse to https://pathfinding.cloud/paths/iam-003 for technique details."
+      commands:
+        - description: "Attach AdministratorAccess to self"
+          command: "aws iam attach-user-policy --user-name pl-prod-rbr-esc-attach-self-user --policy-arn arn:aws:iam::aws:policy/AdministratorAccess"
+        - description: "Read the bucket as an administrator"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-esc-{account_id}-{suffix}/sensitive-data.txt -"

@@ -1,0 +1,198 @@
+attackMap:
+  nodes:
+    - id: are-both
+      label: "Identity + Trust User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-both"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user satisfies both halves of a same-account sts:AssumeRole: its
+        identity policy allows sts:AssumeRole on pl-prod-rbr-are-target-role, and that
+        role's trust policy names this user explicitly. It can therefore assume the role
+        and read the sensitive bucket.
+
+    - id: are-root-with-identity
+      label: "Identity + Root Trust User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-root-with-identity"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user's identity policy allows sts:AssumeRole on
+        pl-prod-rbr-are-target-role-root. That role's trust policy grants to the account
+        root, which defers the decision entirely to identity policies -- and this user
+        has the identity permission, so it can assume the role and read the bucket.
+
+    - id: are-identity-only
+      label: "Identity-Only User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-identity-only"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user's identity policy allows sts:AssumeRole on
+        pl-prod-rbr-are-target-role, but that role's trust policy does NOT name this
+        user. A same-account assume needs both halves, so the attempt is denied -- no
+        can_assume edge should be drawn. A tool that reads only identity policies would
+        report this user as a false positive.
+
+    - id: are-trust-only
+      label: "Trust-Only User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-trust-only"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user is named in pl-prod-rbr-are-target-role's trust policy, but its
+        own identity policy grants only sts:GetCallerIdentity -- no sts:AssumeRole. A
+        same-account assume needs both halves, so the attempt is denied -- no can_assume
+        edge should be drawn. A tool that reads only trust policies would report this
+        user as a false positive.
+
+    - id: are-root-no-identity
+      label: "Root Trust, No Identity User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-are-root-no-identity"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user is covered by pl-prod-rbr-are-target-role-root's root trust, but
+        its identity policy grants only sts:GetCallerIdentity -- no sts:AssumeRole.
+        Because a root trust defers to identity policies and this user has no identity
+        permission, the attempt is denied -- no can_assume edge should be drawn. A tool
+        that treats a root trust as granting the whole account would report this user as
+        a false positive.
+
+    - id: target-role
+      label: "Bucket-Reading Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role"
+      description: >
+        This IAM role holds s3:GetObject and s3:ListBucket on the sensitive S3 bucket
+        directly. Its trust policy names exactly pl-prod-rbr-are-both and
+        pl-prod-rbr-are-trust-only. Only a caller that is both trusted here and holds an
+        identity sts:AssumeRole permission can assume it -- which is only are-both.
+
+    - id: target-role-root
+      label: "Root-Trust Bucket-Reading Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role-root"
+      description: >
+        This IAM role holds s3:GetObject and s3:ListBucket on the sensitive S3 bucket
+        directly. Its trust policy grants to the account root, deferring the assume-role
+        decision entirely to callers' identity policies. Only a caller with an identity
+        sts:AssumeRole permission on this role can assume it -- which is only
+        are-root-with-identity.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-are-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket, with no bucket policy. Two roles can
+        read it directly (target-role and target-role-root). Only the two users that
+        satisfy both halves of a same-account assume-role can reach it: are-both via
+        target-role and are-root-with-identity via target-role-root. The other three
+        users each satisfy only one half and cannot reach it.
+
+  edges:
+    - from: target-role
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        target-role holds the S3 read permissions directly. Any session for this role
+        can list and read the sensitive bucket with no further hop.
+      hints:
+        - "Once you hold target-role session credentials, the bucket permissions apply immediately; export the temporary credentials before calling S3."
+      commands:
+        - description: "List bucket contents using target-role credentials"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-are-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using target-role credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-are-{account_id}-{suffix}/sensitive-data.txt /tmp/rbr-are-sensitive.txt"
+
+    - from: target-role-root
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        target-role-root holds the S3 read permissions directly. Any session for this
+        role can list and read the sensitive bucket with no further hop.
+      hints:
+        - "Once you hold target-role-root session credentials, the bucket permissions apply immediately; export the temporary credentials before calling S3."
+      commands:
+        - description: "List bucket contents using target-role-root credentials"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-are-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using target-role-root credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-are-{account_id}-{suffix}/sensitive-data.txt /tmp/rbr-are-sensitive.txt"
+
+    - from: are-both
+      to: target-role
+      label: "sts:AssumeRole"
+      description: >
+        are-both assumes target-role: its identity policy allows sts:AssumeRole on the
+        role AND the role's trust policy names it, so both halves of the same-account
+        assume are satisfied. Export the returned session credentials to inherit the
+        role's bucket access.
+      hints:
+        - "Use sts:AssumeRole against target-role with are-both's long-term credentials, then export the returned access key, secret key, and session token before touching S3."
+      commands:
+        - description: "Assume target-role as are-both"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role --role-session-name rbr-are-both --query 'Credentials' --output json"
+
+    - from: are-root-with-identity
+      to: target-role-root
+      label: "sts:AssumeRole"
+      description: >
+        are-root-with-identity assumes target-role-root: its identity policy allows
+        sts:AssumeRole on the role, and the role's root trust defers to that identity
+        permission, so the assume succeeds. Export the returned session credentials to
+        inherit the role's bucket access.
+      hints:
+        - "Use sts:AssumeRole against target-role-root with this user's long-term credentials; the role's root trust means your identity permission alone carries the assume, so export the returned session credentials before touching S3."
+      commands:
+        - description: "Assume target-role-root as are-root-with-identity"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-are-target-role-root --role-session-name rbr-are-root-with-identity --query 'Credentials' --output json"

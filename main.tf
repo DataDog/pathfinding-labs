@@ -1655,30 +1655,6 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   flag_value            = lookup(local.effective_flags, "role-chain-to-s3-to-bucket", "flag{MISSING}")
 }
 
-module "tool_testing_exclusive_resource_policy" {
-  count  = var.enable_tool_testing_exclusive_resource_policy ? 1 : 0
-  source = "./modules/scenarios/tool-testing/exclusive-resource-policy"
-  providers = {
-    aws.prod = aws.prod
-  }
-  dev_account_id        = local.dev_account_id
-  prod_account_id       = local.prod_account_id
-  operations_account_id = local.operations_account_id
-  resource_suffix       = random_string.resource_suffix.result
-}
-
-module "tool_testing_resource_policy_bypass" {
-  count  = var.enable_tool_testing_resource_policy_bypass ? 1 : 0
-  source = "./modules/scenarios/tool-testing/resource-policy-bypass"
-  providers = {
-    aws.prod = aws.prod
-  }
-  dev_account_id        = local.dev_account_id
-  prod_account_id       = local.prod_account_id
-  operations_account_id = local.operations_account_id
-  resource_suffix       = random_string.resource_suffix.result
-}
-
 module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
   count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin ? 1 : 0
   source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-through-admin"
@@ -1690,9 +1666,64 @@ module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
   resource_suffix = random_string.resource_suffix.result
 }
 
-module "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
-  count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket ? 1 : 0
-  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-to-bucket"
+module "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_implicit_admin_access ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-implicit-admin-access"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_hop_depth" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_hop_depth ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-hop-depth"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_bucket_policy" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_bucket_policy ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-bucket-policy"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_assume_role_edges" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_assume_role_edges ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-assume-role-edges"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_identity_side_block" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_identity_side_block ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-identity-side-block"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_reverse_blast_radius_escalation" {
+  count  = var.enable_tool_testing_test_reverse_blast_radius_escalation ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-escalation"
   providers = {
     aws.prod = aws.prod
   }

@@ -1,0 +1,112 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-hop-depth"
+title: "Reverse Blast Radius by Hop Depth to Bucket"
+description: "Tool testing scenario validating that reverse blast radius queries return principals at every hop depth (direct, 1 hop, 2 hops) and showing that a query limited to N hops omits shallower and deeper principals"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 30
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "reverse-blast-radius"
+path_type: "multi-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-a"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-b"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r2"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-hd-user-c"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-hd-{account_id}-{suffix}"
+
+  summary: "Depth 0 (direct S3 permissions): user-a and role-r1. Depth 1: user-b -> role-r1 and role-r2 -> role-r1. Depth 2: user-c -> role-r2 -> role-r1. Expected 'who can read the bucket' with exactly 0 hops = user-a, role-r1; exactly 1 hop = user-b, role-r2; exactly 2 hops = user-c. A single query at any one depth misses the other principals."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-hd-user-a"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-hd-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-hd-*"
+    - principal: "pl-prod-rbr-hd-role-r1"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-hd-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-hd-*"
+    - principal: "pl-prod-rbr-hd-user-b"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1"
+    - principal: "pl-prod-rbr-hd-role-r2"
+      principal_type: "role"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r1"
+    - principal: "pl-prod-rbr-hd-user-c"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-hd-role-r2"
+
+  helpful:
+    - principal: "pl-prod-rbr-hd-user-a"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify current identity"
+
+test_groups:
+  depth_0_direct:
+    total: 2
+    users: 1
+    roles: 1
+    description: "user-a and role-r1 have S3 permissions on the bucket directly"
+  depth_1:
+    total: 2
+    users: 1
+    roles: 1
+    description: "user-b and role-r2 reach the bucket by assuming role-r1 (1 hop)"
+  depth_2:
+    total: 1
+    users: 1
+    roles: 0
+    description: "user-c reaches the bucket by assuming role-r2, which assumes role-r1 (2 hops)"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+    - "TA0004 - Privilege Escalation"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_hop_depth"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-hop-depth"

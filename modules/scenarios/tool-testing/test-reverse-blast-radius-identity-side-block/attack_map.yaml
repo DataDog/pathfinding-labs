@@ -1,0 +1,97 @@
+attackMap:
+  nodes:
+    - id: plain-reader
+      label: "Plain Reader User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-plain-reader"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has an unobstructed s3:GetObject and s3:ListBucket Allow on the
+        target bucket, with no deny and no permissions boundary in the way, so its read
+        access is effective. It is the control for this lab -- the one principal a correct
+        reverse blast radius answer must include.
+
+    - id: explicit-deny-reader
+      label: "Explicit Deny Reader User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-explicit-deny-reader"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user carries the same s3:GetObject and s3:ListBucket Allow as plain-reader,
+        but its inline policy also contains an explicit Deny on s3:*. Because an explicit
+        deny always wins over any Allow, this user has no effective access to the bucket.
+        It looks like a reader to any tool that only reads Allow statements, which makes it
+        a false positive that a correct reverse blast radius answer must exclude. There is
+        deliberately no can_read edge from this node to the bucket.
+
+    - id: boundary-excludes-s3
+      label: "Boundary Excludes S3 User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-boundary-excludes-s3"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user carries the same s3:GetObject and s3:ListBucket Allow as plain-reader,
+        but it also has an EC2-only permissions boundary attached. Effective permissions are
+        the intersection of the boundary and the identity policy, and the boundary permits
+        only ec2:Describe*, so the user's effective S3 access is nil. It looks like a reader
+        to any tool that ignores boundaries, which makes it a false positive that a correct
+        reverse blast radius answer must exclude. There is deliberately no can_read edge from
+        this node to the bucket.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-isb-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket. It has no bucket policy, so all access
+        derives from identity policies evaluated in full -- Allow statements minus explicit
+        denies, intersected with permissions boundaries. A correct reverse blast radius query
+        for reading returns only plain-reader. explicit-deny-reader and boundary-excludes-s3
+        each hold a matching read Allow but are nullified on the identity side, and must appear
+        in neither answer.
+
+  edges:
+    - from: plain-reader
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket"
+      description: >
+        plain-reader holds an unobstructed IAM Allow to list and read objects in the target
+        bucket -- no deny, no boundary -- so this is the one effective read edge in the lab.
+        The other two users hold the same Allow but are blocked on the identity side, so no
+        edge is drawn from them.
+      hints:
+        - "This user holds an unobstructed S3 read Allow on the bucket -- no deny, no boundary -- so list and download objects directly and expect success. The other two lookalike readers are blocked on the identity side and should both receive AccessDenied."
+      commands:
+        - description: "List bucket contents as plain-reader"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-isb-{account_id}-{suffix}/"
+        - description: "Read an object as plain-reader"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-isb-{account_id}-{suffix}/sensitive-data.txt -"

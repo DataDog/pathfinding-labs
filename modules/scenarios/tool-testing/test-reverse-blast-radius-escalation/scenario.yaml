@@ -1,0 +1,72 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-escalation"
+title: "Reverse Blast Radius Including Privilege Escalation"
+description: "Tool testing scenario validating that reverse blast radius distinguishes principals that can read a bucket today from principals that can grant themselves that access through privilege escalation"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 30
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-bucket-reader"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-cak-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-attach-self-user"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-esc-{account_id}-{suffix}"
+
+  summary: "bucket-reader reads the bucket directly; cak-user can iam:CreateAccessKey on bucket-reader and then act as it; attach-self-user can iam:AttachUserPolicy on itself to attach AdministratorAccess and read as admin. A direct-only reverse blast radius returns only bucket-reader; an escalation-aware one returns all three."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-esc-bucket-reader"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-esc-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-esc-*"
+    - principal: "pl-prod-rbr-esc-cak-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:CreateAccessKey"
+          resource: "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-bucket-reader"
+    - principal: "pl-prod-rbr-esc-attach-self-user"
+      principal_type: "user"
+      permissions:
+        - permission: "iam:AttachUserPolicy"
+          resource: "arn:aws:iam::{account_id}:user/pl-prod-rbr-esc-attach-self-user"
+  helpful: []
+
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0009 - Collection"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_escalation"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-escalation"

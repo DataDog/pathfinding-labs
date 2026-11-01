@@ -1,0 +1,60 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-identity-side-block"
+title: "Reverse Blast Radius with Identity-Side Access Blocks"
+description: "Tool testing scenario validating that a reverse blast radius answer for a bucket excludes principals whose bucket-read permission is nullified on the identity side by an explicit deny or a permissions boundary"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 20
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "self-escalation"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-plain-reader"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-explicit-deny-reader"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-isb-boundary-excludes-s3"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-isb-{account_id}-{suffix}"
+
+  summary: "plain-reader can read the bucket; explicit-deny-reader has an Allow for reading plus an inline Deny on s3:*; boundary-excludes-s3 has an Allow for reading but an EC2-only permissions boundary. Only plain-reader has effective read access."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-isb-plain-reader"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-isb-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-isb-*"
+  helpful: []
+
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_identity_side_block"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-identity-side-block"
