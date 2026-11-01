@@ -17,7 +17,7 @@ echo -e "${GREEN}Pathrunner Starting Information${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Navigate to root of terraform project
-cd ../../
+cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."
 
 # Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_iam_passrole_datapipeline_pipeline.value // empty')

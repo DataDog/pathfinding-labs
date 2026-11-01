@@ -1,0 +1,159 @@
+attackMap:
+  nodes:
+    - id: starting-user
+      label: "Starting User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-starting-user"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no S3 permissions of its own, only sts:AssumeRole on
+        pl-prod-rbr-bp-policy-granted-role. It reaches the bucket at exactly one hop by
+        assuming that role.
+
+    - id: identity-reader
+      label: "Identity Reader"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-identity-reader"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has explicit s3:GetObject and s3:ListBucket permissions on the
+        target bucket through its own identity policy. The bucket policy is silent about
+        it, so its read access comes entirely from the identity side. It is found by a
+        reverse blast radius query at exactly 0 hops.
+
+    - id: policy-granted-role
+      label: "Policy-Granted Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-rbr-bp-policy-granted-role"
+      description: >
+        This IAM role has no S3 statement in its identity policy at all -- its only
+        inline permission is s3:ListAllMyBuckets. Its ability to read and write the
+        target bucket comes entirely from the bucket's resource policy, which Allows this
+        role's ARN. Its trust policy allows only pl-prod-rbr-bp-starting-user to assume
+        it. A tool that looks only at identity policies will miss this access; a correct
+        reverse blast radius query finds it at 0 hops for the role itself.
+
+    - id: denied-reader
+      label: "Denied Reader"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-denied-reader"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user's identity policy allows s3:GetObject and s3:ListBucket on the
+        target bucket, so it looks like a reader. But the bucket policy explicitly Denies
+        this exact ARN, and a resource-policy Deny overrides any identity Allow. Its
+        effective access to the bucket is none, so there is no can_read edge from this
+        user, and it must not appear in any reverse blast radius answer.
+
+    - id: denied-admin
+      label: "Denied Admin"
+      type: principal
+      subType: iam-user
+      isAdmin: true
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-denied-admin"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user holds the AWS managed AdministratorAccess policy, so a tool that
+        models administrators as having implicit access to every resource would add it to
+        the bucket's readers. But the bucket policy explicitly Denies this exact ARN, and
+        a resource-policy Deny overrides even administrator access. Its effective access
+        to THIS bucket is none, so there is no can_read edge from this user. This is the
+        key negative control -- a correct reverse blast radius answer withholds it.
+
+    - id: target-bucket
+      label: "Sensitive S3 Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-sensitive-data-rbr-bp-{account_id}-{suffix}"
+      description: >
+        This is the target sensitive S3 bucket. Its bucket policy Allows
+        pl-prod-rbr-bp-policy-granted-role (which has no S3 in its identity policy) and
+        explicitly Denies pl-prod-rbr-bp-denied-reader and pl-prod-rbr-bp-denied-admin by
+        ARN. A correct reverse blast radius query for reading returns policy-granted-role
+        and identity-reader at 0 hops, and starting-user at 1 hop, while withholding both
+        denied principals -- even the administrator -- because the resource-policy Deny
+        overrides their identity Allow and their admin status. Because the Deny names
+        specific ARNs rather than deny-all-except, the answer is identical in every
+        account.
+
+  edges:
+    - from: policy-granted-role
+      to: target-bucket
+      label: "s3:GetObject, s3:PutObject, s3:ListBucket (bucket policy grant)"
+      description: >
+        Policy-granted-role has no S3 statement in its identity policy; its read and
+        write access to the bucket come entirely from the bucket's resource policy, which
+        Allows this role's ARN. Any session for this role can list, read, and write the
+        bucket. This is the edge that identity-only analysis misses.
+      hints:
+        - "This role's bucket access lives in the bucket policy, not its identity policy, so once you hold a role session the list, read, and write calls just work -- export the temporary credentials before calling S3."
+      commands:
+        - description: "List bucket contents using policy-granted-role credentials"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-bp-{account_id}-{suffix}/"
+        - description: "Read an object using policy-granted-role credentials"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-bp-{account_id}-{suffix}/sensitive-data.txt -"
+
+    - from: identity-reader
+      to: target-bucket
+      label: "s3:GetObject, s3:ListBucket (identity policy grant)"
+      description: >
+        Identity-reader has explicit s3:GetObject and s3:ListBucket permissions on the
+        target bucket through its own identity policy. The bucket policy neither grants
+        nor denies this user, so its read access comes entirely from the identity side.
+      hints:
+        - "This user holds explicit S3 read permissions on the bucket in its identity policy, so list and download objects directly -- no role assumption required."
+      commands:
+        - description: "List bucket contents as identity-reader"
+          command: "aws s3 ls s3://pl-sensitive-data-rbr-bp-{account_id}-{suffix}/"
+        - description: "Read an object as identity-reader"
+          command: "aws s3 cp s3://pl-sensitive-data-rbr-bp-{account_id}-{suffix}/sensitive-data.txt -"
+
+    - from: starting-user
+      to: policy-granted-role
+      label: "sts:AssumeRole"
+      description: >
+        Starting-user has no S3 permissions of its own, only sts:AssumeRole on
+        policy-granted-role. By assuming that role it inherits the role's bucket-policy
+        grant, reaching the bucket at exactly one hop.
+      hints:
+        - "Use sts:AssumeRole against policy-granted-role with starting-user's long-term credentials, then export the returned access key, secret key, and session token; the bucket access comes from the role's bucket-policy grant, not from this user."
+      commands:
+        - description: "Assume policy-granted-role as starting-user"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-rbr-bp-policy-granted-role --role-session-name rbr-bp-starting-user --query 'Credentials' --output json"

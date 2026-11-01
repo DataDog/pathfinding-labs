@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.9.2`**
+**Current schema version: `4.9.3`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -37,6 +37,7 @@ The sections below must appear in this exact order with these exact H2/H3/H4 hea
 
 ## Objective
 ### Starting Permissions
+### Expected Results              <- Tool Testing only (required there)
 
 ## Self-hosted Lab Setup
 ### Prerequisites
@@ -255,6 +256,44 @@ When the scenario starts from unauthenticated or anonymous access, use the `prin
 The "Helpful" block for public-start scenarios typically belongs to a low-privilege IAM user used for reconnaissance (e.g., discovering the public URL). If no IAM recon is needed, omit the Helpful block entirely.
 
 Do NOT invent a fake ARN (e.g., `arn:aws:sts::{account_id}:assumed-role/unauthenticated/attacker`) for the anonymous attacker. Use a descriptive label in the heading and a URL or plain description in the `- **Start:**` line.
+
+#### `### Expected Results` -- Tool Testing scenarios only (required)
+
+Tool-testing labs exist to check whether a security tool builds the right access graph and answers questions about it correctly. This section states that ground truth in tool-agnostic terms so anyone can compare any tool against it. It contains **no query syntax for any specific product** -- only principals, edges, and expected answers.
+
+Exact structure:
+
+```
+### Expected Results
+
+**What this lab tests:** {one sentence naming the single capability under test}
+
+**Graph a correct tool should build**
+
+| From | Edge | To |
+|---|---|---|
+| `{principal}` | {edge} | `{principal or resource}` |
+
+**Expected answers**
+
+| Case | Question | Must include | Must not include |
+|---|---|---|---|
+| {case-id} | {plain-English question} | `{principal}`, ... | `{principal}`, ... or (none) |
+
+**Why:**
+- **{case-id}:** {one sentence of AWS evaluation logic explaining the answer}
+
+**Proven by:** `demo_attack.sh` {one clause on what it exercises with real AWS calls}
+```
+
+Rules:
+- **Edge vocabulary:** `can_read`, `can_write`, `can_assume`, `can_escalate`, `is_admin`. A node attribute such as admin status is written as a row with `is_admin` as the edge and `true` as the To value. Only list edges that a correct tool must create. Edges that must NOT exist belong in a "Must not include" cell, not the graph table.
+- **Names** are bare IAM names exactly as created by the Terraform. Resources use the Terraform name pattern with placeholders, e.g. `pl-sensitive-data-rbr-hd-{account_id}-{suffix}`.
+- **Case IDs** are `{lab-shorthand}-NNN`, are stable, and are never renumbered or reused.
+- **Each case answers exactly one question.** State hop depth in the question ("directly", "by assuming exactly one role", "by any means, up to N hops").
+- **Every lab needs at least one negative control** -- a principal that must not appear in some answer.
+- **Expected answers must be deterministic.** A principal whose presence depends on who deployed the lab (e.g. the deploying role) must not be in the answer; redesign the lab instead.
+- Every expected answer must be proven by `demo_attack.sh` with real AWS calls (or `simulate-principal-policy` for principals that cannot be exercised directly).
 
 ### `## Self-hosted Lab Setup`
 
@@ -552,8 +591,9 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 A README is compliant if all of the following are true:
 
 - [ ] `* **Points:** {N}` is present in the metadata block, is a whole number, and matches `points` in `scenario.yaml`
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.2`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.3`)
 - [ ] `Cost Estimate` and `Cost Estimate When Demo Executed` are each `$0/mo` or `$N/mo` (whole-dollar monthly; no hourly rates, ranges, tildes, or parenthetical prose), and the demo-executed value is >= the idle value
+- [ ] *Tool-testing scenarios only*: `## Objective` contains `### Expected Results` after `### Starting Permissions`, with the graph table, the expected answers table (at least one negative control), per-case Why, and Proven by, and no product-specific query syntax
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
 - [ ] No `## Attack Overview` H2 exists (moved to `solution.md`)
 - [ ] No `## Attack Lab` H2 exists (split into `Self-hosted Lab Setup` + `Attack`)

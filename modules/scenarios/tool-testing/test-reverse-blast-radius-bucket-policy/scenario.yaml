@@ -1,0 +1,67 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.0"
+status: "beta"
+name: "test-reverse-blast-radius-bucket-policy"
+title: "Reverse Blast Radius with Bucket Policy Grants and Denies"
+description: "Tool testing scenario validating that reverse blast radius for a bucket honors the bucket resource policy in both directions: access granted only by the bucket policy is found, and access denied by the bucket policy is withheld even from an administrator"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+points: 20
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-starting-user"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rbr-bp-policy-granted-role"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-identity-reader"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-denied-reader"
+    - "arn:aws:iam::{account_id}:user/pl-prod-rbr-bp-denied-admin"
+    - "arn:aws:s3:::pl-sensitive-data-rbr-bp-{account_id}-{suffix}"
+
+  summary: "policy-granted-role reads the bucket only via the bucket policy; identity-reader reads via its identity policy; starting-user reaches the bucket at one hop by assuming policy-granted-role; denied-reader (identity allows) and denied-admin (AdministratorAccess) are both blocked by an explicit bucket-policy Deny on their ARNs."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rbr-bp-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:AssumeRole"
+          resource: "arn:aws:iam::{account_id}:role/pl-prod-rbr-bp-policy-granted-role"
+    - principal: "pl-prod-rbr-bp-identity-reader"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-bp-*/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-sensitive-data-rbr-bp-*"
+  helpful: []
+
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_reverse_blast_radius_bucket_policy"
+  module_path: "modules/scenarios/tool-testing/test-reverse-blast-radius-bucket-policy"

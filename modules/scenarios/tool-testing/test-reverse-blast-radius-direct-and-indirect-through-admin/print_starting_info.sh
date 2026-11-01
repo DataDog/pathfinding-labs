@@ -17,7 +17,7 @@ echo -e "${GREEN}Pathrunner Starting Information${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 # Navigate to root of terraform project
-cd ../../
+cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."
 
 # Get the module output using the grouped output pattern
 MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin.value // empty')

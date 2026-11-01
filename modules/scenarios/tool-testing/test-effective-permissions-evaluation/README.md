@@ -10,7 +10,7 @@
 * **Cost Estimate When Demo Executed:** $0/mo
 * **Technique:** Testing security tool accuracy in evaluating effective permissions across 40 principals with admin patterns, denies, boundaries, multi-policy scenarios, and edge cases
 * **Terraform Variable:** `enable_tool_testing_test_effective_permissions_evaluation`
-* **Schema Version:** 4.8.0
+* **Schema Version:** 4.9.0
 * **MITRE Tactics:** TA0009 - Collection, TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1530 - Data from Cloud Storage Object, T1078.004 - Valid Accounts: Cloud Accounts
 
@@ -30,6 +30,51 @@ Your objective is to learn how to validate security tool accuracy by deploying 4
 **Helpful** (`pl-prod-epe-starting-user`):
 - `sts:GetCallerIdentity` -- verify assumed identity
 - `sts:AssumeRole` -- starting user assumes test roles to validate effective permissions at runtime
+
+### Expected Results
+
+**What this lab tests:** whether admin classification is based on *effective* permissions -- the union of identity, group, inline, and managed policies, minus explicit denies and permissions boundaries -- rather than on whether an admin-looking policy is merely attached. The target bucket is only the ground-truth probe; the real question for every principal is `is_admin`.
+
+**Graph a correct tool should build**
+
+Exactly these 15 principals carry `is_admin: true`. No `notAdmin-*` principal and not the starting user may carry it.
+
+| From | Edge | To |
+|---|---|---|
+| `pl-prod-epe-role-isAdmin-awsmanaged` | is_admin | true |
+| `pl-prod-epe-role-isAdmin-customermanaged` | is_admin | true |
+| `pl-prod-epe-role-isAdmin-inline` | is_admin | true |
+| `pl-prod-epe-role-isAdmin-many-services-combined` | is_admin | true |
+| `pl-prod-epe-role-isAdmin-split-iam-and-notiam` | is_admin | true |
+| `pl-prod-epe-role-isAdmin-split-s3-and-nots3` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-awsmanaged` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-customermanaged` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-inline` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-many-services-combined` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-split-iam-and-notiam` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-split-s3-and-nots3` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-via-group-awsmanaged` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-via-group-customermanaged` | is_admin | true |
+| `pl-prod-epe-user-isAdmin-via-group-inline` | is_admin | true |
+
+**Expected answers**
+
+| Case | Question | Must include | Must not include |
+|---|---|---|---|
+| epe-001 | Which principals are administrators after denies and boundaries are applied? | the 15 `isAdmin-*` principals listed above | the 24 `notAdmin-*` principals and `pl-prod-epe-starting-user` |
+
+Full `must_not_include` set: `pl-prod-epe-role-notAdmin-admin-plus-boundary-allows-nothing`, `pl-prod-epe-role-notAdmin-admin-plus-boundary-na-ec2only`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-boundary-ec2only`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-incremental`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-deny-split-iam-notiam`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-denyall`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction`, `pl-prod-epe-role-notAdmin-adminpolicy-plus-denynotaction-ec2only`, `pl-prod-epe-role-notAdmin-split-allow-boundary-allows-nothing`, `pl-prod-epe-role-notAdmin-split-allow-boundary-ec2only`, `pl-prod-epe-role-notAdmin-split-allow-plus-denyall`, `pl-prod-epe-role-notAdmin-split-boundary-mismatch`, `pl-prod-epe-user-notAdmin-admin-plus-boundary-allows-nothing`, `pl-prod-epe-user-notAdmin-admin-plus-boundary-na-ec2only`, `pl-prod-epe-user-notAdmin-admin-plus-denynotaction-ec2only`, `pl-prod-epe-user-notAdmin-adminpolicy-plus-boundary-ec2only`, `pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-incremental`, `pl-prod-epe-user-notAdmin-adminpolicy-plus-deny-split-iam-notiam`, `pl-prod-epe-user-notAdmin-adminpolicy-plus-denyall`, `pl-prod-epe-user-notAdmin-adminpolicy-plus-denynotaction`, `pl-prod-epe-user-notAdmin-split-allow-boundary-allows-nothing`, `pl-prod-epe-user-notAdmin-split-allow-boundary-ec2only`, `pl-prod-epe-user-notAdmin-split-allow-plus-denyall`, `pl-prod-epe-user-notAdmin-split-boundary-mismatch`, `pl-prod-epe-starting-user`.
+
+**Why:**
+- **isAdmin, single/inline/managed:** `awsmanaged`, `customermanaged`, `inline` grant `*` on `*` directly.
+- **isAdmin, via-group:** the user is admin because a *group* policy grants `*` on `*`; a tool that ignores group membership misses these.
+- **isAdmin, split:** `split-iam-and-notiam` (`iam:*` + `NotAction iam:*`), `split-s3-and-nots3` (`s3:*` + `NotAction s3:*`), and `many-services-combined` each equal `*` only when policies are unioned. (`many-services-combined` enumerates services rather than using `*`; it is treated as admin-equivalent here, though a tool could reasonably argue it is not full `*` -- see caveat below.)
+- **notAdmin, deny:** each starts from an admin-equivalent grant that an explicit `Deny` removes (`denyall`, `denynotaction`, `denynotaction-ec2only`, `deny-incremental`, `deny-split-iam-notiam`). `split-allow-plus-denyall` is the split-allow variant of `denyall`, not a duplicate of it.
+- **notAdmin, boundary:** a permissions boundary caps effective permissions (`boundary-allows-nothing`, `boundary-ec2only`, `boundary-na-ec2only`, `boundary-mismatch`), so the attached admin grant never takes effect.
+
+**Caveat (is_admin vs. can-escalate-to-admin):** some `notAdmin` principals are correctly *not* administrators yet could *become* one. For example `split-boundary-mismatch` retains `iam:*` within an IAM-only boundary, and `iam:*` is enough to delete its own boundary or attach a policy elsewhere. This lab tests the `is_admin` classification only; privilege-escalation reachability is a separate question (see the escalation tool-testing lab).
+
+**Proven by:** `demo_attack.sh`, which authenticates as each principal and probes S3 and IAM access; a principal that can do both is treated as effectively admin, matching the expected classification above.
 
 ## Self-hosted Lab Setup
 
@@ -209,7 +254,7 @@ Multi-Policy (6):
 
 Single Deny (6):
 - Admin policy + Deny `*` on `*`
-- Admin policy + Deny `*` on `*` (alternative implementation)
+- Split-allow policies (together equal `*` on `*`) + Deny `*` on `*` -- the split-allow variant, not a duplicate of the line above
 - Admin policy + Deny NotAction `[ec2:DescribeInstances]` (denies everything except one action)
 
 Multi-Deny (6):
