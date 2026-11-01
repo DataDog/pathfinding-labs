@@ -28,6 +28,16 @@ Example: `pl-prod-multi-hop-sa-chain-starting-sa`
 
 GCP resource-name character limits are tighter than AWS ARNs allow for — most GCP resource `name`/`account_id` fields cap at 30 characters and only allow lowercase letters, digits, and hyphens (no underscores). **Before finalizing any resource name, count characters and truncate the `{purpose}` segment first** (it carries the least identifying information — `{environment}` and `{path-id}`/`{scenario-shorthand}` must stay intact for cross-file consistency). Service account IDs (the `account_id` argument to `google_service_account`) are the tightest constraint: 6–30 characters, `[a-z]([-a-z0-9]*[a-z0-9])`.
 
+**`sa_id_prefix` local for service account IDs**: When the full `path_id` (e.g. `gcp-cloudfunctions-002`) would push the service account `account_id` over 30 characters when combined with environment and purpose suffixes, declare a `sa_id_prefix` local holding a shortened form (e.g. `"cf002"`) and use it only in `account_id`. Use the full `local.path_id` everywhere else (custom role IDs, GCS bucket names, secret names, labels, output messages) so the path ID remains identifiable across files.
+
+```hcl
+locals {
+  path_id      = "gcp-cloudfunctions-002"  # full ID — used everywhere except SA account_id
+  sa_id_prefix = "cf002"                    # shortened — used only in google_service_account.account_id
+}
+# Usage: account_id = "pl-${var.environment}-${local.sa_id_prefix}-start"
+```
+
 ## Core Responsibilities
 
 1. **Create `main.tf`** - service accounts, IAM bindings, the CTF flag resource
@@ -98,6 +108,10 @@ Rules:
 | `compute.googleapis.com` | `google_compute_instance`, `google_compute_firewall` |
 | `run.googleapis.com` | `google_cloud_run_service` |
 | `cloudfunctions.googleapis.com` | `google_cloudfunctions_function` |
+| `cloudbuild.googleapis.com` | `google_cloudfunctions2_function` (build step), `google_cloudbuild_trigger` |
+| `artifactregistry.googleapis.com` | `google_cloudfunctions2_function` (stores build container image) |
+
+**Cloud Functions gen2 note**: `google_cloudfunctions2_function` requires BOTH `cloudfunctions.googleapis.com` AND `run.googleapis.com` — Cloud Functions v2 is backed by Cloud Run under the hood. Enable `run.googleapis.com` even when no explicit `google_cloud_run_service` resource is created. Also enable `cloudbuild.googleapis.com` and `artifactregistry.googleapis.com` since gen2 uses Cloud Build for the build step and Artifact Registry to store the resulting container.
 
 ### Starting Service Account + Impersonation Grant
 
@@ -302,54 +316,78 @@ gcloud auth print-access-token --impersonate-service-account="$STARTING_SA_EMAIL
 
 This requires the identity running the demo (the deployer — whoever ran `terraform apply`, auto-detected via `data.google_client_openid_userinfo.deployer`) to itself hold `roles/iam.serviceAccountTokenCreator` on the starting SA — this grant is what `google_service_account_iam_member.starting_sa_deployer_impersonation` provisions above. The `deployer_email` output tells the demo script who holds this grant so it can warn if the current active `gcloud` account has changed.
 
-## gcloud-Mechanic Permissions in Custom Roles
+## Two-Role Pattern for gcloud-Mechanic Permissions
 
-When the exploit step uses `gcloud` CLI (e.g., `gcloud functions deploy`, `gcloud run services update`), gcloud makes additional preflight and polling calls beyond the raw REST API minimum. These "gcloud-mechanic" permissions must be included in the starting SA's custom role so the demo works, but they are NOT part of the core attack's permission surface.
+When the exploit step uses `gcloud` CLI (e.g., `gcloud functions deploy`, `gcloud run services update`), gcloud makes additional preflight and polling calls beyond the raw REST API minimum. These "gcloud-mechanic" permissions are a separate concern from the core attack surface.
 
-**Include ALL permissions in the custom role** — both core (raw API) and gcloud-mechanic — but use a comment block to clearly distinguish them:
+**Use TWO separate custom roles** — one for core attack permissions (required even by the raw API), one for irreducible gcloud overhead. This makes the permission surface explicit and directly reflects what `--api-only` mode exercises vs. what gcloud adds.
 
 ```hcl
-resource "google_project_iam_custom_role" "starting_sa_role" {
+# Role 1: Core attack permissions — required at the raw API level regardless of tooling
+resource "google_project_iam_custom_role" "cf_update_required" {
   provider    = google.prod
   project     = var.project_id
-  role_id     = "gcp_cf002_starting_sa_role"
-  title       = "Pathfinding Labs - Starting SA Role (gcp-cloudfunctions-002)"
-  description = "Minimal role for the Cloud Functions update attack path"
-
+  role_id     = "gcp_cf002_cf_update_req"
+  title       = "Pathfinding Labs - CF Update (Required)"
+  description = "Core attack permissions required by the raw CF v2 API regardless of tooling."
   permissions = [
-    # Core attack — required at the raw API level regardless of tooling
     "cloudfunctions.functions.update",
     "cloudfunctions.functions.sourceCodeSet",
-    "run.routes.invoke",
-
-    # gcloud CLI mechanics — not needed with raw API, but required by gcloud
-    #   cloudfunctions.functions.get     — gcloud reads current config before update
-    #   cloudfunctions.operations.get    — gcloud polls the update LRO
-    #   resourcemanager.projects.get     — gcloud preflight on every command
-    #   cloudbuild.builds.get            — gcloud's GetDefaultServiceAccount preflight
-    #   resourcemanager.projects.getIamPolicy — gcloud validates IAM policy
-    #   run.services.getIamPolicy        — gcloud reads Cloud Run IAM post-deploy
-    #   run.services.setIamPolicy        — gcloud sets Cloud Run IAM for --no-allow-unauthenticated
-    "cloudfunctions.functions.get",
+    # operations.get is needed even with the raw API: the PATCH returns an async LRO
+    # and polling GET /v2/{operation_name} is the only way to know when the function
+    # is ACTIVE and ready to invoke.
     "cloudfunctions.operations.get",
-    "resourcemanager.projects.get",
-    "cloudbuild.builds.get",
-    "resourcemanager.projects.getIamPolicy",
-    "run.services.getIamPolicy",
-    "run.services.setIamPolicy",
+    "run.routes.invoke",
   ]
+}
+
+resource "google_project_iam_member" "vulnerable_cf_update_required_grant" {
+  provider = google.prod
+  project  = var.project_id
+  role     = google_project_iam_custom_role.cf_update_required.id
+  member   = "serviceAccount:${google_service_account.starting_sa.email}"
+}
+
+# Role 2: gcloud CLI mechanic permissions — NOT needed with the raw API
+# When --build-service-account is passed to gcloud functions deploy, 4 of the
+# original 7 gcloud-mechanic permissions are eliminated. Only these 2 remain:
+#   cloudfunctions.functions.get  — gcloud always calls GetFunction before submitting
+#   resourcemanager.projects.get  — gcloud calls GET /v1/projects/{id} unconditionally
+#
+# Eliminated by --build-service-account (do NOT add here):
+#   cloudbuild.builds.get                 — GetDefaultServiceAccount preflight
+#   resourcemanager.projects.getIamPolicy — project IAM policy validation
+#   run.services.getIamPolicy             — Cloud Run IAM read post-deploy
+#   run.services.setIamPolicy             — Cloud Run IAM set post-deploy
+resource "google_project_iam_custom_role" "cf_update_gcloud_mechanic" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "gcp_cf002_cf_update_mech"
+  title       = "Pathfinding Labs - CF Update (gcloud Mechanic)"
+  description = "Irreducible gcloud CLI overhead after --build-service-account optimization. Not needed by the raw CF v2 API."
+  permissions = [
+    "cloudfunctions.functions.get",
+    "resourcemanager.projects.get",
+  ]
+}
+
+resource "google_project_iam_member" "vulnerable_cf_update_gcloud_mechanic_grant" {
+  provider = google.prod
+  project  = var.project_id
+  role     = google_project_iam_custom_role.cf_update_gcloud_mechanic.id
+  member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 ```
 
-**Why all permissions go in the role:** The demo defaults to `gcloud` mode (clearest for learning), so the role must include everything gcloud needs. The `--api-only` flag exercises the core permissions only — the role simply includes more than the raw minimum, which is intentional.
+**Why two roles instead of one with comments:** The split is load-bearing — `--api-only` mode exercises only the `required` role's permissions. A reader can look at the two roles and immediately understand the gcloud overhead, without parsing inline comments. The two-role structure also lets the permission isolator agent test each tier independently.
 
-**How gcloud-mechanic permissions are documented elsewhere:**
+**`--build-service-account` optimization for Cloud Functions**: Always specify `--build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}` in `gcloud functions deploy` calls in `demo_attack.sh`. This flag skips gcloud's `GetDefaultServiceAccount` and project IAM validation preflights, eliminating 4 of the original 7 gcloud-mechanic permissions. Without it, the `gcloud_mechanic` role would need 6 permissions instead of 2.
 
-- **`scenario.yaml`**: List them in `permissions.helpful` with a `purpose` field that explicitly says they are "Required by gcloud [subcommand] only — not needed with the raw API". This distinguishes them from recon/practical helpful permissions.
-- **`demo_attack.sh`**: The end-of-gcloud-run note (see `scenario-demo-creator-gcp.md`) enumerates them so the reader understands the gcloud vs. raw API delta.
-- **comment block in `main.tf`**: The comment above serves as the authoritative reference for why each gcloud-mechanic permission is present.
+**`cloudfunctions.operations.get` is REQUIRED, not a gcloud-mechanic**: The Cloud Functions v2 PATCH (update) API returns an async long-running operation (LRO). Polling `GET /v2/{operation_name}` to know when the function is ACTIVE requires `cloudfunctions.operations.get` regardless of whether you use gcloud or the raw REST API. Always put it in the `required` role, never the `gcloud_mechanic` role.
 
-**Identifying gcloud-mechanic permissions:** If you're unsure whether a permission is core or gcloud-mechanic, run `scenario-permission-isolator-gcp` first with the full working set, then test with `--api-only` to verify which permissions can be dropped when the raw API path is used instead.
+**`scenario.yaml` classification**: List the `required` role's permissions under `permissions.required`. List the `gcloud_mechanic` role's permissions under `permissions.helpful` with a `purpose` field that explicitly says "Required by gcloud [subcommand] only — not needed with the raw API". Entries in `permissions.required` use either a `resource:` field (IAM resource path) or a `purpose:` field (prose explanation) — use `purpose:` when no specific resource path applies (e.g. for polling operations like `operations.get`).
+
+**Identifying gcloud-mechanic permissions:** If you're unsure whether a permission is core or gcloud-mechanic for a new scenario type, run `scenario-permission-isolator-gcp` first with all permissions in the `required` role, then use `--api-only` to verify which can be moved to the `gcloud_mechanic` role.
 
 ## Resource Lifecycle / Destroy Hygiene
 

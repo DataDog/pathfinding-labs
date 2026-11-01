@@ -1,6 +1,6 @@
 ---
 name: scenario-permission-isolator-gcp
-description: Iteratively discovers and isolates the minimal required permissions for a GCP Pathfinding Labs scenario by running terraform apply + demo script cycles. Use this AFTER scenario-terraform-builder-gcp and scenario-demo-creator-gcp have created their files, and BEFORE readme-creator or scenario.yaml are finalized.
+description: Iteratively discovers and isolates the minimal required permissions for a GCP Pathfinding Labs scenario by running terraform apply + demo script cycles. Use this AFTER the user has run `plabs apply` (or `terraform apply`) to deploy the scenario into a live GCP environment — this agent requires a working deployment. Run BEFORE readme-creator or scenario.yaml are finalized.
 tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
@@ -21,11 +21,11 @@ You will be given:
 
 Read these files before starting:
 
-1. `{scenario_dir}/main.tf` — find the `google_project_iam_custom_role` resource; the `permissions = [...]` list is what you modify throughout this process
+1. `{scenario_dir}/main.tf` — find the `google_project_iam_custom_role` resources; scenarios that already use the two-role pattern will have a `_required` role and a `_gcloud_mechanic` role. The `permissions = [...]` lists in both are what you modify throughout this process.
 2. `{scenario_dir}/demo_attack.sh` — skim to understand the attack steps (helps interpret error messages)
 3. `{gcp_root}/terraform.tfvars` — confirm the scenario's boolean variable is set to `true`
 
-**Save the original permissions list** from `main.tf` before modifying anything. You will use this as a reference.
+**Save the original permissions lists** from ALL custom roles in `main.tf` before modifying anything. You will use these as a reference.
 
 **Key constraint**: `iam.serviceAccounts.actAs` is on a separate IAM binding resource, not in the custom role permissions list. Never touch it. Only modify the `permissions = [...]` block inside `google_project_iam_custom_role`.
 
@@ -35,13 +35,15 @@ Read these files before starting:
 
 Determine every permission the demo needs by starting from zero and adding one at a time.
 
-### 1.1 — Empty the custom role
+### 1.1 — Empty all custom roles
 
-Edit `{scenario_dir}/main.tf` to set the custom role's permissions to an empty list:
+Edit `{scenario_dir}/main.tf` to set **every** `google_project_iam_custom_role`'s permissions to an empty list. Scenarios that follow the two-role pattern have both a `_required` role and a `_gcloud_mechanic` role — empty both:
 
 ```hcl
 permissions = []
 ```
+
+Do this for every `google_project_iam_custom_role` in `main.tf`. Leave `google_service_account_iam_member` resources (e.g. `actAs` grants using `roles/iam.serviceAccountUser`) and the deployer impersonation grant untouched — those are not in a custom role and are not modified during isolation.
 
 ### 1.2 — Apply terraform
 
@@ -167,7 +169,7 @@ For each HELPFUL permission, check whether it's a known gcloud preflight/polling
 | Permission | gcloud mechanic? | Why |
 |---|---|---|
 | `cloudfunctions.functions.get` | yes | gcloud reads current config before every deploy |
-| `cloudfunctions.operations.get` | yes | gcloud polls the update LRO (no `--async` for gen2) |
+| `cloudfunctions.operations.get` | **no** | **REQUIRED by the raw API** — the CF v2 PATCH returns an async LRO; polling `GET /v2/{operation_name}` requires this permission regardless of tooling. Always classifies as REQUIRED, not gcloud-mechanic. |
 | `resourcemanager.projects.get` | yes | unconditional gcloud preflight on every command |
 | `cloudbuild.builds.get` | yes | gcloud's `GetDefaultServiceAccount` preflight |
 | `resourcemanager.projects.getIamPolicy` | yes | gcloud validates IAM policy during deploy flow |
@@ -200,21 +202,28 @@ cd {scenario_dir} && bash cleanup_attack.sh 2>&1
 
 ### Update main.tf
 
-Set the custom role's final permissions list to contain ALL permissions (required + gcloud-mechanic + practical), organized with comments so the classification is visible:
+For scenarios using the two-role pattern, update each role's permissions separately:
 
+**`_required` role** — contains only REQUIRED permissions (those that fail `--api-only` without them):
 ```hcl
 permissions = [
   # Core attack — required at the raw API level regardless of tooling
   "service.resource.verb",
+]
+```
 
+**`_gcloud_mechanic` role** — contains only gcloud-mechanic permissions (those that pass `--api-only` but fail in gcloud mode without them):
+```hcl
+permissions = [
   # gcloud CLI mechanics — not needed with raw API, but required by gcloud
   #   service.resource.verb  — what gcloud does, why it needs this
   "service.resource.verb",
-
-  # Practical conveniences — not required for the attack, but helpful for recon/verification
-  "service.resource.verb",
 ]
 ```
+
+Practical convenience permissions (helpful for recon/verification but not required for either mode) are NOT added to either role — they are documented in `scenario.yaml` under `permissions.helpful` with `purpose` descriptions, but not granted in Terraform.
+
+For scenarios using a single-role pattern (pre-two-role), keep the single role but organize with comment blocks as before.
 
 ### Report
 

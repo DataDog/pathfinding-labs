@@ -102,6 +102,32 @@ If any of these fail, fix automatically where unambiguous and report. If the mod
 
 `google_iam_deny_policy` resources are NOT required for impersonation-chain scenarios. GCP's default-deny model already enforces the attack chain through positive grants: if the deployer holds `serviceAccountTokenCreator` only on `starting_sa`, a direct `--impersonate-service-account=target_sa` call fails with `PERMISSION_DENIED` — confirmed empirically on gcp-iam-001. **Do not flag the absence of deny policies as a validation error.** If a scenario includes `google_iam_deny_policy` resources, flag them for removal — they add unnecessary complexity without meaningful enforcement benefit (a project owner can remove deny policies anyway).
 
+#### Check two-role pattern for Cloud Functions scenarios
+
+For scenarios that include `google_cloudfunctions2_function` in `main.tf`, verify the two-role permission structure:
+
+```bash
+grep -E 'role_id\s*=.*(_req|_required|_mech|_gcloud)' {scenario_dir}/main.tf
+```
+
+1. **Two separate custom roles must exist** — one for required permissions (suffix `_req`/`_required`) and one for gcloud-mechanic permissions (suffix `_mech`/`_gcloud_mechanic`). A single flat custom role is an error for Cloud Functions scenarios.
+
+2. **`cloudfunctions.operations.get` must be in the `required` role**, not the gcloud-mechanic role:
+   ```bash
+   grep -A 20 'role_id.*_req' {scenario_dir}/main.tf | grep 'operations.get'
+   ```
+   The CF v2 PATCH returns an async LRO; polling it requires `operations.get` regardless of tooling. If it's in the mechanic role, move it to the required role.
+
+3. **The `gcloud_mechanic` role must contain only 2 permissions** after applying the `--build-service-account` optimization: `cloudfunctions.functions.get` and `resourcemanager.projects.get`. If it contains any of the 4 eliminated perms (`cloudbuild.builds.get`, `resourcemanager.projects.getIamPolicy`, `run.services.getIamPolicy`, `run.services.setIamPolicy`), that means `--build-service-account` was not applied in the demo script — flag as an error.
+
+4. **`--build-service-account` present in demo_attack.sh**:
+   ```bash
+   grep 'build-service-account' {scenario_dir}/demo_attack.sh
+   ```
+   If absent, the demo requires 4 extra permissions that the two-role setup no longer grants.
+
+5. **`scenario.yaml` `permissions.required` contains `cloudfunctions.operations.get`**: grep for it under the `required:` section and flag if it appears only under `helpful:`.
+
 #### Check resource lifecycle hygiene
 
 AWS enforces `force_destroy = true` (users) / `force_detach_policies = true` (roles) because demo scripts mutate IAM out-of-band. **The GCP finding (empirically confirmed on gcp-iam-001, 2026-09-21):**
@@ -124,6 +150,13 @@ Verify that every GCP API used by the module has a corresponding `google_project
 - `google_compute_instance*` → `compute.googleapis.com`
 - `google_cloud_run_service*` → `run.googleapis.com`
 - `google_cloudfunctions_function*` → `cloudfunctions.googleapis.com`
+- `google_cloudfunctions2_function*` → `cloudfunctions.googleapis.com` **AND** `run.googleapis.com` **AND** `cloudbuild.googleapis.com` **AND** `artifactregistry.googleapis.com`
+
+**Cloud Functions gen2 special case**: `google_cloudfunctions2_function` requires `run.googleapis.com` to be enabled even though no explicit `google_cloud_run_service` resource is created — gen2 uses Cloud Run under the hood. If `google_cloudfunctions2_function` is present in `main.tf`, verify all four APIs are enabled:
+```bash
+grep -E 'service\s*=\s*"(run|cloudfunctions|cloudbuild|artifactregistry)\.googleapis\.com"' {scenario_dir}/main.tf
+```
+Flag as an error if any of the four is absent.
 
 Flag as an error any resource whose API is not enabled in the module — these cause `terraform apply` to fail with a 403 "API has not been enabled" error. Also verify that resources dependent on specific APIs have `depends_on = [google_project_service.{api}]` set (at minimum on the first resource of that type).
 
