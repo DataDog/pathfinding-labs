@@ -88,6 +88,35 @@ resource "google_project_iam_member" "target_sa_admin_role" {
 }
 
 # -----------------------------------------------------------------------------
+# Helpful recon permissions (granted to starting_sa so it can do recon itself)
+# -----------------------------------------------------------------------------
+# NOT part of the modeled vulnerability — these mirror scenario.yaml's
+# permissions.helpful: the read permissions an attacker (or learner, or the
+# online-mode shell prepopulated as starting_sa) needs to recon the project
+# and find the impersonation target. gcloud adds no mechanic permissions for
+# this scenario (gcloud auth print-access-token makes no extra permissioned
+# calls), so this role is recon-only.
+resource "google_project_iam_custom_role" "sa_recon_helpful" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "${replace(local.path_id, "-", "_")}_sa_recon_help"
+  title       = "Pathfinding Labs - SA Recon (Helpful)"
+  description = "Recon permissions matching scenario.yaml permissions.helpful - enumerate service accounts and inspect their IAM bindings to find the impersonation target. Not part of the modeled vulnerability."
+  permissions = [
+    "resourcemanager.projects.get",
+    "iam.serviceAccounts.list",
+    "iam.serviceAccounts.getIamPolicy",
+  ]
+}
+
+resource "google_project_iam_member" "helpful_recon_grant" {
+  provider = google.prod
+  project  = var.project_id
+  role     = google_project_iam_custom_role.sa_recon_helpful.id
+  member   = "serviceAccount:${google_service_account.starting_sa.email}"
+}
+
+# -----------------------------------------------------------------------------
 # Required APIs
 # -----------------------------------------------------------------------------
 

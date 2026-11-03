@@ -124,6 +124,21 @@ module "gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloud
   flag_value      = lookup(var.scenario_flags, "gcp-cloudfunctions-002-to-admin", "flag{MISSING}")
 }
 
+module "gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate" {
+  count  = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate ? 1 : 0
+  source = "../modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate"
+
+  providers = {
+    google.prod = google.prod
+  }
+
+  project_id      = var.prod_project_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  region          = var.gcp_region
+  flag_value      = lookup(var.scenario_flags, "gcp-cloudrun-001-to-admin", "flag{MISSING}")
+}
+
 module "gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken" {
   count  = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken ? 1 : 0
   source = "../modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-iam-001-iam-serviceaccountsgetaccesstoken"

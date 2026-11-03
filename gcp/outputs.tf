@@ -11,9 +11,9 @@ output "gcp_project_id" {
 output "gcp_prod_environment" {
   description = "Admin cleanup and readonly service account details for the prod environment"
   value = var.enable_gcp_prod_environment ? {
-    deployer_email                       = module.gcp_prod_environment[0].deployer_email
-    admin_cleanup_service_account_email  = module.gcp_prod_environment[0].admin_cleanup_service_account_email
-    readonly_service_account_email       = module.gcp_prod_environment[0].readonly_service_account_email
+    deployer_email                      = module.gcp_prod_environment[0].deployer_email
+    admin_cleanup_service_account_email = module.gcp_prod_environment[0].admin_cleanup_service_account_email
+    readonly_service_account_email      = module.gcp_prod_environment[0].readonly_service_account_email
   } : null
   sensitive = true
 }
@@ -21,9 +21,9 @@ output "gcp_prod_environment" {
 output "gcp_dev_environment" {
   description = "Admin cleanup and readonly service account details for the dev environment"
   value = var.enable_gcp_dev_environment ? {
-    deployer_email                       = module.gcp_dev_environment[0].deployer_email
-    admin_cleanup_service_account_email  = module.gcp_dev_environment[0].admin_cleanup_service_account_email
-    readonly_service_account_email       = module.gcp_dev_environment[0].readonly_service_account_email
+    deployer_email                      = module.gcp_dev_environment[0].deployer_email
+    admin_cleanup_service_account_email = module.gcp_dev_environment[0].admin_cleanup_service_account_email
+    readonly_service_account_email      = module.gcp_dev_environment[0].readonly_service_account_email
   } : null
   sensitive = true
 }
@@ -31,9 +31,9 @@ output "gcp_dev_environment" {
 output "gcp_ops_environment" {
   description = "Admin cleanup and readonly service account details for the ops environment"
   value = var.enable_gcp_ops_environment ? {
-    deployer_email                       = module.gcp_ops_environment[0].deployer_email
-    admin_cleanup_service_account_email  = module.gcp_ops_environment[0].admin_cleanup_service_account_email
-    readonly_service_account_email       = module.gcp_ops_environment[0].readonly_service_account_email
+    deployer_email                      = module.gcp_ops_environment[0].deployer_email
+    admin_cleanup_service_account_email = module.gcp_ops_environment[0].admin_cleanup_service_account_email
+    readonly_service_account_email      = module.gcp_ops_environment[0].readonly_service_account_email
   } : null
   sensitive = true
 }
@@ -45,15 +45,15 @@ output "gcp_ops_environment" {
 output "gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate" {
   description = "All outputs for gcp-cloudfunctions-001-iam-serviceaccountsactas+cloudfunctions-functionscreate one-hop to-admin scenario"
   value = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate ? {
-    starting_sa_email  = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].starting_sa_email
-    starting_sa_id     = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].starting_sa_id
-    deployer_email     = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].deployer_email
-    target_sa_email    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].target_sa_email
-    target_sa_id       = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].target_sa_id
-    region             = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].region
-    attack_path        = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].attack_path
-    flag_secret_id     = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].flag_secret_id
-    flag_secret_name   = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].flag_secret_name
+    starting_sa_email = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].starting_sa_email
+    starting_sa_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].starting_sa_id
+    deployer_email    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].deployer_email
+    target_sa_email   = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].target_sa_email
+    target_sa_id      = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].target_sa_id
+    region            = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].region
+    attack_path       = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].attack_path
+    flag_secret_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].flag_secret_id
+    flag_secret_name  = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate[0].flag_secret_name
   } : null
   sensitive = true
 }
@@ -71,6 +71,23 @@ output "gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloud
     attack_path          = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate[0].attack_path
     flag_secret_id       = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate[0].flag_secret_id
     flag_secret_name     = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate[0].flag_secret_name
+  } : null
+  sensitive = true
+}
+
+output "gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate" {
+  description = "All outputs for gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate one-hop to-admin scenario"
+  value = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate ? {
+    starting_sa_email = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].starting_sa_email
+    starting_sa_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].starting_sa_id
+    deployer_email    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].deployer_email
+    target_sa_email   = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].target_sa_email
+    target_sa_id      = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].target_sa_id
+    project_id        = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].project_id
+    region            = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].region
+    attack_path       = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].attack_path
+    flag_secret_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].flag_secret_id
+    flag_secret_name  = module.gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate[0].flag_secret_name
   } : null
   sensitive = true
 }

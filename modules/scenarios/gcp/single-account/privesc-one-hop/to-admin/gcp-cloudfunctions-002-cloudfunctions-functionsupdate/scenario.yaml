@@ -54,13 +54,16 @@ permissions:
       principal_type: "service-account"
       permissions:
         - permission: "cloudfunctions.functions.get"
-          purpose: "Required by gcloud functions deploy — gcloud always calls GetFunction before submitting to read the current config; irreducible gcloud overhead even with --build-service-account"
+          purpose: "Required by gcloud functions deploy only — gcloud always calls GetFunction before submitting to read the current config; irreducible gcloud overhead even with --build-service-account; not needed with the raw PATCH API"
         - permission: "resourcemanager.projects.get"
-          purpose: "Required by gcloud functions deploy — gcloud calls GET /v1/projects/{id} unconditionally on every deploy; irreducible gcloud overhead even with --build-service-account"
+          purpose: "Required by gcloud functions deploy only — gcloud calls GET /v1/projects/{id} unconditionally on every deploy; not needed with the raw API"
+        # Recon permissions
         - permission: "iam.serviceAccounts.list"
           purpose: "Enumerate service accounts in the project to identify which privileged SA is attached to the target function"
         - permission: "iam.serviceAccounts.getIamPolicy"
           purpose: "Inspect IAM policy bindings on candidate service accounts to understand their project roles and confirm the attached SA is high-value"
+        - permission: "cloudfunctions.functions.list"
+          purpose: "List existing 2nd-gen Cloud Functions in the project to find the privileged victim function and the service account it runs as"
 
 # =============================================================================
 # MITRE ATT&CK

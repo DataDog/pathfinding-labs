@@ -83,12 +83,17 @@ attackMap:
   edges:
     - from: starting-principal
       to: victim-cloud-function
-      label: "cloudfunctions.functions.update + sourceCodeSet + actAs"
+      label: "cloudfunctions.functions.update + sourceCodeSet + operations.get + actAs"
       description: >
         The starting service account holds `iam.serviceAccounts.actAs` on the
-        privileged target service account (via `roles/iam.serviceAccountUser`) plus
-        `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`,
-        and `run.routes.invoke` at the project level (via a minimal custom role).
+        privileged target service account (via a minimal custom role granting
+        only that permission) plus `cloudfunctions.functions.update`,
+        `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`,
+        and `run.routes.invoke` at the project level (via the required custom
+        role; a separate helpful role adds `cloudfunctions.functions.get`
+        and `resourcemanager.projects.get` for the demo's default gcloud mode,
+        plus `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`,
+        and `cloudfunctions.functions.list` for recon).
         The victim function is already deployed and already runs as the target SA --
         no creation step is needed.
 

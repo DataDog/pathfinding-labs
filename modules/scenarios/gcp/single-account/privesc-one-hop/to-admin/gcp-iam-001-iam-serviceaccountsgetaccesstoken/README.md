@@ -67,6 +67,7 @@ plabs apply
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
 | IAM custom role granting `iam.serviceAccounts.getAccessToken` on `pl-prod-gcp-iam-001-target`, bound to `pl-prod-gcp-iam-001-start` | The vulnerable impersonation grant that enables this attack path |
+| IAM custom role `gcp_iam_001_sa_recon_help` bound to `pl-prod-gcp-iam-001-start` at the project level | The helpful recon permissions (`resourcemanager.projects.get`, `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`) so the starting SA can find the impersonation target itself — not part of the modeled vulnerability |
 | IAM binding: `roles/editor` on the project granted to `pl-prod-gcp-iam-001-target` | The privilege that makes impersonating the target service account valuable |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-001-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 

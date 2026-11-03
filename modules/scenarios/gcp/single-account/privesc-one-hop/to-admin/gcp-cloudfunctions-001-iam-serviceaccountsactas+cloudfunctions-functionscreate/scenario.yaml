@@ -44,6 +44,8 @@ permissions:
           resource: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/-"
         - permission: "cloudfunctions.functions.sourceCodeSet"
           resource: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/-"
+        - permission: "cloudfunctions.operations.get"
+          purpose: "Required even with the raw API — the create call returns an async LRO and polling GET /v2/{operation_name} is the only way to know when the function is ACTIVE and to extract its Cloud Run URI for invocation"
         - permission: "run.routes.invoke"
           resource: "//run.googleapis.com/projects/{project_id}/locations/-/services/-"
 
@@ -51,20 +53,16 @@ permissions:
     - principal: "pl-prod-cf001-start"
       principal_type: "service-account"
       permissions:
+        # gcloud-mechanic permissions — needed only when using `gcloud functions
+        # deploy` (the demo's default mode), never with the raw CF v2 API.
+        # --build-service-account eliminates cloudbuild.builds.get,
+        # resourcemanager.projects.getIamPolicy, run.services.getIamPolicy, and
+        # run.services.setIamPolicy, so those are not granted at all.
         - permission: "cloudfunctions.functions.get"
-          purpose: "Required by gcloud functions deploy — checks whether the function already exists (create vs. update) before submitting"
-        - permission: "cloudfunctions.operations.get"
-          purpose: "Required by gcloud functions deploy — polls the deploy long-running operation (no --async flag exists for gen2)"
+          purpose: "Required by gcloud functions deploy only — gcloud always calls GetFunction before submitting to check whether the function already exists (create vs. update); not needed with the raw API"
         - permission: "resourcemanager.projects.get"
-          purpose: "Required by gcloud functions deploy — calls GET /v1/projects/{id} unconditionally as a preflight; unavoidable with the gcloud CLI"
-        - permission: "cloudbuild.builds.get"
-          purpose: "Required by gcloud functions deploy only — gcloud calls Cloud Build's GetDefaultServiceAccount endpoint (/v1/projects/{id}/locations/{region}/defaultServiceAccount) before every deploy; not called by the raw Cloud Functions v2 API"
-        - permission: "resourcemanager.projects.getIamPolicy"
-          purpose: "Required by gcloud functions deploy only — gcloud validates the project IAM policy as part of its deploy flow; not needed with the raw API"
-        - permission: "run.services.getIamPolicy"
-          purpose: "Required by gcloud functions deploy only — gcloud reads the Cloud Run service IAM policy post-deploy to verify invocation settings; not needed with the raw API"
-        - permission: "run.services.setIamPolicy"
-          purpose: "Required by gcloud functions deploy only — gcloud enforces --no-allow-unauthenticated by setting the Cloud Run service IAM policy after deploy; not needed with the raw API"
+          purpose: "Required by gcloud functions deploy only — gcloud calls GET /v1/projects/{id} unconditionally as a preflight; not needed with the raw API"
+        # Recon permissions
         - permission: "iam.serviceAccounts.list"
           purpose: "Enumerate other service accounts in the project to identify impersonation targets"
         - permission: "iam.serviceAccounts.getIamPolicy"

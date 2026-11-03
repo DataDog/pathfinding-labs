@@ -167,6 +167,7 @@ variable "scenario_flag_defaults" {
     "ecs-009-to-admin"                                = "flag{ecs_009_admin_captured}"
     "gcp-cloudfunctions-001-to-admin"                  = "flag{gcp_cloudfunctions_001_admin_captured}"
     "gcp-cloudfunctions-002-to-admin"                  = "flag{gcp_cloudfunctions_002_admin_captured}"
+    "gcp-cloudrun-001-to-admin"                       = "flag{cloud-run-actas-service-create}"
     "gcp-iam-001-to-admin"                             = "flag{gcp_iam_001_admin_captured}"
     "github-oidc-cross-account-pivot-to-bucket"       = "flag{github_oidc_cross_account_bucket_accessed}"
     "glue-001-to-admin"                               = "flag{glue_001_admin_captured}"

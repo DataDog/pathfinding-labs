@@ -1,0 +1,103 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+name: "gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate"
+title: "Cloud Run Service Creation with actAs to Admin"
+description: "Service account with run.services.create on the project plus iam.serviceAccounts.actAs on a privileged target service account can deploy a new Cloud Run service bound to that service account (public Docker Hub image, no Artifact Registry access needed), execute arbitrary code as it, and exfiltrate its OAuth token from the metadata server to inherit its roles/editor project permissions"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "gcp-cloudrun-001"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "new-passrole"
+path_type: "one-hop"
+target: "to-admin"
+points: 10
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com"
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com"
+
+  summary: "starting_sa -> (iam.serviceAccounts.actAs on target_sa + run.services.create on project, via minimal custom role) -> deploys a new Cloud Run service bound to target_sa using a public Docker Hub image (container command fetches the metadata server token, exfil via logs) -> exfiltrates target_sa's OAuth access token -> (roles/editor) -> Project Admin"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+# Verified by the scenario-permission-isolator-gcp agent (2026-11-01) via
+# leave-one-out terraform apply + demo cycles in BOTH modes (gcloud and
+# --api-only raw API). Every required permission below was individually
+# confirmed: removing any one of them breaks the attack.
+permissions:
+  required:
+    - principal: "pl-prod-cr001-start"
+      principal_type: "service-account"
+      permissions:
+        - permission: "iam.serviceAccounts.actAs"
+          resource: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com"
+          purpose: "Required at Cloud Run service creation time when the service is bound to target_sa (actas_required — the GCP analog of iam:PassRole)"
+        - permission: "run.services.create"
+          resource: "//run.googleapis.com/projects/{project_id}/locations/-"
+          purpose: "Deploy the new Cloud Run service — the core of the technique"
+        - permission: "run.services.get"
+          resource: "//run.googleapis.com/projects/{project_id}/locations/-/services/-"
+          purpose: "Fetch the new service's URL via the raw API (services.get returns urls[]); also covers gcloud's readiness/preflight polling. Verified required: without it services.get returns 403 and the demo cannot extract the invoke URL"
+        - permission: "run.operations.get"
+          resource: "//run.googleapis.com/projects/{project_id}/locations/{region}/operations/-"
+          purpose: "Poll the async LRO that services.create returns — the only way to know when the deploy finished and whether the revision failed (mirrors gcp-cloudfunctions-001's cloudfunctions.operations.get). Verified required even with the raw API"
+        - permission: "logging.logEntries.list"
+          resource: "//logging.googleapis.com/projects/{project_id}"
+          purpose: "The exfil channel of the technique (gcpwn --exfil-mode logs): read the target SA's OAuth token that the deployed container printed to Cloud Run logs. Required by both demo modes (gcloud logging read / POST entries:list as the starting SA)"
+
+  helpful:
+    - principal: "pl-prod-cr001-start"
+      principal_type: "service-account"
+      permissions:
+        # gcloud-mechanic permission — needed only by gcloud re-deploys, never
+        # by the raw API on a fresh deploy
+        - permission: "run.services.update"
+          purpose: "Required by gcloud run deploy re-runs only — re-deploying to the deterministic service name left by a prior run takes the update path; not needed with the raw API for a fresh deploy"
+        # Practical permissions — invoke trigger (gcpwn --invoke)
+        - permission: "run.routes.invoke"
+          purpose: "Invoke the deployed service to trigger a fresh per-request exfil (gcpwn --invoke); without it the invoke returns 403, but the deploy-time readiness instance already exfiltrates the token, so the attack itself succeeds"
+        # Recon permissions
+        - permission: "iam.serviceAccounts.list"
+          purpose: "Enumerate other service accounts in the project to identify actAs targets"
+        - permission: "iam.serviceAccounts.getIamPolicy"
+          purpose: "Inspect IAM policy bindings on candidate service accounts to find actAs grants"
+        - permission: "run.services.list"
+          purpose: "Enumerate existing Cloud Run services in the project"
+#
+# Verified NOT needed at all (removed during isolation): resourcemanager.
+# projects.get, iam.serviceAccounts.get, run.services.setIamPolicy,
+# run.services.getIamPolicy — gcloud run deploy with --no-allow-unauthenticated
+# issues none of these, not even on the re-deploy path. Note: run.services.
+# invoke (listed in early drafts) is not a valid GCP IAM permission; the
+# permission Cloud Run checks on invocation is run.routes.invoke.
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1550.001 - Use Alternate Authentication Material: Application Access Token"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate"
+  module_path: "modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate"

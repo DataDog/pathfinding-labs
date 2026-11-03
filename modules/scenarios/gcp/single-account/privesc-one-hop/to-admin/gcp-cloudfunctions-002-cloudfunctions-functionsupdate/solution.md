@@ -4,13 +4,13 @@ The create-a-function attack against Cloud Functions is well-documented at this 
 
 This scenario makes that distinction explicit. The victim function has been running as a service account with `roles/editor` since Terraform deployed the lab. It serves a hello-world response handler. Your starting service account cannot read project secrets, cannot write to Cloud Storage, and cannot do anything particularly interesting on its own. What it can do is replace the function's code -- and that is enough.
 
-There's a second wrinkle that makes this scenario technically distinct from the create variant: you cannot use `gcloud functions deploy` for the update. The `gcloud` CLI makes an extra preflight call to Cloud Build's `GetDefaultServiceAccount` endpoint before submitting the PATCH, and the starting service account is not granted that permission. The minimal permission set for this attack -- `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, and `iam.serviceAccounts.actAs` -- is sufficient for the raw Cloud Functions v2 REST API but not for the CLI wrapper around it. Real attackers working with minimal custom-role grants will hit this wall quickly.
+There's a second wrinkle that makes this scenario technically distinct from the create variant: the `gcloud` CLI wrapper needs more permissions than the raw Cloud Functions v2 REST API does. Beyond the raw-API required set -- `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`, and `iam.serviceAccounts.actAs` -- `gcloud functions deploy` also requires `cloudfunctions.functions.get` and `resourcemanager.projects.get` (two gcloud-mechanic permissions, granted in a separate custom role in this lab so the split is visible). Specifying `--build-service-account` eliminates the other four preflight permissions `gcloud` would otherwise need. Attackers working with minimal custom-role grants can skip the wrapper entirely and drive the raw API with `curl`.
 
 ## The Challenge
 
 You start as `pl-prod-cf002-start`, a service account with no project-level IAM roles of its own. It cannot read Secret Manager secrets, cannot list Compute Engine instances, and cannot interact with Cloud Storage outside its own staging bucket.
 
-What it does have is a pair of narrowly-scoped grants: a custom role at the project level granting `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, and `run.routes.invoke`, and a `roles/iam.serviceAccountUser` binding on a second service account -- `pl-prod-cf002-target` -- which holds `roles/editor` on the project.
+What it does have is a set of narrowly-scoped grants: a required custom role at the project level granting `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`, and `run.routes.invoke`; a helpful role granting `cloudfunctions.functions.get` and `resourcemanager.projects.get` (gcloud deploy mechanics) plus `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, and `cloudfunctions.functions.list` (recon, so you can find the victim function and the SA it runs as yourself); and an actAs grant on a second service account -- `pl-prod-cf002-target`, which holds `roles/editor` on the project -- via a minimal custom role that contains only `iam.serviceAccounts.actAs`.
 
 Critically, there is already a 2nd-gen Cloud Function deployed in this project -- `pl-cf002-victim-{resource_suffix}` -- that runs as `pl-prod-cf002-target`. It serves a benign hello-world handler. Your job is to replace that handler with something that reads the metadata server.
 
@@ -50,7 +50,7 @@ gcloud iam service-accounts get-iam-policy \
   --impersonate-service-account=pl-prod-cf002-start@<project_id>.iam.gserviceaccount.com
 ```
 
-The policy includes a binding granting `roles/iam.serviceAccountUser` to your starting service account. That grant means you're allowed to attach this account's identity to compute. Now look at the existing Cloud Functions in the project:
+The policy includes a binding granting a minimal custom role (`iam.serviceAccounts.actAs` only) to your starting service account. That grant means you're allowed to attach this account's identity to compute. Now look at the existing Cloud Functions in the project:
 
 ```bash
 gcloud functions list --gen2 \
@@ -68,7 +68,7 @@ The existing function is already running as `pl-prod-cf002-target`. You don't ne
 
 The `cloudfunctions.functions.update` grant lets you replace the code of an existing function. The `actAs` grant on `pl-prod-cf002-target` satisfies the check the PATCH API performs against the function's existing runtime SA, even though you are not changing the SA. And `run.routes.invoke` lets you invoke the result directly via the function's Cloud Run URL using an OIDC identity token.
 
-The one constraint: you cannot use `gcloud functions deploy`. The `gcloud` CLI makes an extra preflight call to `GetDefaultServiceAccount` on the Cloud Build API before submitting the PATCH, and `pl-prod-cf002-start` was not granted that permission -- the scenario intentionally scopes the custom role to the true minimal set for the raw API. You will need to drive the three-step upload process by hand.
+This walkthrough drives the raw Cloud Functions v2 REST API directly so every permission the attack actually requires is visible as an explicit API call (`gcloud functions deploy` also works -- the demo script's default mode uses it with `--build-service-account`, needing only the two gcloud-mechanic permissions `cloudfunctions.functions.get` and `resourcemanager.projects.get`). You will drive the three-step upload process by hand.
 
 Start by writing your malicious handler. The payload is simple: read the OAuth access token from the metadata server and return it in the HTTP response.
 

@@ -11,8 +11,9 @@
 # demo_attack.sh also creates the following local artifact:
 #   2. Local build artifacts under ./.build/ (malicious function source dir)
 #
-# All IAM bindings (starting_sa's update/sourceCodeSet/invoke custom role,
-# target_sa's roles/editor) are Terraform-managed and are never touched here.
+# All IAM bindings (starting_sa's required + helpful custom roles, the
+# minimal actAs custom role on target_sa, target_sa's roles/editor) are
+# Terraform-managed and are never touched here.
 #
 # GCP has no equivalent of AWS's force_destroy/force_detach_policies safety
 # net — a function left with our malicious code after a failed demo run will
@@ -105,23 +106,60 @@ if [ -z "$FUNCTION_EXISTS" ]; then
     echo -e "${YELLOW}Note: victim function $VICTIM_FUNCTION_NAME not found — may have been destroyed.${NC}"
     echo -e "${YELLOW}Run 'plabs apply' to redeploy the scenario infrastructure.${NC}"
 else
-    if gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
-            --gen2 \
-            --runtime=python312 \
-            --region="$REGION" \
-            --source="$HELLO_WORLD_DIR" \
-            --entry-point=hello_world \
-            --trigger-http \
-            --no-allow-unauthenticated \
+    # Wait for the function to return to ACTIVE before restoring: a demo
+    # deploy from moments ago may still be finalizing (its op runs ~2-4 min).
+    # Deploying while another op is in flight yields 409 "unable to queue the
+    # operation", and a PATCH that lands right after an op completes can build
+    # the STALE source generation (observed: hello_world entry point built with
+    # the demo's exfiltrate_token payload — healthcheck failure).
+    for i in $(seq 1 30); do
+        CF_STATE=$(gcloud functions describe "$VICTIM_FUNCTION_NAME" \
+            --gen2 --region="$REGION" --project="$PROJECT_ID" \
             --impersonate-service-account="$ADMIN_CLEANUP_SA" \
-            --quiet 2>/dev/null; then
+            --format='value(state)' 2>/dev/null || echo "UNKNOWN")
+        [ "$CF_STATE" = "ACTIVE" ] && break
+        if [ "$i" -eq 1 ]; then
+            echo -e "${YELLOW}Function state: $CF_STATE — waiting for in-flight operation to finish (up to 5 min)${NC}"
+        fi
+        sleep 10
+    done
+
+    RESTORE_ERR="$(mktemp)"
+    RESTORE_OK=false
+    for attempt in 1 2 3; do
+        if gcloud functions deploy "$VICTIM_FUNCTION_NAME" \
+                --gen2 \
+                --runtime=python312 \
+                --region="$REGION" \
+                --source="$HELLO_WORLD_DIR" \
+                --entry-point=hello_world \
+                --trigger-http \
+                --no-allow-unauthenticated \
+                --impersonate-service-account="$ADMIN_CLEANUP_SA" \
+                --quiet 2>"$RESTORE_ERR"; then
+            RESTORE_OK=true
+            break
+        fi
+        if grep -q "unable to queue the operation" "$RESTORE_ERR" && [ "$attempt" -lt 3 ]; then
+            echo -e "${YELLOW}409: another operation in flight — retrying in 30s (attempt $attempt/3)${NC}"
+            sleep 30
+        else
+            break
+        fi
+    done
+    if $RESTORE_OK; then
         echo -e "${GREEN}✓ Restored $VICTIM_FUNCTION_NAME to hello-world handler${NC}"
     else
         echo -e "${RED}✗ Failed to restore function $VICTIM_FUNCTION_NAME — manual cleanup required${NC}"
+        echo ""
+        echo "Actual gcloud error:"
+        sed 's/^/    /' "$RESTORE_ERR"
+        echo ""
         echo -e "${RED}  Run: gcloud functions deploy $VICTIM_FUNCTION_NAME --gen2 --runtime=python312 --region=$REGION --source=<hello-world-dir> --entry-point=hello_world${NC}"
-        rm -rf "$HELLO_WORLD_DIR"
+        rm -rf "$HELLO_WORLD_DIR" "$RESTORE_ERR"
         exit 1
     fi
+    rm -f "$RESTORE_ERR"
 fi
 echo ""
 

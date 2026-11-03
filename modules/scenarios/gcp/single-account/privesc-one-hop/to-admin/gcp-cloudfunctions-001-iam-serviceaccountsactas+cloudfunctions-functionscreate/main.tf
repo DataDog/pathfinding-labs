@@ -201,51 +201,47 @@ resource "google_project_iam_member" "vulnerable_cf_deploy_required_grant" {
 }
 
 # -----------------------------------------------------------------------------
-# Vulnerable grant #2b: gcloud CLI mechanic permissions (fully minimized)
+# Vulnerable grant #2b: helpful permissions (gcloud mechanics + recon)
 # -----------------------------------------------------------------------------
-# These permissions are NOT needed when using the raw Cloud Functions v2 REST
-# API directly (--api-only mode), but gcloud functions deploy issues extra
-# calls that require them. Full debug-trace analysis with --build-service-account
-# revealed the minimum two-permission set needed by gcloud:
+# NOT part of the modeled vulnerability and NOT needed by the raw Cloud
+# Functions v2 REST API (--api-only mode). Two groups:
 #
-#   REQUIRED by gcloud (irreducible when using gcloud functions deploy):
-#   - cloudfunctions.functions.get    — gcloud always calls GetFunction before
-#                                       submitting to determine create vs update
-#   - resourcemanager.projects.get    — gcloud calls GET /v1/projects/{id} after
-#                                       source upload, before CreateFunction
+#   1. gcloud CLI mechanics — gcloud functions deploy issues extra preflight
+#      calls beyond the raw API. Full debug-trace analysis with
+#      --build-service-account revealed the minimum two-permission set:
+#        - cloudfunctions.functions.get  — gcloud always calls GetFunction
+#                                          before submitting (create vs. update)
+#        - resourcemanager.projects.get  — gcloud calls GET /v1/projects/{id}
+#                                          unconditionally as a preflight
+#      ELIMINATED by --build-service-account (do NOT add here):
+#        cloudbuild.builds.get, resourcemanager.projects.getIamPolicy,
+#        run.services.getIamPolicy, run.services.setIamPolicy
 #
-#   ELIMINATED when --build-service-account is specified (debug trace confirmed absent):
-#   - cloudbuild.builds.get           — gcloud skips GetDefaultServiceAccount preflight
-#   - resourcemanager.projects.getIamPolicy — gcloud skips project IAM validation
-#
-#   ELIMINATED because CF API handles IAM internally (no Cloud Run IAM calls observed):
-#   - run.services.getIamPolicy       — Cloud Functions API sets Cloud Run IAM without
-#                                       requiring the caller to have getIamPolicy
-#   - run.services.setIamPolicy       — Cloud Functions API sets Cloud Run IAM without
-#                                       requiring the caller to have setIamPolicy;
-#                                       --no-allow-unauthenticated is enforced by the
-#                                       CF control plane, not by gcloud making a separate
-#                                       Cloud Run IAM API call
-resource "google_project_iam_custom_role" "cf_deploy_gcloud_mechanic" {
+#   2. Recon — the read permissions the starting SA needs to enumerate the
+#      project and find the actAs target (an attacker impersonating
+#      starting_sa, a learner, or the online-mode shell prepopulated as
+#      starting_sa). Mirrors scenario.yaml permissions.helpful.
+resource "google_project_iam_custom_role" "cf_deploy_helpful" {
   provider    = google.prod
   project     = var.project_id
-  role_id     = "${replace(local.path_id, "-", "_")}_cf_deploy_mech"
-  title       = "Pathfinding Labs - CF Deploy (gcloud Mechanic)"
-  description = "Minimized gcloud CLI mechanic perms (isolated via --build-service-account + debug trace): functions.get (gcloud GetFunction create-vs-update check) and resourcemanager.projects.get (gcloud project preflight). Not needed by the raw CF v2 API."
+  role_id     = "${replace(local.path_id, "-", "_")}_cf_deploy_help"
+  title       = "Pathfinding Labs - CF Deploy (Helpful: gcloud mechanics + recon)"
+  description = "Helpful permissions matching scenario.yaml permissions.helpful: gcloud functions deploy mechanics (functions.get, projects.get — not needed by the raw CF v2 API) plus recon to find the actAs target. Not part of the modeled vulnerability."
   permissions = [
-    # gcloud functions deploy always calls GetFunction before submitting to determine
-    # whether this is a create or an update — unavoidable when using gcloud.
+    # gcloud functions deploy mechanics — gcloud-only, not needed by the raw CF v2 API
     "cloudfunctions.functions.get",
-    # gcloud calls GET /v1/projects/{id} after source upload, before CreateFunction.
-    # Required regardless of --build-service-account being specified.
     "resourcemanager.projects.get",
+    # Recon — enumerate service accounts and inspect their IAM bindings to
+    # find the actAs target
+    "iam.serviceAccounts.list",
+    "iam.serviceAccounts.getIamPolicy",
   ]
 }
 
-resource "google_project_iam_member" "vulnerable_cf_deploy_gcloud_mechanic_grant" {
+resource "google_project_iam_member" "vulnerable_cf_deploy_helpful_grant" {
   provider = google.prod
   project  = var.project_id
-  role     = google_project_iam_custom_role.cf_deploy_gcloud_mechanic.id
+  role     = google_project_iam_custom_role.cf_deploy_helpful.id
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 

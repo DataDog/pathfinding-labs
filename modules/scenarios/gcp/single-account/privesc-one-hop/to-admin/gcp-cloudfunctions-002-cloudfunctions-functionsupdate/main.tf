@@ -136,6 +136,20 @@ resource "google_project_iam_member" "target_sa_admin_role" {
   member   = "serviceAccount:${google_service_account.target_sa.email}"
 }
 
+# Minimal custom role scoped to exactly the permission the attack needs.
+# roles/iam.serviceAccountUser bundles actAs plus other permissions
+# (e.g. iam.serviceAccounts.get, getIamPolicy) that aren't part of the modeled
+# attack step — grant only actAs, mirroring the AWS convention of hand-written
+# least-privilege custom policies (same pattern as gcp-cloudfunctions-001).
+resource "google_project_iam_custom_role" "sa_actas_minimal" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "${replace(local.path_id, "-", "_")}_sa_actas_min"
+  title       = "Pathfinding Labs - Minimal SA ActAs"
+  description = "Grants only iam.serviceAccounts.actAs - the single permission needed to update a Cloud Function that already runs as the target service account."
+  permissions = ["iam.serviceAccounts.actAs"]
+}
+
 # -----------------------------------------------------------------------------
 # Vulnerable grant #1: Core attack permissions (raw API minimum)
 # -----------------------------------------------------------------------------
@@ -183,51 +197,61 @@ resource "google_project_iam_member" "vulnerable_cf_update_required_grant" {
 }
 
 # -----------------------------------------------------------------------------
-# Vulnerable grant #2: gcloud CLI mechanic permissions (fully minimized)
+# Vulnerable grant #2: helpful permissions (gcloud mechanics + recon)
 # -----------------------------------------------------------------------------
-# These permissions are NOT needed when using the raw Cloud Functions v2 REST
-# API directly (--api-only mode), but gcloud functions deploy issues extra
-# calls that require them. Specifying --build-service-account eliminates four
-# of the seven original gcloud-mechanic permissions (debug trace confirmed):
+# NOT part of the modeled vulnerability and NOT needed by the raw Cloud
+# Functions v2 REST API (--api-only mode). Two groups:
 #
-#   Eliminated by --build-service-account (not granted here):
-#     cloudbuild.builds.get                 — GetDefaultServiceAccount preflight
-#     resourcemanager.projects.getIamPolicy — project IAM policy validation
-#     run.services.getIamPolicy             — Cloud Run IAM read post-deploy
-#     run.services.setIamPolicy             — Cloud Run IAM set post-deploy
+#   1. gcloud CLI mechanics — gcloud functions deploy issues extra preflight
+#      calls beyond the raw API. Specifying --build-service-account eliminates
+#      four of the seven original gcloud-mechanic permissions (debug trace
+#      confirmed), leaving two irreducible mechanics (granted here):
+#        - cloudfunctions.functions.get  — gcloud always calls GetFunction
+#                                          before submitting (read current config)
+#        - resourcemanager.projects.get  — gcloud calls GET /v1/projects/{id}
+#                                          unconditionally on every deploy
+#      Eliminated by --build-service-account (do NOT add here):
+#        cloudbuild.builds.get, resourcemanager.projects.getIamPolicy,
+#        run.services.getIamPolicy, run.services.setIamPolicy
 #
-#   Irreducible when using gcloud functions deploy (granted here):
-#     cloudfunctions.functions.get — gcloud always calls GetFunction before
-#                                    submitting to read current config
-#     resourcemanager.projects.get — gcloud calls GET /v1/projects/{id}
-#                                    unconditionally on every deploy
-resource "google_project_iam_custom_role" "cf_update_gcloud_mechanic" {
+#   2. Recon — the read permissions the starting SA needs to find the victim
+#      function and the privileged SA it runs as (an attacker impersonating
+#      starting_sa, a learner, or the online-mode shell prepopulated as
+#      starting_sa). Mirrors scenario.yaml permissions.helpful.
+resource "google_project_iam_custom_role" "cf_update_helpful" {
   provider    = google.prod
   project     = var.project_id
-  role_id     = "gcp_cloudfunctions_002_cf_update_mech"
-  title       = "Pathfinding Labs - CF Update (gcloud Mechanic)"
-  description = "Minimized gcloud CLI mechanic perms (isolated via --build-service-account + debug trace): functions.get (gcloud GetFunction preflight) and resourcemanager.projects.get (unconditional project preflight). Not needed by the raw CF v2 API."
+  role_id     = "gcp_cloudfunctions_002_cf_update_help"
+  title       = "Pathfinding Labs - CF Update (Helpful: gcloud mechanics + recon)"
+  description = "Helpful permissions matching scenario.yaml permissions.helpful: gcloud functions deploy mechanics (functions.get, projects.get — not needed by the raw CF v2 API) plus recon to find the victim function and the SA it runs as. Not part of the modeled vulnerability."
   permissions = [
+    # gcloud functions deploy mechanics — gcloud-only, not needed by the raw CF v2 API
     "cloudfunctions.functions.get",
     "resourcemanager.projects.get",
+    # Recon — enumerate service accounts, inspect their IAM bindings, and
+    # list existing Cloud Functions to find the privileged victim function
+    "iam.serviceAccounts.list",
+    "iam.serviceAccounts.getIamPolicy",
+    "cloudfunctions.functions.list",
   ]
 }
 
-resource "google_project_iam_member" "vulnerable_cf_update_gcloud_mechanic_grant" {
+resource "google_project_iam_member" "vulnerable_cf_update_helpful_grant" {
   provider = google.prod
   project  = var.project_id
-  role     = google_project_iam_custom_role.cf_update_gcloud_mechanic.id
+  role     = google_project_iam_custom_role.cf_update_helpful.id
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 
-# THE VULNERABILITY: starting_sa holds actAs on target_sa (serviceAccountUser)
-# AND can update existing Cloud Functions. The victim function already runs as
-# target_sa. By updating the code while keeping target_sa attached, the attacker
-# turns the existing privileged function into a metadata-server token exfiltrator.
+# THE VULNERABILITY: starting_sa holds actAs on target_sa (via a minimal
+# custom role granting iam.serviceAccounts.actAs only) AND can update existing
+# Cloud Functions. The victim function already runs as target_sa. By updating
+# the code while keeping target_sa attached, the attacker turns the existing
+# privileged function into a metadata-server token exfiltrator.
 resource "google_service_account_iam_member" "vulnerable_actas_grant" {
   provider           = google.prod
   service_account_id = google_service_account.target_sa.name
-  role               = "roles/iam.serviceAccountUser"
+  role               = google_project_iam_custom_role.sa_actas_minimal.id
   member             = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 

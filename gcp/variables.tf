@@ -70,6 +70,12 @@ variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_
   default     = false
 }
 
+variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate" {
+  description = "Enable: gcp single-account → privesc-one-hop → to-admin → gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate"
+  type        = bool
+  default     = false
+}
+
 variable "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken" {
   description = "Enable: gcp single-account → privesc-one-hop → to-admin → gcp-iam-001-iam-serviceaccountsgetaccesstoken"
   type        = bool

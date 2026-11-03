@@ -29,12 +29,12 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `iam.serviceAccounts.actAs` on `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com` -- allows attaching the target service account to a new compute resource (here, a Cloud Function) so that the resource runs with the target's identity
 - `cloudfunctions.functions.create` on `//cloudfunctions.googleapis.com/projects/{project_id}/locations/-` -- allows deploying a new Cloud Function anywhere in the project
 - `cloudfunctions.functions.sourceCodeSet` on `//cloudfunctions.googleapis.com/projects/{project_id}/locations/-` -- allows uploading the function's source code (the handler that reads the metadata server)
+- `cloudfunctions.operations.get` -- polls the deploy long-running operation; gen2 deploys are async, so even the raw API must poll `GET /v2/{operation_name}` until `done: true` to know the function is ACTIVE and to extract its Cloud Run URL
 - `run.routes.invoke` on `//run.googleapis.com/projects/{project_id}/locations/-/services/-` -- allows sending authenticated HTTP requests to the 2nd-gen function's underlying Cloud Run endpoint; gen2 function auth goes through Cloud Run directly (neither `cloudfunctions.functions.call` nor `cloudfunctions.functions.invoke` is needed -- confirmed empirically with both absent)
 
-**Helpful** (`pl-prod-cf001-start`) -- required only because `gcloud functions deploy` does extra preflight work beyond the raw API call:
-- `cloudfunctions.functions.get` -- `gcloud` checks whether the function already exists (create vs. update path) before submitting; raw API callers can skip this
-- `cloudfunctions.operations.get` -- `gcloud` polls the deploy long-running operation; no `--async` flag exists for gen2, so this is unavoidable with the CLI
-- `resourcemanager.projects.get` -- `gcloud` calls `GET /v1/projects/{id}` unconditionally before submitting the deploy; using the project number instead of ID does not bypass this call
+**Helpful** (`pl-prod-cf001-start`):
+- `cloudfunctions.functions.get` -- required by `gcloud functions deploy` only: `gcloud` checks whether the function already exists (create vs. update path) before submitting; not needed with the raw API
+- `resourcemanager.projects.get` -- required by `gcloud functions deploy` only: `gcloud` calls `GET /v1/projects/{id}` unconditionally before submitting the deploy; not needed with the raw API
 - `iam.serviceAccounts.list` -- enumerate other service accounts in the project to identify impersonation targets
 - `iam.serviceAccounts.getIamPolicy` -- inspect IAM policy bindings on candidate service accounts to find `actAs` grants (predefined `roles/iam.serviceAccountUser` or a custom role granting `iam.serviceAccounts.actAs`)
 
@@ -72,7 +72,8 @@ plabs apply
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
 | IAM custom role granting `iam.serviceAccounts.actAs` on `pl-prod-cf001-target`, bound to `pl-prod-cf001-start` | The vulnerable PassRole-equivalent grant that lets the starting account attach the target's identity to new compute |
-| IAM custom role granting `cloudfunctions.functions.create` / `.sourceCodeSet` and `run.routes.invoke` at the project level, bound to `pl-prod-cf001-start` | The compute-creation and invocation permissions that combine with `actAs` to complete the escalation |
+| IAM custom role granting `cloudfunctions.functions.create` / `.sourceCodeSet` / `operations.get` and `run.routes.invoke` at the project level, bound to `pl-prod-cf001-start` | The compute-creation and invocation permissions (raw-API required set) that combine with `actAs` to complete the escalation |
+| IAM custom role `gcp_cloudfunctions_001_cf_deploy_help` bound to `pl-prod-cf001-start` at the project level | The helpful permissions: gcloud mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get` — needed only by `gcloud functions deploy`, not the raw API) plus recon (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`) so the starting SA can find the actAs target itself |
 | IAM binding: `roles/editor` on the project granted to `pl-prod-cf001-target` | The privilege that makes running code as the target service account valuable |
 | IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-cf001-target` | Explicit grant needed because `roles/editor` alone does not include Secret Manager payload access |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudfunctions-001-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |

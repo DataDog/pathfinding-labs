@@ -29,14 +29,15 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 - `iam.serviceAccounts.actAs` on `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com` -- required by the Cloud Functions v2 PATCH API on every update that touches `buildConfig`, even if the attached service account field is not changing; GCP enforces this actAs check against the function's existing runtime SA regardless of whether the SA is being replaced
 - `cloudfunctions.functions.update` on `//cloudfunctions.googleapis.com/projects/{project_id}/locations/-/functions/{function_name}` -- allows replacing an existing 2nd-gen Cloud Function's source code and entry point via the PATCH endpoint without touching its attached service account
 - `cloudfunctions.functions.sourceCodeSet` on `//cloudfunctions.googleapis.com/projects/{project_id}/locations/-/functions/{function_name}` -- allows calling `generateUploadUrl` to obtain a signed GCS URL and upload a new source archive before submitting the PATCH
+- `cloudfunctions.operations.get` -- polls the update long-running operation; gen2 updates are async, so even the raw PATCH API must poll the LRO until `done: true` to know the function is ACTIVE and ready to invoke
 - `run.routes.invoke` on `//run.googleapis.com/projects/{project_id}/locations/-/services/-` -- allows sending authenticated HTTP requests to the 2nd-gen function's underlying Cloud Run endpoint using an OIDC identity token; gen2 function invocation auth is enforced by Cloud Run, not the Cloud Functions API
 
-**Helpful** (`pl-prod-cf002-start`) -- required only because `gcloud functions deploy` does extra preflight work beyond the raw API:
-- `cloudfunctions.functions.get` -- `gcloud functions deploy` reads the function's current configuration before submitting the update; also used to retrieve the invocation URL after the update completes; not needed for the raw PATCH API
-- `cloudfunctions.operations.get` -- `gcloud functions deploy` polls the update long-running operation; no `--async` flag exists for gen2, so this is unavoidable with the CLI
-- `resourcemanager.projects.get` -- `gcloud functions deploy` calls `GET /v1/projects/{id}` unconditionally before submitting; unavoidable with the CLI but not required for the raw API
+**Helpful** (`pl-prod-cf002-start`):
+- `cloudfunctions.functions.get` -- required by `gcloud functions deploy` only: reads the function's current configuration before submitting the update, and retrieves the invocation URL after the update completes; not needed with the raw PATCH API
+- `resourcemanager.projects.get` -- required by `gcloud functions deploy` only: calls `GET /v1/projects/{id}` unconditionally before submitting; not needed with the raw API
 - `iam.serviceAccounts.list` -- enumerate service accounts in the project to identify which privileged SA is attached to the target function
 - `iam.serviceAccounts.getIamPolicy` -- inspect IAM policy bindings on candidate service accounts to understand their project roles and confirm the attached SA is high-value
+- `cloudfunctions.functions.list` -- list existing 2nd-gen Cloud Functions in the project to find the privileged victim function and the service account it runs as
 
 ## Self-hosted Lab Setup
 
@@ -71,8 +72,9 @@ plabs apply
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
-| Custom IAM role `gcp_cloudfunctions_002_cf_update_min` bound to `pl-prod-cf002-start` at the project level | Grants `cloudfunctions.functions.update`, `.sourceCodeSet`, `run.routes.invoke`, and gcloud mechanic permissions (`functions.get`, `operations.get`, `resourcemanager.projects.get`) |
-| IAM binding: `roles/iam.serviceAccountUser` on `pl-prod-cf002-target`, granted to `pl-prod-cf002-start` | The vulnerable actAs grant -- satisfies the actAs check the PATCH API performs on the function's existing runtime SA |
+| Custom IAM role `gcp_cloudfunctions_002_cf_update_req` bound to `pl-prod-cf002-start` at the project level | Grants the raw-API required permissions: `cloudfunctions.functions.update`, `.sourceCodeSet`, `operations.get` (LRO poll), and `run.routes.invoke` |
+| Custom IAM role `gcp_cloudfunctions_002_cf_update_help` bound to `pl-prod-cf002-start` at the project level | Grants the helpful permissions: gcloud mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get` — needed by `gcloud functions deploy`, not the raw API) plus recon (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, `cloudfunctions.functions.list`) so the starting SA can find the victim function itself |
+| IAM binding: minimal actAs custom role (`gcp_cloudfunctions_002_sa_actas_min`, granting `iam.serviceAccounts.actAs` only) on `pl-prod-cf002-target`, granted to `pl-prod-cf002-start` | The vulnerable actAs grant -- satisfies the actAs check the PATCH API performs on the function's existing runtime SA |
 | IAM binding: `roles/editor` on the project granted to `pl-prod-cf002-target` | The privilege that makes running code as the target service account valuable |
 | IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-cf002-target` | Explicit grant needed because `roles/editor` alone does not include Secret Manager payload access |
 | `//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/pl-cf002-victim-{resource_suffix}` | Pre-deployed 2nd-gen Cloud Function running as `pl-prod-cf002-target`, initially serving benign hello-world code; the attacker replaces its code in place during the attack |
