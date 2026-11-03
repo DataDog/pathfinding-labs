@@ -106,7 +106,7 @@ GCP's default-deny model already enforces the intended attack chain through posi
 Every step is categorized as **EXPLOIT** or **OBSERVATION**, exactly as in AWS scenarios:
 
 - **`# [EXPLOIT]`** steps use `--impersonate-service-account=$STARTING_SA_EMAIL` (or the chained form `$STARTING_SA_EMAIL,$TARGET_SA_EMAIL`) — the actual attack actions (`gcloud auth print-access-token --impersonate-service-account`, granting/using the vulnerable binding)
-- **`# [OBSERVATION]`** steps run without `--impersonate-service-account` (using the operator's own ADC) or with a dedicated readonly-viewer SA — polling, `gcloud iam service-accounts list`, `gcloud projects get-iam-policy`, checking bindings
+- **`# [OBSERVATION]`** steps may run without `--impersonate-service-account` (using the operator's own ADC) or as the starting SA — its helpful role grants the recon permissions (`iam.serviceAccounts.list`, `get-iam-policy`, etc.), so either identity works. The lean default is to read target names from grouped Terraform outputs and skip recon; if you do include recon, running it as the starting SA matches the learner experience (the starting SA doing recon to find the target).
 
 **Key principle**: the starting SA should ONLY have the IAM bindings needed for the exploit. All observation/verification steps use the operator/readonly identity.
 
@@ -465,7 +465,7 @@ fi
 
 ### How gcloud-mechanic permissions are documented
 
-Permissions that only exist because gcloud makes extra calls (not because the raw API requires them) go in `scenario.yaml` under `permissions.helpful`, with a `purpose` field that explicitly says "Required by gcloud ... only — not needed with the raw API". They are also included in the `main.tf` custom role with a comment block that distinguishes them from the core attack permissions.
+Permissions that only exist because gcloud makes extra calls (not because the raw API requires them) go in `scenario.yaml` under `permissions.helpful`, with a `purpose` field that explicitly says "Required by gcloud ... only — not needed with the raw API". In `main.tf` they are granted in the `_help` custom role bound to the starting SA — alongside the recon permissions, also from `permissions.helpful` — with a comment block distinguishing the gcloud mechanics from the recon entries.
 
 The end-of-demo note enumerates them so the reader understands the delta between `gcloud` mode and `--api-only` mode.
 

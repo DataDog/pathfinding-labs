@@ -21,7 +21,7 @@ You will be given:
 
 Read these files before starting:
 
-1. `{scenario_dir}/main.tf` — find the `google_project_iam_custom_role` resources; scenarios that already use the two-role pattern will have a `_required` role and a `_gcloud_mechanic` role. The `permissions = [...]` lists in both are what you modify throughout this process.
+1. `{scenario_dir}/main.tf` — find the `google_project_iam_custom_role` resources; scenarios that already use the two-role pattern will have a `_required` role and a `_help` role. The `permissions = [...]` lists in both are what you modify throughout this process.
 2. `{scenario_dir}/demo_attack.sh` — skim to understand the attack steps (helps interpret error messages)
 3. `{gcp_root}/terraform.tfvars` — confirm the scenario's boolean variable is set to `true`
 
@@ -37,7 +37,7 @@ Determine every permission the demo needs by starting from zero and adding one a
 
 ### 1.1 — Empty all custom roles
 
-Edit `{scenario_dir}/main.tf` to set **every** `google_project_iam_custom_role`'s permissions to an empty list. Scenarios that follow the two-role pattern have both a `_required` role and a `_gcloud_mechanic` role — empty both:
+Edit `{scenario_dir}/main.tf` to set **every** `google_project_iam_custom_role`'s permissions to an empty list. Scenarios that follow the two-role pattern have both a `_required` role and a `_help` role — empty both:
 
 ```hcl
 permissions = []
@@ -212,18 +212,21 @@ permissions = [
 ]
 ```
 
-**`_gcloud_mechanic` role** — contains only gcloud-mechanic permissions (those that pass `--api-only` but fail in gcloud mode without them):
+**`_helpful` role** — contains exactly `scenario.yaml`'s `permissions.helpful` set: the gcloud-mechanic permissions (those that pass `--api-only` but fail in gcloud mode without them) **plus the recon permissions** the starting SA needs to find the target itself (the learner/online-mode shell acts as the starting SA, so it must be able to enumerate):
 ```hcl
 permissions = [
   # gcloud CLI mechanics — not needed with raw API, but required by gcloud
   #   service.resource.verb  — what gcloud does, why it needs this
   "service.resource.verb",
+  # recon — so the starting SA can find the target itself
+  #   iam.serviceAccounts.list / iam.serviceAccounts.getIamPolicy / etc.
+  "iam.serviceAccounts.list",
 ]
 ```
 
-Practical convenience permissions (helpful for recon/verification but not required for either mode) are NOT added to either role — they are documented in `scenario.yaml` under `permissions.helpful` with `purpose` descriptions, but not granted in Terraform.
+Practical convenience permissions (helpful for recon/verification but not required for either mode) ARE granted — they go in the `_helpful` role alongside the gcloud mechanics, and are documented in `scenario.yaml` under `permissions.helpful` with `purpose` descriptions. The helpful role is not part of the modeled vulnerability, but it is real Terraform: the lab experience is the starting SA doing recon, then the exploit.
 
-For scenarios using a single-role pattern (pre-two-role), keep the single role but organize with comment blocks as before.
+For scenarios using an older pattern (single flat role, or `_required` + `_gcloud_mechanic`), migrate to the required + helpful two-role structure: rename the mechanic role with the `_help` suffix and fold the recon permissions in.
 
 ### Report
 
@@ -255,10 +258,12 @@ TIMING:
   Phase 3 iterations: N
   Total wall time: ~N minutes
 
-NOTE: gcloud-mechanic permissions are included in the custom role (so the
-  default gcloud-mode demo works) but labeled as gcloud-only in scenario.yaml
-  with purpose: "Required by gcloud [subcommand] only — not needed with the raw API".
-  The demo script's --api-only flag exercises the core-only permission surface.
+NOTE: gcloud-mechanic permissions are included in the _helpful custom role
+  alongside the recon permissions (so the default gcloud-mode demo works AND
+  the starting SA can recon as itself) but labeled as gcloud-only in
+  scenario.yaml with purpose: "Required by gcloud [subcommand] only — not
+  needed with the raw API". The demo script's --api-only flag exercises the
+  core-only permission surface.
 ```
 
 ---

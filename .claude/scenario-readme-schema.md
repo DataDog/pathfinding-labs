@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.9.3`**
+**Current schema version: `4.9.4`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -240,6 +240,16 @@ Permissions are grouped by principal. Each principal gets its own **Required** a
 ```
 
 If a principal has no helpful permissions, omit the Helpful heading for that principal. If no principals have helpful permissions, omit all Helpful headings.
+
+**GCP gcloud-mechanic helpful entries** (GCP scenarios only):
+
+GCP `permissions.helpful` may contain gcloud-mechanic permissions (needed only because the demo runs via `gcloud`, e.g. `cloudfunctions.functions.get`, `resourcemanager.projects.get`) whose `purpose` is worded "Required by gcloud ... only — not needed with the raw API". Render them in the Helpful list with the gcloud-only distinction preserved:
+
+```
+- `cloudfunctions.functions.get` -- required by `gcloud functions deploy` only: gcloud always calls GetFunction before submitting; not needed with the raw API
+```
+
+Do not paraphrase the purpose into a generic description that loses the gcloud-vs-raw-API distinction. Raw-API-required permissions (e.g. `cloudfunctions.operations.get` for async LRO polling) always render under Required, never Helpful.
 
 **Public/anonymous starting point (CTF, CSPM Toxic Combo, CSPM Misconfig):**
 
@@ -591,7 +601,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 A README is compliant if all of the following are true:
 
 - [ ] `* **Points:** {N}` is present in the metadata block, is a whole number, and matches `points` in `scenario.yaml`
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.3`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.4`)
 - [ ] `Cost Estimate` and `Cost Estimate When Demo Executed` are each `$0/mo` or `$N/mo` (whole-dollar monthly; no hourly rates, ranges, tildes, or parenthetical prose), and the demo-executed value is >= the idle value
 - [ ] *Tool-testing scenarios only*: `## Objective` contains `### Expected Results` after `### Starting Permissions`, with the graph table, the expected answers table (at least one negative control), per-case Why, and Proven by, and no product-specific query syntax
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)

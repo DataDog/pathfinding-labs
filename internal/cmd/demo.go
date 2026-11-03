@@ -27,8 +27,9 @@ The demo script will:
   - Verify successful privilege escalation
 
 Examples:
-  plabs demo iam-002-to-admin  # Run demo for iam-002-to-admin scenario
-  plabs demo --list            # List available demos`,
+  plabs demo iam-002-to-admin          # Run demo for iam-002-to-admin scenario
+  plabs demo --list                     # List available demos
+  plabs demo gcp-cloudfunctions-002-to-admin --api-only  # Raw REST API mode (GCP)`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		listDemos, _ := cmd.Flags().GetBool("list")
 		if !listDemos && len(args) < 1 {
@@ -41,10 +42,12 @@ Examples:
 
 var listDemos bool
 var demoRestrictPermissions bool
+var demoAPIOnly bool
 
 func init() {
 	demoCmd.Flags().BoolVar(&listDemos, "list", false, "List available demos")
 	demoCmd.Flags().BoolVar(&demoRestrictPermissions, "restrict-permissions", false, "Restrict helpful permissions during demo (validation use only — proves attack works without helper permissions)")
+	demoCmd.Flags().BoolVar(&demoAPIOnly, "api-only", false, "Run the demo in raw REST API mode where the scenario supports it (GCP scenarios; ignores gcloud-mechanic overhead permissions)")
 }
 
 func runDemo(cmd *cobra.Command, args []string) error {
@@ -150,7 +153,7 @@ func runDemo(cmd *cobra.Command, args []string) error {
 	_ = os.WriteFile(markerPath, []byte{}, 0644)
 
 	demoRunner := demo.NewRunner(paths.TerraformDir)
-	if err := demoRunner.RunDemo(scenario.DirPath, demo.RunOptions{RestrictPermissions: demoRestrictPermissions}); err != nil {
+	if err := demoRunner.RunDemo(scenario.DirPath, demo.RunOptions{RestrictPermissions: demoRestrictPermissions, APIOnly: demoAPIOnly}); err != nil {
 		fmt.Println()
 		fmt.Println(yellow("════════════════════════════════════════════════════════════"))
 		fmt.Println(yellow("  Demo failed — scenario is marked as demo active."))

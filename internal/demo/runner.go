@@ -20,6 +20,9 @@ func NewRunner(repoPath string) *Runner {
 // RunOptions holds optional parameters for running demo/cleanup scripts.
 type RunOptions struct {
 	RestrictPermissions bool
+	// APIOnly passes --api-only to scripts that support a raw REST API mode
+	// (e.g. GCP scenarios that can skip gcloud-mechanic permissions).
+	APIOnly bool
 }
 
 // RunDemo executes the demo_attack.sh script for a scenario.
@@ -52,6 +55,9 @@ func (r *Runner) runScript(scriptPath, workDir string, opts RunOptions) error {
 	}
 
 	cmd := exec.Command("bash", scriptPath)
+	if opts.APIOnly {
+		cmd = exec.Command("bash", scriptPath, "--api-only")
+	}
 	cmd.Dir = workDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

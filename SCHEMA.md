@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.10.0`
+### Current Version: `1.10.1`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.10.1 | 2026-11-01 | Documentation clarification of the GCP gcloud-mechanic permission sub-type (no schema change): examples updated to the two irreducible `--build-service-account` mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get`) instead of the preflight permissions that flag eliminates; stated explicitly that gcloud-mechanic permissions live ONLY in `permissions.helpful` with marker purposes — no `required_with_gcloud`/`gcloud_required` field exists or may be added — and that raw-API-required permissions such as `cloudfunctions.operations.get` (async LRO polling) belong in `permissions.required`; and documented that helpful permissions (gcloud mechanics + recon) are granted to the starting SA in Terraform via a single `_help` custom role mirroring `permissions.helpful` 1:1, so the starting SA can recon as itself. Motivated by the gcp-cloudfunctions-001/002 permission-shape audit. |
 | 1.10.0 | 2026-10-16 | Added the required `points` integer field: the lab's value on the pathfinding.cloud labs leaderboard, which now ranks learners by total points instead of lab count. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30); CTF labs are set higher by hand. Mirrors the README's `* **Points:**` field (README schema 4.8.0), which is what the site's `generate-labs-json.py` reads. All scenarios were given a value in the same change. |
 | 1.9.0 | 2026-10-15 | Removed the `supports_online_mode` field. Whether a lab can be played online in the browser no longer comes from this repo: pathfinding-backend derives it at runtime from the Cybr Labs catalog (labs Cybr hosts with a browser terminal) and pathfinding.cloud reads it from the backend. Existing `supports_online_mode` lines are ignored and can be deleted. |
 | 1.8.0 | 2026-05-13 | Added `required_preconditions` optional list field: typed objects documenting what must already exist in the account for the attack path to be viable. Each entry has a `type` (`aws-resource`, `network`, `external`, `configuration`), an optional `resource` name (for `aws-resource` entries), and a `description`. This field is the primary differentiator between scenarios that share the same permissions but differ in what pre-existing infrastructure they exploit. Canonical use cases: `existing-passrole` sub_category, `attack-simulation` scenarios, and any path where the attack works because of something that pre-exists rather than something the attacker creates. Optional — omit for `self-escalation`, `new-passrole`, and CTF scenarios. |
@@ -582,13 +583,20 @@ Each permission within a helpful principal entry:
 **GCP gcloud-mechanic sub-type**: For GCP scenarios where the demo uses `gcloud` CLI (e.g., `gcloud functions deploy`), gcloud makes extra preflight and polling calls that require permissions beyond the raw API minimum. These go in `helpful` — the demo still needs them in default (gcloud) mode — but their `purpose` must explicitly identify them as gcloud-only so the distinction between core and mechanic permissions is clear:
 
 ```yaml
-- permission: "cloudbuild.builds.get"
-  purpose: "Required by gcloud functions deploy only — gcloud calls Cloud Build's GetDefaultServiceAccount endpoint before every deploy; not called by the raw Cloud Functions v2 API"
-- permission: "run.services.setIamPolicy"
-  purpose: "Required by gcloud functions deploy only — gcloud enforces --no-allow-unauthenticated by setting the Cloud Run service IAM policy after deploy; not needed with the raw API"
+- permission: "cloudfunctions.functions.get"
+  purpose: "Required by gcloud functions deploy only — gcloud always calls GetFunction before submitting to determine create vs. update; not needed with the raw API"
+- permission: "resourcemanager.projects.get"
+  purpose: "Required by gcloud functions deploy only — gcloud calls GET /v1/projects/{id} unconditionally as a preflight; not needed with the raw API"
 ```
 
-The `purpose` field for gcloud-mechanic permissions must contain "gcloud" and "only" and "not needed with the raw API" (or equivalent wording) so validators and readers can distinguish them from recon/practical helpful permissions. These permissions are also labeled with matching comments in the scenario's `main.tf` custom role resource.
+The `purpose` field for gcloud-mechanic permissions must contain "gcloud" and "only" and "not needed with the raw API" (or equivalent wording) so validators and readers can distinguish them from recon/practical helpful permissions. In `main.tf`, gcloud-mechanic permissions are granted — together with the recon permissions — in a single `_help` custom role bound to the starting service account, mirroring `permissions.helpful` 1:1, with matching comments (the `_required` custom role mirrors `permissions.required`).
+
+**Never add a separate schema field for gcloud mechanics.** There is no `required_with_gcloud`/`gcloud_required` key and one must not be introduced — `helpful` entries with marker purposes are the convention (the README renders the same purpose text). Two further rules settled empirically on gcp-cloudfunctions-001/002:
+
+- `--build-service-account` in `gcloud functions deploy` eliminates four further preflight permissions (`cloudbuild.builds.get`, `resourcemanager.projects.getIamPolicy`, `run.services.getIamPolicy`, `run.services.setIamPolicy`), so demos passing the flag need only the two irreducible mechanics above — do not list or grant the eliminated four.
+- Permissions required even at the raw API level (e.g. `cloudfunctions.operations.get`, needed to poll the async LRO that Cloud Functions v2 create/update returns) belong in `required`, never in `helpful` as a gcloud mechanic.
+
+**Terraform grant:** every helpful permission — gcloud mechanics and recon alike — is granted to the starting service account via a single `_help` custom role in `main.tf`, mirroring `permissions.helpful` 1:1 (a `_required` custom role mirrors `permissions.required` 1:1). The helpful role is not part of the modeled vulnerability, but it is granted: the lab experience is the starting SA doing recon itself (a human impersonating it via `--impersonate-service-account`, or the online-mode shell prepopulated as it), then running the exploit.
 
 **Examples:**
 

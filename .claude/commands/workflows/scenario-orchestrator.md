@@ -836,7 +836,7 @@ GCP scenarios require a **permission-isolation step** between building the infra
 
 1. **scenario-terraform-builder-gcp** - Creates all Terraform files
    - Pass: scenario.yaml, type_brief, directory path.
-   - Tell it to start with a **broad permissions list** in the custom role — include every permission you believe might be needed, erring on the side of too many. The isolation agent will trim it down.
+   - Tell it to create the required + helpful two-role structure from the start (`_req` + `_help` custom roles bound to the starting SA) with a **broad permissions list in each** — include every permission you believe might be needed in either tier, erring on the side of too many. The isolation agent will trim them down and classify each as required vs. gcloud-mechanic vs. recon.
    - **Note**: The terraform-builder creates individual outputs in the scenario module. The project-updator will create the grouped output in `gcp/outputs.tf`.
 
 2. **scenario-demo-creator-gcp** - Creates demo_attack.sh and cleanup_attack.sh
@@ -851,8 +851,8 @@ GCP scenarios require a **permission-isolation step** between building the infra
 3. **scenario-permission-isolator-gcp** - Discovers and minimizes the required permission set
    - Pass: `scenario_dir` (absolute path to the scenario module) and `gcp_root` (absolute path to `gcp/`).
    - This agent runs terraform apply + demo script cycles autonomously. It will take 60–90 minutes for a typical 6-permission scenario. Tell the user upfront.
-   - When it completes, it returns a verified classification table: **Required** vs **Helpful**.
-   - Update `scenario.yaml`'s `permissions.required` and `permissions.helpful` blocks with the verified results before launching Phase C.
+   - When it completes, it returns a verified classification table with up to three classes: **Required** (raw-API minimum), **GCLOUD-MECHANIC** (needed only by the demo's default gcloud mode — verified absent in `--api-only` mode), and **PRACTICAL/Helpful** (recon conveniences).
+   - Update `scenario.yaml` with the verified results before launching Phase C: required permissions go in `permissions.required`; gcloud-mechanic permissions go in `permissions.helpful` with a `purpose` worded "Required by gcloud [subcommand] only — not needed with the raw API" (**never a separate schema field** — no `required_with_gcloud`/`gcloud_required` key exists or should be added); practical/recon permissions also go in `permissions.helpful` with recon purposes. `main.tf` ends up in the required + helpful two-role pattern (`_req` + `_help` custom roles — helpful = gcloud mechanics + recon, exactly `permissions.helpful`) per the isolator's final structure.
 
 **Phase C — Documentation (parallel):** After Phase B returns the verified permission set, launch these three agents simultaneously:
 

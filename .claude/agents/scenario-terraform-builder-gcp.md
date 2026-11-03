@@ -316,11 +316,12 @@ gcloud auth print-access-token --impersonate-service-account="$STARTING_SA_EMAIL
 
 This requires the identity running the demo (the deployer — whoever ran `terraform apply`, auto-detected via `data.google_client_openid_userinfo.deployer`) to itself hold `roles/iam.serviceAccountTokenCreator` on the starting SA — this grant is what `google_service_account_iam_member.starting_sa_deployer_impersonation` provisions above. The `deployer_email` output tells the demo script who holds this grant so it can warn if the current active `gcloud` account has changed.
 
-## Two-Role Pattern for gcloud-Mechanic Permissions
+## Required + Helpful Role Pattern (two project-level roles on the starting SA)
 
-When the exploit step uses `gcloud` CLI (e.g., `gcloud functions deploy`, `gcloud run services update`), gcloud makes additional preflight and polling calls beyond the raw REST API minimum. These "gcloud-mechanic" permissions are a separate concern from the core attack surface.
+Every GCP scenario grants the starting service account **exactly two project-level custom roles**, mirroring `scenario.yaml` 1:1:
 
-**Use TWO separate custom roles** — one for core attack permissions (required even by the raw API), one for irreducible gcloud overhead. This makes the permission surface explicit and directly reflects what `--api-only` mode exercises vs. what gcloud adds.
+- **Role 1 — `_req` (required):** the raw-API minimum. Even `--api-only` mode cannot complete the attack without these.
+- **Role 2 — `_help` (helpful):** everything in `permissions.helpful` — the gcloud CLI mechanics (preflight/polling calls `gcloud` makes beyond the raw API, when the exploit step uses gcloud) **plus the recon permissions** (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, etc.) the starting SA needs to find the target itself. The helpful role is NOT part of the modeled vulnerability, but it IS granted: the lab experience is a human (or the online-mode shell prepopulated as the starting SA) acting as the starting SA doing recon, then running the exploit.
 
 ```hcl
 # Role 1: Core attack permissions — required at the raw API level regardless of tooling
@@ -348,46 +349,50 @@ resource "google_project_iam_member" "vulnerable_cf_update_required_grant" {
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 
-# Role 2: gcloud CLI mechanic permissions — NOT needed with the raw API
-# When --build-service-account is passed to gcloud functions deploy, 4 of the
-# original 7 gcloud-mechanic permissions are eliminated. Only these 2 remain:
+# Role 2: helpful = gcloud mechanics + recon — mirrors scenario.yaml permissions.helpful
+# gcloud mechanics (when --build-service-account is passed, only these 2 remain —
 #   cloudfunctions.functions.get  — gcloud always calls GetFunction before submitting
 #   resourcemanager.projects.get  — gcloud calls GET /v1/projects/{id} unconditionally
-#
 # Eliminated by --build-service-account (do NOT add here):
-#   cloudbuild.builds.get                 — GetDefaultServiceAccount preflight
-#   resourcemanager.projects.getIamPolicy — project IAM policy validation
-#   run.services.getIamPolicy             — Cloud Run IAM read post-deploy
-#   run.services.setIamPolicy             — Cloud Run IAM set post-deploy
-resource "google_project_iam_custom_role" "cf_update_gcloud_mechanic" {
+#   cloudbuild.builds.get, resourcemanager.projects.getIamPolicy,
+#   run.services.getIamPolicy, run.services.setIamPolicy
+# Recon — so the starting SA can enumerate the project and find the target itself
+resource "google_project_iam_custom_role" "cf_update_helpful" {
   provider    = google.prod
   project     = var.project_id
-  role_id     = "gcp_cf002_cf_update_mech"
-  title       = "Pathfinding Labs - CF Update (gcloud Mechanic)"
-  description = "Irreducible gcloud CLI overhead after --build-service-account optimization. Not needed by the raw CF v2 API."
+  role_id     = "gcp_cf002_cf_update_help"
+  title       = "Pathfinding Labs - CF Update (Helpful: gcloud mechanics + recon)"
+  description = "Helpful permissions matching scenario.yaml permissions.helpful: gcloud deploy mechanics plus recon. Not part of the modeled vulnerability."
   permissions = [
+    # gcloud mechanics
     "cloudfunctions.functions.get",
     "resourcemanager.projects.get",
+    # recon
+    "iam.serviceAccounts.list",
+    "iam.serviceAccounts.getIamPolicy",
+    "cloudfunctions.functions.list",
   ]
 }
 
-resource "google_project_iam_member" "vulnerable_cf_update_gcloud_mechanic_grant" {
+resource "google_project_iam_member" "vulnerable_cf_update_helpful_grant" {
   provider = google.prod
   project  = var.project_id
-  role     = google_project_iam_custom_role.cf_update_gcloud_mechanic.id
+  role     = google_project_iam_custom_role.cf_update_helpful.id
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 ```
 
-**Why two roles instead of one with comments:** The split is load-bearing — `--api-only` mode exercises only the `required` role's permissions. A reader can look at the two roles and immediately understand the gcloud overhead, without parsing inline comments. The two-role structure also lets the permission isolator agent test each tier independently.
+**Why two roles instead of one with comments:** The split is load-bearing — `--api-only` mode exercises only the `required` role's permissions, and the `helpful` role maps 1:1 to `scenario.yaml`'s `permissions.helpful`, so the docs never claim less or more than Terraform grants. The two-role structure also lets the permission isolator agent test each tier independently.
 
-**`--build-service-account` optimization for Cloud Functions**: Always specify `--build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}` in `gcloud functions deploy` calls in `demo_attack.sh`. This flag skips gcloud's `GetDefaultServiceAccount` and project IAM validation preflights, eliminating 4 of the original 7 gcloud-mechanic permissions. Without it, the `gcloud_mechanic` role would need 6 permissions instead of 2.
+**Labs with no gcloud mechanics** (e.g. gcp-iam-001, where `gcloud auth print-access-token` makes no extra permissioned calls): skip the mechanic entries but still create the `_help` role with the recon permissions from `permissions.helpful` — the starting SA must be able to recon even when gcloud adds no overhead.
 
-**`cloudfunctions.operations.get` is REQUIRED, not a gcloud-mechanic**: The Cloud Functions v2 PATCH (update) API returns an async long-running operation (LRO). Polling `GET /v2/{operation_name}` to know when the function is ACTIVE requires `cloudfunctions.operations.get` regardless of whether you use gcloud or the raw REST API. Always put it in the `required` role, never the `gcloud_mechanic` role.
+**`--build-service-account` optimization for Cloud Functions**: Always specify `--build-service-account=projects/${PROJECT_ID}/serviceAccounts/${TARGET_SA_EMAIL}` in `gcloud functions deploy` calls in `demo_attack.sh`. This flag skips gcloud's `GetDefaultServiceAccount` and project IAM validation preflights, eliminating 4 of the original 7 gcloud-mechanic permissions. Without it, the helpful role's gcloud-mechanic section would need 6 permissions instead of 2.
 
-**`scenario.yaml` classification**: List the `required` role's permissions under `permissions.required`. List the `gcloud_mechanic` role's permissions under `permissions.helpful` with a `purpose` field that explicitly says "Required by gcloud [subcommand] only — not needed with the raw API". Entries in `permissions.required` use either a `resource:` field (IAM resource path) or a `purpose:` field (prose explanation) — use `purpose:` when no specific resource path applies (e.g. for polling operations like `operations.get`).
+**`cloudfunctions.operations.get` is REQUIRED, not a gcloud-mechanic**: The Cloud Functions v2 PATCH (update) API returns an async long-running operation (LRO). Polling `GET /v2/{operation_name}` to know when the function is ACTIVE requires `cloudfunctions.operations.get` regardless of whether you use gcloud or the raw REST API. Always put it in the `required` role, never the `helpful` role.
 
-**Identifying gcloud-mechanic permissions:** If you're unsure whether a permission is core or gcloud-mechanic for a new scenario type, run `scenario-permission-isolator-gcp` first with all permissions in the `required` role, then use `--api-only` to verify which can be moved to the `gcloud_mechanic` role.
+**`scenario.yaml` classification**: List the `required` role's permissions under `permissions.required`. List the `helpful` role's permissions under `permissions.helpful`: gcloud-mechanic entries get a `purpose` field that explicitly says "Required by gcloud [subcommand] only — not needed with the raw API"; recon entries get plain purposes describing what they let the starting SA discover. Entries in `permissions.required` use either a `resource:` field (IAM resource path) or a `purpose:` field (prose explanation) — use `purpose:` when no specific resource path applies (e.g. for polling operations like `operations.get`).
+
+**Identifying gcloud-mechanic permissions:** If you're unsure whether a permission is core or gcloud-mechanic for a new scenario type, run `scenario-permission-isolator-gcp` first with all permissions in the `required` role, then use `--api-only` to verify which can be moved to the `helpful` role's mechanic section.
 
 ## Resource Lifecycle / Destroy Hygiene
 

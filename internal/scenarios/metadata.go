@@ -68,7 +68,10 @@ type Scenario struct {
 			PrincipalType string `yaml:"principal_type"`
 			Permissions   []struct {
 				Permission string `yaml:"permission"`
-				Resource   string `yaml:"resource"`
+				Resource  string `yaml:"resource"`
+				// Purpose documents why a permission is required (e.g. GCP LRO
+				// polling that is needed even at the raw API level).
+				Purpose string `yaml:"purpose,omitempty"`
 			} `yaml:"permissions"`
 		} `yaml:"required"`
 		Helpful []struct {

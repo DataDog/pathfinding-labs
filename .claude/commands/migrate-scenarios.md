@@ -10,6 +10,8 @@ color: yellow
 
 You orchestrate the migration of scenarios to the attacker-account, readonly-credentials, per-principal permissions, demo-restriction, and CTF-flag-terminal patterns, then verify they still work via batched deploy+test cycles.
 
+**AWS only.** Never include `modules/scenarios/gcp/` scenarios in the candidate set: the migration patterns (inline deny policies, `HelpfulForExploitation` Sids, `scripts/lib/demo_permissions.sh`, out-of-band access keys, `aws.attacker` provider) do not exist in the GCP design — GCP scenarios use the two-role custom-role pattern with gcloud-mechanic permissions in `permissions.helpful` (see `scenario-terraform-builder-gcp` / `scenario-validator-gcp`).
+
 ## Input Parsing
 
 The user invokes you via `/migrate-scenarios` with arguments:

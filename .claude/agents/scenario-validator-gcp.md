@@ -102,25 +102,25 @@ If any of these fail, fix automatically where unambiguous and report. If the mod
 
 `google_iam_deny_policy` resources are NOT required for impersonation-chain scenarios. GCP's default-deny model already enforces the attack chain through positive grants: if the deployer holds `serviceAccountTokenCreator` only on `starting_sa`, a direct `--impersonate-service-account=target_sa` call fails with `PERMISSION_DENIED` — confirmed empirically on gcp-iam-001. **Do not flag the absence of deny policies as a validation error.** If a scenario includes `google_iam_deny_policy` resources, flag them for removal — they add unnecessary complexity without meaningful enforcement benefit (a project owner can remove deny policies anyway).
 
-#### Check two-role pattern for Cloud Functions scenarios
+#### Check required + helpful role pattern (all scenarios with a service-account starting principal)
 
-For scenarios that include `google_cloudfunctions2_function` in `main.tf`, verify the two-role permission structure:
+Every GCP scenario grants the starting SA **exactly two custom role tiers**, mirroring `scenario.yaml` 1:1: a required tier (the raw-API minimum, `permissions.required` — a project-level `_req` role, except when the vulnerability is itself a resource-level grant, e.g. a minimal actAs/getAccessToken role bound on the target SA) and a helpful tier (a project-level `_help` role carrying gcloud mechanics + recon, `permissions.helpful`). The helpful role is NOT part of the modeled vulnerability but IS granted — the lab experience is a human (or the online-mode shell prepopulated as the starting SA) acting as the starting SA, doing recon, then running the exploit. Gcloud-mechanic entries inside the helpful role are documented in `scenario.yaml` with purposes marked "Required by gcloud ... only — not needed with the raw API". **Never expect or add a separate schema field** such as `required_with_gcloud`/`gcloud_required` — the schema has no such key, and `helpful`-with-marker-purposes is the established convention.
 
 ```bash
-grep -E 'role_id\s*=.*(_req|_required|_mech|_gcloud)' {scenario_dir}/main.tf
+grep -E 'role_id\s*=.*(_req|_required|_help|_helpful)' {scenario_dir}/main.tf
 ```
 
-1. **Two separate custom roles must exist** — one for required permissions (suffix `_req`/`_required`) and one for gcloud-mechanic permissions (suffix `_mech`/`_gcloud_mechanic`). A single flat custom role is an error for Cloud Functions scenarios.
+1. **Two custom roles must exist** — a required role and a helpful role (suffix `_help`/`_helpful`). A single flat custom role covering both sets is an error. The pre-2026-11 suffix `_mech`/`_gcloud_mechanic` is the old mechanic-only form — flag it for rename to `_help` and verify the recon permissions were added. The required role is normally project-level (suffix `_req`/`_required`), EXCEPT when the vulnerability IS a resource-level grant — then the required permissions live in a minimal custom role bound on the target resource via `google_service_account_iam_member` (e.g. gcp-iam-001's `getAccessToken`-only role on the target SA, cf001/cf002's actAs-only role on the target SA) rather than a project-level role. Scenarios with no gcloud mechanics (e.g. gcp-iam-001, where `gcloud auth print-access-token` makes no extra permissioned calls) still need the helpful role — recon-only.
 
-2. **`cloudfunctions.operations.get` must be in the `required` role**, not the gcloud-mechanic role:
+2. **The helpful role must contain exactly the `scenario.yaml` helpful set** — the gcloud mechanics plus the recon permissions, nothing more, nothing less. If it contains any of the 4 eliminated gcloud preflight perms (`cloudbuild.builds.get`, `resourcemanager.projects.getIamPolicy`, `run.services.getIamPolicy`, `run.services.setIamPolicy`), that means `--build-service-account` was not applied in the demo script — flag as an error.
+
+3. **`cloudfunctions.operations.get` must be in the `required` role**, not the helpful role (Cloud Functions scenarios):
    ```bash
    grep -A 20 'role_id.*_req' {scenario_dir}/main.tf | grep 'operations.get'
    ```
-   The CF v2 PATCH returns an async LRO; polling it requires `operations.get` regardless of tooling. If it's in the mechanic role, move it to the required role.
+   The CF v2 create/PATCH returns an async LRO; polling it requires `operations.get` regardless of tooling. If it's in the helpful role, move it to the required role.
 
-3. **The `gcloud_mechanic` role must contain only 2 permissions** after applying the `--build-service-account` optimization: `cloudfunctions.functions.get` and `resourcemanager.projects.get`. If it contains any of the 4 eliminated perms (`cloudbuild.builds.get`, `resourcemanager.projects.getIamPolicy`, `run.services.getIamPolicy`, `run.services.setIamPolicy`), that means `--build-service-account` was not applied in the demo script — flag as an error.
-
-4. **`--build-service-account` present in demo_attack.sh**:
+4. **`--build-service-account` present in demo_attack.sh** (Cloud Functions scenarios):
    ```bash
    grep 'build-service-account' {scenario_dir}/demo_attack.sh
    ```
@@ -271,7 +271,7 @@ Flag as an error if the summary enumerates the illustrative steps (e.g. "minted 
 
 #### Validate permissions used in demo script
 - **Exploit steps** use `--impersonate-service-account=$STARTING_SA_EMAIL` (or the chained form `$STARTING_SA_EMAIL,$TARGET_SA_EMAIL`) per command. Verify the starting SA has the required IAM bindings in Terraform.
-- **Observation steps** (polling, `get-iam-policy`, listing) run without impersonation or with a readonly identity, not the starting SA.
+- **Observation steps** (polling, `get-iam-policy`, listing) may run unimpersonated (operator ADC) or as the starting SA — its helpful role grants the recon permissions, so either identity works. Current demos stay minimal by reading targets from Terraform outputs and skipping recon; that's fine, and a future demo that does recon as the starting SA is also fine.
 - Validate that `gcloud config set auth/impersonate_service_account` is NOT used — session-level impersonation is forbidden; per-command `--impersonate-service-account` is required.
 - Validate that `scripts/lib/demo_permissions.sh` is NOT sourced — that library exists only for AWS scenarios. `restrict_helpful_permissions`/`restore_helpful_permissions` calls are forbidden in GCP scripts.
 - Validate the starting SA does NOT have a "helpful" binding that grants more than `scenario.yaml`'s declared `permissions.helpful`.
@@ -283,7 +283,7 @@ Check that the starting SA's IAM bindings in main.tf do NOT contain:
 - Verification-only roles granted upfront (e.g. `roles/viewer` "to check admin access") — these should be reached organically through the escalation
 - Destructive/cleanup-only roles bundled into the starting SA's "helpful" grant — cleanup runs as the admin identity in `cleanup_attack.sh`, not as the starting SA
 
-Check that a `HelpfulForReconAndMonitoring`-equivalent grouping exists (as a separate `google_project_iam_member`/binding, or a comment marking the block) when `permissions.helpful` is non-empty in scenario.yaml, mirroring the AWS Sid convention as closely as GCP's binding-per-resource model allows.
+**GCP helpful permissions ARE granted — via the separate `_help` role.** Unlike AWS scenarios (which grant helpful permissions inside the starting principal's policy with a `HelpfulForReconAndMonitoring` Sid and deny them during demo runs via `scripts/lib/demo_permissions.sh`), GCP grants the helpful set as its own custom role and never denies it. The helpful role exists for the learner/CTF/online-mode experience — a human (or a shell prepopulated as the starting SA) doing recon as the starting SA (listing service accounts/functions, inspecting IAM bindings to find the target). Demo scripts keep the exploit path minimal by reading target names from Terraform outputs instead of performing recon, and never source `demo_permissions.sh` (forbidden in GCP). The starting SA must NOT hold any project-level binding beyond the required role and the helpful role (plus resource-level grants that ARE the modeled vulnerability, e.g. the actAs custom role on the target SA) — flag anything extra. Verification-only roles granted upfront and cleanup-only roles bundled into the helpful grant remain errors (cleanup runs as the admin identity, not the starting SA).
 
 ### 4. Cleanup Script Validation
 

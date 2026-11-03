@@ -4,6 +4,17 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.9.4 — 2026-11-01
+
+Patch: documented how GCP gcloud-mechanic permissions render in `### Starting Permissions`. No structural change — required/helpful formats are unchanged.
+
+**Changes:**
+- Added a "GCP gcloud-mechanic helpful entries" subsection to `### Starting Permissions`: gcloud-mechanic permissions (needed only because the demo runs via `gcloud`) render in the Helpful list with their gcloud-only purpose wording preserved (e.g. "required by `gcloud functions deploy` only: ... not needed with the raw API"), and raw-API-required permissions (e.g. `cloudfunctions.operations.get` for async LRO polling) always render under Required.
+
+**Why:** Settled during the gcp-cloudfunctions-001/002 permission-shape audit: `permissions.required` holds the raw-API minimum, gcloud-mechanic permissions live in `permissions.helpful` with marker purposes (never a separate schema field), and recon permissions are plain helpful entries. The README is generated from those purposes, so the schema needed to pin the rendering rule so future GCP labs keep the three-way distinction visible. Pairs with SCHEMA.md 1.10.1 (same convention for `scenario.yaml`).
+
+---
+
 ## 4.9.3 — 2026-09-24
 
 Patch: fixed the GCP `### Prerequisites` boilerplate's step 3, which referenced a nonexistent `operator_identity` Terraform variable.
