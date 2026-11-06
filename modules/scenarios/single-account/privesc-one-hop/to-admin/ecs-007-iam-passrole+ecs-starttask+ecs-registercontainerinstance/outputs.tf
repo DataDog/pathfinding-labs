@@ -75,3 +75,24 @@ output "flag_ssm_parameter_name" {
   description = "SSM Parameter Store name containing the CTF flag"
   value       = aws_ssm_parameter.flag.name
 }
+
+# =============================================================================
+# STARTING USER OUTPUTS
+# =============================================================================
+
+output "starting_user_arn" {
+  description = "ARN of the scenario starting user"
+  value       = aws_iam_user.starting_user.arn
+}
+
+output "starting_user_access_key_id" {
+  description = "Access key ID for the starting user"
+  value       = aws_iam_access_key.starting_user.id
+  sensitive   = true
+}
+
+output "starting_user_secret_access_key" {
+  description = "Secret access key for the starting user"
+  value       = aws_iam_access_key.starting_user.secret
+  sensitive   = true
+}
