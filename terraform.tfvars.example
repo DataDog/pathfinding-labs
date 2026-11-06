@@ -184,7 +184,6 @@ enable_single_account_privesc_multi_hop_to_bucket_role_chain_to_s3              
 enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path              = false
 enable_tool_testing_test_effective_permissions_evaluation                          = false
 enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin    = false
-enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket        = false
 enable_tool_testing_test_reverse_blast_radius_hop_depth                            = false
 enable_tool_testing_test_reverse_blast_radius_bucket_policy                        = false
 enable_tool_testing_test_reverse_blast_radius_assume_role_edges                    = false
