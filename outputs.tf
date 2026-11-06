@@ -2105,6 +2105,35 @@ output "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin
   sensitive = true
 }
 
+output "tool_testing_test_direct_and_indirect_bucket_access_multi_path" {
+  description = "All outputs for test-direct-and-indirect-bucket-access-multi-path tool testing scenario"
+  value = var.enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path ? {
+    user_direct_name              = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_direct_name
+    user_direct_arn               = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_direct_arn
+    user_direct_access_key_id     = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_direct_access_key_id
+    user_direct_secret_access_key = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_direct_secret_access_key
+
+    user_assumer_name              = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_assumer_name
+    user_assumer_arn               = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_assumer_arn
+    user_assumer_access_key_id     = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_assumer_access_key_id
+    user_assumer_secret_access_key = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_assumer_secret_access_key
+    role_trusted_name              = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].role_trusted_name
+    role_trusted_arn               = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].role_trusted_arn
+
+    user_trustbypass_name              = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_trustbypass_name
+    user_trustbypass_arn               = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_trustbypass_arn
+    user_trustbypass_access_key_id     = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_trustbypass_access_key_id
+    user_trustbypass_secret_access_key = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].user_trustbypass_secret_access_key
+    role_untrusted_name                = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].role_untrusted_name
+    role_untrusted_arn                 = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].role_untrusted_arn
+
+    target_bucket_name = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].target_bucket_name
+    target_bucket_arn  = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].target_bucket_arn
+
+    attack_path = module.tool_testing_test_direct_and_indirect_bucket_access_multi_path[0].attack_path
+  } : null
+  sensitive = true
+}
 
 output "tool_testing_test_reverse_blast_radius_implicit_admin_access" {
   description = "All outputs for test-reverse-blast-radius-implicit-admin-access tool testing scenario"
@@ -2266,6 +2295,26 @@ output "tool_testing_test_reverse_blast_radius_escalation" {
   sensitive = true
 }
 
+output "tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket" {
+  description = "All outputs for test-reverse-blast-radius-direct-and-indirect-to-bucket tool testing scenario"
+  value = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket ? {
+    user1_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_name
+    user1_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_arn
+    user1_access_key_id     = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_access_key_id
+    user1_secret_access_key = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user1_secret_access_key
+    user2_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_name
+    user2_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_arn
+    user2_access_key_id     = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_access_key_id
+    user2_secret_access_key = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].user2_secret_access_key
+    role3_name              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].role3_name
+    role3_arn               = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].role3_arn
+    bucket_name             = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].bucket_name
+    bucket_arn              = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].bucket_arn
+    attack_path             = module.tool_testing_test_reverse_blast_radius_direct_and_indirect_to_bucket[0].attack_path
+  } : null
+  sensitive = true
+}
+
 output "tool_testing_test_effective_permissions_evaluation" {
   description = "All outputs for test-effective-permissions-evaluation tool testing scenario"
   value = var.enable_tool_testing_test_effective_permissions_evaluation ? {
@@ -2417,6 +2466,80 @@ output "tool_testing_test_effective_permissions_evaluation" {
     role_notadmin_split_allow_boundary_ec2only_arn         = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_allow_boundary_ec2only_arn
     role_notadmin_split_boundary_mismatch_name             = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_name
     role_notadmin_split_boundary_mismatch_arn              = module.tool_testing_test_effective_permissions_evaluation[0].role_notadmin_split_boundary_mismatch_arn
+  } : null
+  sensitive = true
+}
+
+output "tool_testing_test_s3_access_via_policy_attachment_type" {
+  description = "All outputs for test-s3-access-via-policy-attachment-type tool testing scenario"
+  value = var.enable_tool_testing_test_s3_access_via_policy_attachment_type ? {
+    starting_user_name              = module.tool_testing_test_s3_access_via_policy_attachment_type[0].starting_user_name
+    starting_user_arn               = module.tool_testing_test_s3_access_via_policy_attachment_type[0].starting_user_arn
+    starting_user_access_key_id     = module.tool_testing_test_s3_access_via_policy_attachment_type[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.tool_testing_test_s3_access_via_policy_attachment_type[0].starting_user_secret_access_key
+
+    user_inline_name              = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_inline_name
+    user_inline_arn               = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_inline_arn
+    user_inline_access_key_id     = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_inline_access_key_id
+    user_inline_secret_access_key = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_inline_secret_access_key
+
+    user_managed_name              = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_managed_name
+    user_managed_arn               = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_managed_arn
+    user_managed_access_key_id     = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_managed_access_key_id
+    user_managed_secret_access_key = module.tool_testing_test_s3_access_via_policy_attachment_type[0].user_managed_secret_access_key
+
+    role_inline_name  = module.tool_testing_test_s3_access_via_policy_attachment_type[0].role_inline_name
+    role_inline_arn   = module.tool_testing_test_s3_access_via_policy_attachment_type[0].role_inline_arn
+    role_managed_name = module.tool_testing_test_s3_access_via_policy_attachment_type[0].role_managed_name
+    role_managed_arn  = module.tool_testing_test_s3_access_via_policy_attachment_type[0].role_managed_arn
+
+    target_bucket_name = module.tool_testing_test_s3_access_via_policy_attachment_type[0].target_bucket_name
+    target_bucket_arn  = module.tool_testing_test_s3_access_via_policy_attachment_type[0].target_bucket_arn
+    attack_path        = module.tool_testing_test_s3_access_via_policy_attachment_type[0].attack_path
+  } : null
+  sensitive = true
+}
+
+output "tool_testing_test_s3_read_write_delete_permission_edges" {
+  description = "All outputs for test-s3-read-write-delete-permission-edges tool testing scenario"
+  value = var.enable_tool_testing_test_s3_read_write_delete_permission_edges ? {
+    starting_user_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].starting_user_name
+    starting_user_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].starting_user_arn
+    starting_user_access_key_id     = module.tool_testing_test_s3_read_write_delete_permission_edges[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.tool_testing_test_s3_read_write_delete_permission_edges[0].starting_user_secret_access_key
+
+    user_read_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_only_name
+    user_read_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_only_arn
+    user_read_only_access_key_id     = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_only_access_key_id
+    user_read_only_secret_access_key = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_only_secret_access_key
+    role_read_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_read_only_name
+    role_read_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_read_only_arn
+
+    user_write_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_write_only_name
+    user_write_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_write_only_arn
+    user_write_only_access_key_id     = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_write_only_access_key_id
+    user_write_only_secret_access_key = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_write_only_secret_access_key
+    role_write_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_write_only_name
+    role_write_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_write_only_arn
+
+    user_delete_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_delete_only_name
+    user_delete_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_delete_only_arn
+    user_delete_only_access_key_id     = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_delete_only_access_key_id
+    user_delete_only_secret_access_key = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_delete_only_secret_access_key
+    role_delete_only_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_delete_only_name
+    role_delete_only_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_delete_only_arn
+
+    user_read_write_delete_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_write_delete_name
+    user_read_write_delete_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_write_delete_arn
+    user_read_write_delete_access_key_id     = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_write_delete_access_key_id
+    user_read_write_delete_secret_access_key = module.tool_testing_test_s3_read_write_delete_permission_edges[0].user_read_write_delete_secret_access_key
+    role_read_write_delete_name              = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_read_write_delete_name
+    role_read_write_delete_arn               = module.tool_testing_test_s3_read_write_delete_permission_edges[0].role_read_write_delete_arn
+
+    target_bucket_name = module.tool_testing_test_s3_read_write_delete_permission_edges[0].target_bucket_name
+    target_bucket_arn  = module.tool_testing_test_s3_read_write_delete_permission_edges[0].target_bucket_arn
+    seed_object_key    = module.tool_testing_test_s3_read_write_delete_permission_edges[0].seed_object_key
+    attack_path        = module.tool_testing_test_s3_read_write_delete_permission_edges[0].attack_path
   } : null
   sensitive = true
 }

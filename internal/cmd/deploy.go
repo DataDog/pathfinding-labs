@@ -118,27 +118,34 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
 	// If Terraform already owns the SLR in state, keep create=true — flipping it to
 	// false would make count=0 and cause Terraform to destroy the SLR.
-	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
-	if err != nil {
-		// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
-		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
-		fmt.Println("Terraform will attempt to create all service-linked roles.")
-	} else {
-		inState := &plabsaws.ServiceLinkedRoleStatus{}
-		if runner.IsInitialized() {
-			if stateResources, stateErr := runner.StateList(); stateErr == nil {
-				inState = plabsaws.SLRInState(stateResources)
+	//
+	// AWS-only: shells out to the AWS CLI, which can trigger an SSO/device-auth
+	// browser flow. A workspace can hold AWS profile config even while GCP is the
+	// active cloud, so this must be gated explicitly rather than relying on the
+	// profile being empty.
+	if cfg.Active().ActiveCloudOrDefault() == "aws" {
+		slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
+		if err != nil {
+			// Non-fatal: if detection fails, default to creating all SLRs (original behavior)
+			fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
+			fmt.Println("Terraform will attempt to create all service-linked roles.")
+		} else {
+			inState := &plabsaws.ServiceLinkedRoleStatus{}
+			if runner.IsInitialized() {
+				if stateResources, stateErr := runner.StateList(); stateErr == nil {
+					inState = plabsaws.SLRInState(stateResources)
+				}
 			}
-		}
-		cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-			CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-			CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
-			CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-			CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
-			CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
-			CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
-			CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
-			CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+			cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
+				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
+				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+			}
 		}
 	}
 
@@ -147,8 +154,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to sync tfvars: %w", err)
 	}
 
-	// Bootstrap attacker IAM user if needed
-	if cfg.Active().HasAttackerAccount() && cfg.Active().AWS.Attacker.Mode == "iam-user" && cfg.Active().AWS.Attacker.IAMAccessKeyID == "" {
+	// Bootstrap attacker IAM user if needed (AWS-only concept)
+	if cfg.Active().ActiveCloudOrDefault() == "aws" && cfg.Active().HasAttackerAccount() && cfg.Active().AWS.Attacker.Mode == "iam-user" && cfg.Active().AWS.Attacker.IAMAccessKeyID == "" {
 		fmt.Println()
 		fmt.Println(cyan("Bootstrapping attacker account IAM admin user..."))
 		fmt.Println()

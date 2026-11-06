@@ -73,25 +73,32 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	// Detect existing service-linked roles to avoid creation conflicts.
 	// Rule: create=true UNLESS the SLR exists in AWS AND is NOT in Terraform state.
-	slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
-	if err != nil {
-		fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
-	} else {
-		inState := &plabsaws.ServiceLinkedRoleStatus{}
-		if runner.IsInitialized() {
-			if stateResources, stateErr := runner.StateList(); stateErr == nil {
-				inState = plabsaws.SLRInState(stateResources)
+	//
+	// AWS-only: shells out to the AWS CLI, which can trigger an SSO/device-auth
+	// browser flow. A workspace can hold AWS profile config even while GCP is the
+	// active cloud, so this must be gated explicitly rather than relying on the
+	// profile being empty.
+	if cfg.Active().ActiveCloudOrDefault() == "aws" {
+		slrStatus, err := plabsaws.DetectExistingServiceLinkedRoles(cfg.Active().AWS.Prod.Profile)
+		if err != nil {
+			fmt.Printf("Warning: could not detect existing service-linked roles: %v\n", err)
+		} else {
+			inState := &plabsaws.ServiceLinkedRoleStatus{}
+			if runner.IsInitialized() {
+				if stateResources, stateErr := runner.StateList(); stateErr == nil {
+					inState = plabsaws.SLRInState(stateResources)
+				}
 			}
-		}
-		cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
-			CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
-			CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
-			CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
-			CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
-			CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
-			CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
-			CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
-			CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+			cfg.Active().SLRFlags = &config.ServiceLinkedRoleFlags{
+				CreateAutoScaling:   !slrStatus.AutoScalingExists || inState.AutoScalingExists,
+				CreateSpot:          !slrStatus.SpotExists || inState.SpotExists,
+				CreateAppRunner:     !slrStatus.AppRunnerExists || inState.AppRunnerExists,
+				CreateEMR:           !slrStatus.EMRExists || inState.EMRExists,
+				CreateEMRServerless: !slrStatus.EMRServerlessExists || inState.EMRServerlessExists,
+				CreateImageBuilder:  !slrStatus.ImageBuilderExists || inState.ImageBuilderExists,
+				CreateAgentCore:     !slrStatus.AgentCoreExists || inState.AgentCoreExists,
+				CreateBatch:         !slrStatus.BatchExists || inState.BatchExists,
+			}
 		}
 	}
 

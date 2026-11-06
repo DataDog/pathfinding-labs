@@ -50,6 +50,9 @@ tests/cleanup_results/
 
 # Go build artifacts
 build/
+
+# Demo script runtime artifacts
+.build/
 dist/
 /plabs
 *.exe

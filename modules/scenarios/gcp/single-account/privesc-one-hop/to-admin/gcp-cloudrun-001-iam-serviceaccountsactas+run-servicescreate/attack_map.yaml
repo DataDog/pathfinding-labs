@@ -1,0 +1,134 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that deploys on
+        behalf of this service account, exploiting a vulnerable workload running with
+        this service account attached, discovering a service account key in a public
+        GitHub repository, or being granted deployment permissions on it directly for
+        an unrelated automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no project-level roles of its own. However, it has been
+        granted a minimal custom role delivering `iam.serviceAccounts.actAs` on
+        another service account in the project (bound both at the project level and
+        directly on that target service account), plus `run.services.create`,
+        `run.services.get`, `run.operations.get`, and `logging.logEntries.list`
+        at the project level -- all through a custom role, never a bundling
+        predefined role like `roles/run.admin` or `roles/iam.serviceAccountUser`.
+
+    - id: malicious-cloud-run-service
+      label: "Malicious Cloud Run Service"
+      type: resource
+      subType: cloud-run-service
+      arn: "//run.googleapis.com/projects/{project_id}/locations/{region}/services/pl-cr001-exfil-{resource_suffix}"
+      description: >
+        A brand-new Cloud Run service deployed with `--service-account` pointed at
+        the privileged target service account, built from the PUBLIC Docker Hub
+        image `docker.io/library/python:3.13-slim`. No Artifact Registry access is
+        involved anywhere -- Cloud Run's service agent pulls the public image
+        server-side, which is exactly why `artifactregistry.repositories.
+        downloadArtifacts` is never needed. Any container code running inside this
+        service executes with the target service account's identity attached, and
+        can reach the instance metadata server to retrieve that identity's OAuth
+        access token and print it to Cloud Run logs.
+
+    - id: target-sa
+      label: "Privileged Service Account"
+      type: principal
+      subType: service-account
+      isAdmin: true
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com"
+      description: >
+        This service account holds `roles/editor` on the project -- broad,
+        near-administrative permissions covering the majority of GCP resource types
+        -- plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF
+        flag secret (`roles/editor` deliberately excludes secret payload access). Any
+        compute resource configured to run as this service account, and any caller
+        who can extract its OAuth access token from that compute, inherits both of
+        those grants.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudrun-001-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Retrieving it requires `secretmanager.versions.access` on the
+        secret -- `roles/editor` does NOT grant this, so the privileged service
+        account holds an explicit `roles/secretmanager.secretAccessor` binding on
+        this secret. Your goal is to read this secret's value using the exfiltrated
+        access token you obtained from the malicious Cloud Run service's logs.
+
+  edges:
+    - from: starting-principal
+      to: malicious-cloud-run-service
+      label: "run.services.create + iam.serviceAccounts.actAs"
+      description: >
+        The starting service account holds `iam.serviceAccounts.actAs` on the
+        privileged target service account plus `run.services.create` at the project
+        level -- all granted through a minimal custom role rather than a bundling
+        predefined role. This is the GCP analog of AWS `iam:PassRole` +
+        `lambda:CreateFunction`: `actAs` is checked at service creation time and
+        authorizes binding the target's identity to the new Cloud Run service, and
+        `run.services.create` lets you deploy it from a public Docker Hub image with
+        a container command override. The deployed payload fetches the target's
+        OAuth token and email from the local metadata server and prints them
+        (flushed) to Cloud Run logs; the starting account then polls the deploy LRO
+        (`run.operations.get`), fetches the service URL (`run.services.get`),
+        invokes the private service with an OIDC identity token, and reads the
+        exfiltrated token back from the logs (`logging.logEntries.list`) -- the
+        same `--exfil-mode logs` channel gcpwn uses for this technique.
+      hints:
+        - "iam.serviceAccounts.actAs on a service account lets you attach that identity to new compute you create -- the GCP analog of AWS iam:PassRole. Paired with run.services.create, you can run arbitrary code as that identity without ever making the service public: --no-allow-unauthenticated avoids any setIamPolicy call, and the service is invoked with an OIDC identity token instead."
+        - "gcloud run deploy accepts an --image, a --service-account, and command/args overrides. A public Docker Hub image (docker.io/library/python:3.13-slim) works with no registry permissions at all -- Cloud Run's service agent pulls it server-side. The service scales to zero, so invoke it (or just wait out the deploy-time readiness instance) to trigger the container start."
+        - "Container stdout is block-buffered when piped to the logging agent -- your payload's print calls must flush explicitly or the token never reaches Cloud Logging. Write the token to stdout (flushed), then read it back from the Cloud Run revision logs. Browse to https://pathfinding.cloud/paths/gcp-cloudrun-001 for technique details."
+      commands:
+        - description: "Deploy a new Cloud Run service bound to the target service account using a public Docker Hub image"
+          command: "gcloud run deploy pl-cr001-exfil-{resource_suffix} --image=docker.io/library/python:3.13-slim --region={region} --project={project_id} --service-account=pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com --command=python --args=-c --args='import os;exec(os.environ[\"EXFIL_PAYLOAD\"])' --env-vars-file=<payload.yaml> --no-allow-unauthenticated --impersonate-service-account=pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com"
+        - description: "Invoke the private service with an OIDC identity token minted as the starting service account (run.routes.invoke)"
+          command: "ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com --audiences={service_url}); curl -H \"Authorization: Bearer $ID_TOKEN\" {service_url}"
+        - description: "Read the exfiltrated OAuth token from the Cloud Run logs (logging.logEntries.list -- the exfil channel)"
+          command: "gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=pl-cr001-exfil-{resource_suffix} AND resource.labels.location={region}' --project={project_id} --impersonate-service-account=pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com --limit=20 --format='value(textPayload)'"
+
+    - from: malicious-cloud-run-service
+      to: target-sa
+      label: "Exfiltrate OAuth token"
+      description: >
+        The deployed container's payload queries its local metadata server
+        (`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/`
+        with a `Metadata-Flavor: Google` header) and prints the OAuth access token
+        and email of the identity the service runs as -- the target service account
+        -- to stdout, which lands in Cloud Logging. The attacker reads that token
+        back with `logging.logEntries.list` and holds a raw bearer token authorized
+        as the target service account, inheriting its project `roles/editor`
+        permissions.
+      hints: []
+      commands: []
+
+    - from: target-sa
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the exfiltrated OAuth access token for the target service account, read
+        the flag from Secret Manager. The target service account holds an explicit
+        `roles/secretmanager.secretAccessor` grant on this specific secret
+        (`roles/editor` alone does not grant `secretmanager.versions.access`).
+      hints:
+        - "The token you exfiltrated from the logs is a raw bearer token, not a gcloud impersonation session -- use it directly as an Authorization header against the REST API rather than trying to pass it to --impersonate-service-account."
+        - "roles/editor deliberately excludes secret payload access -- the target service account holds an explicit secretAccessor binding on this secret, so the bearer token alone is sufficient authorization via the Secret Manager REST API's :access suffix on the version resource name."
+      commands:
+        - description: "Retrieve the CTF flag using the exfiltrated access token"
+          command: "curl -H \"Authorization: Bearer $EXFILTRATED_TOKEN\" \"https://secretmanager.googleapis.com/v1/projects/{project_id}/secrets/pl-gcp-cloudrun-001-flag/versions/latest:access\""
+        - description: "Equivalent human walkthrough using gcloud impersonation (requires Service Account Token Creator on the target service account -- which the starting account deliberately lacks; the exfiltrated raw bearer token avoids needing it)"
+          command: "gcloud secrets versions access latest --secret=pl-gcp-cloudrun-001-flag --impersonate-service-account=pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com"

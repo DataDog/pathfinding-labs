@@ -1,0 +1,168 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+status: "beta"
+name: "test-s3-read-write-delete-permission-edges"
+title: "S3 Read/Write/Delete Permission Edge Granularity"
+description: "Tool testing scenario with 8 principals (4 permission tiers x IAM user/role) each granted a precise, non-overlapping subset of read/write/delete access to the same S3 bucket, to validate that graph/CSPM tools generate can_read/can_write/can_delete edges with exact granularity and no over- or under-inference"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "edge-case-detection"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    # Shared assumer (only used to assume the 4 role principals)
+    - "arn:aws:iam::{account_id}:user/pl-prod-rwd-starting-user"
+
+    # Read-only tier
+    - "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-read-only"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-only"
+
+    # Write-only tier
+    - "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-write-only"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-write-only"
+
+    # Delete-only tier
+    - "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-delete-only"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-delete-only"
+
+    # Read + write + delete tier
+    - "arn:aws:iam::{account_id}:user/pl-prod-rwd-user-read-write-delete"
+    - "arn:aws:iam::{account_id}:role/pl-prod-rwd-role-read-write-delete"
+
+    # Target Resource
+    - "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+
+  summary: "Eight independent test principals (4 permission tiers x IAM user/role), each granted a precise non-overlapping subset of s3:GetObject/s3:PutObject/s3:DeleteObject on one bucket, to validate that a graph/CSPM tool's can_read/can_write/can_delete edges are set exactly per principal, with no principal showing an edge it wasn't actually granted."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-rwd-user-read-only"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+
+    - principal: "pl-prod-rwd-role-read-only"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+
+    - principal: "pl-prod-rwd-user-write-only"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+
+    - principal: "pl-prod-rwd-role-write-only"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+
+    - principal: "pl-prod-rwd-user-delete-only"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:DeleteObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+
+    - principal: "pl-prod-rwd-role-delete-only"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:DeleteObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+
+    - principal: "pl-prod-rwd-user-read-write-delete"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:DeleteObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+
+    - principal: "pl-prod-rwd-role-read-write-delete"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:DeleteObject"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-rwd-bucket-{account_id}-{suffix}"
+
+  helpful:
+    - principal: "pl-prod-rwd-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+        - permission: "sts:AssumeRole"
+          purpose: "Starting user assumes the four role-based test principals"
+
+# =============================================================================
+# TEST GROUPS
+# =============================================================================
+test_groups:
+  permission_tier:
+    total: 8
+    users: 4
+    roles: 4
+    categories:
+      - name: "Read-Only"
+        count: 2
+        description: "s3:GetObject + s3:ListBucket only — no write or delete"
+      - name: "Write-Only"
+        count: 2
+        description: "s3:PutObject only — no read or delete"
+      - name: "Delete-Only"
+        count: 2
+        description: "s3:DeleteObject only — no read or write"
+      - name: "Read+Write+Delete"
+        count: 2
+        description: "s3:GetObject + s3:PutObject + s3:DeleteObject + s3:ListBucket — full CRUD access"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+    - "TA0040 - Impact"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1485 - Data Destruction"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_s3_read_write_delete_permission_edges"
+  module_path: "modules/scenarios/tool-testing/test-s3-read-write-delete-permission-edges"

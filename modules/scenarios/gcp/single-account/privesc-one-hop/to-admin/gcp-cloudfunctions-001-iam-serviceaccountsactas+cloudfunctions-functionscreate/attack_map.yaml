@@ -1,0 +1,124 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that deploys on
+        behalf of this service account, exploiting a vulnerable workload running with
+        this service account attached, discovering a service account key in a public
+        GitHub repository, or being granted deployment permissions on it directly for
+        an unrelated automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no project-level roles of its own. However, it has been
+        granted `iam.serviceAccounts.actAs` on another service account in the project,
+        plus `cloudfunctions.functions.create`, `cloudfunctions.functions.sourceCodeSet`,
+        and `cloudfunctions.functions.call` at the project level -- all delivered
+        through minimal custom roles, never a bundling predefined role.
+
+    - id: malicious-cloud-function
+      label: "Malicious Cloud Function"
+      type: resource
+      subType: cloud-function
+      arn: "//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/pl-prod-gcp-cloudfunctions-001-exfil"
+      description: >
+        A brand-new 2nd-generation Cloud Function (branded "Cloud Run functions" in
+        the current console), deployed with `--service-account` pointed at the
+        privileged target service account. The function is implemented on top of
+        Cloud Run internally, but the Cloud Functions v2 API's own service agent
+        handles that provisioning -- the caller never needs `run.services.*`
+        permissions directly. Any HTTP handler code running inside this function
+        executes with the target service account's identity attached, and can reach
+        the instance metadata server to retrieve that identity's OAuth access token.
+
+    - id: target-sa
+      label: "Privileged Service Account"
+      type: principal
+      subType: service-account
+      isAdmin: true
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com"
+      description: >
+        This service account holds `roles/editor` on the project -- broad,
+        near-administrative permissions covering the majority of GCP resource types
+        -- plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF
+        flag secret (`roles/editor` deliberately excludes secret payload access). Any
+        compute resource configured to run as this service account, and any caller
+        who can extract its OAuth access token from that compute, inherits both of
+        those grants.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudfunctions-001-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Retrieving it requires `secretmanager.versions.access` on the
+        secret -- `roles/editor` does NOT grant this, so the privileged service
+        account holds an explicit `roles/secretmanager.secretAccessor` binding on
+        this secret. Your goal is to read this secret's value using the exfiltrated
+        access token you obtained from the malicious Cloud Function.
+
+  edges:
+    - from: starting-principal
+      to: malicious-cloud-function
+      label: "cloudfunctions.functions.create + call"
+      description: >
+        The starting service account holds `iam.serviceAccounts.actAs` on the
+        privileged target service account plus `cloudfunctions.functions.create`,
+        `.sourceCodeSet`, and `.call` at the project level -- all granted through
+        minimal custom roles rather than a bundling predefined role. This is a new
+        PassRole-equivalent primitive: `actAs` authorizes attaching the target's
+        identity to a new Cloud Function, and the `cloudfunctions.functions.*`
+        permissions let you build, deploy, and invoke it without ever needing
+        `run.services.*` access to the Cloud Run infrastructure the function runs on
+        internally. Once deployed, invoking the function directly (no `setIamPolicy`
+        required) runs your handler code with the target service account's identity
+        attached, and that code can reach the metadata server to steal its token.
+      hints:
+        - "iam.serviceAccounts.actAs on a service account lets you attach that identity to new compute you create -- the GCP analog of AWS iam:PassRole. Paired with a compute-create permission like cloudfunctions.functions.create, you can run arbitrary code as that identity without ever calling setIamPolicy to make anything public."
+        - "A 2nd-generation Cloud Function accepts a --service-account flag at deploy time. Write a minimal HTTP handler that reads from the instance metadata server (the same endpoint every GCE/Cloud Run/Cloud Functions workload exposes) to fetch its own attached identity's OAuth access token and return it in the response body, then invoke the function directly with cloudfunctions.functions.call."
+        - "Browse to https://pathfinding.cloud/paths/gcp-cloudfunctions-001 for technique details."
+      commands:
+        - description: "Deploy a 2nd-gen Cloud Function configured to run as the target service account"
+          command: "gcloud functions deploy pl-prod-gcp-cloudfunctions-001-exfil --gen2 --runtime=python312 --region={region} --source=. --entry-point=exfiltrate_token --trigger-http --no-allow-unauthenticated --service-account=pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com"
+        - description: "Invoke the function directly using cloudfunctions.functions.call (no public exposure needed)"
+          command: "gcloud functions call pl-prod-gcp-cloudfunctions-001-exfil --gen2 --region={region}"
+
+    - from: malicious-cloud-function
+      to: target-sa
+      label: "Exfiltrate OAuth token"
+      description: >
+        The invoked function queries its local metadata server
+        (`http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token`)
+        and returns the target service account's short-lived OAuth access token in
+        its HTTP response body. Every subsequent API call made with that token is
+        authorized as the target service account, inheriting its project
+        `roles/editor` permissions.
+      hints: []
+      commands: []
+
+    - from: target-sa
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the exfiltrated OAuth access token for the target service account, read
+        the flag from Secret Manager. The target service account holds an explicit
+        `roles/secretmanager.secretAccessor` grant on this specific secret
+        (`roles/editor` alone does not grant `secretmanager.versions.access`).
+      hints:
+        - "The token you exfiltrated from the function's HTTP response is a raw bearer token, not a gcloud impersonation session -- use it directly as an Authorization header against the REST API rather than trying to pass it to --impersonate-service-account."
+        - "Secret Manager's REST API accepts a `:access` suffix on a secret version resource name; the bearer token alone is sufficient authorization since the target service account holds secretAccessor on that secret."
+      commands:
+        - description: "Retrieve the CTF flag using the exfiltrated access token"
+          command: "curl -H \"Authorization: Bearer $EXFILTRATED_TOKEN\" \"https://secretmanager.googleapis.com/v1/projects/{project_id}/secrets/pl-gcp-cloudfunctions-001-flag/versions/latest:access\""
+        - description: "Equivalent human walkthrough using gcloud impersonation (requires actAs, shown here for reference)"
+          command: "gcloud secrets versions access latest --secret=pl-gcp-cloudfunctions-001-flag --impersonate-service-account=pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com"

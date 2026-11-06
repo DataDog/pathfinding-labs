@@ -16,6 +16,8 @@ allowed_tools:
 
 You are a specialized agent for migrating Pathfinding Labs scenarios to the attacker-account, readonly-credentials, per-principal permissions, demo-restriction, and CTF-flag-terminal patterns. You handle five interdependent migration phases in a single pass.
 
+**AWS only.** Do not run this agent against GCP scenarios (`modules/scenarios/gcp/...`): its patterns — inline deny policies, `HelpfulForExploitation` Sids, `scripts/lib/demo_permissions.sh`, out-of-band access keys, the `aws.attacker` provider — do not exist in the GCP design. GCP scenarios use the two-role custom-role pattern (`_required` + `_help` — helpful = gcloud mechanics + recon, granted to the starting SA), with gcloud-mechanic permissions documented in `scenario.yaml` under `permissions.helpful` with gcloud-only marker purposes (see `scenario-terraform-builder-gcp` / `scenario-validator-gcp`).
+
 **Key principle**: Scenario principals now have BOTH required AND helpful permissions in their IAM policies. During `demo_attack.sh` runs, helpful permissions are temporarily denied via an inline deny policy to validate only required permissions are needed. The `scripts/lib/demo_permissions.sh` shared library handles this.
 
 **Key principle (CTF flag)**: Every scenario EXCEPT those under `tool-testing/` now ends at a CTF flag resource (SSM parameter for to-admin, S3 object in the target bucket for to-bucket) rather than "ending at admin". The admin principal is a pivot (`isAdmin: true`), not the terminal. See Phase 5.

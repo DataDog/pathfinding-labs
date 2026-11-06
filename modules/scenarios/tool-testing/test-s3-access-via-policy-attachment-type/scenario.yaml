@@ -1,0 +1,140 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.2.0"
+status: "beta"
+name: "test-s3-access-via-policy-attachment-type"
+title: "S3 Access via Inline and Managed Policy Attachment Types"
+description: "Tool testing scenario with 4 principals (IAM user with inline policy, IAM user with managed policy, IAM role with inline policy, IAM role with managed policy) that each already have full read/write access to the same S3 bucket, to validate that graph/CSPM tools detect equivalent bucket access regardless of the IAM attachment mechanism used"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Tool Testing"
+sub_category: "policy-parsing-edge-case"
+path_type: "one-hop"
+target: "to-bucket"
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    # Shared assumer (only used to assume the two role principals)
+    - "arn:aws:iam::{account_id}:user/pl-prod-patn-starting-user"
+
+    # IAM user with inline policy
+    - "arn:aws:iam::{account_id}:user/pl-prod-patn-user-inline"
+
+    # IAM user with managed (customer-managed) policy attached
+    - "arn:aws:iam::{account_id}:user/pl-prod-patn-user-managed"
+
+    # IAM role with inline policy
+    - "arn:aws:iam::{account_id}:role/pl-prod-patn-role-inline"
+
+    # IAM role with managed (customer-managed) policy attached
+    - "arn:aws:iam::{account_id}:role/pl-prod-patn-role-managed"
+
+    # Target Resource
+    - "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}"
+
+  summary: "Four independent principals (2 IAM users, 2 IAM roles) each already have full read/write access to one S3 bucket, granted via inline user/role policies for two of them and via customer-managed policy attachments for the other two, to test that a graph/CSPM tool infers identical bucket-access edges regardless of the underlying IAM attachment mechanism."
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+permissions:
+  required:
+    - principal: "pl-prod-patn-user-inline"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}"
+        - permission: "s3:ListAllMyBuckets"
+          resource: "*"
+
+    - principal: "pl-prod-patn-user-managed"
+      principal_type: "user"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}"
+        - permission: "s3:ListAllMyBuckets"
+          resource: "*"
+
+    - principal: "pl-prod-patn-role-inline"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}"
+        - permission: "s3:ListAllMyBuckets"
+          resource: "*"
+
+    - principal: "pl-prod-patn-role-managed"
+      principal_type: "role"
+      permissions:
+        - permission: "s3:GetObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:PutObject"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}/*"
+        - permission: "s3:ListBucket"
+          resource: "arn:aws:s3:::pl-patn-bucket-{account_id}-{suffix}"
+        - permission: "s3:ListAllMyBuckets"
+          resource: "*"
+
+  helpful:
+    - principal: "pl-prod-patn-starting-user"
+      principal_type: "user"
+      permissions:
+        - permission: "sts:GetCallerIdentity"
+          purpose: "Verify assumed identity"
+        - permission: "sts:AssumeRole"
+          purpose: "Starting user assumes the two role-based test principals"
+
+# =============================================================================
+# TEST GROUPS
+# =============================================================================
+test_groups:
+  policy_attachment_type:
+    total: 4
+    users: 2
+    roles: 2
+    categories:
+      - name: "Inline Policy"
+        count: 2
+        description: "Access granted via aws_iam_user_policy / aws_iam_role_policy embedded directly on the principal"
+      - name: "Managed Policy"
+        count: 2
+        description: "Access granted via a customer-managed aws_iam_policy attached with aws_iam_user_policy_attachment / aws_iam_role_policy_attachment"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0009 - Collection"
+  techniques:
+    - "T1530 - Data from Cloud Storage Object"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_tool_testing_test_s3_access_via_policy_attachment_type"
+  module_path: "modules/scenarios/tool-testing/test-s3-access-via-policy-attachment-type"

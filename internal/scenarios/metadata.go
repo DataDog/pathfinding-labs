@@ -68,7 +68,10 @@ type Scenario struct {
 			PrincipalType string `yaml:"principal_type"`
 			Permissions   []struct {
 				Permission string `yaml:"permission"`
-				Resource   string `yaml:"resource"`
+				Resource  string `yaml:"resource"`
+				// Purpose documents why a permission is required (e.g. GCP LRO
+				// polling that is needed even at the raw API level).
+				Purpose string `yaml:"purpose,omitempty"`
 			} `yaml:"permissions"`
 		} `yaml:"required"`
 		Helpful []struct {
@@ -107,6 +110,26 @@ type Scenario struct {
 	// Internal fields (not from YAML)
 	FilePath string `yaml:"-"` // Path to the scenario.yaml file
 	DirPath  string `yaml:"-"` // Directory containing the scenario
+	Cloud    string `yaml:"-"` // Cloud provider ("aws", "gcp", "azure"), derived from DirPath
+}
+
+// deriveCloud infers the cloud provider from a scenario's directory path by
+// looking for a "scenarios/{cloud}/..." segment (e.g. modules/scenarios/gcp/...).
+// Scenarios with no recognized cloud segment (the entire existing AWS tree,
+// which has no such segment) default to "aws" — this keeps every existing
+// scenario.yaml file untouched.
+func deriveCloud(dirPath string) string {
+	parts := strings.Split(filepath.ToSlash(dirPath), "/")
+	for i, p := range parts {
+		if p != "scenarios" || i+1 >= len(parts) {
+			continue
+		}
+		switch parts[i+1] {
+		case "gcp", "azure":
+			return parts[i+1]
+		}
+	}
+	return "aws"
 }
 
 // LoadFromFile loads a scenario from a YAML file
@@ -123,6 +146,7 @@ func LoadFromFile(path string) (*Scenario, error) {
 
 	s.FilePath = path
 	s.DirPath = filepath.Dir(path)
+	s.Cloud = deriveCloud(s.DirPath)
 
 	return &s, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/pathfinding-labs/internal/config"
+	"github.com/DataDog/pathfinding-labs/internal/gcp"
 	"github.com/DataDog/pathfinding-labs/internal/repo"
 	"github.com/DataDog/pathfinding-labs/internal/scenarios"
 	"github.com/DataDog/pathfinding-labs/internal/terraform"
@@ -97,11 +98,37 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	// Configuration
 	fmt.Println(cyan("Configuration:"))
 	cfg, err := config.Load()
-	if err != nil {
+	isGCP := err == nil && cfg.Active().ActiveCloudOrDefault() == "gcp"
+	switch {
+	case err != nil:
 		fmt.Printf("  Status: %s\n", yellow("Not configured"))
-	} else if cfg.Active().AWS.Prod.Profile == "" {
+	case isGCP:
+		if cfg.Active().GCP.Prod.ProjectID == "" {
+			fmt.Printf("  Status: %s\n", yellow("Not configured (run 'plabs init')"))
+			break
+		}
+		fmt.Printf("  Production: %s\n", dim("project: "+cfg.Active().GCP.Prod.ProjectID))
+		if cfg.Active().GCP.Dev.ProjectID != "" {
+			fmt.Printf("  Development: %s\n", dim("project: "+cfg.Active().GCP.Dev.ProjectID))
+		}
+		if cfg.Active().GCP.Ops.ProjectID != "" {
+			fmt.Printf("  Operations: %s\n", dim("project: "+cfg.Active().GCP.Ops.ProjectID))
+		}
+
+		authStatus := gcp.CheckAuthStatus()
+		switch {
+		case authStatus.OK():
+			fmt.Printf("  Auth: %s\n", green(fmt.Sprintf("ADC ok (%s)", authStatus.Account)))
+		case authStatus.ADCPresent && !authStatus.CLIPresent:
+			fmt.Printf("  Auth: %s\n", yellow("ADC ok, gcloud CLI login missing"))
+		case !authStatus.ADCPresent && authStatus.CLIPresent:
+			fmt.Printf("  Auth: %s\n", yellow(fmt.Sprintf("CLI ok (%s), ADC missing", authStatus.Account)))
+		default:
+			fmt.Printf("  Auth: %s\n", yellow("not configured - run gcloud auth login --update-adc"))
+		}
+	case cfg.Active().AWS.Prod.Profile == "":
 		fmt.Printf("  Status: %s\n", yellow("Not configured (run 'plabs init')"))
-	} else {
+	default:
 		fmt.Printf("  Production: %s\n", dim("profile: "+cfg.Active().AWS.Prod.Profile))
 		if cfg.Active().AWS.Dev.Profile != "" {
 			fmt.Printf("  Development: %s\n", dim("profile: "+cfg.Active().AWS.Dev.Profile))

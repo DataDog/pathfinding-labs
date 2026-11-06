@@ -4,6 +4,52 @@ Version history for `.claude/scenario-attackmap-schema.md`. When bumping the sch
 
 ---
 
+## 1.8.1 — 2026-09-21
+
+Patch: added GCP `subType` values to the Node Schema table, surfaced by the first real GCP scenario (gcp-iam-001) going through validation.
+
+**Changes:**
+- Node Schema `subType` field row now lists GCP values explicitly: `service-account`, `gcs-bucket`, `cloud-function`, `cloud-run-service`, `secret-manager-secret`, etc., alongside the existing AWS list. Includes a note that the pattern (resource-type slug) applies to any GCP resource not listed.
+
+**Why:** `scenario-validator-gcp` flagged `subType: service-account` as an unlisted extrapolation during gcp-iam-001 validation. The value is correct; it just needed to be added to the schema's enumeration.
+
+**Migration rules:** None — no existing files change; the new GCP `subType` values are additive.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    No changes required to existing attack maps.
+```
+
+---
+
+## 1.8.0 — 2026-09-21
+
+Minor: generalized the AWS-only `arn` field to a cloud-derived resource-identifier concept, and added GCP values for the CTF Flag Terminal Pattern, ahead of the first GCP scenario going live.
+
+**Changes:**
+- Added a "Resource identifier terminology" note/table near the top of the schema mapping AWS concepts (the `arn` field holding a literal ARN, CTF flag terminals as `ssm-parameter`/`s3-bucket`) to their GCP equivalents (the `arn` field holding a full GCP resource name, CTF flag terminals as `secret-manager-secret`/`gcs-bucket`). Cloud is derived from the scenario's directory path (`modules/scenarios/gcp/...` → GCP), never a `scenario.yaml` field — same convention as pathfinding.cloud and the rest of the pathfinding-labs `.claude/` tooling.
+- Node Schema table's `arn` field row generalized: still required on every principal/target/CTF-flag node, but now documents the GCP full-resource-name meaning alongside the AWS ARN meaning.
+- CTF Flag Terminal Pattern split into AWS and GCP variants: GCP to-admin scenarios add a `secret-manager-secret` node (`gcloud secrets versions access` in the final edge's `commands`); GCP to-bucket scenarios use a `gcs-bucket` target node (`gsutil cat` in the final edge's `commands`).
+- Existing AWS-specific wording, examples, and the "no duplicate ARNs" rule are unchanged — this is additive, not a rename of any field.
+
+**Why:** The `arn` field name is kept as-is rather than renamed (e.g. to `resourceIdentifier`), which would force a breaking MAJOR migration across ~250 existing AWS `attack_map.yaml` files for a cosmetic rename. Documenting its GCP meaning inline avoids that churn while still giving `scenario-terraform-builder-gcp`/`scenario-readme-creator`/`scenario-validator-gcp` an unambiguous spec to build against.
+
+**Migration rules:**
+- MINOR — no existing (all-AWS) attack maps change; the new GCP values are additive and only apply to scenarios that don't exist yet.
+
+```yaml
+migration:
+  tier: none
+  instructions: >
+    No changes required to existing attack maps. New GCP scenarios under
+    modules/scenarios/gcp/... put a full GCP resource name in the arn field
+    and use the secret-manager-secret/gcs-bucket CTF flag terminal pattern.
+```
+
+---
+
 ## 1.7.0 — 2026-05-05
 
 Minor: codified the principal→resource→principal authoring rule — all hints for a combined visual hop live on the IN edge; resource→principal (OUT) edges carry `hints: []`.

@@ -62,6 +62,7 @@ func init() {
 	rootCmd.AddCommand(credentialsCmd)
 	rootCmd.AddCommand(outputCmd)
 	rootCmd.AddCommand(workspaceCmd)
+	rootCmd.AddCommand(cloudCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

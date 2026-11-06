@@ -1,0 +1,174 @@
+attackMap:
+  nodes:
+    - id: user-direct
+      label: "Direct Access User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-direct"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has a direct policy grant of s3:GetObject, s3:PutObject, and
+        s3:ListBucket on the target bucket -- no role assumption required.
+
+    - id: user-assumer
+      label: "Assumer User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-assumer"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user has no direct S3 permissions, but holds sts:AssumeRole on
+        pl-prod-dimp-role-trusted. That role's trust policy already names this user
+        as a trusted principal and the role already has bucket access -- this is a
+        normal, currently-live indirect access path with no escalation step involved.
+
+    - id: role-trusted
+      label: "Already-Trusting Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-trusted"
+      description: >
+        This IAM role has s3:GetObject, s3:PutObject, and s3:ListBucket permissions
+        on the target bucket. Its trust policy already permits
+        pl-prod-dimp-user-assumer to assume it -- no modification to this role is
+        required for the assumer user to inherit these bucket permissions.
+
+    - id: user-trustbypass
+      label: "Trust-Bypass User"
+      type: principal
+      subType: iam-user
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-dimp-user-trustbypass"
+      description: >
+        You have gained access to this principal's AWS IAM credentials. These could
+        have been obtained through many real-world vectors: phishing a developer and
+        gaining access to their workstation, compromising a browser session, exploiting
+        a vulnerable workload running in this AWS account, discovering credentials in
+        a public S3 bucket, or finding them hardcoded in source code or a CI/CD pipeline.
+
+        Regardless of how you obtained them, you are now operating as this principal.
+        This IAM user holds iam:UpdateAssumeRolePolicy and sts:AssumeRole on
+        pl-prod-dimp-role-untrusted. Unlike the assumer user, this role's trust
+        policy does NOT currently name this user -- it trusts only
+        ec2.amazonaws.com. A naive read of the trust policy makes this look like a
+        dead end, but this user can rewrite that trust policy itself, granting the
+        role's bucket access to itself before assuming it. This is a genuine
+        privilege escalation step, not a pre-existing relationship.
+
+    - id: role-untrusted
+      label: "Initially-Untrusting Role"
+      type: principal
+      subType: iam-role
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-dimp-role-untrusted"
+      description: >
+        This IAM role has s3:GetObject, s3:PutObject, and s3:ListBucket permissions
+        on the target bucket. Its trust policy initially permits only
+        ec2.amazonaws.com to assume it. Once pl-prod-dimp-user-trustbypass rewrites
+        this trust policy to add itself, that user inherits these bucket permissions
+        by assuming the role.
+
+    - id: target-bucket
+      label: "Multi-Path Bucket"
+      type: resource
+      subType: s3-bucket
+      isTarget: true
+      arn: "arn:aws:s3:::pl-dimp-bucket-{account_id}-{suffix}"
+      description: >
+        This is the target S3 bucket reachable through three independent
+        principals: pl-prod-dimp-user-direct (direct policy grant),
+        pl-prod-dimp-user-assumer (indirect, via a role that already trusts it),
+        and pl-prod-dimp-user-trustbypass (indirect, via a role it must first
+        re-trust through a trust-policy rewrite). A complete reverse blast radius
+        query on this bucket must return all three starting users plus both
+        intermediate roles.
+
+  edges:
+    - from: user-direct
+      to: target-bucket
+      label: "s3:GetObject, s3:PutObject, s3:ListBucket"
+      description: >
+        This user has a direct IAM policy grant to read, write, and list objects
+        in the target bucket. No intermediate role assumption is required.
+      hints:
+        - "Use s3:ListBucket, s3:GetObject, and s3:PutObject directly -- this user has explicit IAM permissions on the target bucket without needing to assume any role."
+      commands:
+        - description: "List bucket contents as the direct-access user"
+          command: "aws s3 ls s3://pl-dimp-bucket-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket as the direct-access user"
+          command: "aws s3 cp s3://pl-dimp-bucket-{account_id}-{suffix}/sensitive-data.txt /tmp/dimp-direct.txt"
+
+    - from: user-assumer
+      to: role-trusted
+      label: "sts:AssumeRole"
+      description: >
+        This user assumes pl-prod-dimp-role-trusted. The role's trust policy
+        already names this user as a trusted principal, so the assumption
+        succeeds immediately with no prior setup step.
+      hints:
+        - "This user has no bucket permissions of its own -- check what role it can assume, and check whether that role already trusts it."
+        - "Use sts:AssumeRole against the trusted role and export the returned temporary credentials before touching the bucket."
+      commands:
+        - description: "Assume the already-trusting role"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-dimp-role-trusted --role-session-name dimp-assumer --query 'Credentials' --output json"
+
+    - from: role-trusted
+      to: target-bucket
+      label: "s3:GetObject, s3:PutObject, s3:ListBucket"
+      description: >
+        Using the temporary credentials from the assumed role, the assumer user
+        now inherits the role's bucket permissions and can read, write, and list
+        objects in the target bucket.
+      hints:
+        - "With the assumed role's credentials active, use s3:ListBucket and s3:GetObject exactly as the direct-access user did -- the role's bucket permissions are now yours."
+      commands:
+        - description: "List bucket contents using the assumed role's credentials"
+          command: "aws s3 ls s3://pl-dimp-bucket-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using the assumed role's credentials"
+          command: "aws s3 cp s3://pl-dimp-bucket-{account_id}-{suffix}/sensitive-data.txt /tmp/dimp-trusted-role.txt"
+
+    - from: user-trustbypass
+      to: role-untrusted
+      label: "iam:UpdateAssumeRolePolicy + sts:AssumeRole"
+      description: >
+        This user rewrites the trust policy on pl-prod-dimp-role-untrusted to add
+        itself as a trusted principal, then assumes the role. Unlike the assumer
+        user's path, this role does not trust the user until this step is taken --
+        this is an active privilege escalation, not an already-granted relationship.
+      hints:
+        - "A direct sts:AssumeRole attempt against this role will fail -- its trust policy currently names only ec2.amazonaws.com. Check what permissions you hold on the role itself, not just on the bucket."
+        - "Use iam:UpdateAssumeRolePolicy to add your own principal ARN to the role's trust policy, wait briefly for IAM to propagate the change, then retry sts:AssumeRole."
+      commands:
+        - description: "Fetch the role's current trust policy"
+          command: "aws iam get-role --role-name pl-prod-dimp-role-untrusted --query 'Role.AssumeRolePolicyDocument'"
+        - description: "Rewrite the trust policy to add the trust-bypass user as a trusted principal"
+          command: "aws iam update-assume-role-policy --role-name pl-prod-dimp-role-untrusted --policy-document file://updated-trust-policy.json"
+        - description: "Assume the role now that it trusts this user"
+          command: "aws sts assume-role --role-arn arn:aws:iam::{account_id}:role/pl-prod-dimp-role-untrusted --role-session-name dimp-trustbypass --query 'Credentials' --output json"
+
+    - from: role-untrusted
+      to: target-bucket
+      label: "s3:GetObject, s3:PutObject, s3:ListBucket"
+      description: >
+        Using the temporary credentials from the newly-assumed role, the
+        trust-bypass user now inherits the role's bucket permissions and can
+        read, write, and list objects in the target bucket.
+      hints:
+        - "With the assumed role's credentials active, use s3:ListBucket and s3:GetObject -- the role's bucket permissions are now reachable, even though they were not a moment ago."
+      commands:
+        - description: "List bucket contents using the newly-assumed role's credentials"
+          command: "aws s3 ls s3://pl-dimp-bucket-{account_id}-{suffix}/"
+        - description: "Read an object from the bucket using the newly-assumed role's credentials"
+          command: "aws s3 cp s3://pl-dimp-bucket-{account_id}-{suffix}/sensitive-data.txt /tmp/dimp-untrusted-role.txt"

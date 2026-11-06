@@ -20,17 +20,19 @@ import (
 const DefaultFlagFileName = "flags.default.yaml"
 
 var initFlagFile string
+var initDevMode bool
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize plabs and configure your AWS accounts",
+	Short: "Initialize plabs and configure your cloud accounts",
 	Long: `Initialize plabs by:
-  1. Checking for/downloading terraform
-  2. Cloning the pathfinding-labs repository
-  3. Running the setup wizard to configure AWS accounts
-  4. Loading CTF flag values (from --flag-file or flags.default.yaml in the repo)
-  5. Creating terraform.tfvars
-  6. Running terraform init`,
+  1. Selecting which cloud(s) to configure (AWS, GCP)
+  2. Checking for required tools (only for the selected cloud(s))
+  3. Checking for/downloading terraform
+  4. Cloning the pathfinding-labs repository
+  5. Running the setup wizard to configure cloud accounts
+  6. Loading CTF flag values (from --flag-file or flags.default.yaml in the repo),
+     creating terraform.tfvars, and running terraform init`,
 	RunE: runInit,
 }
 
@@ -44,10 +46,20 @@ func runInit(cmd *cobra.Command, args []string) error {
 		existingWS = existingCfg.Active()
 	}
 
-	// Compute paths for the active workspace (respects dev mode if already set).
+	// Compute paths for the active workspace (respects dev mode if already set,
+	// or uses --dev-mode flag to pre-configure it without a wizard question).
 	var devMode bool
 	var devModePath string
-	if existingWS != nil {
+	if initDevMode {
+		// --dev-mode: detect the local repo path and skip the wizard's dev mode
+		// question entirely, same as if the user had answered "yes" to it.
+		detectedPath, err := config.DetectDevModePath()
+		if err != nil {
+			return fmt.Errorf("--dev-mode: %w", err)
+		}
+		devMode = true
+		devModePath = detectedPath
+	} else if existingWS != nil {
 		devMode = existingWS.DevMode
 		devModePath = existingWS.DevModePath
 	}
@@ -69,14 +81,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println()
 
-	// Step 1: Check required tools
-	fmt.Println("[1/5] Checking required tools...")
-	if err := checkDependencies(green, yellow, red); err != nil {
+	// Step 1: Ask which cloud(s) to configure, so the tool check right after
+	// (and the account-setup wizard at the end) only ask about what's needed.
+	fmt.Println("[1/6] Selecting cloud(s)...")
+	wizard := config.NewWizard()
+	awsSelected, gcpSelected, err := wizard.SelectClouds()
+	if err != nil {
+		return fmt.Errorf("setup wizard failed: %w", err)
+	}
+
+	// Step 2: Check required tools, scoped to the selected cloud(s)
+	fmt.Println("[2/6] Checking required tools...")
+	if err := checkDependencies(green, yellow, red, awsSelected, gcpSelected); err != nil {
 		return err
 	}
 
-	// Step 2: Create directories
-	fmt.Printf("[2/5] Creating directories at %s\n", paths.PlabsRoot)
+	// Step 3: Create directories
+	fmt.Printf("[3/6] Creating directories at %s\n", paths.PlabsRoot)
 	if err := paths.EnsureDirectories(); err != nil {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
@@ -88,8 +109,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(green("      Directories created"))
 
-	// Step 3: Check for/download terraform
-	fmt.Println("[3/5] Checking for terraform...")
+	// Step 4: Check for/download terraform
+	fmt.Println("[4/6] Checking for terraform...")
 	installer := terraform.NewInstaller(paths.BinPath)
 	tfPath, installResult, err := installer.EnsureInstalled()
 	if err != nil {
@@ -104,8 +125,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Printf(green("      Terraform v%s ready at %s\n"), terraform.TerraformVersion, tfPath)
 	}
 
-	// Step 4: Clone repository (skip for dev mode workspaces)
-	fmt.Println("[4/5] Setting up pathfinding-labs repository...")
+	// Step 5: Clone repository (skip for dev mode workspaces)
+	fmt.Println("[5/6] Setting up pathfinding-labs repository...")
 	if devMode {
 		fmt.Printf(yellow("      Dev mode: using local repository at %s\n"), devModePath)
 		if _, err := os.Stat(filepath.Join(devModePath, "modules", "scenarios")); err != nil {
@@ -128,13 +149,24 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Println(green("      Repository cloned"))
 	}
 
-	// Step 5: Run setup wizard
-	fmt.Println("[5/5] Running setup wizard (AWS profile configuration)...")
+	// Step 6: Run setup wizard (account configuration for the selected clouds)
+	fmt.Println("[6/6] Running setup wizard (account configuration)...")
 
-	wizard := config.NewWizard()
-	newWS, err := wizard.Run()
+	newWS, err := wizard.Run(awsSelected, gcpSelected, config.RunOptions{
+		DevMode:     devMode,
+		DevModePath: devModePath,
+	})
 	if err != nil {
 		return fmt.Errorf("setup wizard failed: %w", err)
+	}
+
+	// The wizard determines ActiveCloud, so recompute paths now that it's
+	// known — for GCP this points TerraformDir/StatePath at the separate
+	// gcp/ root instead of the repo root used for steps 1-4 above (cloning,
+	// terraform binary install, and directory setup are cloud-agnostic).
+	paths, err = repo.GetPathsForWorkspaceAndCloud(activeWorkspace, newWS.ActiveCloudOrDefault(), devMode, devModePath)
+	if err != nil {
+		return fmt.Errorf("failed to get paths for active cloud: %w", err)
 	}
 
 	// Load CTF flag values. Explicit --flag-file wins. Otherwise fall back to
@@ -227,9 +259,12 @@ type depCheck struct {
 	installHint string
 }
 
-// checkDependencies prints a checklist of required and optional tools.
-// Returns an error if any required tool is missing.
-func checkDependencies(green, yellow, red func(...interface{}) string) error {
+// checkDependencies prints a checklist of required and optional tools,
+// scoped to the cloud(s) actually selected in the wizard — an AWS-only
+// setup never asks about gcloud, and a GCP-only setup never asks about the
+// aws CLI or the SSM session-manager-plugin. Returns an error if any
+// required tool is missing.
+func checkDependencies(green, yellow, red func(...interface{}) string, awsSelected, gcpSelected bool) error {
 	checks := []depCheck{
 		{
 			name:     "git",
@@ -239,31 +274,48 @@ func checkDependencies(green, yellow, red func(...interface{}) string) error {
 				"  Ubuntu/Debian:  sudo apt-get install git\n" +
 				"  RHEL/CentOS:    sudo yum install git",
 		},
-		{
-			name:     "aws CLI",
-			binary:   "aws",
-			required: true,
-			installHint: "  macOS:          brew install awscli\n" +
-				"  Linux:          https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html\n" +
-				"  Windows:        https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-windows.html",
-		},
-		{
-			name:        "jq",
-			binary:      "jq",
-			required:    false,
-			missingNote: "some demos require it",
-			installHint: "  macOS:          brew install jq\n" +
-				"  Ubuntu/Debian:  sudo apt-get install jq\n" +
-				"  RHEL/CentOS:    sudo yum install jq",
-		},
-		{
-			name:        "session-manager-plugin",
-			binary:      "session-manager-plugin",
-			required:    false,
-			missingNote: "SSM-based demos require it",
-			installHint: "  https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html",
-		},
 	}
+
+	if awsSelected {
+		checks = append(checks,
+			depCheck{
+				name:     "aws CLI",
+				binary:   "aws",
+				required: true,
+				installHint: "  macOS:          brew install awscli\n" +
+					"  Linux:          https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html\n" +
+					"  Windows:        https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-windows.html",
+			},
+			depCheck{
+				name:        "session-manager-plugin",
+				binary:      "session-manager-plugin",
+				required:    false,
+				missingNote: "SSM-based demos require it",
+				installHint: "  https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html",
+			},
+		)
+	}
+
+	if gcpSelected {
+		checks = append(checks, depCheck{
+			name:     "gcloud CLI",
+			binary:   "gcloud",
+			required: true,
+			installHint: "  macOS:          brew install --cask google-cloud-sdk\n" +
+				"  Linux/Windows:  https://cloud.google.com/sdk/docs/install",
+		})
+	}
+
+	// jq isn't tied to a specific cloud's demos, so always check it.
+	checks = append(checks, depCheck{
+		name:        "jq",
+		binary:      "jq",
+		required:    false,
+		missingNote: "some demos require it",
+		installHint: "  macOS:          brew install jq\n" +
+			"  Ubuntu/Debian:  sudo apt-get install jq\n" +
+			"  RHEL/CentOS:    sudo yum install jq",
+	})
 
 	var missingRequired []depCheck
 
@@ -298,6 +350,7 @@ func checkDependencies(green, yellow, red func(...interface{}) string) error {
 
 func init() {
 	initCmd.Flags().StringVar(&initFlagFile, "flag-file", "", "Path to a YAML flag-set file (overrides flags.default.yaml in the repo). See flags.default.yaml for the schema.")
+	initCmd.Flags().BoolVar(&initDevMode, "dev-mode", false, "Pre-configure dev mode using the local repository checkout (skips the wizard's dev-mode question)")
 
 	// Check if already initialized when running non-init commands
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {

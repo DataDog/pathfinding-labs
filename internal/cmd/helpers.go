@@ -3,10 +3,15 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
 
 	plabsaws "github.com/DataDog/pathfinding-labs/internal/aws"
@@ -30,12 +35,15 @@ func getWorkingPaths() (*repo.Paths, error) {
 		return repo.GetPaths()
 	}
 	ws := cfg.Active()
-	paths, err := repo.GetPathsForWorkspace(cfg.ActiveName(), ws.DevMode, ws.DevModePath)
+	paths, err := repo.GetPathsForWorkspaceAndCloud(cfg.ActiveName(), ws.ActiveCloudOrDefault(), ws.DevMode, ws.DevModePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if !ws.StateMigrated {
+	// This legacy migration only ever applies to the AWS root (GCP never had
+	// the pre-canonical-state per-directory layout), so skip it entirely
+	// when the active cloud is anything else.
+	if !ws.StateMigrated && ws.ActiveCloudOrDefault() == "aws" {
 		candidates := []string{paths.RepoPath}
 		if ws.DevModePath != "" {
 			candidates = append(candidates, ws.DevModePath)
@@ -163,6 +171,10 @@ func validateAWSCredentials(cfg *config.Config) error {
 	}
 
 	ws := cfg.Active()
+
+	if ws.ActiveCloudOrDefault() != "aws" {
+		return validateGCPCredentials(ws)
+	}
 	profile := ws.AWS.Prod.Profile
 	if profile == "" {
 		red := color.New(color.FgRed).SprintFunc()
@@ -218,6 +230,159 @@ func validateAWSCredentials(cfg *config.Config) error {
 	return nil
 }
 
+// validateGCPCredentials mirrors validateAWSCredentials for GCP, with one
+// difference: on AWS, an expired SSO session is often refreshed transparently
+// by the profile's credential_process (aws-vault, aws-sso-util, etc.), which
+// pops a browser device-auth flow with no extra step from the user. gcloud
+// has no credential_process equivalent for Application Default Credentials,
+// so on the first failure plabs asks the user which login to run and then
+// runs it — rather than picking one automatically, since `gcloud auth login
+// --update-adc` can reassign the user's gcloud CLI identity, not just ADC,
+// and that's a decision the user should make each time, not plabs.
+func validateGCPCredentials(ws *config.WorkspaceConfig) error {
+	if err := validateGCPCredentialsOnce(ws, false); err == nil {
+		return nil
+	}
+
+	mode, err := promptGCPReauthMode()
+	if err != nil {
+		return fmt.Errorf("GCP credential validation cancelled: %w", err)
+	}
+	if mode == "cancel" {
+		return fmt.Errorf("GCP credential validation cancelled")
+	}
+
+	yellow := color.New(color.FgYellow).SprintFunc()
+	fmt.Printf("\n%s Re-authenticating with GCP...\n\n", yellow("Attention:"))
+
+	var loginCmd *exec.Cmd
+	if mode == "both" {
+		loginCmd = exec.Command("gcloud", "auth", "login", "--update-adc")
+	} else {
+		loginCmd = exec.Command("gcloud", "auth", "application-default", "login")
+	}
+	loginCmd.Stdin = os.Stdin
+	loginCmd.Stdout = os.Stdout
+	loginCmd.Stderr = os.Stderr
+	_ = loginCmd.Run() // ignore error; the retry below surfaces whatever's still wrong
+
+	return validateGCPCredentialsOnce(ws, true)
+}
+
+// promptGCPReauthMode asks the user which gcloud login to run: "adc" updates
+// Application Default Credentials only (used by Terraform); "both" runs
+// `gcloud auth login --update-adc`, which also updates the CLI-session
+// credential used by demo scripts' `gcloud ... --impersonate-service-account`
+// calls, as the same identity as ADC — required since Terraform grants
+// impersonation rights to whichever identity ADC detects.
+func promptGCPReauthMode() (string, error) {
+	var mode string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("GCP credentials need re-authenticating. Which login do you want to run?").
+				Options(
+					huh.NewOption("ADC + CLI login (gcloud auth login --update-adc) — recommended", "both"),
+					huh.NewOption("ADC only (gcloud auth application-default login)", "adc"),
+					huh.NewOption("Cancel", "cancel"),
+				).
+				Value(&mode),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+	return mode, nil
+}
+
+// validateGCPCredentialsOnce performs a single ADC + project-access check.
+// showHelp controls whether failure prints the manual re-auth instructions —
+// suppressed on the first attempt from validateGCPCredentials since that
+// caller auto-retries via a fresh login instead.
+func validateGCPCredentialsOnce(ws *config.WorkspaceConfig, showHelp bool) error {
+	red := color.New(color.FgRed).SprintFunc()
+	cyan := color.New(color.FgCyan).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	printGCPAuthHelp := func(projectID string) {
+		fmt.Println()
+		fmt.Println(red("GCP Credentials Error"))
+		fmt.Println()
+		if projectID != "" {
+			fmt.Printf("Your Application Default Credentials cannot access project %s.\n", yellow(projectID))
+		} else {
+			fmt.Println("Application Default Credentials (ADC) are not configured or have expired.")
+		}
+		fmt.Println()
+
+		// Show the active gcloud account so the user knows which one is in use.
+		if out, err := exec.Command("gcloud", "auth", "list",
+			"--filter=status:ACTIVE", "--format=value(account)").Output(); err == nil {
+			if account := strings.TrimSpace(string(out)); account != "" {
+				fmt.Printf("  Active gcloud account: %s\n", yellow(account))
+				fmt.Println()
+			}
+		}
+
+		fmt.Println("Re-authenticate and try again. Pick based on whether you also run demo scripts:")
+		fmt.Println()
+		fmt.Printf("  %s  (ADC + CLI login, same identity — needed for demo scripts)\n", cyan("gcloud auth login --update-adc"))
+		fmt.Printf("  %s  (ADC only)\n", cyan("gcloud auth application-default login"))
+		fmt.Println()
+		if projectID != "" {
+			fmt.Println("Make sure to log in with the account that has access to the configured project.")
+			fmt.Println()
+		}
+	}
+
+	// Step 1: Get an ADC access token. This may succeed even when the token is
+	// stale (RAPT expiry), so we verify it with a real API call below.
+	tokenCmd := exec.Command("gcloud", "auth", "application-default", "print-access-token")
+	tokenCmd.Env = os.Environ()
+	tokenOut, err := tokenCmd.Output()
+	if err != nil {
+		if showHelp {
+			printGCPAuthHelp("")
+		}
+		return fmt.Errorf("GCP Application Default Credentials not configured")
+	}
+	token := strings.TrimSpace(string(tokenOut))
+
+	// Step 2: Verify the token actually works against the configured project.
+	// Skip when no project is configured (e.g. first-run before plabs init).
+	projectID := ws.GCP.Prod.ProjectID
+	if projectID == "" {
+		return nil
+	}
+
+	req, err := http.NewRequest("GET",
+		"https://cloudresourcemanager.googleapis.com/v1/projects/"+projectID, nil)
+	if err != nil {
+		// Shouldn't happen; skip the network check rather than blocking apply.
+		return nil
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		// Network error — warn but don't block (offline/air-gapped environment).
+		fmt.Printf("%s Could not verify GCP project access (network error) — proceeding.\n", yellow("Warning:"))
+		return nil
+	}
+	defer func() { _, _ = io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	if showHelp {
+		printGCPAuthHelp(projectID)
+	}
+	return fmt.Errorf("GCP credentials cannot access project %s (HTTP %d)", projectID, resp.StatusCode)
+}
+
 // printTerraformAuthHint re-validates AWS credentials after a terraform operation fails and
 // prints a targeted "re-authenticate" message when a profile is found to be expired.
 // It checks the setup profile for attacker (used during destroy) in addition to the
@@ -226,10 +391,13 @@ func printTerraformAuthHint(cfg *config.Config) {
 	if cfg == nil {
 		return
 	}
+	ws := cfg.Active()
+	if ws.ActiveCloudOrDefault() != "aws" {
+		return
+	}
+
 	red := color.New(color.FgRed).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
-
-	ws := cfg.Active()
 
 	// Build the full set of profiles to check, including the attacker setup profile
 	// (which may differ from the normal attacker profile used during deploy).
@@ -310,12 +478,15 @@ func crossAccountEnvErrors(scenarioList []*scenarios.Scenario, ws *config.Worksp
 
 // newDiscovery creates a Discovery instance wired to the current config.
 // IncludeBeta is set from the loaded config so beta scenarios are hidden unless
-// the user has run: plabs config set include-beta true
+// the user has run: plabs config set include-beta true. Results are also
+// filtered to the active workspace's active cloud, so AWS commands never see
+// GCP scenarios and vice versa.
 func newDiscovery(scenariosPath string) *scenarios.Discovery {
 	cfg, _ := config.Load()
 	d := scenarios.NewDiscovery(scenariosPath)
 	if cfg != nil {
 		d.WithIncludeBeta(cfg.IncludeBeta)
+		d.WithCloud(cfg.Active().ActiveCloudOrDefault())
 	}
 	return d
 }

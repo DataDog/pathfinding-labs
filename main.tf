@@ -1655,6 +1655,18 @@ module "single_account_privesc_multi_hop_to_bucket_role_chain_to_s3" {
   flag_value            = lookup(local.effective_flags, "role-chain-to-s3-to-bucket", "flag{MISSING}")
 }
 
+module "tool_testing_test_direct_and_indirect_bucket_access_multi_path" {
+  count  = var.enable_tool_testing_test_direct_and_indirect_bucket_access_multi_path ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-direct-and-indirect-bucket-access-multi-path"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+
 module "tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin" {
   count  = var.enable_tool_testing_test_reverse_blast_radius_direct_and_indirect_through_admin ? 1 : 0
   source = "./modules/scenarios/tool-testing/test-reverse-blast-radius-direct-and-indirect-through-admin"
@@ -1735,6 +1747,28 @@ module "tool_testing_test_reverse_blast_radius_escalation" {
 module "tool_testing_test_effective_permissions_evaluation" {
   count  = var.enable_tool_testing_test_effective_permissions_evaluation ? 1 : 0
   source = "./modules/scenarios/tool-testing/test-effective-permissions-evaluation"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_s3_access_via_policy_attachment_type" {
+  count  = var.enable_tool_testing_test_s3_access_via_policy_attachment_type ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-s3-access-via-policy-attachment-type"
+  providers = {
+    aws.prod = aws.prod
+  }
+  account_id      = local.prod_account_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+}
+
+module "tool_testing_test_s3_read_write_delete_permission_edges" {
+  count  = var.enable_tool_testing_test_s3_read_write_delete_permission_edges ? 1 : 0
+  source = "./modules/scenarios/tool-testing/test-s3-read-write-delete-permission-edges"
   providers = {
     aws.prod = aws.prod
   }

@@ -22,6 +22,7 @@ type InfoPane struct {
 	devModePath         string
 	activeWorkspace     string
 	workspaceCount      int
+	activeCloud         string // "aws" or "gcp"
 	tfInitialized       bool
 	totalScenarios      int
 	deployedCount       int     // Number of deployed scenarios
@@ -49,7 +50,15 @@ func (i *InfoPane) SetConfig(cfg *config.Config) {
 		i.devModePath = cfg.Active().DevModePath
 		i.activeWorkspace = cfg.ActiveName()
 		i.workspaceCount = cfg.WorkspaceCount()
+		i.activeCloud = cfg.Active().ActiveCloudOrDefault()
 	}
+}
+
+// SetActiveCloud updates the active cloud without a full config reload.
+// Called immediately after a cloud switch so the header updates before
+// loadScenarios completes.
+func (i *InfoPane) SetActiveCloud(cloud string) {
+	i.activeCloud = cloud
 }
 
 // SetWorkspace updates the active workspace display fields.
@@ -190,6 +199,17 @@ func (i *InfoPane) View() string {
 	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F3F4F6")) // Light text
 	deployedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#10B981")).Bold(true) // Green for deployed count
 	costStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")) // Warning yellow for cost
+
+	// Cloud context with switch hint
+	cloud := i.activeCloud
+	if cloud == "" {
+		cloud = "aws"
+	}
+	cloudStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#06B6D4")).Bold(true)
+	sb.WriteString(labelStyle.Render("Cloud        "))
+	sb.WriteString(cloudStyle.Render(strings.ToUpper(cloud)))
+	sb.WriteString(dimStyle.Render("  Shift+W to switch"))
+	sb.WriteString("\n")
 
 	// Scenarios deployed: X/Y
 	sb.WriteString(labelStyle.Render("Scenarios deployed "))
