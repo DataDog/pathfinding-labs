@@ -1,6 +1,6 @@
 # Pathfinding Labs Scenario README Schema
 
-**Current schema version: `4.9.4`**
+**Current schema version: `4.9.5`**
 
 This file is the canonical reference for the structure and content of all scenario README.md files. Both the `scenario-readme-creator` and `scenario-readme-migrator` agents read this file as their source of truth. Update this file when the standard changes -- bump the version following semver, record the change in `.claude/scenario-readme-changelog.md` (including a `migration:` YAML block with machine-readable rules), then run `/migrate-readmes` to propagate changes to all existing READMEs.
 
@@ -19,6 +19,7 @@ This file is the canonical reference for the structure and content of all scenar
 |---|---|---|
 | Principal/resource identifier | ARN (e.g., `arn:aws:iam::{account_id}:role/pl-prod-iam-011-to-admin-target-role`) | Full resource name (e.g., `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-to-admin-target-sa@{project_id}.iam.gserviceaccount.com`) |
 | CTF flag storage | SSM Parameter Store (`ssm-parameter`) or S3 object (`s3-object`) | Secret Manager (`secret-manager`) or GCS object (`gcs-object`) |
+| Abuse-detection log source (`## Defend` H4 heading) | `#### CloudTrail Events to Monitor` | `#### Cloud Audit Log Events to Monitor` |
 
 Wherever this document says "ARN," apply the GCP-column equivalent when the scenario lives under `modules/scenarios/gcp/...`. Never fabricate a placeholder ARN/resource-name for anonymous/public-start scenarios in either cloud -- use a descriptive label instead.
 
@@ -66,7 +67,7 @@ The sections below must appear in this exact order with these exact H2/H3/H4 hea
 #### What CSPM tools should detect
 #### Prevention Recommendations
 ### Detecting Abuse (CloudSIEM)
-#### CloudTrail Events to Monitor
+#### CloudTrail Events to Monitor     <- GCP: #### Cloud Audit Log Events to Monitor
 #### Detonation logs
 
 ## References                          <- optional
@@ -483,6 +484,18 @@ Example:
 - `lambda:UpdateFunctionCode20150331v2` -- Lambda function code modified; high severity when followed by an invocation
 ```
 
+##### `#### Cloud Audit Log Events to Monitor` (GCP scenarios only)
+
+GCP scenarios use this heading in place of `#### CloudTrail Events to Monitor`. Bulleted list. Each entry format: `` - `{service}.googleapis.com/{MethodName}` -- {description} `` -- the API service name followed by the short method name as it appears in the audit log's `protoPayload.methodName` (e.g. `iam.googleapis.com/GenerateAccessToken`, `run.googleapis.com/CreateService`, `cloudfunctions.googleapis.com/UpdateFunction`, `secretmanager.googleapis.com/AccessSecretVersion`). Same `--` separator rule as AWS.
+
+Do NOT list `iam.serviceAccounts.actAs` as a monitored event -- like AWS `iam:PassRole`, it is a permission check, not a standalone audit log entry. Detect actAs abuse through the service-account field in the resource creation/update event instead (e.g. `template.serviceAccount` in `run.googleapis.com/CreateService`, `serviceConfig.serviceAccountEmail` in `cloudfunctions.googleapis.com/CreateFunction`).
+
+Example:
+```
+- `iam.googleapis.com/GenerateAccessToken` -- a short-lived access token was minted via service account impersonation; critical when the impersonated service account holds `roles/editor` or `roles/owner`
+- `run.googleapis.com/CreateService` -- a new Cloud Run service was deployed; inspect `template.serviceAccount` and flag deployments where the caller does not otherwise hold that service account's permissions
+```
+
 ##### `#### Detonation logs` -- exact boilerplate:
 
 ```
@@ -601,7 +614,7 @@ For single-principal scenarios (most one-hop), the visual difference is small --
 A README is compliant if all of the following are true:
 
 - [ ] `* **Points:** {N}` is present in the metadata block, is a whole number, and matches `points` in `scenario.yaml`
-- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.4`)
+- [ ] `* **Schema Version:** {version}` is present in the metadata block and matches the current schema version (`4.9.5`)
 - [ ] `Cost Estimate` and `Cost Estimate When Demo Executed` are each `$0/mo` or `$N/mo` (whole-dollar monthly; no hourly rates, ranges, tildes, or parenthetical prose), and the demo-executed value is >= the idle value
 - [ ] *Tool-testing scenarios only*: `## Objective` contains `### Expected Results` after `### Starting Permissions`, with the graph table, the expected answers table (at least one negative control), per-case Why, and Proven by, and no product-specific query syntax
 - [ ] H2 sections are exactly: `Objective`, `Self-hosted Lab Setup`, `Attack`, `Teardown`, `Defend` (plus optional `References`)
@@ -623,9 +636,9 @@ A README is compliant if all of the following are true:
 - [ ] `### Cleanup` exists under `## Attack` with `#### With plabs non-interactive` and `#### With plabs tui` *(CTF scenarios: omit if no attack artifacts to clean)*
 - [ ] `## Teardown` contains `### Teardown with plabs non-interactive` and `### Teardown with plabs tui`
 - [ ] `## Defend` contains `### Detecting Misconfiguration (CSPM)` and `### Detecting Abuse (CloudSIEM)`
-- [ ] `#### CloudTrail Events to Monitor` uses `` `service:EventName` `` format (lowercase service prefix, no space after colon, `--` separator — never an em dash)
+- [ ] `#### CloudTrail Events to Monitor` uses `` `service:EventName` `` format (lowercase service prefix, no space after colon, `--` separator — never an em dash). *GCP scenarios:* the heading is `#### Cloud Audit Log Events to Monitor` and entries use `` `{service}.googleapis.com/{MethodName}` `` format
 - [ ] `#### Detonation logs` contains the standard placeholder text
 - [ ] Companion `attack_map.yaml` file exists (validated separately per attackmap schema)
 - [ ] Companion `solution.md` file exists with link from README
-- [ ] *Non-tool-testing scenarios only*: metadata block contains `* **CTF Flag Location:** {ssm-parameter|s3-object}`
+- [ ] *Non-tool-testing scenarios only*: metadata block contains `* **CTF Flag Location:** {ssm-parameter|s3-object}` (GCP: `{secret-manager|gcs-object}`)
 - [ ] *Non-tool-testing scenarios only*: `solution.md` contains a `## Capture the Flag` section that shows the retrieval command (not the value) for the scenario's flag terminal
