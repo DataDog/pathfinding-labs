@@ -264,12 +264,27 @@ echo -e "${YELLOW}Step 2: Confirming starting SA identity and lack of project pr
 echo -e "\n${DIM}Step 2a (illustrative — proving we act as the starting SA):${NC}"
 show_illustrative_cmd "YOUR ADC (${DEPLOYER_EMAIL})" \
     "gcloud auth print-access-token --impersonate-service-account=$STARTING_SA_EMAIL"
-STARTING_SA_TOKEN=$(gcloud auth print-access-token \
-    --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
-if [ -z "$STARTING_SA_TOKEN" ]; then
-    echo -e "${RED}✗ Could not mint token for starting SA (check the deployer grant)${NC}"
-    exit 1
-fi
+# Retry the first impersonation: right after `plabs apply` the deployer's
+# serviceAccountTokenCreator grant on starting_sa can take up to ~90s to
+# propagate, longer than the fixed 15s wait above. Retrying here (rather than
+# lengthening the wait for everyone) keeps a warm deployment fast while still
+# tolerating a cold one. Once this first mint succeeds, every later
+# impersonation in the demo works immediately.
+STARTING_SA_TOKEN=""
+for attempt in $(seq 1 8); do
+    STARTING_SA_TOKEN=$(gcloud auth print-access-token \
+        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+    [ -n "$STARTING_SA_TOKEN" ] && break
+    if [ "$attempt" -eq 8 ]; then
+        echo -e "${RED}✗ Could not mint token for starting SA after ~90s (check the deployer grant)${NC}"
+        echo "The deployer ($DEPLOYER_EMAIL) needs roles/iam.serviceAccountTokenCreator on"
+        echo "$STARTING_SA_EMAIL. If you just ran 'plabs apply', the grant may still be"
+        echo "propagating — wait a moment and re-run."
+        exit 1
+    fi
+    echo -e "${DIM}  Token mint denied (IAM grant still propagating) — retrying in 12s... ($((attempt * 12))s elapsed)${NC}"
+    sleep 12
+done
 show_cmd "$STARTING_SA_EMAIL (via tokeninfo)" \
     "curl -s 'https://oauth2.googleapis.com/tokeninfo?access_token=<redacted>'"
 TOKEN_INFO=$(curl -s "https://oauth2.googleapis.com/tokeninfo?access_token=${STARTING_SA_TOKEN}")
