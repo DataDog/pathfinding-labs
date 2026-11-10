@@ -8,9 +8,12 @@ This exact path is catalogued as the `CREATE_CLOUDRUN_SERVICE_AS_SA` edge in Net
 
 You start as `pl-prod-cr001-start`, a service account with no project-level IAM roles of its own. It can't read Secret Manager secrets, can't touch project metadata, and -- importantly -- it has no `roles/iam.serviceAccountTokenCreator` grant on anyone, so it cannot mint tokens for other identities directly. Plain `gcloud --impersonate-service-account` gets you nowhere.
 
-What it *does* have is a single minimal custom role, `gcp_cloudrun_001_cr_deploy_req`, granted twice: once at the project level, and once bound directly on a second service account, `pl-prod-cr001-target`. That role carries exactly five permissions:
+What it *does* have is two minimal custom roles. The first, `gcp_cloudrun_001_sa_actas_min`, is bound directly on a second service account, `pl-prod-cr001-target`, and carries a single permission:
 
 - `iam.serviceAccounts.actAs`
+
+The second, `gcp_cloudrun_001_cr_deploy_req`, is bound at the project level and carries four:
+
 - `run.services.create`
 - `run.services.get`
 - `run.operations.get`
@@ -50,7 +53,7 @@ gcloud iam service-accounts get-iam-policy \
   pl-prod-cr001-target@<project_id>.iam.gserviceaccount.com
 ```
 
-The policy includes a binding granting your custom role to the starting service account -- and that role contains `iam.serviceAccounts.actAs`. You are allowed to attach this account's identity to new compute you create. Combined with the `run.services.create` in your project-level binding, that's the entire vulnerability: actAs + create, the PassRole analog, delivered through a custom role that never trips a `roles/run.admin` or `roles/iam.serviceAccountUser` alert. A quick `gcloud run services list` (via `run.services.list` in your helpful role) confirms Cloud Run is live in the project and ready to receive your service.
+The policy includes a binding granting `gcp_cloudrun_001_sa_actas_min` to the starting service account -- and that role contains `iam.serviceAccounts.actAs`. You are allowed to attach this account's identity to new compute you create. Combined with the `run.services.create` in your project-level binding, that's the entire vulnerability: actAs + create, the PassRole analog, delivered through a custom role that never trips a `roles/run.admin` or `roles/iam.serviceAccountUser` alert. A quick `gcloud run services list` (via `run.services.list` in your helpful role) confirms Cloud Run is live in the project and ready to receive your service.
 
 ## Exploitation
 
@@ -120,17 +123,20 @@ curl "https://oauth2.googleapis.com/tokeninfo?access_token=$EXFILTRATED_TOKEN"
 # "email": "pl-prod-cr001-target@<project_id>.iam.gserviceaccount.com"
 ```
 
-Then prove the token carries the target's `roles/editor` privileges by writing a project label with it:
+Then prove the token carries the target's `roles/editor` privileges by writing a project label with it. The Resource Manager v1 `projects.update` method is a synchronous `PUT` of the full Project resource (`resourcemanager.projects.update`, which `roles/editor` includes) -- fetch the project, add a label, and PUT it back:
 
 ```bash
-curl -X PATCH \
+PROJECT_JSON=$(curl -s -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
+  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>")
+UPDATED=$(echo "$PROJECT_JSON" | jq -c '.labels = ((.labels // {}) + {"pl-privesc-verified":"true"})')
+curl -X PUT \
   -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"labels":{"pl-privesc-verified":"true"}}' \
-  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>?updateMask=labels"
+  -d "$UPDATED" \
+  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>"
 ```
 
-The write succeeds where your starting account would have been denied -- direct evidence that the stolen token authenticates as a project editor.
+(Note the shape: v1 `projects.update` is a full-resource `PUT`, not the `PATCH`+`updateMask` of the async v3 API -- a `PATCH` to the v1 endpoint silently no-ops.) The write succeeds where your starting account would have been denied -- direct evidence that the stolen token authenticates as a project editor. The demo restores the original labels immediately afterward.
 
 ## Capture the Flag
 
@@ -149,4 +155,4 @@ This works because of a deliberate detail in the lab's IAM: `roles/editor` does 
 
 You escalated from a service account with zero project-level permissions to one holding `roles/editor` -- and from there to a project secret -- by combining permissions that look individually reasonable: the ability to attach a service account to new compute (`actAs`), the ability to create that compute (`run.services.create`), and the ability to read the logs it produces (`logging.logEntries.list`). Neither `actAs` nor `run.services.create` alone would have gotten you anywhere; together they let you build a purpose-built credential thief, deploy it under someone else's identity, and read the stolen token out of your own deployment logs.
 
-The pattern generalizes to every GCP compute service that accepts a `--service-account` flag at creation time -- Compute Engine, Cloud Run, GKE, Cloud Functions, Cloud Build -- and the public Docker Hub image detail matters for defenders: this attack needs no registry permissions, no Cloud Build, and no source upload. It also slips past tooling that only watches for the conspicuous predefined roles (`roles/run.admin`, `roles/iam.serviceAccountUser`), because the whole pairing here hides inside a five-permission custom role. The detection story has to live in behavior: a Cloud Run service created by a caller whose attached runtime identity differs from their own, followed by that caller reading the service's logs, is the signature of a PassRole-style theft -- no matter which role delivered the permissions.
+The pattern generalizes to every GCP compute service that accepts a `--service-account` flag at creation time -- Compute Engine, Cloud Run, GKE, Cloud Functions, Cloud Build -- and the public Docker Hub image detail matters for defenders: this attack needs no registry permissions, no Cloud Build, and no source upload. It also slips past tooling that only watches for the conspicuous predefined roles (`roles/run.admin`, `roles/iam.serviceAccountUser`), because the whole pairing here hides inside two small custom roles. The detection story has to live in behavior: a Cloud Run service created by a caller whose attached runtime identity differs from their own, followed by that caller reading the service's logs, is the signature of a PassRole-style theft -- no matter which role delivered the permissions.

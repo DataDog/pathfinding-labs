@@ -109,7 +109,9 @@ resource "google_project_iam_member" "target_sa_admin_role" {
 # VERIFIED required set (raw API minimum, 2026-11-01 isolation run):
 #   - iam.serviceAccounts.actAs  — required at service creation time when the
 #                                  service is bound to target_sa (the GCP
-#                                  analog of iam:PassRole; actas_required)
+#                                  analog of iam:PassRole; actas_required).
+#                                  Lives in its own role bound ONLY on
+#                                  target_sa (sa_actas_minimal below)
 #   - run.services.create        — deploy the new Cloud Run service
 #   - run.services.get           — fetch the new service's URL (raw API)
 #                                  and gcloud's readiness/preflight polling
@@ -128,14 +130,34 @@ resource "google_project_iam_member" "target_sa_admin_role" {
 # readiness instance already exfiltrates the token), resourcemanager.
 # projects.get, iam.serviceAccounts.get, run.services.setIamPolicy,
 # run.services.getIamPolicy (not needed even on the re-deploy path).
+resource "google_project_iam_custom_role" "sa_actas_minimal" {
+  provider    = google.prod
+  project     = var.project_id
+  role_id     = "${replace(local.path_id, "-", "_")}_sa_actas_min"
+  title       = "Pathfinding Labs - Minimal SA ActAs"
+  description = "Grants only iam.serviceAccounts.actAs - the single permission needed to attach a service account identity to a new resource (here, a Cloud Run service). Bound on target_sa only, never at project level."
+  permissions = ["iam.serviceAccounts.actAs"]
+}
+
+# THE VULNERABILITY (part 1, SA-scoped): starting_sa holds
+# iam.serviceAccounts.actAs on target_sa ONLY, allowing it to deploy a Cloud
+# Run service that runs as target_sa. Bound on the target SA rather than at
+# project level so starting_sa cannot act as any other SA in the project
+# (mirrors gcp-cloudfunctions-001 and scenario.yaml's resource scoping).
+resource "google_service_account_iam_member" "vulnerable_actas_grant" {
+  provider           = google.prod
+  service_account_id = google_service_account.target_sa.name
+  role               = google_project_iam_custom_role.sa_actas_minimal.id
+  member             = "serviceAccount:${google_service_account.starting_sa.email}"
+}
+
 resource "google_project_iam_custom_role" "cr_deploy_required" {
   provider    = google.prod
   project     = var.project_id
   role_id     = "${replace(local.path_id, "-", "_")}_cr_deploy_req"
   title       = "Pathfinding Labs - CR Deploy (Required)"
-  description = "Verified raw-API minimum: serviceAccounts.actAs + run.services.create/get + run.operations.get + logging.logEntries.list (logs exfil channel). Required to deploy a new Cloud Run service bound to target_sa and recover its exfiltrated token."
+  description = "Verified raw-API minimum (excluding actAs, which is bound separately on target_sa): run.services.create/get + run.operations.get + logging.logEntries.list (logs exfil channel). Required to deploy a new Cloud Run service and recover its exfiltrated token."
   permissions = [
-    "iam.serviceAccounts.actAs",
     "run.services.create",
     "run.services.get",
     "run.operations.get",
@@ -143,26 +165,14 @@ resource "google_project_iam_custom_role" "cr_deploy_required" {
   ]
 }
 
-# THE VULNERABILITY (part 1, project-scoped): starting_sa holds the required
-# role at project level, covering run.services.create/get on the project plus
-# actAs on every SA in the project (including target_sa) and log reading.
+# THE VULNERABILITY (part 2, project-scoped): starting_sa holds the Cloud Run
+# deploy + log-read permissions at project level. Combined with part 1, this
+# lets it create a service bound to target_sa and read the token it leaks.
 resource "google_project_iam_member" "vulnerable_cr_deploy_required_grant" {
   provider = google.prod
   project  = var.project_id
   role     = google_project_iam_custom_role.cr_deploy_required.id
   member   = "serviceAccount:${google_service_account.starting_sa.email}"
-}
-
-# THE VULNERABILITY (part 2, SA-scoped actAs on target_sa): mirroring
-# gcp-cloudfunctions-001, the actAs-granting role is ALSO bound directly on
-# the target SA (not only at project level). This SA-scoped binding is what
-# guarantees starting_sa can act as target_sa at Cloud Run service creation
-# time.
-resource "google_service_account_iam_member" "vulnerable_actas_grant" {
-  provider           = google.prod
-  service_account_id = google_service_account.target_sa.name
-  role               = google_project_iam_custom_role.cr_deploy_required.id
-  member             = "serviceAccount:${google_service_account.starting_sa.email}"
 }
 
 # -----------------------------------------------------------------------------

@@ -4,6 +4,22 @@ Version history for `.claude/scenario-readme-schema.md`. When bumping the schema
 
 ---
 
+## 4.9.5 — 2026-11-10
+
+Patch: documented the GCP variant of the abuse-detection H4 heading and its entry format. No structural change for AWS.
+
+**Changes:**
+- GCP scenarios use `#### Cloud Audit Log Events to Monitor` in place of `#### CloudTrail Events to Monitor` under `### Detecting Abuse (CloudSIEM)`. Entries use `` `{service}.googleapis.com/{MethodName}` -- {description} `` format.
+- Added the GCP rule mirroring the AWS PassRole rule: `iam.serviceAccounts.actAs` is a permission check, not an audit log event; detect it through the service-account field of the create/update event.
+- Added the heading to the AWS/GCP terminology table, and the GCP flag-location values (`secret-manager|gcs-object`) to the compliance checklist.
+
+**Why:** All four shipped GCP READMEs (gcp-iam-001, gcp-cloudfunctions-001/002, gcp-cloudrun-001) already used the Cloud Audit Log heading, but the schema and `scenario-readme-creator` only described the CloudTrail form. That left the agent with conflicting instructions for every new GCP lab. Surfaced during the review before converting the GCP labs into pathfinding.cloud paths.
+
+**Migration rules:**
+- PATCH: documents existing practice. No README changes are needed. The four GCP READMEs already comply, and AWS READMEs are unaffected.
+
+---
+
 ## 4.9.4 — 2026-11-01
 
 Patch: documented how GCP gcloud-mechanic permissions render in `### Starting Permissions`. No structural change — required/helpful formats are unchanged.

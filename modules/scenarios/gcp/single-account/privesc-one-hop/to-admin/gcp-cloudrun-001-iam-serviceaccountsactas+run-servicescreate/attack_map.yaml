@@ -18,12 +18,12 @@ attackMap:
 
         Regardless of how you obtained them, you are now operating as this service
         account. It holds no project-level roles of its own. However, it has been
-        granted a minimal custom role delivering `iam.serviceAccounts.actAs` on
-        another service account in the project (bound both at the project level and
-        directly on that target service account), plus `run.services.create`,
+        granted a minimal custom role delivering `iam.serviceAccounts.actAs`, bound
+        directly on one other service account in the project (and nowhere else),
+        plus a second custom role delivering `run.services.create`,
         `run.services.get`, `run.operations.get`, and `logging.logEntries.list`
-        at the project level -- all through a custom role, never a bundling
-        predefined role like `roles/run.admin` or `roles/iam.serviceAccountUser`.
+        at the project level -- never a bundling predefined role like
+        `roles/run.admin` or `roles/iam.serviceAccountUser`.
 
     - id: malicious-cloud-run-service
       label: "Malicious Cloud Run Service"
@@ -77,7 +77,7 @@ attackMap:
       description: >
         The starting service account holds `iam.serviceAccounts.actAs` on the
         privileged target service account plus `run.services.create` at the project
-        level -- all granted through a minimal custom role rather than a bundling
+        level -- both granted through minimal custom roles rather than a bundling
         predefined role. This is the GCP analog of AWS `iam:PassRole` +
         `lambda:CreateFunction`: `actAs` is checked at service creation time and
         authorizes binding the target's identity to the new Cloud Run service, and

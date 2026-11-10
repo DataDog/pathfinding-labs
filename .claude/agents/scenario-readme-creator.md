@@ -60,7 +60,7 @@ The orchestrator will provide you with a complete `scenario.yaml` file. This YAM
 | `remediation.recommendations` | `* **Remediation:** {item1}; {item2}; {item3}` *(semicolon-separated; CSPM scenarios only)* |
 | `ctf.difficulty` | `* **Difficulty:** {beginner\|intermediate\|advanced}` *(CTF scenarios only)* |
 | `ctf.flag_location` | `* **Flag Location:** {value}` *(CTF scenarios only — the legacy prose field)* |
-| *(derived from `target`)* | `* **CTF Flag Location:** {ssm-parameter\|s3-object}` *(required on every scenario EXCEPT tool-testing; `ssm-parameter` for to-admin, `s3-object` for to-bucket)* |
+| *(derived from `target`)* | `* **CTF Flag Location:** {ssm-parameter\|s3-object}` *(required on every scenario EXCEPT tool-testing; `ssm-parameter` for to-admin, `s3-object` for to-bucket; GCP: `secret-manager` for to-admin, `gcs-object` for to-bucket)* |
 | `required_preconditions` | `* **Required Preconditions:**` followed by one bullet per entry: `aws-resource` entries render as `  - {resource}: {description}`; all other types render as `  - [{type}] {description}`. Omit the field entirely when `required_preconditions` is absent from scenario.yaml. |
 
 Additionally, the orchestrator will provide:
@@ -108,7 +108,7 @@ Follow the canonical section structure from the schema exactly:
 #### What CSPM tools should detect
 #### Prevention Recommendations
 ### Detecting Abuse (CloudSIEM)
-#### CloudTrail Events to Monitor
+#### CloudTrail Events to Monitor     <- GCP: #### Cloud Audit Log Events to Monitor
 #### Detonation logs
 
 ## References                          <- optional
@@ -141,13 +141,19 @@ Follow the canonical section structure from the schema exactly:
 
 **Cleanup / Teardown:** Standard boilerplate from schema.
 
-**Defend:** CSPM findings (specific to this scenario's resources), prevention recommendations, CloudTrail events, detonation logs placeholder.
+**Defend:** CSPM findings (specific to this scenario's resources), prevention recommendations, CloudTrail events (GCP: Cloud Audit Log events), detonation logs placeholder.
 
 **CloudTrail event format rules (strictly enforced):**
 - Format: `` `service:EventName` -- description `` — lowercase service prefix, no space after the colon, `--` separator
 - Never: `` `IAM: CreateAccessKey` `` (uppercase, space after colon) or `` `iam:CreateAccessKey` — `` (em dash)
 - Service prefix examples: `iam`, `lambda`, `sts`, `ec2`, `ecs`, `ssm`, `glue`, `cloudformation`, `codebuild`, `sagemaker`, `s3`, `apprunner`, `mwaa`, `datapipeline`, `dynamodb`
 - Do NOT list `iam:PassRole` as a monitored event — it does not produce a standalone CloudTrail event. Instead, detect PassRole abuse via the role ARN field in the resource creation event (e.g., `requestParameters.role` in `lambda:CreateFunction20150331`, `requestParameters.taskRoleArn` in `ecs:RegisterTaskDefinition`, `requestParameters.serviceRole` in `codebuild:CreateProject`, etc.)
+
+**GCP scenarios (directory under `modules/scenarios/gcp/...`) — Cloud Audit Log rules instead of the CloudTrail rules above:**
+- Heading: `#### Cloud Audit Log Events to Monitor` (never `#### CloudTrail Events to Monitor`)
+- Format: `` `{service}.googleapis.com/{MethodName}` -- description `` — the API service name plus the short method name from `protoPayload.methodName`, `--` separator (never an em dash)
+- Examples: `iam.googleapis.com/GenerateAccessToken`, `iam.googleapis.com/SignJwt`, `run.googleapis.com/CreateService`, `cloudfunctions.googleapis.com/CreateFunction`, `cloudfunctions.googleapis.com/UpdateFunction`, `cloudfunctions.googleapis.com/GenerateUploadUrl`, `secretmanager.googleapis.com/AccessSecretVersion`
+- Do NOT list `iam.serviceAccounts.actAs` as a monitored event — like PassRole, it is a permission check, not a standalone audit log entry. Detect actAs abuse via the service-account field in the create/update event (e.g., `template.serviceAccount` in `run.googleapis.com/CreateService`, `serviceConfig.serviceAccountEmail` in `cloudfunctions.googleapis.com/CreateFunction`)
 
 ## File 2: attack_map.yaml
 
@@ -163,6 +169,8 @@ Follow the attack map schema exactly. Include:
 - `isAdmin: true` on any principal node that holds administrator-equivalent permissions
 
 **CTF Flag Terminal (non-tool-testing scenarios):** The `isTarget: true` node is the CTF flag resource. For to-admin scenarios, add a new node of `type: resource`, `subType: ssm-parameter`, with `arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/{scenario-unique-id}"` and `isTarget: true`. The admin principal it pivoted through takes `isAdmin: true` instead of `isTarget: true`. Add a final edge from the admin principal to the flag node labeled "Read CTF flag" with the `aws ssm get-parameter ...` invocation in `commands`. For to-bucket scenarios, the existing target bucket keeps `isTarget: true` (no new node); append `aws s3 cp s3://{bucket}/flag.txt -` to the final edge's `commands` array. If any intermediate principal in a multi-hop to-bucket chain reaches admin-equivalent permissions, add `isAdmin: true` to that node as well. Tool-testing scenarios are exempt and follow pre-1.4.0 attack map rules.
+
+**GCP CTF Flag Terminal:** For GCP to-admin scenarios, the flag node is `type: resource`, `subType: secret-manager-secret`, with `arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/{flag-secret-id}/versions/latest"` (the `secret_id` from `main.tf`, e.g. `pl-gcp-iam-001-flag`) and `isTarget: true` — never an `ssm-parameter` node. The final edge from the admin principal is labeled "Read CTF flag" and its `commands` use `gcloud secrets versions access latest --secret={flag-secret-id} ...` as the elevated identity (e.g., with `--impersonate-service-account=` or the exfiltrated access token, matching what `demo_attack.sh` does). The node description notes that `roles/editor` does not grant `secretmanager.versions.access`, so the privileged service account holds an explicit `roles/secretmanager.secretAccessor` binding on the secret. For GCP to-bucket scenarios, the target GCS bucket keeps `isTarget: true` and the final edge appends `gcloud storage cat gs://{bucket}/flag.txt`.
 
 **No cycles — PassRole+automation self-modification pattern:** When a privileged execution context (e.g., SSM Automation role, Lambda execution role) runs code that **grants permissions to the starting user** (e.g., attaches `AdministratorAccess` to the starting IAM user), do NOT create a return edge `admin-role → starting-principal`. That creates a cycle with a duplicate node ARN, which the schema prohibits ("No Duplicate ARNs" rule). Instead: the admin role gets `isAdmin: true` and the final edge goes directly `admin-role → ctf-flag`. The edge description explains that the execution attached AdminAccess to the starting user and the flag is now readable with those elevated credentials. The starting-principal ARN appears exactly once in the graph. Correct: `starting-principal → ssm-document → automation-role (isAdmin:true) → ctf-flag (isTarget:true)`. Incorrect: `starting-principal → ssm-document → automation-role → starting-principal → ctf-flag`.
 
@@ -195,7 +203,7 @@ Write a narrative CTF writeup with this structure:
 
 ## Capture the Flag
 
-{Required for every scenario EXCEPT tool-testing. Retrieve the flag from its terminal location using the access gained in the previous steps. Show the AWS CLI command but NOT the flag value (deployment-specific). For to-admin: `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id> --query 'Parameter.Value' --output text`. For to-bucket: `aws s3 cp s3://<bucket>/flag.txt -`. 1-2 paragraphs explaining why the credentials from the previous step grant flag access.}
+{Required for every scenario EXCEPT tool-testing. Retrieve the flag from its terminal location using the access gained in the previous steps. Show the AWS CLI command but NOT the flag value (deployment-specific). For to-admin: `aws ssm get-parameter --name /pathfinding-labs/flags/<scenario-unique-id> --query 'Parameter.Value' --output text`. For to-bucket: `aws s3 cp s3://<bucket>/flag.txt -`. GCP to-admin: `gcloud secrets versions access latest --secret=<flag-secret-id>` as the elevated identity; GCP to-bucket: `gcloud storage cat gs://<bucket>/flag.txt`. 1-2 paragraphs explaining why the credentials from the previous step grant flag access.}
 
 ## What Happened
 
@@ -296,7 +304,7 @@ Additionally verify:
 5. Guided walkthrough reads as a genuine narrative
 6. Hints don't reveal exact commands
 7. Technical accuracy -- attack path is feasible
-8. **Non-tool-testing scenarios only**: README metadata contains `* **CTF Flag Location:** {ssm-parameter|s3-object}`; the Scenario Specific Resources Created table lists the flag resource ARN; the attack_map.yaml terminal is the flag resource (ssm-parameter for to-admin, S3 bucket with flag.txt retrieval for to-bucket); admin principals carry `isAdmin: true` and never co-occur with `isTarget: true`; solution.md contains a `## Capture the Flag` section with the retrieval command but no flag value
+8. **Non-tool-testing scenarios only**: README metadata contains `* **CTF Flag Location:** {ssm-parameter|s3-object}` (GCP: `{secret-manager|gcs-object}`); the Scenario Specific Resources Created table lists the flag resource ARN (GCP: full resource name); the attack_map.yaml terminal is the flag resource (ssm-parameter for to-admin, S3 bucket with flag.txt retrieval for to-bucket; GCP: secret-manager-secret for to-admin, GCS bucket for to-bucket); GCP READMEs use `#### Cloud Audit Log Events to Monitor`, never the CloudTrail heading; admin principals carry `isAdmin: true` and never co-occur with `isTarget: true`; solution.md contains a `## Capture the Flag` section with the retrieval command but no flag value
 
 ## Output
 

