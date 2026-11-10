@@ -3,7 +3,7 @@
 # Demo script for gcp-cloudrun-001-iam-serviceaccountsactas+run-servicescreate
 #
 # Attack: starting_sa holds iam.serviceAccounts.actAs on target_sa plus
-# run.services.create on the project (via a minimal custom role). It deploys a
+# run.services.create on the project (via minimal custom roles). It deploys a
 # new Cloud Run service bound to target_sa using a PUBLIC Docker Hub image
 # (docker.io/library/python:3.13-slim) — no Artifact Registry access is
 # needed, which is the crux of the technique. An inline Python payload

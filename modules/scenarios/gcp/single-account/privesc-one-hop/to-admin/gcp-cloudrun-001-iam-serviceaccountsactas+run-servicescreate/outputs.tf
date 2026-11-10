@@ -35,7 +35,7 @@ output "region" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "starting_sa -> (iam.serviceAccounts.actAs on target_sa + run.services.create via minimal custom role) -> deploys a new Cloud Run service bound to target_sa from a public Docker Hub image (no Artifact Registry access needed) -> invokes it to execute arbitrary code -> exfiltrates target_sa's OAuth access token from the metadata server -> (roles/editor) -> Project Admin"
+  value       = "starting_sa -> (iam.serviceAccounts.actAs on target_sa + run.services.create via minimal custom roles) -> deploys a new Cloud Run service bound to target_sa from a public Docker Hub image (no Artifact Registry access needed) -> invokes it to execute arbitrary code -> exfiltrates target_sa's OAuth access token from the metadata server -> (roles/editor) -> Project Admin"
 }
 
 output "flag_secret_id" {

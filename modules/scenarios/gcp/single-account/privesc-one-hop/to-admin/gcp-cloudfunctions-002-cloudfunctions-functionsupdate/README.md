@@ -1,7 +1,7 @@
 # Cloud Function Code Update to Existing Admin SA
 
 * **Category:** Privilege Escalation
-* **Sub-Category:** new-passrole
+* **Sub-Category:** existing-passrole
 * **Path Type:** one-hop
 * **Target:** to-admin
 * **Points:** 10
