@@ -106,3 +106,32 @@ output "gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccou
   } : null
   sensitive = true
 }
+
+output "gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy" {
+  description = "All outputs for gcp-iam-002-iam-serviceaccountssetiampolicy one-hop to-admin scenario"
+  value = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy ? {
+    starting_sa_email = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].starting_sa_email
+    starting_sa_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].starting_sa_id
+    deployer_email    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].deployer_email
+    target_sa_email   = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].target_sa_email
+    target_sa_id      = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].target_sa_id
+    attack_path       = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].attack_path
+    flag_secret_id    = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].flag_secret_id
+    flag_secret_name  = module.gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy[0].flag_secret_name
+  } : null
+  sensitive = true
+}
+
+output "gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate" {
+  description = "All outputs for gcp-iam-003-iam-rolesupdate self-escalation to-admin scenario"
+  value = var.enable_gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate ? {
+    starting_sa_email = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].starting_sa_email
+    starting_sa_id    = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].starting_sa_id
+    deployer_email    = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].deployer_email
+    editable_role_id  = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].editable_role_id
+    attack_path       = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].attack_path
+    flag_secret_id    = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].flag_secret_id
+    flag_secret_name  = module.gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate[0].flag_secret_name
+  } : null
+  sensitive = true
+}

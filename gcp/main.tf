@@ -152,3 +152,31 @@ module "gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccou
   resource_suffix = random_string.resource_suffix.result
   flag_value      = lookup(var.scenario_flags, "gcp-iam-001-to-admin", "flag{MISSING}")
 }
+
+module "gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy" {
+  count  = var.enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy ? 1 : 0
+  source = "../modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-iam-002-iam-serviceaccountssetiampolicy"
+
+  providers = {
+    google.prod = google.prod
+  }
+
+  project_id      = var.prod_project_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "gcp-iam-002-to-admin", "flag{MISSING}")
+}
+
+module "gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate" {
+  count  = var.enable_gcp_single_account_privesc_self_escalation_to_admin_gcp_iam_003_iam_rolesupdate ? 1 : 0
+  source = "../modules/scenarios/gcp/single-account/privesc-self-escalation/to-admin/gcp-iam-003-iam-rolesupdate"
+
+  providers = {
+    google.prod = google.prod
+  }
+
+  project_id      = var.prod_project_id
+  environment     = "prod"
+  resource_suffix = random_string.resource_suffix.result
+  flag_value      = lookup(var.scenario_flags, "gcp-iam-003-to-admin", "flag{MISSING}")
+}

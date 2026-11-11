@@ -1,0 +1,74 @@
+# =============================================================================
+# CORE METADATA
+# =============================================================================
+schema_version: "1.10.1"
+name: "gcp-iam-002-iam-serviceaccountssetiampolicy"
+title: "Service Account setIamPolicy to Admin"
+description: "Service account with iam.serviceAccounts.setIamPolicy on a privileged service account can grant itself serviceAccountTokenCreator, mint impersonation tokens, and inherit the target's project roles"
+cost_estimate: "$0/mo"
+cost_estimate_when_demo_executed: "$0/mo"
+pathfinding-cloud-id: "gcp-iam-002"
+
+# =============================================================================
+# CLASSIFICATION
+# =============================================================================
+category: "Privilege Escalation"
+sub_category: "principal-access"
+path_type: "one-hop"
+target: "to-admin"
+points: 10
+environments:
+  - "prod"
+
+# =============================================================================
+# ATTACK PATH
+# =============================================================================
+attack_path:
+  principals:
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com"
+    - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
+
+  summary: "starting_sa -> (iam.serviceAccounts.setIamPolicy via minimal custom role) -> self-grant roles/iam.serviceAccountTokenCreator on target_sa -> generateAccessToken -> target_sa -> (roles/editor + flag secretAccessor) -> Project Admin"
+
+# =============================================================================
+# PERMISSIONS
+# =============================================================================
+# Verified by scenario-permission-isolator-gcp (2026-11-11) against a live deploy:
+# required = setIamPolicy only; getIamPolicy is a gcloud-mechanic; list is recon.
+# iam.serviceAccounts.get and resourcemanager.projects.get were trimmed (unused in
+# both gcloud and --api-only modes).
+permissions:
+  required:
+    - principal: "pl-prod-gcp-iam-002-start"
+      principal_type: "service-account"
+      permissions:
+        - permission: "iam.serviceAccounts.setIamPolicy"
+          resource: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
+
+  helpful:
+    - principal: "pl-prod-gcp-iam-002-start"
+      principal_type: "service-account"
+      permissions:
+        - permission: "iam.serviceAccounts.getIamPolicy"
+          purpose: "Required by gcloud iam service-accounts add-iam-policy-binding only — gcloud reads the SA policy before writing it; not needed with the raw setIamPolicy API, which accepts a full policy"
+        - permission: "iam.serviceAccounts.list"
+          purpose: "Enumerate other service accounts in the project to identify setIamPolicy targets"
+
+# =============================================================================
+# MITRE ATT&CK
+# =============================================================================
+mitre_attack:
+  tactics:
+    - "TA0004 - Privilege Escalation"
+    - "TA0006 - Credential Access"
+  techniques:
+    - "T1098.001 - Account Manipulation: Additional Cloud Credentials"
+    - "T1550.001 - Use Alternate Authentication Material: Application Access Token"
+    - "T1078.004 - Valid Accounts: Cloud Accounts"
+
+# =============================================================================
+# TERRAFORM
+# =============================================================================
+terraform:
+  variable_name: "enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy"
+  module_path: "modules/scenarios/gcp/single-account/privesc-one-hop/to-admin/gcp-iam-002-iam-serviceaccountssetiampolicy"

@@ -1,0 +1,77 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-003-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that impersonates
+        this service account, exploiting a vulnerable workload running with this
+        service account attached, discovering a service account key in a public GitHub
+        repository, or being granted impersonation rights on it directly for an
+        unrelated automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no `roles/owner` or `roles/editor` of its own -- it cannot
+        read the flag secret and has no direct administrative access. However, it is
+        a member of a project custom role (`gcp_iam_003_editable`) that grants
+        `iam.roles.update`, which means it can edit the very role it is bound to.
+        That self-reference is the entire vulnerability: by adding a permission to
+        the role, the service account grants that permission to itself.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-003-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Reading it requires `secretmanager.versions.access` on the
+        secret. No role is pre-granted that provides this -- the flag becomes readable
+        only after the attacker self-binds `roles/owner`, which is a superset that
+        includes `secretmanager.versions.access`. Your goal is to read this secret's
+        value using the owner-level access you granted yourself.
+
+  edges:
+    - from: starting-principal
+      to: starting-principal
+      label: "iam.roles.update + resourcemanager.projects.setIamPolicy"
+      grantsAdmin: true
+      description: >
+        A two-move self-escalation performed by a single principal. First, the service
+        account calls `iam.roles.update` on the custom role it is bound to
+        (`gcp_iam_003_editable`), adding `resourcemanager.projects.setIamPolicy` to the
+        role's `includedPermissions`. Because the service account is a member of that
+        role, it instantly inherits the newly-added permission. Second, it uses that
+        acquired `resourcemanager.projects.setIamPolicy` permission to add itself to the
+        project IAM policy with `roles/owner`, gaining full project administrator
+        access. `resourcemanager.projects.setIamPolicy` is never a starting permission --
+        it is manufactured mid-attack by editing the role.
+      hints:
+        - "You are bound to a custom role that also lets you update it. Add a project-level IAM permission to that role and you immediately hold it yourself -- think about which single permission lets you rewrite the project's IAM policy."
+        - "Once the role grants resourcemanager.projects.setIamPolicy, use an additive policy-binding operation to grant your own service account roles/owner on the project. Wait out IAM propagation (about 15s) between editing the role and using the new permission, and again before the owner grant takes effect."
+        - "Browse to https://pathfinding.cloud/paths/gcp-iam-003 for technique details."
+      commands:
+        - description: "Add resourcemanager.projects.setIamPolicy to the custom role the SA is bound to"
+          command: "gcloud iam roles update gcp_iam_003_editable --project={project_id} --add-permissions=resourcemanager.projects.setIamPolicy --impersonate-service-account=pl-prod-gcp-iam-003-start@{project_id}.iam.gserviceaccount.com"
+        - description: "Self-bind roles/owner on the project using the newly-acquired setIamPolicy permission"
+          command: "gcloud projects add-iam-policy-binding {project_id} --member=serviceAccount:pl-prod-gcp-iam-003-start@{project_id}.iam.gserviceaccount.com --role=roles/owner --impersonate-service-account=pl-prod-gcp-iam-003-start@{project_id}.iam.gserviceaccount.com"
+
+    - from: starting-principal
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Now holding `roles/owner` on the project, the service account reads the flag
+        from Secret Manager. `roles/owner` includes `secretmanager.versions.access`,
+        which the service account previously lacked -- so the same secret that returned
+        PERMISSION_DENIED at the start now returns the flag value.
+      hints: []
+      commands:
+        - description: "Retrieve the CTF flag as the escalated starting service account (roles/owner)"
+          command: "gcloud secrets versions access latest --secret=pl-gcp-iam-003-flag --impersonate-service-account=pl-prod-gcp-iam-003-start@{project_id}.iam.gserviceaccount.com"
