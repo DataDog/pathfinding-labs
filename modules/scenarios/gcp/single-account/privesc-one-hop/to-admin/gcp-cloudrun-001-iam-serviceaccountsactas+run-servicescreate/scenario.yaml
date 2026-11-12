@@ -48,20 +48,23 @@ permissions:
         - permission: "run.services.create"
           resource: "//run.googleapis.com/projects/{project_id}/locations/-"
           purpose: "Deploy the new Cloud Run service — the core of the technique"
-        - permission: "run.services.get"
-          resource: "//run.googleapis.com/projects/{project_id}/locations/-/services/-"
-          purpose: "Fetch the new service's URL via the raw API (services.get returns urls[]); also covers gcloud's readiness/preflight polling. Verified required: without it services.get returns 403 and the demo cannot extract the invoke URL"
         - permission: "run.operations.get"
           resource: "//run.googleapis.com/projects/{project_id}/locations/{region}/operations/-"
           purpose: "Poll the async LRO that services.create returns — the only way to know when the deploy finished and whether the revision failed (mirrors gcp-cloudfunctions-001's cloudfunctions.operations.get). Verified required even with the raw API"
-        - permission: "logging.logEntries.list"
-          resource: "//logging.googleapis.com/projects/{project_id}"
-          purpose: "The exfil channel of the technique (gcpwn --exfil-mode logs): read the target SA's OAuth token that the deployed container printed to Cloud Run logs. Required by both demo modes (gcloud logging read / POST entries:list as the starting SA)"
 
   helpful:
     - principal: "pl-prod-cr001-start"
       principal_type: "service-account"
       permissions:
+        # Demo-payload mechanics — needed by this demo's exfil/discovery, not by
+        # the technique (verified by the permission isolation re-run, 2026-11-12):
+        # an attacker whose Cloud Run payload exfiltrates target_sa's token via
+        # container egress needs neither of these. The escalation primitive is
+        # iam.serviceAccounts.actAs + run.services.create.
+        - permission: "logging.logEntries.list"
+          purpose: "Read target_sa's OAuth token from Cloud Run logs (gcpwn --exfil-mode logs) — the demo's chosen readback channel; the deployed container prints the token to stdout at startup. Not needed by an attacker exfiltrating via container egress"
+        - permission: "run.services.get"
+          purpose: "Fetch the deployed service's URL (services.get returns urls[]) for the invoke path, and satisfy gcloud run deploy's unconditional preflight GET. Needed by the demo as written; not by the core technique"
         # gcloud-mechanic permission — needed only by gcloud re-deploys, never
         # by the raw API on a fresh deploy
         - permission: "run.services.update"

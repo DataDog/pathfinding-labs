@@ -12,12 +12,12 @@ What it *does* have is two minimal custom roles. The first, `gcp_cloudrun_001_sa
 
 - `iam.serviceAccounts.actAs`
 
-The second, `gcp_cloudrun_001_cr_deploy_req`, is bound at the project level and carries four:
+The second, `gcp_cloudrun_001_cr_deploy_req`, is bound at the project level and carries the compute half of the technique:
 
 - `run.services.create`
-- `run.services.get`
 - `run.operations.get`
-- `logging.logEntries.list`
+
+The starting account also holds a separate helpful role carrying two demo-payload mechanics that are not part of the minimal technique: `run.services.get` (this demo uses it to discover the service URL) and `logging.logEntries.list` (this demo uses it to read the exfiltrated token back from Cloud Run logs). An attacker whose payload exfiltrates the token via container egress needs neither.
 
 Individually, each grant looks defensible -- a deployment service account that can create Cloud Run services, watch its deploys, and read its logs. Together, they are a complete privilege escalation primitive. The target service account, `pl-prod-cr001-target`, holds `roles/owner` on the project, which includes access to the CTF flag secret. Your job is to run code as that account.
 
@@ -57,7 +57,7 @@ The policy includes a binding granting `gcp_cloudrun_001_sa_actas_min` to the st
 
 ## Exploitation
 
-The plan: deploy a Cloud Run service that runs as `pl-prod-cr001-target`, whose container code fetches its own runtime identity's OAuth token from the metadata server and prints it somewhere you can read. You already have the read channel -- `logging.logEntries.list` lets you read Cloud Run logs. That's gcpwn's `--exfil-mode logs` pattern: exfiltration through the very log entries the deployment produces.
+The plan: deploy a Cloud Run service that runs as `pl-prod-cr001-target`, whose container code fetches its own runtime identity's OAuth token from the metadata server and prints it somewhere you can read. This demo reads the output through Cloud Run logs -- `logging.logEntries.list` (a helpful demo mechanic, not part of the minimal technique) lets you read them. That's gcpwn's `--exfil-mode logs` pattern: exfiltration through the very log entries the deployment produces.
 
 Start with the deploy itself, using a public Docker Hub base image so no registry interaction is ever needed:
 
@@ -91,7 +91,7 @@ print("EXFIL_TOKEN: "+q("token"),flush=True)
 
 Every `print` carries `flush=True`, and that is not a style choice: container stdout is block-buffered when piped to the logging agent, and an unflushed token print simply never reaches Cloud Logging.
 
-The deploy is asynchronous. `gcloud run deploy` blocks until Ready for you, but if you were driving the raw Cloud Run v2 REST API instead (as the lab's `--api-only` demo mode does), you would POST to `https://run.googleapis.com/v2/projects/{project_id}/locations/{region}/services?serviceId={service}`, poll the returned long-running operation via `run.operations.get` until `done: true`, and fetch the service URL with a `run.services.get` call that returns `urls[0]`. Same attack, thinner permission surface -- exactly the minimum the gcpwn edge defines.
+The deploy is asynchronous. `gcloud run deploy` blocks until Ready for you, but if you were driving the raw Cloud Run v2 REST API instead (as the lab's `--api-only` demo mode does), you would POST to `https://run.googleapis.com/v2/projects/{project_id}/locations/{region}/services?serviceId={service}`, poll the returned long-running operation via `run.operations.get` until `done: true`, and (as this demo does, a helpful mechanic rather than a required permission) fetch the service URL with a `run.services.get` call that returns `urls[0]`. The core technique needs only `actAs` + `run.services.create` + `run.operations.get`, in line with the gcpwn edge's minimum.
 
 Cloud Run scales to zero, so the container only starts once a request arrives. Invoke the private service with an OIDC identity token minted as the starting account:
 
@@ -153,6 +153,6 @@ This works because `roles/owner` natively includes `secretmanager.versions.acces
 
 ## What Happened
 
-You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- by combining permissions that look individually reasonable: the ability to attach a service account to new compute (`actAs`), the ability to create that compute (`run.services.create`), and the ability to read the logs it produces (`logging.logEntries.list`). Neither `actAs` nor `run.services.create` alone would have gotten you anywhere; together they let you build a purpose-built credential thief, deploy it under someone else's identity, and read the stolen token out of your own deployment logs.
+You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- by combining permissions that look individually reasonable: the ability to attach a service account to new compute (`actAs`), the ability to create that compute (`run.services.create`), and (and, in this demo, the helpful ability to read the logs it produces via `logging.logEntries.list`). Neither `actAs` nor `run.services.create` alone would have gotten you anywhere; together they let you build a purpose-built credential thief, deploy it under someone else's identity, and read the stolen token out of your own deployment logs.
 
 The pattern generalizes to every GCP compute service that accepts a `--service-account` flag at creation time -- Compute Engine, Cloud Run, GKE, Cloud Functions, Cloud Build -- and the public Docker Hub image detail matters for defenders: this attack needs no registry permissions, no Cloud Build, and no source upload. It also slips past tooling that only watches for the conspicuous predefined roles (`roles/run.admin`, `roles/iam.serviceAccountUser`), because the whole pairing here hides inside two small custom roles. The detection story has to live in behavior: a Cloud Run service created by a caller whose attached runtime identity differs from their own, followed by that caller reading the service's logs, is the signature of a PassRole-style theft -- no matter which role delivered the permissions.

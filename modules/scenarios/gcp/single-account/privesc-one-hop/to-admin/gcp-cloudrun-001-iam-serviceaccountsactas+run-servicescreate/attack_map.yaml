@@ -20,9 +20,9 @@ attackMap:
         account. It holds no project-level roles of its own. However, it has been
         granted a minimal custom role delivering `iam.serviceAccounts.actAs`, bound
         directly on one other service account in the project (and nowhere else),
-        plus a second custom role delivering `run.services.create`,
-        `run.services.get`, `run.operations.get`, and `logging.logEntries.list`
-        at the project level -- never a bundling predefined role like
+        plus a second custom role delivering `run.services.create` and
+        `run.operations.get` at the project level (a separate helpful role adds
+        the demo-payload mechanics `run.services.get` and `logging.logEntries.list`) -- never a bundling predefined role like
         `roles/run.admin` or `roles/iam.serviceAccountUser`.
 
     - id: malicious-cloud-run-service
