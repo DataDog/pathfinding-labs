@@ -25,7 +25,7 @@ output "target_sa_id" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "starting_sa -> (iam.serviceAccounts.setIamPolicy via minimal custom role) -> self-grant roles/iam.serviceAccountTokenCreator on target_sa -> generateAccessToken -> target_sa -> (roles/editor + flag secretAccessor) -> Project Admin"
+  value       = "starting_sa -> (iam.serviceAccounts.setIamPolicy via minimal custom role) -> self-grant roles/iam.serviceAccountTokenCreator on target_sa -> generateAccessToken -> target_sa -> (roles/owner) -> Project Admin"
 }
 
 output "flag_secret_id" {

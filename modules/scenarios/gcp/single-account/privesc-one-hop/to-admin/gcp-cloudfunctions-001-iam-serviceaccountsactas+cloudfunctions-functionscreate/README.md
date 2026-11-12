@@ -8,7 +8,7 @@
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
-* **Technique:** Deploy a 2nd-generation Cloud Function ("Cloud Run functions") configured to run as a privileged service account via `iam.serviceAccounts.actAs`, invoke it directly, and exfiltrate the function's OAuth access token from the local metadata server to inherit its `roles/editor` project permissions
+* **Technique:** Deploy a 2nd-generation Cloud Function ("Cloud Run functions") configured to run as a privileged service account via `iam.serviceAccounts.actAs`, invoke it directly, and exfiltrate the function's OAuth access token from the local metadata server to inherit its `roles/owner` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_001_iam_serviceaccountsactas_cloudfunctions_functionscreate`
 * **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-cloudfunctions-001
@@ -70,12 +70,11 @@ plabs apply
 | Resource Identifier | Purpose |
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
-| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
+| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/owner` on the project |
 | IAM custom role granting `iam.serviceAccounts.actAs` on `pl-prod-cf001-target`, bound to `pl-prod-cf001-start` | The vulnerable PassRole-equivalent grant that lets the starting account attach the target's identity to new compute |
 | IAM custom role granting `cloudfunctions.functions.create` / `.sourceCodeSet` / `operations.get` and `run.routes.invoke` at the project level, bound to `pl-prod-cf001-start` | The compute-creation and invocation permissions (raw-API required set) that combine with `actAs` to complete the escalation |
 | IAM custom role `gcp_cloudfunctions_001_cf_deploy_help` bound to `pl-prod-cf001-start` at the project level | The helpful permissions: gcloud mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get` — needed only by `gcloud functions deploy`, not the raw API) plus recon (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`) so the starting SA can find the actAs target itself |
-| IAM binding: `roles/editor` on the project granted to `pl-prod-cf001-target` | The privilege that makes running code as the target service account valuable |
-| IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-cf001-target` | Explicit grant needed because `roles/editor` alone does not include Secret Manager payload access |
+| IAM binding: `roles/owner` on the project granted to `pl-prod-cf001-target` | The privilege that makes running code as the target service account valuable |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudfunctions-001-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 
 ### Solution
@@ -95,7 +94,7 @@ The script will:
 4. Deploy a brand-new 2nd-generation Cloud Function (branded "Cloud Run functions" in the current console) configured with `--service-account` set to the target service account, using only `cloudfunctions.functions.create` and `cloudfunctions.functions.sourceCodeSet`
 5. Invoke the function directly via its Cloud Run endpoint using an OIDC identity token (`run.routes.invoke`) -- no `setIamPolicy` call is needed to make the function public
 6. Capture the target service account's OAuth access token from the function's HTTP response
-7. Verify successful privilege escalation by using the exfiltrated token to call a `roles/editor`-gated API the starting account cannot reach on its own
+7. Verify successful privilege escalation by using the exfiltrated token to call a `roles/owner`-gated API the starting account cannot reach on its own
 8. Read the CTF flag from Secret Manager using the exfiltrated access token and display it
 
 #### Resources Created by Attack Script
@@ -156,15 +155,15 @@ plabs apply
 #### What CSPM tools should detect
 
 - **Service accounts holding `iam.serviceAccounts.actAs` combined with `cloudfunctions.functions.create`**: Any principal that can both attach a service account to new compute *and* create that compute is functionally able to steal the attached service account's OAuth token. Neither permission alone is dangerous -- it is the pairing that matters, exactly like AWS `iam:PassRole` + `lambda:CreateFunction`.
-- **Service accounts that are valid `actAs` targets for a less-privileged principal AND hold a broad project role**: Flag any service account reachable via `actAs` (through the predefined `roles/iam.serviceAccountUser` role *or* a custom role scoped to just `actAs`) that also holds `roles/editor`, `roles/owner`, or another broad primitive role. This toxic combination is the actual finding -- not either permission in isolation.
+- **Service accounts that are valid `actAs` targets for a less-privileged principal AND hold a broad project role**: Flag any service account reachable via `actAs` (through the predefined `roles/iam.serviceAccountUser` role *or* a custom role scoped to just `actAs`) that also holds `roles/owner`, `roles/editor`, or another broad primitive role. This toxic combination is the actual finding -- not either permission in isolation.
 - **The Cloud Functions API as a distinct attack surface from Cloud Run**: Cloud Functions 2nd generation is implemented on top of Cloud Run internally, but provisioning is handled entirely by the Cloud Functions v2 API's own internal service agent -- the caller only ever needs `cloudfunctions.functions.*` permissions, never `run.services.*` directly. A CSPM tool that models "who can create compute that runs as a privileged service account" and only inspects `run.services.create`/`roles/run.admin` grants will miss this path entirely. Cloud Functions coverage must be modeled independently of Cloud Run coverage.
 - **Functions invocable without public exposure**: This scenario never calls `setIamPolicy` to make the function public -- `run.routes.invoke` is enough for the attacker's own identity to invoke the underlying Cloud Run endpoint directly using an OIDC identity token. CSPM logic that only flags *publicly invocable* functions as risky will miss privately-invocable functions that still leak a privileged identity to any caller who holds `run.routes.invoke`.
-- **`roles/editor`/`roles/owner` service accounts missing scoped-down alternatives**: Broad primitive roles grant near-administrative access across most GCP services (though notably *not* Secret Manager payload access -- see below), making any compute that can assume that identity a high-value target.
+- **`roles/owner`/`roles/editor` service accounts missing scoped-down alternatives**: Broad primitive roles grant administrative access across most GCP services (`roles/owner` includes Secret Manager payload access and IAM administration), making any compute that can assume that identity a high-value target.
 
 #### Prevention Recommendations
 
 - **Never co-locate `iam.serviceAccounts.actAs` and `cloudfunctions.functions.create` (or any compute-create permission) on the same principal for a privileged target service account**: Treat this pairing the same way you would treat AWS `iam:PassRole` + `lambda:CreateFunction` -- as a single toxic combination, not two independent low-risk grants.
-- **Apply least privilege to the target service account**: Replace `roles/editor` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs, so that impersonating or attaching the account is not automatically equivalent to near-admin access.
+- **Apply least privilege to the target service account**: Replace `roles/owner` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs, so that impersonating or attaching the account is not automatically equivalent to near-admin access.
 - **Restrict who can attach service accounts to new compute with IAM Conditions**: Scope `actAs`/`serviceAccountUser` bindings with conditions (time-bound access, resource-tag bound) rather than granting unconditional standing access.
 - **Model Cloud Functions and Cloud Run as separate privilege-escalation surfaces in your CSPM/graph tooling**: Do not assume that coverage of `run.services.create` also covers the Cloud Functions v2 deployment path -- they use different caller-facing permissions even though the underlying infrastructure overlaps.
 - **Audit `run.routes.invoke` grants alongside `actAs` grants**: A principal that can both deploy privileged compute and invoke it needs no further permissions to exfiltrate the attached identity's token -- there is no `setIamPolicy` step to catch. Note that `cloudfunctions.functions.call` and `cloudfunctions.functions.invoke` are not required for gen2 authenticated invocation; detection logic that only watches those permissions will miss this path.

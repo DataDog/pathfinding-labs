@@ -15,7 +15,7 @@
 #
 # All other IAM bindings (deployer → starting_sa tokenCreator,
 # starting_sa minimal custom role with setIamPolicy on target_sa,
-# target_sa roles/editor on project) are Terraform-managed and are NOT touched.
+# target_sa roles/owner on project) are Terraform-managed and are NOT touched.
 
 set -e
 
@@ -100,7 +100,7 @@ echo ""
 # Step 3: Check for leftover project label from the write-proof step
 #
 # demo_attack.sh step 5 adds pl-privesc-verified=true as a label to prove
-# editor access, then immediately removes it. This step checks for any
+# owner access, then immediately removes it. This step checks for any
 # leftover in case the demo was interrupted before the removal.
 echo -e "${YELLOW}Step 3: Checking for leftover demo project label${NC}"
 
@@ -125,7 +125,7 @@ echo -e "${YELLOW}Step 4: Confirming Terraform-managed bindings (not touched by 
 echo "The following are Terraform-managed and preserved:"
 echo "  - deployer → starting_sa (roles/iam.serviceAccountTokenCreator): Terraform-managed"
 echo "  - starting_sa → target_sa (minimal custom role with setIamPolicy): Terraform-managed"
-echo "  - target_sa roles/editor on project: Terraform-managed"
+echo "  - target_sa roles/owner on project: Terraform-managed"
 echo -e "${GREEN}✓ Infrastructure state unchanged${NC}\n"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -8,7 +8,7 @@
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
-* **Technique:** Rewrite a privileged service account's IAM policy via `iam.serviceAccounts.setIamPolicy` (granted here through a minimal custom role) to self-grant `roles/iam.serviceAccountTokenCreator`, then chain impersonation to mint a token for the target and inherit its `roles/editor` project permissions
+* **Technique:** Rewrite a privileged service account's IAM policy via `iam.serviceAccounts.setIamPolicy` (granted here through a minimal custom role) to self-grant `roles/iam.serviceAccountTokenCreator`, then chain impersonation to mint a token for the target and inherit its `roles/owner` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_002_iam_serviceaccountssetiampolicy`
 * **Schema Version:** 4.9.5
 * **Pathfinding.cloud ID:** gcp-iam-002
@@ -18,7 +18,7 @@
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-gcp-iam-002-start` service account to the `pl-prod-gcp-iam-002-target` service account by rewriting the target's IAM policy to self-grant `roles/iam.serviceAccountTokenCreator`, then chaining impersonation to mint a token for the target and inherit its `roles/editor` project role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-gcp-iam-002-start` service account to the `pl-prod-gcp-iam-002-target` service account by rewriting the target's IAM policy to self-grant `roles/iam.serviceAccountTokenCreator`, then chaining impersonation to mint a token for the target and inherit its `roles/owner` project role.
 
 - **Start:** `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com`
 - **Destination resource:** `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com`
@@ -64,11 +64,10 @@ plabs apply
 | Resource Identifier | Purpose |
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
-| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
+| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/owner` on the project |
 | IAM custom role `gcp_iam_002_sa_setiampolicy_min` granting only `iam.serviceAccounts.setIamPolicy`, bound to `pl-prod-gcp-iam-002-start` at the `pl-prod-gcp-iam-002-target` SA resource level | The vulnerable grant: lets the starting SA rewrite the target SA's IAM policy |
 | IAM custom role `gcp_iam_002_sa_recon_help` bound to `pl-prod-gcp-iam-002-start` at the project level | The helpful recon + gcloud-mechanic permissions (`iam.serviceAccounts.getIamPolicy`, `iam.serviceAccounts.list`) so the starting SA can find the target itself — not part of the modeled vulnerability |
-| IAM binding: `roles/editor` on the project granted to `pl-prod-gcp-iam-002-target` | The privilege that makes impersonating the target service account valuable |
-| IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-gcp-iam-002-target` | Grants the target SA secret-payload access (`roles/editor` alone does not) so the impersonation is sufficient to read the flag |
+| IAM binding: `roles/owner` on the project granted to `pl-prod-gcp-iam-002-target` | The privilege that makes impersonating the target service account valuable |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-002-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 
 ### Solution
@@ -86,7 +85,7 @@ The script will:
 2. Confirm the starting service account cannot read the flag and enumerate the project's service accounts to identify the target
 3. Call `setIamPolicy` on the target service account to self-grant `roles/iam.serviceAccountTokenCreator` (the exploit)
 4. Chain impersonation (your ADC → starting SA → target SA) to mint a short-lived token for the target service account
-5. Verify `roles/editor` access by writing and removing a project label, then read the CTF flag from Secret Manager and display it
+5. Verify `roles/owner` access by writing and removing a project label, then read the CTF flag from Secret Manager and display it
 6. Run with `--api-only` to prove the attack needs only `iam.serviceAccounts.setIamPolicy`: it calls the raw `setIamPolicy` REST endpoint with a policy body built from scratch, skipping the `getIamPolicy` read that `gcloud add-iam-policy-binding` performs
 
 #### Resources Created by Attack Script
@@ -149,14 +148,14 @@ plabs apply
 - **Service accounts holding `iam.serviceAccounts.setIamPolicy` on other service accounts**: Any principal that can write a service account's IAM policy can grant itself (or any identity it controls) `roles/iam.serviceAccountTokenCreator` on that account, then mint tokens as it -- functionally equivalent to holding its credentials. This is the key teaching point of this scenario: detection should key on the **effective `iam.serviceAccounts.setIamPolicy` permission on an enabled service account**, not on `getIamPolicy` reads. `gcloud add-iam-policy-binding` happens to call `getIamPolicy` first, but the raw `setIamPolicy` API does not need it (proven by the demo's `--api-only` mode), so `getIamPolicy` is a weak and bypassable signal.
 - **`setIamPolicy` granted via a custom role, not just the predefined roles**: The permission can arrive through `roles/iam.serviceAccountAdmin` *or* a narrowly scoped custom role (as in this scenario) that bundles only `setIamPolicy`. Detection logic that greps for predefined role names by string will miss the custom-role variant -- resolve custom role permission lists too.
 - **Impersonation/policy-write grants that cross a privilege boundary**: Flag cases where the principal with `setIamPolicy` on a service account has fewer project-level roles than the account it can rewrite -- this is the GCP analog of AWS's "role can modify a privileged user" finding.
-- **Service accounts with `roles/editor` or `roles/owner` at the project level**: Broad primitive roles grant near-administrative access across most GCP services (though notably *not* Secret Manager payload access -- see below).
+- **Service accounts with `roles/editor` or `roles/owner` at the project level**: Broad primitive roles grant administrative access across most GCP services, including Secret Manager payload access in the case of `roles/owner`.
 - **Unscoped `setIamPolicy` bindings on service accounts**: The binding in this scenario is not scoped with IAM Conditions, so the starting service account can rewrite the target's policy at will and indefinitely.
 
 #### Prevention Recommendations
 
 - **Avoid granting `iam.serviceAccounts.setIamPolicy` across privilege boundaries**: Never grant policy-write rights on a service account to a principal that should not otherwise hold that account's permissions -- whether via `roles/iam.serviceAccountAdmin` or a custom role scoped to just `setIamPolicy`. Writing a SA's policy is equivalent to being able to impersonate it.
 - **Use IAM Conditions to scope policy-management grants**: Restrict `setIamPolicy` bindings with conditions (time-bound access, requester attributes) rather than granting unconditional, standing access.
-- **Apply least privilege to the target service account**: Replace broad primitive roles like `roles/editor` with narrowly scoped predefined or custom roles that grant only what the workload needs.
+- **Apply least privilege to the target service account**: Replace broad primitive roles like `roles/owner` with narrowly scoped predefined or custom roles that grant only what the workload needs.
 - **Enable Organization Policy constraints**: Use `iam.disableServiceAccountKeyCreation` and related org policies to reduce standing credential material, and pair this with regular audits of `serviceAccountAdmin`/`setIamPolicy` and `serviceAccountTokenCreator` bindings via IAM Recommender.
 - **Alert on self-referential `setIamPolicy` changes**: Monitor for a principal adding a `roles/iam.serviceAccountTokenCreator` binding for itself on a service account it can write -- the signature of this exact escalation.
 - **Audit IAM bindings regularly with Policy Analyzer**: Use GCP's Policy Analyzer / IAM Recommender to identify service accounts whose policies can be written by lower-privilege principals and remove those grants.
@@ -166,7 +165,7 @@ plabs apply
 #### Cloud Audit Log Events to Monitor
 
 - `iam.googleapis.com/SetIamPolicy` -- a service account's IAM policy was overwritten; critical when the new policy adds `roles/iam.serviceAccountTokenCreator` (or a custom role including `iam.serviceAccounts.getAccessToken`/`getOpenIdToken`) for a principal that previously could not impersonate the account. This is the primary signal for this attack and fires in both the `gcloud` and raw-API paths.
-- `iam.googleapis.com/GenerateAccessToken` -- a short-lived access token was minted via service account impersonation; critical when the impersonated service account holds `roles/editor` or `roles/owner`, and especially when it immediately follows a `SetIamPolicy` event that granted the caller tokenCreator
+- `iam.googleapis.com/GenerateAccessToken` -- a short-lived access token was minted via service account impersonation; critical when the impersonated service account holds `roles/owner` or `roles/editor`, and especially when it immediately follows a `SetIamPolicy` event that granted the caller tokenCreator
 - `secretmanager.googleapis.com/AccessSecretVersion` -- a Secret Manager secret version was accessed; investigate when the caller is an impersonated service account shortly after a `GenerateAccessToken` event
 - `cloudresourcemanager.googleapis.com/UpdateProject` -- a project was modified (e.g., labels changed); flag when the caller is an impersonated service account whose own identity could not otherwise write the project
 

@@ -2,13 +2,13 @@
 
 Service account impersonation is one of the most common ways GCP environments quietly accumulate privilege escalation paths. It is a legitimate and widely recommended pattern -- automation identities are supposed to impersonate more privileged service accounts rather than holding long-lived keys for them -- but the moment the impersonation grant crosses a privilege boundary that nobody is tracking, it becomes a ready-made escalation path. The permission behind this, `iam.serviceAccounts.getAccessToken`, does not show up in most people's mental model of "dangerous permissions" the way `roles/owner` does, which is exactly why it tends to survive access reviews unnoticed -- whether it arrives via the predefined `roles/iam.serviceAccountTokenCreator` role or, as in this lab, a custom role scoped to just that one permission.
 
-In this lab, you'll start as a service account with no meaningful project permissions of its own and end up reading a secret that requires `roles/editor` to access. The entire escalation happens through a single IAM binding that most engineers would glance past without a second thought.
+In this lab, you'll start as a service account with no meaningful project permissions of its own and end up reading a secret that requires `roles/owner` to access. The entire escalation happens through a single IAM binding that most engineers would glance past without a second thought.
 
 ## The Challenge
 
 You start as `pl-prod-gcp-iam-001-start`, a service account whose credentials (via impersonation) were provided to you. On its own, this service account has no project-level IAM roles -- it can't read Compute Engine instances, it can't list Cloud Storage buckets, and it certainly can't read Secret Manager secrets.
 
-Somewhere in the project, though, there's a second service account: `pl-prod-gcp-iam-001-target`. That account holds `roles/editor` on the project -- one of GCP's broadest primitive roles, covering read/write access to nearly every resource type, including Secret Manager. Your job is to find a way to operate as that account.
+Somewhere in the project, though, there's a second service account: `pl-prod-gcp-iam-001-target`. That account holds `roles/owner` on the project -- GCP's broadest primitive role, covering full administrative access to nearly every resource type, including Secret Manager (and, as `roles/owner`, the ability to manage IAM policies). Your job is to find a way to operate as that account.
 
 ## Reconnaissance
 
@@ -41,10 +41,10 @@ gcloud projects get-iam-policy <project_id> \
   --flatten="bindings[].members" \
   --filter="bindings.members:pl-prod-gcp-iam-001-target@<project_id>.iam.gserviceaccount.com" \
   --format="table(bindings.role)"
-# roles/editor
+# roles/owner
 ```
 
-`roles/editor` on the project. That's the prize.
+`roles/owner` on the project. That's the prize.
 
 ## Exploitation
 
@@ -59,7 +59,7 @@ gcloud auth print-access-token \
 
 This returns a bearer token that is valid for a short window (typically one hour) and authenticates every subsequent API call as `pl-prod-gcp-iam-001-target`. Under the hood, `gcloud` is calling `generateAccessToken` on your behalf, authorized by the `iam.serviceAccounts.getAccessToken` grant you found during reconnaissance.
 
-From this point forward, any `gcloud` command run with `--impersonate-service-account` set to the target account executes as that account -- with all of its `roles/editor` project permissions attached.
+From this point forward, any `gcloud` command run with `--impersonate-service-account` set to the target account executes as that account -- with all of its `roles/owner` project permissions attached.
 
 ## Verification
 
@@ -81,10 +81,10 @@ gcloud secrets versions access latest \
   --impersonate-service-account=pl-prod-gcp-iam-001-target@<project_id>.iam.gserviceaccount.com
 ```
 
-This works because `roles/editor` alone does *not* grant `secretmanager.versions.access` -- Google deliberately excludes secret payload access from `roles/editor`/`roles/viewer` -- so the lab grants `roles/secretmanager.secretAccessor` directly on this secret to the target service account. Impersonating the target account gets you both: its `roles/editor` project permissions and its explicit `secretAccessor` grant on the flag. You never needed a role of your own; you only needed the ability to borrow the identity of an account that already had both.
+This works because `roles/owner` includes `secretmanager.versions.access`, so controlling the target service account is sufficient to read the flag -- no extra grant on the secret is needed. You never needed a role of your own; you only needed the ability to borrow the identity of an account that already held `roles/owner`.
 
 ## What Happened
 
-You escalated from a service account with zero project-level permissions to one holding `roles/editor` -- and from there to a project secret -- entirely through a single misconfigured IAM binding: `iam.serviceAccounts.getAccessToken` granted across a privilege boundary. No keys were stolen, no passwords were guessed, and no vulnerability in application code was exploited. The entire attack was two `gcloud` commands using a permission that is easy to grant and easy to forget about.
+You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- entirely through a single misconfigured IAM binding: `iam.serviceAccounts.getAccessToken` granted across a privilege boundary. No keys were stolen, no passwords were guessed, and no vulnerability in application code was exploited. The entire attack was two `gcloud` commands using a permission that is easy to grant and easy to forget about.
 
 This pattern shows up constantly in real GCP environments because service account impersonation is the *recommended* alternative to long-lived service account keys. Teams correctly move away from JSON key files, but in doing so they often grant impersonation rights broadly -- to a CI/CD pipeline's identity, to a shared "automation" service account, or to entire groups, via either `roles/iam.serviceAccountTokenCreator` or a custom role bundling `getAccessToken` -- without tracking which of those impersonation targets hold elevated project roles. The result is a privilege escalation graph hiding inside what looks, on the surface, like a security improvement.

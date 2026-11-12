@@ -35,7 +35,7 @@ output "victim_function_name" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "starting_sa -> (cloudfunctions.functions.update + cloudfunctions.functions.sourceCodeSet via minimal custom role + iam.serviceAccounts.actAs on target_sa via minimal custom role) -> replaces code of existing 2nd-gen Cloud Function '${google_cloudfunctions2_function.victim.name}' that already runs as target_sa -> invokes updated function via run.routes.invoke -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/editor) -> Project Admin"
+  value       = "starting_sa -> (cloudfunctions.functions.update + cloudfunctions.functions.sourceCodeSet via minimal custom role + iam.serviceAccounts.actAs on target_sa via minimal custom role) -> replaces code of existing 2nd-gen Cloud Function '${google_cloudfunctions2_function.victim.name}' that already runs as target_sa -> invokes updated function via run.routes.invoke -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/owner) -> Project Admin"
 }
 
 output "flag_secret_id" {
