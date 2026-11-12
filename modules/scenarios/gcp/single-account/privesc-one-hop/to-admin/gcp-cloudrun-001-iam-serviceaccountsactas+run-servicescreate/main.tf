@@ -75,7 +75,7 @@ resource "google_service_account_iam_member" "starting_sa_deployer_impersonation
 }
 
 # -----------------------------------------------------------------------------
-# Target Service Account (privileged - holds roles/editor on the project)
+# Target Service Account (privileged - holds roles/owner on the project)
 # -----------------------------------------------------------------------------
 
 resource "google_service_account" "target_sa" {
@@ -90,7 +90,7 @@ resource "google_service_account" "target_sa" {
 resource "google_project_iam_member" "target_sa_admin_role" {
   provider = google.prod
   project  = var.project_id
-  role     = "roles/editor"
+  role     = "roles/owner"
   member   = "serviceAccount:${google_service_account.target_sa.email}"
 }
 
@@ -231,10 +231,8 @@ resource "google_project_iam_member" "vulnerable_cr_deploy_helpful_grant" {
 # -----------------------------------------------------------------------------
 # CTF Flag Resource (to-admin pattern: Secret Manager secret)
 # -----------------------------------------------------------------------------
-# roles/editor (held by target_sa above) does NOT grant
-# secretmanager.versions.access by itself — see the explicit secretAccessor
-# grant below, which is what actually makes running as target_sa sufficient
-# to read this flag.
+# roles/owner (held by target_sa above) includes secretmanager.versions.access,
+# so running as target_sa is sufficient to read this flag — no extra grant needed.
 
 resource "google_secret_manager_secret" "flag" {
   provider  = google.prod
@@ -260,14 +258,3 @@ resource "google_secret_manager_secret_version" "flag" {
   secret_data = var.flag_value
 }
 
-# roles/editor does not include secretmanager.versions.access by design.
-# Grant secretAccessor directly on the flag secret so target_sa can read it
-# once the malicious Cloud Run service runs as target_sa and exfiltrates its
-# OAuth token — this is what makes the escalation valuable.
-resource "google_secret_manager_secret_iam_member" "target_sa_flag_accessor" {
-  provider  = google.prod
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.flag.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.target_sa.email}"
-}

@@ -8,7 +8,7 @@
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
-* **Technique:** Impersonate a privileged service account via `iam.serviceAccounts.getAccessToken` (granted here through a minimal custom role) to mint an OAuth access token and inherit its `roles/editor` project permissions
+* **Technique:** Impersonate a privileged service account via `iam.serviceAccounts.getAccessToken` (granted here through a minimal custom role) to mint an OAuth access token and inherit its `roles/owner` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_iam_001_iam_serviceaccountsgetaccesstoken`
 * **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-iam-001
@@ -18,7 +18,7 @@
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-gcp-iam-001-start` service account to the `pl-prod-gcp-iam-001-target` service account by impersonating it through the `iam.serviceAccounts.getAccessToken` permission and inheriting its `roles/editor` project role.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-gcp-iam-001-start` service account to the `pl-prod-gcp-iam-001-target` service account by impersonating it through the `iam.serviceAccounts.getAccessToken` permission and inheriting its `roles/owner` project role.
 
 - **Start:** `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-start@{project_id}.iam.gserviceaccount.com`
 - **Destination resource:** `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com`
@@ -65,10 +65,10 @@ plabs apply
 | Resource Identifier | Purpose |
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
-| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
+| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/owner` on the project |
 | IAM custom role granting `iam.serviceAccounts.getAccessToken` on `pl-prod-gcp-iam-001-target`, bound to `pl-prod-gcp-iam-001-start` | The vulnerable impersonation grant that enables this attack path |
 | IAM custom role `gcp_iam_001_sa_recon_help` bound to `pl-prod-gcp-iam-001-start` at the project level | The helpful recon permissions (`resourcemanager.projects.get`, `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`) so the starting SA can find the impersonation target itself — not part of the modeled vulnerability |
-| IAM binding: `roles/editor` on the project granted to `pl-prod-gcp-iam-001-target` | The privilege that makes impersonating the target service account valuable |
+| IAM binding: `roles/owner` on the project granted to `pl-prod-gcp-iam-001-target` | The privilege that makes impersonating the target service account valuable |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-001-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 
 ### Solution
@@ -85,7 +85,7 @@ The script will:
 1. Display a step-by-step walkthrough with color-coded output
 2. Show the `gcloud` commands being executed and their results
 3. Mint an impersonated access token for the target service account and verify the identity switch
-4. Verify successful privilege escalation to project `roles/editor` access
+4. Verify successful privilege escalation to project `roles/owner` access
 5. Read the CTF flag from Secret Manager while impersonating the target service account and display it
 
 #### Resources Created by Attack Script
@@ -145,7 +145,7 @@ plabs apply
 
 - **Service accounts holding `iam.serviceAccounts.getAccessToken` on other service accounts**: Any principal granted this permission on a service account can mint access tokens that fully authenticate as that account -- functionally equivalent to holding its credentials. This can come from the predefined `roles/iam.serviceAccountTokenCreator` role *or* a custom role (as in this scenario) that grants only `getAccessToken` -- CSPM detection logic that greps for `roles/iam.serviceAccountTokenCreator` by name will miss the custom-role variant, so detection should resolve custom role permission lists too.
 - **Impersonation grants that cross a privilege boundary**: Specifically flag cases where the impersonating principal has fewer project-level roles than the service account it can impersonate -- this is the GCP analog of AWS's "role can create access keys for a privileged user" finding.
-- **Service accounts with `roles/editor` or `roles/owner` at the project level**: Broad primitive roles like `roles/editor` grant near-administrative access across most GCP services (though notably *not* Secret Manager access -- see below).
+- **Service accounts with `roles/owner` or `roles/owner` at the project level**: Broad primitive roles like `roles/owner` grant full administrative access across the project, including IAM policy management and Secret Manager payload access.
 - **Unscoped impersonation bindings**: The binding in this scenario is not scoped with IAM Conditions (e.g., time-bound or resource-tag-bound), meaning the starting service account can impersonate the target indefinitely.
 - **Lack of separation between automation identities and privileged identities**: The pattern of a low-privilege "operator" service account holding impersonation rights over a high-privilege "workload" service account is a common but risky automation pattern.
 
@@ -153,7 +153,7 @@ plabs apply
 
 - **Avoid granting `iam.serviceAccounts.getAccessToken` across privilege boundaries**: Never grant impersonation rights on a service account to a principal that should not otherwise hold that service account's permissions -- whether via the predefined `roles/iam.serviceAccountTokenCreator` role or a custom role scoped to just this permission.
 - **Use IAM Conditions to scope impersonation grants**: Restrict impersonation bindings with conditions such as time-bound access or requester attributes, rather than granting unconditional, standing access.
-- **Apply least privilege to the target service account**: Replace broad primitive roles like `roles/editor` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs.
+- **Apply least privilege to the target service account**: Replace broad primitive roles like `roles/owner` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs.
 - **Enable Organization Policy constraints**: Use `iam.disableServiceAccountKeyCreation` and related organization policies to reduce standing credential material, and pair this with regular audits of service-account impersonation and `serviceAccountUser` bindings via IAM Recommender.
 - **Audit IAM bindings regularly with Policy Analyzer**: Use GCP's Policy Analyzer / IAM Recommender to identify service accounts with unused or overly broad impersonation grants and remove them.
 - **Prefer Workload Identity Federation over service account impersonation chains**: Where possible, grant external workloads direct, narrowly-scoped access via Workload Identity Federation instead of chaining through an intermediate impersonatable service account.
@@ -162,7 +162,7 @@ plabs apply
 
 #### Cloud Audit Log Events to Monitor
 
-- `iam.googleapis.com/GenerateAccessToken` -- a short-lived access token was minted via service account impersonation; critical when the impersonated service account holds `roles/editor` or `roles/owner` at the project level
+- `iam.googleapis.com/GenerateAccessToken` -- a short-lived access token was minted via service account impersonation; critical when the impersonated service account holds `roles/owner` or `roles/owner` at the project level
 - `iam.googleapis.com/SignJwt` -- a JWT was signed on behalf of a service account, commonly used in OIDC-based impersonation flows
 - `secretmanager.googleapis.com/AccessSecretVersion` -- a Secret Manager secret version was accessed; investigate when the caller identity is an impersonated service account shortly after a `GenerateAccessToken` event
 - `iam.googleapis.com/SetIamPolicy` -- an IAM policy binding was modified on a service account; monitor for new impersonation grants (predefined `roles/iam.serviceAccountTokenCreator` or a custom role including `iam.serviceAccounts.getAccessToken`) being added to service accounts that hold elevated project roles

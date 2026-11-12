@@ -2,7 +2,7 @@
 
 The create-a-function attack against Cloud Functions is well-documented at this point. What gets less attention is the subtler variant: you don't need to create anything. If a privileged Cloud Function already exists in the environment -- and one almost always does, because production workloads run as service accounts -- then `cloudfunctions.functions.update` is all you need to turn it from an innocent workload into a credential thief. The SA is already attached. Cloud Build is already configured. The IAM bindings are already in place. You just need to swap what the function does.
 
-This scenario makes that distinction explicit. The victim function has been running as a service account with `roles/editor` since Terraform deployed the lab. It serves a hello-world response handler. Your starting service account cannot read project secrets, cannot write to Cloud Storage, and cannot do anything particularly interesting on its own. What it can do is replace the function's code -- and that is enough.
+This scenario makes that distinction explicit. The victim function has been running as a service account with `roles/owner` since Terraform deployed the lab. It serves a hello-world response handler. Your starting service account cannot read project secrets, cannot write to Cloud Storage, and cannot do anything particularly interesting on its own. What it can do is replace the function's code -- and that is enough.
 
 There's a second wrinkle that makes this scenario technically distinct from the create variant: the `gcloud` CLI wrapper needs more permissions than the raw Cloud Functions v2 REST API does. Beyond the raw-API required set -- `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`, and `iam.serviceAccounts.actAs` -- `gcloud functions deploy` also requires `cloudfunctions.functions.get` and `resourcemanager.projects.get` (two gcloud-mechanic permissions, granted in a separate custom role in this lab so the split is visible). Specifying `--build-service-account` eliminates the other four preflight permissions `gcloud` would otherwise need. Attackers working with minimal custom-role grants can skip the wrapper entirely and drive the raw API with `curl`.
 
@@ -10,7 +10,7 @@ There's a second wrinkle that makes this scenario technically distinct from the 
 
 You start as `pl-prod-cf002-start`, a service account with no project-level IAM roles of its own. It cannot read Secret Manager secrets, cannot list Compute Engine instances, and cannot interact with Cloud Storage outside its own staging bucket.
 
-What it does have is a set of narrowly-scoped grants: a required custom role at the project level granting `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`, and `run.routes.invoke`; a helpful role granting `cloudfunctions.functions.get` and `resourcemanager.projects.get` (gcloud deploy mechanics) plus `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, and `cloudfunctions.functions.list` (recon, so you can find the victim function and the SA it runs as yourself); and an actAs grant on a second service account -- `pl-prod-cf002-target`, which holds `roles/editor` on the project -- via a minimal custom role that contains only `iam.serviceAccounts.actAs`.
+What it does have is a set of narrowly-scoped grants: a required custom role at the project level granting `cloudfunctions.functions.update`, `cloudfunctions.functions.sourceCodeSet`, `cloudfunctions.operations.get`, and `run.routes.invoke`; a helpful role granting `cloudfunctions.functions.get` and `resourcemanager.projects.get` (gcloud deploy mechanics) plus `iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, and `cloudfunctions.functions.list` (recon, so you can find the victim function and the SA it runs as yourself); and an actAs grant on a second service account -- `pl-prod-cf002-target`, which holds `roles/owner` on the project -- via a minimal custom role that contains only `iam.serviceAccounts.actAs`.
 
 Critically, there is already a 2nd-gen Cloud Function deployed in this project -- `pl-cf002-victim-{resource_suffix}` -- that runs as `pl-prod-cf002-target`. It serves a benign hello-world handler. Your job is to replace that handler with something that reads the metadata server.
 
@@ -38,11 +38,10 @@ gcloud projects get-iam-policy <project_id> \
   --flatten="bindings[].members" \
   --filter="bindings.members:pl-prod-cf002-target@<project_id>.iam.gserviceaccount.com" \
   --format="table(bindings.role)"
-# roles/editor
-# roles/secretmanager.secretAccessor (on the flag secret)
+# roles/owner
 ```
 
-`roles/editor` on `pl-prod-cf002-target`. Now check whether your starting account has any relationship to it:
+`roles/owner` on `pl-prod-cf002-target`. Now check whether your starting account has any relationship to it:
 
 ```bash
 gcloud iam service-accounts get-iam-policy \
@@ -180,7 +179,7 @@ curl -s "https://oauth2.googleapis.com/tokeninfo?access_token=$EXFILTRATED_TOKEN
 # pl-prod-cf002-target@<project_id>.iam.gserviceaccount.com
 ```
 
-Then confirm the `roles/editor` write access by patching a project label and reading it back:
+Then confirm the `roles/owner` write access by patching a project label and reading it back:
 
 ```bash
 curl -s -X PATCH \
@@ -196,7 +195,7 @@ The label write succeeds. Your starting account, operating alone, would have bee
 
 ## Capture the Flag
 
-The CTF flag is stored as the latest version of a Secret Manager secret (`pl-gcp-cloudfunctions-002-flag`). The target service account holds an explicit `roles/secretmanager.secretAccessor` binding on that specific secret -- `roles/editor` alone does not include `secretmanager.versions.access`, so the lab adds the accessor grant directly.
+The CTF flag is stored as the latest version of a Secret Manager secret (`pl-gcp-cloudfunctions-002-flag`). The target service account holds `roles/owner` on the project, which natively includes `secretmanager.versions.access` -- no separate secret-level grant exists, so controlling the target service account is sufficient to read the flag.
 
 Use the exfiltrated bearer token against the Secret Manager REST API:
 
@@ -210,11 +209,11 @@ echo "$SECRET_RESPONSE" | jq -r '.payload.data' | openssl base64 -d -A
 
 The Secret Manager API returns the secret payload base64-encoded in `payload.data`. Decoding it reveals the flag.
 
-This works for the same reason the project label write did: the bearer token authenticates as `pl-prod-cf002-target`, which carries both the project-wide `roles/editor` permissions and the secret-specific `secretAccessor` grant. The token is not a gcloud impersonation session and cannot be passed to `--impersonate-service-account` for interactive CLI commands -- but it is a fully valid OAuth bearer token for any direct REST API call.
+This works for the same reason the project label write did: the bearer token authenticates as `pl-prod-cf002-target`, which carries the project-wide `roles/owner` permissions (including `secretmanager.versions.access`). The token is not a gcloud impersonation session and cannot be passed to `--impersonate-service-account` for interactive CLI commands -- but it is a fully valid OAuth bearer token for any direct REST API call.
 
 ## What Happened
 
-You escalated from a service account with zero project-level permissions to one holding `roles/editor` -- and from there to a project secret -- by replacing the source code of a Cloud Function that was already running as a privileged identity. No new function was created. No IAM bindings were modified. The runtime service account did not change. The only change was the handler code, and Cloud Build took care of the rest.
+You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- by replacing the source code of a Cloud Function that was already running as a privileged identity. No new function was created. No IAM bindings were modified. The runtime service account did not change. The only change was the handler code, and Cloud Build took care of the rest.
 
 This attack is harder to detect than the create variant precisely because it looks like normal CI/CD activity: code updates to existing functions are routine. The signal is not the update itself -- it's the mismatch between the caller's own permissions and the permissions held by the function's runtime SA. A developer account with `cloudfunctions.functions.update` on a function that runs as an admin SA is a standing misconfiguration that exists whether or not anyone ever exploits it.
 

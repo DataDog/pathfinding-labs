@@ -56,15 +56,14 @@ attackMap:
       isAdmin: true
       arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com"
       description: >
-        This service account holds `roles/editor` on the project -- broad,
-        near-administrative permissions covering the majority of GCP resource types
-        -- plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF
-        flag secret (`roles/editor` deliberately excludes secret payload access). It
+        This service account holds `roles/owner` on the project -- full
+        administrative permissions, including `secretmanager.versions.access`, so no
+        separate Secret Manager grant is needed to read the CTF flag. It
         has been the runtime identity of the victim Cloud Function since Terraform
         deployed it. By replacing the function's code and invoking the updated
         function, the attacker exfiltrates this service account's OAuth access token
-        from the metadata server, inheriting both the project-wide `roles/editor`
-        permissions and the secret-specific `secretAccessor` grant.
+        from the metadata server, inheriting its project-wide `roles/owner`
+        permissions.
 
     - id: ctf-flag
       label: "CTF Flag"
@@ -75,9 +74,8 @@ attackMap:
       description: >
         The CTF flag for this scenario, stored as the latest version of a Secret
         Manager secret. Retrieving it requires `secretmanager.versions.access` on the
-        secret -- `roles/editor` does NOT grant this, so the privileged service
-        account holds an explicit `roles/secretmanager.secretAccessor` binding on
-        this secret. Your goal is to read this secret's value using the exfiltrated
+        secret, which the target service account's `roles/owner` natively
+        includes. Your goal is to read this secret's value using the exfiltrated
         access token you obtained from the updated Cloud Function's HTTP response.
 
   edges:
@@ -137,9 +135,8 @@ attackMap:
         and returns the target service account's short-lived OAuth access token in
         its HTTP response body. The function's runtime SA has not changed -- only its
         code has. Every subsequent API call made with that token is authorized as the
-        target service account, inheriting its project `roles/editor` permissions and
-        the explicit `roles/secretmanager.secretAccessor` binding on the CTF flag
-        secret.
+        target service account, inheriting its project `roles/owner` permissions
+        (including `secretmanager.versions.access` on the CTF flag secret).
       hints: []
       commands: []
 
@@ -148,16 +145,15 @@ attackMap:
       label: "Read CTF flag"
       description: >
         Using the exfiltrated OAuth access token for the target service account, read
-        the flag from Secret Manager. The target service account holds an explicit
-        `roles/secretmanager.secretAccessor` grant on this specific secret
-        (`roles/editor` alone does not grant `secretmanager.versions.access`). Use the
+        the flag from Secret Manager. The target service account's `roles/owner`
+        natively includes `secretmanager.versions.access`. Use the
         raw bearer token directly against the Secret Manager REST API -- it is not a
         gcloud impersonation session, so it cannot be passed to
         `--impersonate-service-account`; it must be sent as an `Authorization: Bearer`
         header to the REST endpoint.
       hints:
         - "The token you exfiltrated from the function's HTTP response is a raw OAuth bearer token, not a gcloud impersonation session -- use it directly as an Authorization header against the Secret Manager REST API rather than trying to pass it to --impersonate-service-account."
-        - "Secret Manager's REST API accepts a `:access` suffix on a secret version resource name; the bearer token alone is sufficient authorization since the target service account holds secretAccessor on that secret."
+        - "Secret Manager's REST API accepts a `:access` suffix on a secret version resource name; the bearer token alone is sufficient authorization since the target service account holds roles/owner, which includes secretmanager.versions.access."
       commands:
         - description: "Retrieve the CTF flag using the exfiltrated access token via the Secret Manager REST API"
           command: "curl -s -H \"Authorization: Bearer $EXFILTRATED_TOKEN\" \"https://secretmanager.googleapis.com/v1/projects/{project_id}/secrets/pl-gcp-cloudfunctions-002-flag/versions/latest:access\""

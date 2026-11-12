@@ -30,7 +30,7 @@ output "region" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "starting_sa -> (iam.serviceAccounts.actAs + cloudfunctions.functions.create/.sourceCodeSet/.call via minimal custom roles) -> deploys and invokes a new 2nd-gen Cloud Function running as target_sa -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/editor) -> Project Admin"
+  value       = "starting_sa -> (iam.serviceAccounts.actAs + cloudfunctions.functions.create/.sourceCodeSet/.call via minimal custom roles) -> deploys and invokes a new 2nd-gen Cloud Function running as target_sa -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/owner) -> Project Admin"
 }
 
 output "flag_secret_id" {

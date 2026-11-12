@@ -25,7 +25,7 @@ output "target_sa_id" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "starting_sa -> (iam.serviceAccounts.getAccessToken via minimal custom role) -> target_sa -> (roles/editor) -> Project Admin"
+  value       = "starting_sa -> (iam.serviceAccounts.getAccessToken via minimal custom role) -> target_sa -> (roles/owner) -> Project Admin"
 }
 
 output "flag_secret_id" {

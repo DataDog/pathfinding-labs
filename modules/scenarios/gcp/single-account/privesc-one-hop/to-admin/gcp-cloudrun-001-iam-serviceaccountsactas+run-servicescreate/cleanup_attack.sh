@@ -8,7 +8,7 @@
 #      run as target_sa (public Docker Hub image with a token-exfil command)
 #
 # All IAM bindings (starting_sa's actAs + run.services.create custom role,
-# target_sa's roles/editor + secretAccessor) are Terraform-managed and are
+# target_sa's roles/owner) are Terraform-managed and are
 # never touched here.
 #
 # GCP has no equivalent of AWS's force_destroy/force_detach_policies safety
@@ -133,7 +133,7 @@ echo "  - starting_sa → target_sa: iam.serviceAccounts.actAs via SA-scoped min
 echo "    role (the vuln): Terraform-managed"
 echo "  - starting_sa → project: run.services.create/.get + run.operations.get +"
 echo "    logging.logEntries.list via minimal custom role (the vuln): Terraform-managed"
-echo "  - target_sa roles/editor on project + secretAccessor on flag secret: Terraform-managed"
+echo "  - target_sa roles/owner on project: Terraform-managed"
 echo -e "${GREEN}✓ No out-of-band IAM bindings to clean up${NC}\n"
 
 echo -e "\n${GREEN}========================================${NC}"
