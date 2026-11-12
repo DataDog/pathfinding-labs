@@ -45,7 +45,7 @@ modules/scenarios/single-account/privesc-one-hop/to-admin/iam-putuserpolicy/
 
 ## Schema Version
 
-### Current Version: `1.10.1`
+### Current Version: `1.11.0`
 
 The schema follows semantic versioning:
 
@@ -57,6 +57,7 @@ The schema follows semantic versioning:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.11.0 | 2026-11-12 | Added the `"gcp-resource"` value to the `required_preconditions` `type` enum, the GCP analog of `"aws-resource"`: a GCP resource of a specific type must already exist with specific properties. Like `"aws-resource"`, it takes a `resource` name (e.g. `"Cloud Function"`, `"Service Account"`, `"Cloud Run Service"`). Needed because GCP `existing-passrole` labs exploit pre-existing GCP resources (e.g. a 2nd-gen Cloud Function already running as a privileged service account) and `"aws-resource"` was the only resource-type value. First consumer: gcp-cloudfunctions-002-cloudfunctions-functionsupdate. Motivated by the GCP lab audit before authoring pathfinding.cloud paths. |
 | 1.10.1 | 2026-11-01 | Documentation clarification of the GCP gcloud-mechanic permission sub-type (no schema change): examples updated to the two irreducible `--build-service-account` mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get`) instead of the preflight permissions that flag eliminates; stated explicitly that gcloud-mechanic permissions live ONLY in `permissions.helpful` with marker purposes — no `required_with_gcloud`/`gcloud_required` field exists or may be added — and that raw-API-required permissions such as `cloudfunctions.operations.get` (async LRO polling) belong in `permissions.required`; and documented that helpful permissions (gcloud mechanics + recon) are granted to the starting SA in Terraform via a single `_help` custom role mirroring `permissions.helpful` 1:1, so the starting SA can recon as itself. Motivated by the gcp-cloudfunctions-001/002 permission-shape audit. |
 | 1.10.0 | 2026-10-16 | Added the required `points` integer field: the lab's value on the pathfinding.cloud labs leaderboard, which now ranks learners by total points instead of lab count. Seeded from principal-hop count (single-hop 10, two-hop 20, three-hop 30); CTF labs are set higher by hand. Mirrors the README's `* **Points:**` field (README schema 4.8.0), which is what the site's `generate-labs-json.py` reads. All scenarios were given a value in the same change. |
 | 1.9.0 | 2026-10-15 | Removed the `supports_online_mode` field. Whether a lab can be played online in the browser no longer comes from this repo: pathfinding-backend derives it at runtime from the Cybr Labs catalog (labs Cybr hosts with a browser terminal) and pathfinding.cloud reads it from the backend. Existing `supports_online_mode` lines are ignored and can be deleted. |
@@ -429,7 +430,7 @@ Each entry in `required_preconditions`:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | string | ✅ Yes | Category of precondition. See allowed values below. |
-| `resource` | string | Conditional | The AWS resource type (e.g., `"Lambda Function"`, `"IAM Role"`, `"EC2 Instance"`). Required when `type` is `"aws-resource"`. Omit for all other types. |
+| `resource` | string | Conditional | The resource type that must pre-exist. For `"aws-resource"`: an AWS type (e.g., `"Lambda Function"`, `"IAM Role"`, `"EC2 Instance"`). For `"gcp-resource"`: a GCP type (e.g., `"Cloud Function"`, `"Service Account"`, `"Cloud Run Service"`). Required when `type` is `"aws-resource"` or `"gcp-resource"`. Omit for all other types. |
 | `description` | string | ✅ Yes | What specifically must be true about this resource or condition. Start with the constraint, not "must" — e.g., `"with admin privileges trusting lambda.amazonaws.com"` rather than `"must have admin privileges"`. |
 
 #### Allowed `type` Values
@@ -437,6 +438,7 @@ Each entry in `required_preconditions`:
 | Value | When to Use | Example |
 |-------|-------------|---------|
 | `"aws-resource"` | An AWS resource of a specific type must already exist with specific properties | IAM role with admin privs, Lambda function with privileged execution role, EC2 instance with admin instance profile |
+| `"gcp-resource"` | A GCP resource of a specific type must already exist with specific properties (the GCP analog of `"aws-resource"`) | 2nd-gen Cloud Function already running as a privileged service account, Service Account holding roles/owner, Cloud Run service with a privileged runtime SA |
 | `"network"` | A network-level condition must hold | Resource must be publicly reachable, VPC endpoint must exist, security group must allow inbound traffic |
 | `"external"` | A condition outside AWS infrastructure | Valid credentials obtained via phishing, access to source code repository, compromised CI/CD pipeline credentials |
 | `"configuration"` | An AWS service configuration setting | Lambda function allows code updates, CodeBuild project allows buildspec override, S3 bucket has versioning disabled |

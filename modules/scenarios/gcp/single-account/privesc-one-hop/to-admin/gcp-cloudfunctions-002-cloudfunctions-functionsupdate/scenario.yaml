@@ -1,7 +1,7 @@
 # =============================================================================
 # CORE METADATA
 # =============================================================================
-schema_version: "1.2.0"
+schema_version: "1.11.0"
 name: "gcp-cloudfunctions-002-cloudfunctions-functionsupdate"
 title: "Cloud Function Code Update to Existing Admin SA"
 description: "Service account with cloudfunctions.functions.update and cloudfunctions.functions.sourceCodeSet on an existing 2nd-gen Cloud Function can replace its code with a token-exfiltration payload; since the function already runs as a privileged target service account, invoking the updated function leaks that account's OAuth token from the metadata server, granting its roles/owner project permissions"
@@ -29,6 +29,19 @@ attack_path:
     - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com"
 
   summary: "starting_sa -> (cloudfunctions.functions.update + cloudfunctions.functions.sourceCodeSet + iam.serviceAccounts.actAs on target_sa) -> replaces code of existing 2nd-gen Cloud Function that already runs as target_sa (code-only update, SA unchanged) -> invokes updated function via run.routes.invoke -> exfiltrates target_sa's OAuth access token from the function's metadata server -> (roles/owner) -> Project Admin"
+
+# =============================================================================
+# REQUIRED PRECONDITIONS
+# =============================================================================
+# existing-passrole: the attack works because a privileged compute resource
+# already exists and the starting principal can update it in place (code-only).
+required_preconditions:
+  - type: "gcp-resource"
+    resource: "Cloud Function"
+    description: "a 2nd-gen Cloud Function that already runs as the privileged target service account — both its runtime service account and its build service account are set to that account — and that the starting principal can update in place (code-only update, service account unchanged)"
+  - type: "gcp-resource"
+    resource: "Service Account"
+    description: "the target service account that the existing function runs as holds roles/owner on the project (the privilege the attacker inherits by exfiltrating its token from the function's metadata server)"
 
 # =============================================================================
 # PERMISSIONS
