@@ -149,6 +149,8 @@ flags:
   gcp-cloudfunctions-002-to-admin: "flag{gcp_cloudfunctions_002_admin_captured}"
   gcp-cloudrun-001-to-admin: "flag{cloud-run-actas-service-create}"
   gcp-iam-001-to-admin: "flag{gcp_iam_001_admin_captured}"
+  gcp-iam-002-to-admin: "flag{gcp_iam_002_admin_captured}"
+  gcp-iam-003-to-admin: "flag{gcp_iam_003_admin_captured}"
   sts-001-to-admin: "flag{sts_001_admin_captured}"
   sts-001-to-bucket: "flag{sts_001_bucket_accessed}"
   sts-001-to-ecs-002-to-admin-to-admin: "flag{sts_001_ecs_002_multi_hop_admin_captured}"

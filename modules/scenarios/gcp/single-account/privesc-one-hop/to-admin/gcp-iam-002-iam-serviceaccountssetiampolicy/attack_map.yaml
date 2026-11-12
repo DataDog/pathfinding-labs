@@ -1,0 +1,90 @@
+attackMap:
+  nodes:
+    - id: starting-principal
+      label: "Starting Service Account"
+      type: principal
+      subType: service-account
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com"
+      access:
+        type: assumed-breach-credentials
+      description: >
+        You have gained access to this principal's GCP credentials. These could have
+        been obtained through many real-world vectors: phishing a developer and gaining
+        access to their workstation, compromising a CI/CD pipeline that impersonates
+        this service account, exploiting a vulnerable workload running with this
+        service account attached, discovering a service account key in a public GitHub
+        repository, or being granted impersonation on it directly for an unrelated
+        automation task.
+
+        Regardless of how you obtained them, you are now operating as this service
+        account. It holds no project-level roles of its own and cannot read the flag
+        secret. However, it has been granted `iam.serviceAccounts.setIamPolicy` on
+        another, more privileged service account in the project -- meaning it can
+        overwrite that account's IAM policy.
+
+    - id: target-sa
+      label: "Privileged Service Account"
+      type: principal
+      subType: service-account
+      isAdmin: true
+      arn: "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
+      description: >
+        This service account holds `roles/editor` on the project -- broad,
+        near-administrative permissions covering the majority of GCP resource types --
+        plus an explicit `roles/secretmanager.secretAccessor` grant on the CTF flag
+        secret (`roles/editor` deliberately excludes secret payload access). Because
+        the starting service account can write this account's IAM policy, it can add
+        a `roles/iam.serviceAccountTokenCreator` binding for itself, then mint a
+        short-lived OAuth token that authenticates as this account and inherits both
+        of those grants.
+
+    - id: ctf-flag
+      label: "CTF Flag"
+      type: resource
+      subType: secret-manager-secret
+      isTarget: true
+      arn: "//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-iam-002-flag/versions/latest"
+      description: >
+        The CTF flag for this scenario, stored as the latest version of a Secret
+        Manager secret. Retrieving it requires `secretmanager.versions.access` on the
+        secret -- `roles/editor` does NOT grant this, so the privileged service
+        account holds an explicit `roles/secretmanager.secretAccessor` binding on
+        this secret. Your goal is to read this secret's value using the impersonation
+        token you obtain for the target service account.
+
+  edges:
+    - from: starting-principal
+      to: target-sa
+      label: "iam.serviceAccounts.setIamPolicy"
+      description: >
+        The starting service account holds `iam.serviceAccounts.setIamPolicy` on the
+        privileged target service account, granted here via a minimal custom role that
+        bundles only that one permission. Writing a service account's IAM policy is
+        equivalent to being able to impersonate it: overwrite the target's policy to
+        add a `roles/iam.serviceAccountTokenCreator` binding for yourself, then mint a
+        short-lived OAuth token for the target by chaining impersonation (your ADC →
+        starting SA → target SA). Every subsequent call is then authorized as the
+        target and inherits its project `roles/editor` permissions.
+      hints:
+        - "iam.serviceAccounts.setIamPolicy lets you overwrite the target service account's IAM policy -- so add a binding that grants yourself roles/iam.serviceAccountTokenCreator on it. With gcloud you can use add-iam-policy-binding (it reads the existing policy first), but the raw setIamPolicy API accepts a full policy body you build from scratch, so iam.serviceAccounts.getIamPolicy is never actually required."
+        - "After writing the new binding, wait ~15 seconds for the IAM change to propagate, then chain impersonation: your ADC mints a token for the starting SA, which now holds tokenCreator and can mint a token for the target SA. gcloud accepts a comma-separated delegation chain via --impersonate-service-account."
+      commands:
+        - description: "Self-grant tokenCreator on the target SA by rewriting its IAM policy (gcloud reads the policy first, then writes)"
+          command: "gcloud iam service-accounts add-iam-policy-binding pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com --member=serviceAccount:pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com --role=roles/iam.serviceAccountTokenCreator --impersonate-service-account=pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com"
+        - description: "Raw-API alternative: POST a policy body directly, proving only setIamPolicy is required (no getIamPolicy read)"
+          command: "curl -X POST -H 'Authorization: Bearer $STARTING_SA_TOKEN' -H 'Content-Type: application/json' -d '{\"policy\":{\"bindings\":[{\"role\":\"roles/iam.serviceAccountTokenCreator\",\"members\":[\"serviceAccount:pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com\"]}]}}' 'https://iam.googleapis.com/v1/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com:setIamPolicy'"
+        - description: "Chain impersonation to mint a token for the target SA and confirm the identity switch"
+          command: "gcloud auth print-access-token --impersonate-service-account=pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com,pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
+
+    - from: target-sa
+      to: ctf-flag
+      label: "Read CTF flag"
+      description: >
+        Using the chained impersonation token for the target service account, read the
+        flag from Secret Manager. The target service account holds an explicit
+        `roles/secretmanager.secretAccessor` grant on this specific secret
+        (`roles/editor` alone does not grant `secretmanager.versions.access`).
+      hints: []
+      commands:
+        - description: "Retrieve the CTF flag via the full impersonation chain to the target service account"
+          command: "gcloud secrets versions access latest --secret=pl-gcp-iam-002-flag --impersonate-service-account=pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com,pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
