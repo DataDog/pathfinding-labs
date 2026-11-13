@@ -8,7 +8,7 @@
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
-* **Technique:** Replace the source code of an existing 2nd-gen Cloud Function that already runs as a privileged service account via the raw Cloud Functions v2 REST API -- not `gcloud`, which requires extra Cloud Build preflight permissions -- then invoke the updated function to exfiltrate the function's OAuth access token from the local metadata server, inheriting the target service account's `roles/editor` project permissions
+* **Technique:** Replace the source code of an existing 2nd-gen Cloud Function that already runs as a privileged service account via the raw Cloud Functions v2 REST API -- not `gcloud`, which requires extra Cloud Build preflight permissions -- then invoke the updated function to exfiltrate the function's OAuth access token from the local metadata server, inheriting the target service account's `roles/owner` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudfunctions_002_cloudfunctions_functionsupdate`
 * **Schema Version:** 4.9.2
 * **Pathfinding.cloud ID:** gcp-cloudfunctions-002
@@ -71,12 +71,11 @@ plabs apply
 | Resource Identifier | Purpose |
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
-| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
+| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cf002-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/owner` on the project |
 | Custom IAM role `gcp_cloudfunctions_002_cf_update_req` bound to `pl-prod-cf002-start` at the project level | Grants the raw-API required permissions: `cloudfunctions.functions.update`, `.sourceCodeSet`, `operations.get` (LRO poll), and `run.routes.invoke` |
 | Custom IAM role `gcp_cloudfunctions_002_cf_update_help` bound to `pl-prod-cf002-start` at the project level | Grants the helpful permissions: gcloud mechanics (`cloudfunctions.functions.get`, `resourcemanager.projects.get` — needed by `gcloud functions deploy`, not the raw API) plus recon (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, `cloudfunctions.functions.list`) so the starting SA can find the victim function itself |
 | IAM binding: minimal actAs custom role (`gcp_cloudfunctions_002_sa_actas_min`, granting `iam.serviceAccounts.actAs` only) on `pl-prod-cf002-target`, granted to `pl-prod-cf002-start` | The vulnerable actAs grant -- satisfies the actAs check the PATCH API performs on the function's existing runtime SA |
-| IAM binding: `roles/editor` on the project granted to `pl-prod-cf002-target` | The privilege that makes running code as the target service account valuable |
-| IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-cf002-target` | Explicit grant needed because `roles/editor` alone does not include Secret Manager payload access |
+| IAM binding: `roles/owner` on the project granted to `pl-prod-cf002-target` | The privilege that makes running code as the target service account valuable; `roles/owner` natively includes `secretmanager.versions.access`, so no separate Secret Manager grant is needed to read the flag |
 | `//cloudfunctions.googleapis.com/projects/{project_id}/locations/{region}/functions/pl-cf002-victim-{resource_suffix}` | Pre-deployed 2nd-gen Cloud Function running as `pl-prod-cf002-target`, initially serving benign hello-world code; the attacker replaces its code in place during the attack |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudfunctions-002-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 
@@ -100,7 +99,7 @@ The script will:
 7. Wait for the function to return to `ACTIVE` state
 8. Invoke the updated function using an OIDC identity token scoped to the function's Cloud Run URL (`run.routes.invoke`)
 9. Verify the exfiltrated OAuth token belongs to `pl-prod-cf002-target` using Google's tokeninfo endpoint
-10. Confirm `roles/editor` write access by patching a project label with the raw stolen token
+10. Confirm `roles/owner` write access by patching a project label with the raw stolen token
 11. Read the CTF flag from Secret Manager using the exfiltrated access token and display it
 
 #### Resources Created by Attack Script
@@ -108,7 +107,7 @@ The script will:
 - The victim function `pl-cf002-victim-{resource_suffix}` is updated in place: its source code and entry point are replaced with the token-exfiltration payload; its runtime SA (`pl-prod-cf002-target`) is unchanged
 - A new Cloud Run revision is auto-provisioned by the Cloud Functions service agent behind the scenes after the code update
 - A malicious source archive uploaded to a Cloud Functions-managed presigned GCS URL (no persistent storage IAM required on the attacker's identity)
-- A temporary project label (`pl-privesc-verified: true`) written and immediately removed during the editor-access verification step
+- A temporary project label (`pl-privesc-verified: true`) written and immediately removed during the owner-access verification step
 - Local shell variables holding the exfiltrated OAuth access token for the duration of the demo (no persistent credential material)
 
 #### With plabs non-interactive
@@ -166,12 +165,12 @@ plabs apply
 - **`iam.serviceAccounts.actAs` enforced on code-only updates**: Many practitioners assume actAs is only checked when the attached SA is changing. GCP enforces it on every PATCH that touches `buildConfig`, even when the SA field is not present in `updateMask`. Detection that only watches for SA-change events will miss pure code-replacement attacks.
 - **`cloudfunctions.functions.sourceCodeSet` as a distinct attack-enabling permission**: This permission gates the `generateUploadUrl` call that precedes every raw-API code replacement. CSPM tools that model only `cloudfunctions.functions.update` without `sourceCodeSet` will produce false-negative findings.
 - **`run.routes.invoke` as an invocation vector for 2nd-gen functions**: Neither `cloudfunctions.functions.call` nor `cloudfunctions.functions.invoke` is required to invoke a gen2 function; Cloud Run enforces authentication at the endpoint level. Detection logic that only watches those Cloud Functions-layer permissions will miss invocations made directly to the Cloud Run URL.
-- **`roles/editor`/`roles/owner` service accounts attached to existing functions where a less-privileged principal holds update rights**: Broad primitive roles grant near-administrative access across most GCP services, making any function running as such an account a high-value target once its code can be replaced.
+- **`roles/owner` (or `roles/editor`) service accounts attached to existing functions where a less-privileged principal holds update rights**: Broad primitive roles grant near-administrative access across most GCP services, making any function running as such an account a high-value target once its code can be replaced.
 
 #### Prevention Recommendations
 
 - **Never co-locate `cloudfunctions.functions.update` and `iam.serviceAccounts.actAs` on the same principal for any service account attached to a production Cloud Function**: Treat this pairing the same way you treat AWS `iam:PassRole` + `lambda:UpdateFunctionCode` -- as a single toxic combination regardless of how the grants were delivered.
-- **Apply the Principle of Least Privilege to Cloud Function runtime service accounts**: Replace `roles/editor` with narrowly scoped predefined or custom roles granting only the permissions the function workload actually needs, so that code replacement is not automatically equivalent to near-admin access.
+- **Apply the Principle of Least Privilege to Cloud Function runtime service accounts**: Replace `roles/owner` with narrowly scoped predefined or custom roles granting only the permissions the function workload actually needs, so that code replacement is not automatically equivalent to near-admin access.
 - **Separate the identities permitted to deploy/update functions from the identities those functions run as**: A CI/CD service account that deploys functions should not also hold `actAs` on the function's runtime SA if those are two different accounts -- structure the pipeline so the deployment principal cannot assume the function's runtime identity.
 - **Restrict `iam.serviceAccounts.actAs` with IAM Conditions**: Scope actAs bindings with resource tags or time-based conditions rather than granting unconditional standing access, so that the grant cannot be exploited outside its intended window.
 - **Audit `cloudfunctions.functions.update` grants project-wide alongside the runtime SA of each function**: The combination is detectable from IAM policy alone without any runtime signal. Regularly review and remove update grants held by principals that do not belong to the function's owning CI/CD pipeline.

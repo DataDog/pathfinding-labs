@@ -3,11 +3,11 @@
 # Cleanup script for gcp-iam-001-iam-serviceaccountsgetaccesstoken.
 #
 # All IAM bindings (starting_sa → target_sa getAccessToken grant via a minimal
-# custom role, target_sa roles/editor) are Terraform-managed and not touched
+# custom role, target_sa roles/owner) are Terraform-managed and not touched
 # by the demo.
 # The only out-of-band artifact demo_attack.sh creates is a temporary project
 # label (pl-privesc-verified), which it removes immediately after proving
-# editor access. This script checks for any leftover label and removes it.
+# owner access. This script checks for any leftover label and removes it.
 #
 # Cleanup uses the admin_cleanup SA from the environment, impersonated via
 # the deployer's ADC (same credential model as the demo — no static keys).
@@ -47,7 +47,7 @@ echo -e "${GREEN}✓ Cleanup identity: $ADMIN_CLEANUP_SA${NC}\n"
 
 echo -e "${YELLOW}Step 2: Checking for leftover demo artifacts${NC}"
 
-# Check for leftover project label from the editor write-proof step
+# Check for leftover project label from the owner write-proof step
 LEFTOVER_LABEL=$(gcloud projects describe "$PROJECT_ID" \
     --impersonate-service-account="$ADMIN_CLEANUP_SA" \
     --format="value(labels.pl-privesc-verified)" 2>/dev/null || true)
@@ -68,7 +68,7 @@ echo -e "${YELLOW}Step 3: Confirming no out-of-band IAM bindings to revert${NC}"
 echo "All escalation bindings are Terraform-managed:"
 echo "  - deployer → starting_sa serviceAccountTokenCreator: Terraform-managed"
 echo "  - starting_sa → target_sa getAccessToken via minimal custom role (the vuln): Terraform-managed"
-echo "  - target_sa roles/editor on project: Terraform-managed"
+echo "  - target_sa roles/owner on project: Terraform-managed"
 echo "demo_attack.sh creates no persistent IAM changes."
 echo -e "${GREEN}✓ No out-of-band artifacts to clean up${NC}\n"
 

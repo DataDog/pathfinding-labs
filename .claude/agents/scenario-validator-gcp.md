@@ -160,14 +160,16 @@ Flag as an error if any of the four is absent.
 
 Flag as an error any resource whose API is not enabled in the module — these cause `terraform apply` to fail with a 403 "API has not been enabled" error. Also verify that resources dependent on specific APIs have `depends_on = [google_project_service.{api}]` set (at minimum on the first resource of that type).
 
-#### Check Secret Manager IAM binding (to-admin scenarios)
-For to-admin scenarios using `google_secret_manager_secret` as the flag resource, verify that `google_secret_manager_secret_iam_member` granting `roles/secretmanager.secretAccessor` exists for the principal that should read the flag. Flag as an error if missing — `roles/editor` does NOT include `secretmanager.versions.access`, so the demo will fail at flag-read time even if the impersonation chain works perfectly.
+#### Check the to-admin privilege role + Secret Manager access
+For to-admin scenarios, the privileged principal (the escalation payoff — the SA/identity the attacker controls or binds) MUST hold **`roles/owner`**, never `roles/editor`. `roles/editor` cannot set IAM policies or manage roles, so an "editor = admin" lab is not genuinely to-admin — **flag editor-as-the-admin-role as an error** and require `roles/owner`.
+
+Secret Manager flag access follows from that: `roles/owner` natively includes `secretmanager.versions.access`, so an owner-based to-admin lab needs **no** `google_secret_manager_secret_iam_member` / `secretAccessor` grant — do **not** flag its absence as an error. Only when a scenario deliberately uses a non-owner privileged role must an explicit `roles/secretmanager.secretAccessor` grant exist on the flag secret (and then its absence IS an error, since `roles/editor`/`roles/viewer` lack secret access).
 
 Found and fixed on gcp-iam-001 (2026-09-23): `solution.md` and `attack_map.yaml` claimed `roles/editor` *implicitly* grants `secretmanager.versions.access`, directly contradicting the explicit `secretAccessor` binding the same module creates specifically because `roles/editor` lacks it. Grep narrative docs for this contradiction whenever an explicit Secret Manager accessor binding exists in `main.tf`:
 ```bash
 grep -rn "editor.*implicit\|implicit.*secretmanager\|editor.*secretmanager.versions.access" {scenario-dir}/*.md {scenario-dir}/attack_map.yaml
 ```
-Any hit describing `roles/editor` as granting secret payload access on its own is a factual error — fix it to attribute flag access to the explicit `secretAccessor` grant instead.
+Any hit describing `roles/editor` as granting secret payload access on its own is a factual error. For an owner-based to-admin lab (the default), attribute flag access to `roles/owner` (which includes it natively, with no separate grant). For a deliberately non-owner lab, attribute it to the explicit `secretAccessor` grant.
 
 #### Check Outputs
 Read `outputs.tf` and verify:
@@ -264,7 +266,7 @@ The Attack Summary block must be a single condensed sentence showing the full ch
 ```
 Attack Summary:
 1. ADC identity (seth@example.com) acted as starting_sa, which acted as
-   target_sa (roles/editor + secretAccessor) to read the CTF flag
+   target_sa (roles/owner) to read the CTF flag
 ```
 
 Flag as an error if the summary enumerates the illustrative steps (e.g. "minted a short-lived token for...") — those belong in the step output, not the summary.

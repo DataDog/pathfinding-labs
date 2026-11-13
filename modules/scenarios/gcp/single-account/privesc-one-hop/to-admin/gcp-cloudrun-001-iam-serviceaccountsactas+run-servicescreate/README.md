@@ -8,7 +8,7 @@
 * **Environments:** prod
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $0/mo
-* **Technique:** Deploy a new Cloud Run service bound to a privileged target service account via `iam.serviceAccounts.actAs` + `run.services.create`, using a public Docker Hub image (no Artifact Registry access needed), execute arbitrary code as it, and exfiltrate its OAuth token from the metadata server through the service's logs to inherit its `roles/editor` project permissions
+* **Technique:** Deploy a new Cloud Run service bound to a privileged target service account via `iam.serviceAccounts.actAs` + `run.services.create`, using a public Docker Hub image (no Artifact Registry access needed), execute arbitrary code as it, and exfiltrate its OAuth token from the metadata server through the service's logs to inherit its `roles/owner` project permissions
 * **Terraform Variable:** `enable_gcp_single_account_privesc_one_hop_to_admin_gcp_cloudrun_001_iam_serviceaccountsactas_run_servicescreate`
 * **Schema Version:** 4.9.4
 * **Pathfinding.cloud ID:** gcp-cloudrun-001
@@ -28,11 +28,11 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 **Required** (`pl-prod-cr001-start`):
 - `iam.serviceAccounts.actAs` on `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com` -- required at Cloud Run service creation time when the service is bound to the target service account (`actas_required` -- the GCP analog of `iam:PassRole`)
 - `run.services.create` on `//run.googleapis.com/projects/{project_id}/locations/-` -- deploys the new Cloud Run service, the core of the technique
-- `run.services.get` on `//run.googleapis.com/projects/{project_id}/locations/-/services/-` -- fetches the new service's URL (`services.get` returns `urls[]`); also covers gcloud's readiness/preflight polling. Without it the URL cannot be extracted and the demo fails
 - `run.operations.get` on `//run.googleapis.com/projects/{project_id}/locations/{region}/operations/-` -- polls the async long-running operation that `services.create` returns -- the only way to know when the deploy finished and whether the revision failed. Required even with the raw API
-- `logging.logEntries.list` on `//logging.googleapis.com/projects/{project_id}` -- the exfiltration channel of the technique (gcpwn `--exfil-mode logs`): reads the target service account's OAuth token that the deployed container printed to Cloud Run logs. Required by both demo modes
 
 **Helpful** (`pl-prod-cr001-start`):
+- `run.services.get` on `//run.googleapis.com/projects/{project_id}/locations/-/services/-` -- demo-payload mechanic: this demo fetches the new service's URL (`services.get` returns `urls[]`) and satisfies gcloud's readiness/preflight polling. Not part of the core technique; an attacker whose payload exfiltrates the token via container egress does not need it
+- `logging.logEntries.list` on `//logging.googleapis.com/projects/{project_id}` -- demo-payload mechanic: this demo reads the target service account's OAuth token back from the Cloud Run logs it printed to (gcpwn `--exfil-mode logs`). Not part of the core technique; a payload that exfiltrates the token via container egress does not need it
 - `run.services.update` -- required by `gcloud run deploy` re-runs only: re-deploying to the deterministic service name left behind by a prior run takes the update path; not needed with the raw API for a fresh deploy
 - `run.routes.invoke` -- invoke the deployed service to trigger a fresh per-request exfiltration (gcpwn `--invoke`); without it the invoke returns 403, but the deploy-time readiness instance already exfiltrates the token, so the attack itself succeeds
 - `iam.serviceAccounts.list` -- enumerate other service accounts in the project to identify actAs targets
@@ -73,12 +73,11 @@ plabs apply
 | Resource Identifier | Purpose |
 | -- | -- |
 | `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-start@{project_id}.iam.gserviceaccount.com` | Starting service account with no project-level roles of its own |
-| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/editor` on the project |
+| `//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-cr001-target@{project_id}.iam.gserviceaccount.com` | Privileged target service account holding `roles/owner` on the project |
 | Custom role `gcp_cloudrun_001_sa_actas_min` bound to `pl-prod-cr001-start` on `pl-prod-cr001-target` only (SA-scoped) | The PassRole-equivalent half of the vulnerability: `iam.serviceAccounts.actAs` on the target service account alone, so the starting account cannot act as any other service account in the project. Never `roles/iam.serviceAccountUser` |
-| Custom role `gcp_cloudrun_001_cr_deploy_req` bound to `pl-prod-cr001-start` at the project level | The compute half of the vulnerability: the rest of the verified raw-API minimum (`run.services.create`, `run.services.get`, `run.operations.get`, `logging.logEntries.list`) that lets the starting account deploy a new Cloud Run service and recover its exfiltrated token from the logs. Never `roles/run.admin` |
+| Custom role `gcp_cloudrun_001_cr_deploy_req` bound to `pl-prod-cr001-start` at the project level | The compute half of the vulnerability: the required set (`run.services.create`, `run.operations.get`) that lets the starting account deploy a new Cloud Run service and poll its async create operation. The demo-payload mechanics `run.services.get` and `logging.logEntries.list` (URL discovery and reading the exfiltrated token from logs) live in the `cr_deploy_help` role. Never `roles/run.admin` |
 | Custom role `gcp_cloudrun_001_cr_deploy_help` bound to `pl-prod-cr001-start` at the project level | The helpful permissions: gcloud re-deploy mechanics (`run.services.update`), the invoke trigger (`run.routes.invoke`), and recon (`iam.serviceAccounts.list`, `iam.serviceAccounts.getIamPolicy`, `run.services.list`) |
-| IAM binding: `roles/editor` on the project granted to `pl-prod-cr001-target` | The privilege that makes running code as the target service account valuable |
-| IAM binding: `roles/secretmanager.secretAccessor` on the flag secret granted to `pl-prod-cr001-target` | Explicit grant needed because `roles/editor` alone does not include Secret Manager payload access |
+| IAM binding: `roles/owner` on the project granted to `pl-prod-cr001-target` | The privilege that makes running code as the target service account valuable |
 | `//secretmanager.googleapis.com/projects/{project_id}/secrets/pl-gcp-cloudrun-001-flag/versions/latest` | CTF flag stored as a Secret Manager secret version |
 
 ### Solution
@@ -99,7 +98,7 @@ The script will:
 3. In `--api-only` mode, drive the raw Cloud Run v2 REST API instead: `services.create`, poll the async LRO via `run.operations.get`, and `services.get` to extract the service URL from `urls[0]`
 4. Invoke the private service with an OIDC identity token minted as the starting service account (no `setIamPolicy` call is ever needed thanks to `--no-allow-unauthenticated`)
 5. Read the exfiltrated token from the Cloud Run logs (`logging.logEntries.list` -- the same `--exfil-mode logs` channel gcpwn uses)
-6. Verify the raw stolen token belongs to the target service account (tokeninfo) and prove `roles/editor` write access with a project label round-trip -- all using the raw bearer token directly against Google REST APIs, never gcloud re-impersonation
+6. Verify the raw stolen token belongs to the target service account (tokeninfo) and prove `roles/owner` write access with a project label round-trip -- all using the raw bearer token directly against Google REST APIs, never gcloud re-impersonation
 7. Read the CTF flag from Secret Manager with the raw stolen token and display it
 
 A note on payload mechanics: `gcloud`'s `--args` list splits values on commas (repeated `--args` flags and backslash-escaping do not carry a literal comma through), so the comma-heavy Python payload travels in the `EXFIL_PAYLOAD` environment variable -- via `--env-vars-file` (YAML/JSON, no comma parsing) in gcloud mode and as a plain env entry in the raw JSON body in `--api-only` mode. Every `print` carries `flush=True` because container stdout is block-buffered when piped to the logging agent, and an unflushed token print never reaches the logs.
@@ -108,7 +107,7 @@ A note on payload mechanics: `gcloud`'s `--args` list splits values on commas (r
 
 - A new Cloud Run service `pl-cr001-exfil-{resource_suffix}` running as the target service account, built from the public Docker Hub image `docker.io/library/python:3.13-slim` with the inline exfil command (deleted by `cleanup_attack.sh`; also deleted best-effort by the demo's exit trap on abnormal exit)
 - A temporary env-vars file carrying the `EXFIL_PAYLOAD` (removed automatically at exit)
-- A short-lived `pl-privesc-verified` project label added and removed as the `roles/editor` write proof (removed within the demo itself; `cleanup_attack.sh` verifies defensively)
+- A short-lived `pl-privesc-verified` project label added and removed as the `roles/owner` write proof (removed within the demo itself; `cleanup_attack.sh` verifies defensively)
 - Local shell variables holding the exfiltrated OAuth access token for the duration of the demo (no persistent credential material)
 - A `.demo_active` marker file
 
@@ -171,7 +170,7 @@ plabs apply
 #### Prevention Recommendations
 
 - **Never co-locate `iam.serviceAccounts.actAs` and `run.services.create` (or any compute-create permission) on the same principal for a privileged target service account**: Treat this pairing the same way you would treat AWS `iam:PassRole` + `lambda:CreateFunction` -- as a single toxic combination, not two independent low-risk grants.
-- **Apply least privilege to the target service account**: Replace `roles/editor` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs, so that binding compute to the account is not automatically equivalent to near-admin access.
+- **Apply least privilege to the target service account**: Replace `roles/owner` with narrowly scoped predefined or custom roles that grant only the permissions the workload actually needs, so that binding compute to the account is not automatically equivalent to near-admin access.
 - **Restrict actAs grants with IAM Conditions**: Scope `actAs`/`serviceAccountUser` bindings with conditions (time-bound access, resource-tag bound) rather than granting unconditional standing access. Prefer SA-scoped actAs bindings over project-wide ones so the grant surface is auditable.
 - **Model custom roles in your CSPM/graph tooling, not just predefined roles**: This scenario's entire attack surface lives in two small custom roles (one SA-scoped `actAs` role, one four-permission project-level role). Detection logic keyed on `roles/run.admin` or `roles/iam.serviceAccountUser` membership will produce a false "clean" result here.
 - **Audit `CreateService` events for caller/attached-identity mismatches and unexpected public-image deploys**: A Cloud Run service whose runtime identity differs from the caller's own identity, deployed from an external public image, deserves review -- especially when the attached account holds elevated project roles.
@@ -186,7 +185,7 @@ plabs apply
 - `run.googleapis.com/GetService` -- service metadata retrieval (URL extraction) shortly after a `CreateService` by the same caller; part of the deploy chain that precedes invocation and log reading
 - `logging.googleapis.com/ListLogEntries` -- log entries read via `gcloud logging read` or the raw `entries:list` API; investigate when the reader is a service account with no logging-related duties, immediately after it deployed a Cloud Run service -- this is the exfiltration channel
 - `secretmanager.googleapis.com/AccessSecretVersion` -- a Secret Manager secret version was accessed; investigate when the caller identity is the target service account shortly after a `CreateService` event for an unrelated service
-- `cloudresourcemanager.googleapis.com/UpdateProject` -- project metadata (labels) written; used in this scenario as the `roles/editor` write proof, and a common editor-level verification step in real intrusions
+- `cloudresourcemanager.googleapis.com/UpdateProject` -- project metadata (labels) written; used in this scenario as the `roles/owner` write proof, and a common owner-level verification step in real intrusions
 
 **Create-Deploy-Exfiltrate Chain Pattern**:
 - A `CreateService` event where the attached `serviceAccount` differs from the caller's own identity, followed by LRO polling and a `GetService` URL fetch, then `ListLogEntries` calls by the same caller, then API calls authenticated as the attached service account, is a strong signal of PassRole-style privilege escalation via Cloud Run. Complement audit-log analysis with Cloud Logging inspection for the payload itself: container stdout from Cloud Run revisions containing OAuth access tokens (`ya29.`-prefixed strings) or metadata-server fetch patterns (`urlopen` to `metadata.google.internal`) is direct evidence of token exfiltration.

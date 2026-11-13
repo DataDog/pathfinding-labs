@@ -59,7 +59,7 @@ Export `starting_sa_email`, `starting_sa_id` (fully qualified `projects/{project
 
 Every scenario except `tool-testing/` needs a flag resource driven by `flag_value`, mirroring AWS's SSM-parameter (to-admin) / S3-object (to-bucket) split:
 
-- **to-admin**: `google_secret_manager_secret` + `google_secret_manager_secret_version`, named `pl-{...}-flag`, with the secret payload holding `var.flag_value`. **Critical GCP gotcha**: `roles/editor` and `roles/viewer` do NOT include `secretmanager.versions.access` — Google deliberately excludes Secret Manager access from those roles. Always add an explicit `google_secret_manager_secret_iam_member` granting `roles/secretmanager.secretAccessor` on the flag secret to whatever principal should read it; do not rely on project-level roles to grant this.
+- **to-admin**: `google_secret_manager_secret` + `google_secret_manager_secret_version`, named `pl-{...}-flag`, with the secret payload holding `var.flag_value`. The privileged SA for a to-admin scenario holds **`roles/owner`** (see the roles/owner rule under the target-SA template), which **natively includes `secretmanager.versions.access`** — so do **not** add a separate `secretAccessor` grant; owner reads the flag directly. (`roles/editor` and `roles/viewer` do NOT include `secretmanager.versions.access`, so an explicit `google_secret_manager_secret_iam_member` granting `roles/secretmanager.secretAccessor` is needed ONLY if a scenario deliberately models a non-owner privileged role.)
 - **to-bucket**: `google_storage_bucket_object` named `flag.txt` inside the scenario's existing `google_storage_bucket.target_bucket`, with `content = var.flag_value`.
 
 ## `main.tf` Templates
@@ -184,16 +184,18 @@ resource "google_service_account_iam_member" "vulnerable_impersonation_grant" {
 # The target SA's own privilege — what makes impersonating it valuable
 resource "google_project_iam_member" "target_sa_admin_role" {
   project = var.project_id
-  role    = "roles/editor" # or roles/owner, roles/resourcemanager.projectIamAdmin, etc. per scenario
+  role    = "roles/owner" # to-admin: MUST be roles/owner (see rule below)
   member  = "serviceAccount:${google_service_account.target_sa.email}"
 }
 ```
+
+**RULE — a to-admin payoff role MUST be `roles/owner`, never `roles/editor`.** Whenever the escalation's payoff is that the attacker controls, becomes, or binds a privileged principal (any "assign/hold a privileged role" payload), that principal must hold `roles/owner`. `roles/editor` cannot set IAM policies or manage roles, so an "editor = admin" lab is not genuinely to-admin. `roles/owner` also natively includes `secretmanager.versions.access`, so the flag secret needs **no** separate `secretAccessor` grant. Use a narrower role (and then add an explicit `secretAccessor` grant on the flag) ONLY when the scenario deliberately models a non-owner privileged role.
 
 This is distinct from the deployer-impersonation grant on `starting_sa` in the previous section, which legitimately keeps using the predefined `roles/iam.serviceAccountTokenCreator` role — that grant is operator/demo-mechanics scaffolding (letting a human run `plabs demo` without static keys), not part of the modeled attack graph, so it isn't subject to the least-privilege rule above. Only the grant that IS the documented vulnerability needs the minimal custom role treatment.
 
 ### CTF Flag Resource (to-admin)
 
-Note: `roles/editor` and `roles/viewer` do NOT include `secretmanager.versions.access`. Always grant `roles/secretmanager.secretAccessor` explicitly on the flag secret resource to whatever principal should read it — do not rely on project-level roles to grant this.
+Note: for to-admin the privileged SA holds `roles/owner`, which **includes** `secretmanager.versions.access` — so the flag secret needs **no** `secretAccessor` grant (owner reads it directly). Add an explicit `roles/secretmanager.secretAccessor` grant ONLY when the scenario deliberately uses a non-owner privileged role (`roles/editor`/`roles/viewer` do not include secret access).
 
 ```hcl
 resource "google_secret_manager_secret" "flag" {
@@ -220,14 +222,17 @@ resource "google_secret_manager_secret_version" "flag" {
   secret_data = var.flag_value
 }
 
-# roles/editor does NOT include secretmanager.versions.access — grant explicitly.
-resource "google_secret_manager_secret_iam_member" "target_sa_flag_accessor" {
-  provider  = google.prod
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.flag.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.target_sa.email}"
-}
+# With roles/owner (the to-admin default) target_sa reads the flag natively —
+# NO secretAccessor grant is needed. Add the block below ONLY when the privileged
+# role is deliberately narrower than owner (roles/editor/viewer lack secret access):
+#
+# resource "google_secret_manager_secret_iam_member" "target_sa_flag_accessor" {
+#   provider  = google.prod
+#   project   = var.project_id
+#   secret_id = google_secret_manager_secret.flag.secret_id
+#   role      = "roles/secretmanager.secretAccessor"
+#   member    = "serviceAccount:${google_service_account.target_sa.email}"
+# }
 ```
 
 ### CTF Flag Resource (to-bucket)
@@ -294,7 +299,7 @@ output "target_sa_email" {
 
 output "attack_path" {
   description = "Human-readable summary of the attack path"
-  value       = "{starting-sa} -> (iam.serviceAccounts.getAccessToken) -> {target-sa} -> (roles/editor) -> Project Admin"
+  value       = "{starting-sa} -> (iam.serviceAccounts.getAccessToken) -> {target-sa} -> (roles/owner) -> Project Admin"
 }
 
 # CTF flag outputs (non-tool-testing, to-admin):
@@ -420,7 +425,7 @@ Before reporting completion, verify:
 5. `variables.tf` matches the exact template (project_id, environment, resource_suffix, and flag_value unless tool-testing) — no `operator_identity` variable
 6. `outputs.tf` outputs individual (non-grouped) values, matches naming (`starting_sa_*`, `deployer_email`, `attack_path`, flag outputs)
 7. `attack_path` output accurately narrates the escalation
-8. CTF flag resource present and correctly typed (Secret Manager for to-admin, GCS object for to-bucket) unless tool-testing; to-admin secrets include an explicit `google_secret_manager_secret_iam_member` granting `roles/secretmanager.secretAccessor` (not relying on `roles/editor`)
+8. CTF flag resource present and correctly typed (Secret Manager for to-admin, GCS object for to-bucket) unless tool-testing; for to-admin the privileged SA holds `roles/owner` (never `roles/editor`), which reads the flag secret natively — no `secretAccessor` grant unless the scenario deliberately uses a non-owner privileged role
 9. `google_project_service` resources present for every API used by the module; resources that need specific APIs have `depends_on = [google_project_service.{api}]`
 10. No service account key material created unless the scenario's technique specifically requires demonstrating key compromise (and that exception is documented)
 11. Tags/labels applied where GCP resources support them (`labels = { environment = var.environment, scenario = "{scenario-name}", purpose = "{purpose}" }` — GCP's label equivalent of AWS's tags)

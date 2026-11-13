@@ -9,7 +9,7 @@
 #   2. Local build artifacts under ./.build/ (function source dir)
 #
 # All IAM bindings (starting_sa's actAs grant on target_sa, cloudfunctions
-# custom role, target_sa's roles/editor) are Terraform-managed and are never
+# custom role, target_sa's roles/owner) are Terraform-managed and are never
 # touched here.
 #
 # GCP has no equivalent of AWS's force_destroy/force_detach_policies safety
@@ -135,7 +135,7 @@ echo "All escalation bindings are Terraform-managed:"
 echo "  - deployer → starting_sa serviceAccountTokenCreator: Terraform-managed"
 echo "  - starting_sa → target_sa iam.serviceAccounts.actAs + cloudfunctions"
 echo "    create/.sourceCodeSet + run.routes.invoke via minimal custom role (the vuln): Terraform-managed"
-echo "  - target_sa roles/editor on project: Terraform-managed"
+echo "  - target_sa roles/owner on project: Terraform-managed"
 echo -e "${GREEN}✓ No out-of-band IAM bindings to clean up${NC}\n"
 
 echo -e "\n${GREEN}========================================${NC}"

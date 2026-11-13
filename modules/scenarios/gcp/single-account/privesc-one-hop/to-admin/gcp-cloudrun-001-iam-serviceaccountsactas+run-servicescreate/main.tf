@@ -75,7 +75,7 @@ resource "google_service_account_iam_member" "starting_sa_deployer_impersonation
 }
 
 # -----------------------------------------------------------------------------
-# Target Service Account (privileged - holds roles/editor on the project)
+# Target Service Account (privileged - holds roles/owner on the project)
 # -----------------------------------------------------------------------------
 
 resource "google_service_account" "target_sa" {
@@ -90,7 +90,7 @@ resource "google_service_account" "target_sa" {
 resource "google_project_iam_member" "target_sa_admin_role" {
   provider = google.prod
   project  = var.project_id
-  role     = "roles/editor"
+  role     = "roles/owner"
   member   = "serviceAccount:${google_service_account.target_sa.email}"
 }
 
@@ -156,18 +156,17 @@ resource "google_project_iam_custom_role" "cr_deploy_required" {
   project     = var.project_id
   role_id     = "${replace(local.path_id, "-", "_")}_cr_deploy_req"
   title       = "Pathfinding Labs - CR Deploy (Required)"
-  description = "Verified raw-API minimum (excluding actAs, which is bound separately on target_sa): run.services.create/get + run.operations.get + logging.logEntries.list (logs exfil channel). Required to deploy a new Cloud Run service and recover its exfiltrated token."
+  description = "Core technique (excluding actAs, bound on target_sa): run.services.create + run.operations.get to deploy a service as target_sa and poll the create LRO. The demo's token-readback (logging.logEntries.list) and URL-discovery (run.services.get) perms live in the helpful role."
   permissions = [
     "run.services.create",
-    "run.services.get",
     "run.operations.get",
-    "logging.logEntries.list",
   ]
 }
 
 # THE VULNERABILITY (part 2, project-scoped): starting_sa holds the Cloud Run
-# deploy + log-read permissions at project level. Combined with part 1, this
-# lets it create a service bound to target_sa and read the token it leaks.
+# deploy permission at project level. Combined with part 1 (actAs on target_sa),
+# this lets it create a service bound to target_sa, whose startup instance runs
+# the attacker's payload as target_sa.
 resource "google_project_iam_member" "vulnerable_cr_deploy_required_grant" {
   provider = google.prod
   project  = var.project_id
@@ -190,7 +189,18 @@ resource "google_project_iam_member" "vulnerable_cr_deploy_required_grant" {
 #                                   and gcloud deploys verified to succeed
 #                                   without it)
 #
-#   2. Practical/recon — the invoke trigger and enumeration:
+#   2. Demo-payload mechanics — how THIS demo reads the token back and finds
+#      the service, needed by the demo as written but NOT by the technique
+#      (an attacker whose payload exfiltrates via container egress needs none
+#      of these; verified by the permission isolation run, 2026-11-12):
+#        - logging.logEntries.list  — read target_sa's token from Cloud Run
+#                                   logs (gcpwn --exfil-mode logs); the demo's
+#                                   chosen readback channel
+#        - run.services.get         — fetch the deployed service's URL (urls[])
+#                                   for the invoke path, and gcloud's
+#                                   unconditional deploy preflight GET
+#
+#   3. Practical/recon — the invoke trigger and enumeration:
 #        - run.routes.invoke        — invoke the deployed service for a
 #                                   fresh per-request exfil (gcpwn --invoke);
 #                                   without it the invoke returns 403, but
@@ -211,8 +221,10 @@ resource "google_project_iam_custom_role" "cr_deploy_helpful" {
   project     = var.project_id
   role_id     = "${replace(local.path_id, "-", "_")}_cr_deploy_help"
   title       = "Pathfinding Labs - CR Deploy (Helpful: gcloud mechanics + recon)"
-  description = "Verified helpful permissions matching scenario.yaml permissions.helpful: gcloud re-deploy mechanics (run.services.update) plus the invoke trigger and recon. Not part of the modeled vulnerability."
+  description = "Helpful perms (scenario.yaml permissions.helpful): demo-payload mechanics (logging.logEntries.list log-exfil, run.services.get URL/preflight), gcloud re-deploy (run.services.update), invoke trigger, recon. Needed by the demo, not the core technique."
   permissions = [
+    "logging.logEntries.list",
+    "run.services.get",
     "run.services.update",
     "run.routes.invoke",
     "iam.serviceAccounts.list",
@@ -231,10 +243,8 @@ resource "google_project_iam_member" "vulnerable_cr_deploy_helpful_grant" {
 # -----------------------------------------------------------------------------
 # CTF Flag Resource (to-admin pattern: Secret Manager secret)
 # -----------------------------------------------------------------------------
-# roles/editor (held by target_sa above) does NOT grant
-# secretmanager.versions.access by itself — see the explicit secretAccessor
-# grant below, which is what actually makes running as target_sa sufficient
-# to read this flag.
+# roles/owner (held by target_sa above) includes secretmanager.versions.access,
+# so running as target_sa is sufficient to read this flag — no extra grant needed.
 
 resource "google_secret_manager_secret" "flag" {
   provider  = google.prod
@@ -260,14 +270,3 @@ resource "google_secret_manager_secret_version" "flag" {
   secret_data = var.flag_value
 }
 
-# roles/editor does not include secretmanager.versions.access by design.
-# Grant secretAccessor directly on the flag secret so target_sa can read it
-# once the malicious Cloud Run service runs as target_sa and exfiltrates its
-# OAuth token — this is what makes the escalation valuable.
-resource "google_secret_manager_secret_iam_member" "target_sa_flag_accessor" {
-  provider  = google.prod
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.flag.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.target_sa.email}"
-}

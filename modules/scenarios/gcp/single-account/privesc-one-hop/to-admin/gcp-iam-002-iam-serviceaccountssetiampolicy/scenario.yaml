@@ -28,7 +28,7 @@ attack_path:
     - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-start@{project_id}.iam.gserviceaccount.com"
     - "//iam.googleapis.com/projects/{project_id}/serviceAccounts/pl-prod-gcp-iam-002-target@{project_id}.iam.gserviceaccount.com"
 
-  summary: "starting_sa -> (iam.serviceAccounts.setIamPolicy via minimal custom role) -> self-grant roles/iam.serviceAccountTokenCreator on target_sa -> generateAccessToken -> target_sa -> (roles/editor + flag secretAccessor) -> Project Admin"
+  summary: "starting_sa -> (iam.serviceAccounts.setIamPolicy via minimal custom role) -> self-grant roles/iam.serviceAccountTokenCreator on target_sa -> generateAccessToken -> target_sa -> (roles/owner) -> Project Admin"
 
 # =============================================================================
 # PERMISSIONS
