@@ -21,9 +21,9 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Configuration
-STARTING_USER="pl-prod-ec2-004-to-admin-starting-user"
-ADMIN_ROLE="pl-prod-ec2-004-to-admin-target-role"
-DEMO_INSTANCE_TAG="pl-ec2-004-to-admin-demo-spot-instance"
+STARTING_USER="pl-prod-ec2-003-to-admin-starting-user"
+ADMIN_ROLE="pl-prod-ec2-003-to-admin-target-role"
+DEMO_INSTANCE_TAG="pl-ec2-003-to-admin-demo-spot-instance"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + EC2 RequestSpotInstances Demo Cleanup${NC}"

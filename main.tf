@@ -495,9 +495,9 @@ module "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   flag_value      = lookup(local.effective_flags, "ec2-001-to-admin", "flag{MISSING}")
 }
 
-module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-004-iam-passrole+ec2-requestspotinstances"
+module "single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-003-iam-passrole+ec2-requestspotinstances"
   providers = {
     aws.prod = aws.prod
   }
@@ -506,7 +506,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_request
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(local.effective_flags, "ec2-004-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_005_ec2_createlaunchtemplateversion_ec2_modifylaunchtemplate" {
@@ -1053,9 +1053,9 @@ module "single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbui
   flag_value      = lookup(local.effective_flags, "codebuild-003-to-admin", "flag{MISSING}")
 }
 
-module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey" {
-  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-003-ec2-instance-connect-sendsshpublickey"
+module "single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
+  count  = var.enable_single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-admin/ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey"
   providers = {
     aws.prod = aws.prod
   }
@@ -1064,7 +1064,7 @@ module "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sen
   resource_suffix = random_string.resource_suffix.result
   vpc_id          = module.prod_environment[0].vpc_id
   subnet_id       = module.prod_environment[0].subnet1_id
-  flag_value      = lookup(local.effective_flags, "ec2-003-to-admin", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2instanceconnect-003-to-admin", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_admin_ec2_002_ec2_modifyinstanceattribute_stopinstances_startinstances" {
@@ -1542,16 +1542,16 @@ module "single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrole_lambda_
   flag_value      = lookup(local.effective_flags, "lambda-006-to-bucket", "flag{MISSING}")
 }
 
-module "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
-  count  = var.enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey ? 1 : 0
-  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ec2-003-ec2-instance-connect-sendsshpublickey"
+module "single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
+  count  = var.enable_single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey ? 1 : 0
+  source = "./modules/scenarios/single-account/privesc-one-hop/to-bucket/ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey"
   providers = {
     aws.prod = aws.prod
   }
   account_id      = local.prod_account_id
   environment     = "prod"
   resource_suffix = random_string.resource_suffix.result
-  flag_value      = lookup(local.effective_flags, "ec2-003-to-bucket", "flag{MISSING}")
+  flag_value      = lookup(local.effective_flags, "ec2instanceconnect-003-to-bucket", "flag{MISSING}")
 }
 
 module "single_account_privesc_one_hop_to_bucket_glue_002_glue_updatedevendpoint" {
@@ -2019,4 +2019,31 @@ module "end_of_life_privesc_iam_passrole_datapipeline_to_bucket" {
   environment         = "prod"
   resource_suffix     = random_string.resource_suffix.result
   flag_value          = lookup(local.effective_flags, "datapipeline-001-to-bucket", "flag{MISSING}")
+}
+
+##############################################################################
+# MOVED BLOCKS - EC2 path ID realignment with pathfinding.cloud
+##############################################################################
+# pathfinding.cloud moved SendSSHPublicKey from ec2-003 to ec2instanceconnect-003
+# and reused ec2-003 for PassRole + RequestSpotInstances. ec2-004 is retired and
+# must not be reused. These blocks re-address existing state so deployed labs are
+# replaced cleanly (their AWS resource names changed too) instead of orphaned.
+#
+# Both the SSH "from" and the spot "to" addresses contain ec2_003, but the full
+# addresses differ (..._ec2_instance_connect_... vs ..._iam_passrole_...), so
+# they never collide. Do not shorten these module names.
+
+moved {
+  from = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey
+  to   = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey
+}
+
+moved {
+  from = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey
+  to   = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey
+}
+
+moved {
+  from = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances
+  to   = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances
 }

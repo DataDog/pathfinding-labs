@@ -9,26 +9,26 @@
 * **Cost Estimate:** $8/mo
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** SSH into EC2 instance via Instance Connect and extract IAM role credentials from IMDS for S3 bucket access
-* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey`
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey`
 * **CTF Flag Location:** s3-object
 * **Schema Version:** 4.9.0
-* **Pathfinding.cloud ID:** ec2-003
+* **Pathfinding.cloud ID:** ec2instanceconnect-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access, TA0009 - Collection
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts, T1530 - Data from Cloud Storage Object
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2-003-to-bucket-starting-user` IAM user to the `pl-sensitive-data-ec2-003-{account_id}-{suffix}` S3 bucket by pushing a temporary SSH public key to an EC2 instance via EC2 Instance Connect, SSHing into the instance, and extracting the attached IAM role's temporary credentials from the Instance Metadata Service (IMDS).
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2instanceconnect-003-to-bucket-starting-user` IAM user to the `pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}` S3 bucket by pushing a temporary SSH public key to an EC2 instance via EC2 Instance Connect, SSHing into the instance, and extracting the attached IAM role's temporary credentials from the Instance Metadata Service (IMDS).
 
-- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-bucket-starting-user`
-- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-bucket-starting-user`
+- **Destination resource:** `arn:aws:s3:::pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}`
 
 ### Starting Permissions
 
-**Required** (`pl-prod-ec2-003-to-bucket-starting-user`):
+**Required** (`pl-prod-ec2instanceconnect-003-to-bucket-starting-user`):
 - `ec2-instance-connect:SendSSHPublicKey` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id}` -- push a temporary SSH public key to the target EC2 instance
 
-**Helpful** (`pl-prod-ec2-003-to-bucket-starting-user`):
+**Helpful** (`pl-prod-ec2instanceconnect-003-to-bucket-starting-user`):
 - `ec2:DescribeInstances` -- discover EC2 instances with S3 bucket access roles attached
 - `iam:GetInstanceProfile` -- view the instance profile to determine which role is attached
 - `iam:GetRole` -- view role permissions and confirm S3 bucket access
@@ -52,14 +52,14 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable ec2-003-to-bucket
+plabs enable ec2instanceconnect-003-to-bucket
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-bucket` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-bucket` in the scenarios list
 3. Press `space` to enable it
 4. Press `a` to apply
 
@@ -69,12 +69,12 @@ plabs apply
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-bucket-starting-user` | Scenario-specific starting user with access keys and ec2-instance-connect:SendSSHPublicKey permission |
-| `arn:aws:iam::{account_id}:policy/pl-prod-ec2-003-to-bucket-starting-user-policy` | Policy granting SendSSHPublicKey, DescribeInstances, GetInstanceProfile, and GetRole permissions |
+| `arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-bucket-starting-user` | Scenario-specific starting user with access keys and ec2-instance-connect:SendSSHPublicKey permission |
+| `arn:aws:iam::{account_id}:policy/pl-prod-ec2instanceconnect-003-to-bucket-starting-user-policy` | Policy granting SendSSHPublicKey, DescribeInstances, GetInstanceProfile, and GetRole permissions |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance (Amazon Linux 2023) with Instance Connect enabled and bucket access role attached |
-| `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-bucket-ec2-bucket-role` | IAM role attached to EC2 instance with S3 bucket read access |
-| `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-003-to-bucket-ec2-bucket-profile` | Instance profile linking the IAM role to the EC2 instance |
-| `arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}` | Target S3 bucket containing sensitive data files |
+| `arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role` | IAM role attached to EC2 instance with S3 bucket read access |
+| `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-profile` | Instance profile linking the IAM role to the EC2 instance |
+| `arn:aws:s3:::pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}` | Target S3 bucket containing sensitive data files |
 
 ### Solution
 
@@ -98,20 +98,20 @@ The script will:
 
 #### Resources Created by Attack Script
 
-- Temporary SSH key pair (private key written to `/tmp/pathfinding_ec2_003_key` during demo)
+- Temporary SSH key pair (private key written to `/tmp/pathfinding_ec2instanceconnect_003_key` during demo)
 - Downloaded S3 objects from the sensitive data bucket
 
 #### With plabs non-interactive
 
 ```bash
 plabs demo --list
-plabs demo ec2-003-ec2-instance-connect-sendsshpublickey
+plabs demo ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-bucket` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-bucket` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -120,13 +120,13 @@ plabs demo ec2-003-ec2-instance-connect-sendsshpublickey
 
 ```bash
 plabs cleanup --list
-plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
+plabs cleanup ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-bucket` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-bucket` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -134,14 +134,14 @@ plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable ec2-003-to-bucket
+plabs disable ec2instanceconnect-003-to-bucket
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-bucket` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-bucket` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

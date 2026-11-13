@@ -23,7 +23,7 @@ source "$SCRIPT_DIR/../../../../../../scripts/lib/demo_permissions.sh"
 restore_helpful_permissions "$SCRIPT_DIR/scenario.yaml" 2>/dev/null || true
 
 # Configuration
-SSH_KEY_FILE="/tmp/pathfinding_ec2_003_key"
+SSH_KEY_FILE="/tmp/pathfinding_ec2instanceconnect_003_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect to S3 Bucket Demo Cleanup${NC}"
@@ -44,7 +44,7 @@ echo "Region from Terraform: $CURRENT_REGION"
 echo ""
 
 # Get module output to find instance ID (informational only)
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey.value // empty')
 INSTANCE_ID=$(echo "$MODULE_OUTPUT" | jq -r '.ec2_instance_id // empty')
 TARGET_BUCKET=$(echo "$MODULE_OUTPUT" | jq -r '.target_bucket_name // empty')
 

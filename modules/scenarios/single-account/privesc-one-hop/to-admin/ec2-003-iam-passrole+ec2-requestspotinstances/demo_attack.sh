@@ -35,10 +35,10 @@ show_attack_cmd() {
 }
 
 # Configuration
-STARTING_USER="pl-prod-ec2-004-to-admin-starting-user"
-ADMIN_ROLE="pl-prod-ec2-004-to-admin-target-role"
-INSTANCE_PROFILE="pl-prod-ec2-004-to-admin-instance-profile"
-DEMO_INSTANCE_TAG="pl-ec2-004-to-admin-demo-spot-instance"
+STARTING_USER="pl-prod-ec2-003-to-admin-starting-user"
+ADMIN_ROLE="pl-prod-ec2-003-to-admin-target-role"
+INSTANCE_PROFILE="pl-prod-ec2-003-to-admin-instance-profile"
+DEMO_INSTANCE_TAG="pl-ec2-003-to-admin-demo-spot-instance"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}IAM PassRole + EC2 RequestSpotInstances Privilege Escalation Demo${NC}"
@@ -49,7 +49,7 @@ echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
 # Get the module output
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"
@@ -410,7 +410,7 @@ echo ""
 # implicitly. Use those credentials to read the scenario flag from SSM Parameter Store.
 use_starting_creds
 echo -e "${YELLOW}Step 13: Capturing CTF flag from SSM Parameter Store${NC}"
-FLAG_PARAM_NAME="/pathfinding-labs/flags/ec2-004-to-admin"
+FLAG_PARAM_NAME="/pathfinding-labs/flags/ec2-003-to-admin"
 show_attack_cmd "Attacker (now admin)" "aws ssm get-parameter --name $FLAG_PARAM_NAME --query 'Parameter.Value' --output text"
 FLAG_VALUE=$(aws ssm get-parameter --region "$AWS_REGION" --name "$FLAG_PARAM_NAME" --query 'Parameter.Value' --output text 2>/dev/null)
 

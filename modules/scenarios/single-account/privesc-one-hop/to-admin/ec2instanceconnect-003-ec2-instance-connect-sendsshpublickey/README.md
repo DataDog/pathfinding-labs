@@ -9,26 +9,26 @@
 * **Cost Estimate:** $8/mo
 * **Cost Estimate When Demo Executed:** $8/mo
 * **Technique:** SSH into EC2 instance with privileged role and extract credentials via IMDS
-* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey`
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey`
 * **Schema Version:** 4.9.0
-* **Pathfinding.cloud ID:** ec2-003
+* **Pathfinding.cloud ID:** ec2instanceconnect-003
 * **CTF Flag Location:** ssm-parameter
 * **MITRE Tactics:** TA0004 - Privilege Escalation, TA0006 - Credential Access
 * **MITRE Techniques:** T1552.005 - Unsecured Credentials: Cloud Instance Metadata API, T1078.004 - Valid Accounts: Cloud Accounts
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2-003-to-admin-starting-user` IAM user to the `pl-prod-ec2-003-to-admin-ec2-admin-role` administrative role by using `ec2-instance-connect:SendSSHPublicKey` to push a temporary SSH public key to an EC2 instance with an attached admin role, SSH into the instance, and extract the role's temporary credentials from the Instance Metadata Service (IMDS).
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2instanceconnect-003-to-admin-starting-user` IAM user to the `pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role` administrative role by using `ec2-instance-connect:SendSSHPublicKey` to push a temporary SSH public key to an EC2 instance with an attached admin role, SSH into the instance, and extract the role's temporary credentials from the Instance Metadata Service (IMDS).
 
-- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user`
-- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-ec2-admin-role`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role`
 
 ### Starting Permissions
 
-**Required** (`pl-prod-ec2-003-to-admin-starting-user`):
+**Required** (`pl-prod-ec2instanceconnect-003-to-admin-starting-user`):
 - `ec2-instance-connect:SendSSHPublicKey` on `arn:aws:ec2:*:{account_id}:instance/{target_instance_id}` -- push a temporary SSH public key to the target EC2 instance
 
-**Helpful** (`pl-prod-ec2-003-to-admin-starting-user`):
+**Helpful** (`pl-prod-ec2instanceconnect-003-to-admin-starting-user`):
 - `ec2:DescribeInstances` -- discover EC2 instances with privileged roles attached via instance profiles
 - `iam:GetInstanceProfile` -- view instance profile to determine attached role permissions
 - `iam:GetRole` -- view role permissions and policies
@@ -51,14 +51,14 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable ec2-003-to-admin
+plabs enable ec2instanceconnect-003-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-admin` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-admin` in the scenarios list
 3. Press `space` to enable it
 4. Press `a` to apply
 
@@ -68,12 +68,12 @@ plabs apply
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user` | Scenario-specific starting user with access keys |
-| `arn:aws:iam::{account_id}:policy/pl-prod-ec2-003-to-admin-policy` | Allows `ec2-instance-connect:SendSSHPublicKey`, `ec2:DescribeInstances`, and read-only IAM discovery |
-| `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-ec2-admin-role` | Admin role attached to the EC2 instance profile |
+| `arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-admin-starting-user` | Scenario-specific starting user with access keys |
+| `arn:aws:iam::{account_id}:policy/pl-prod-ec2instanceconnect-003-to-admin-policy` | Allows `ec2-instance-connect:SendSSHPublicKey`, `ec2:DescribeInstances`, and read-only IAM discovery |
+| `arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role` | Admin role attached to the EC2 instance profile |
 | `arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx` | EC2 instance with the admin role attached via instance profile |
 | `arn:aws:ec2:{region}:{account_id}:security-group/sg-xxxxxxxxx` | Security group allowing SSH access (port 22) |
-| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2instanceconnect-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -99,19 +99,19 @@ The script will:
 #### Resources Created by Attack Script
 
 - Temporary SSH key pair (`/tmp/pathfinding_eic_key` and `/tmp/pathfinding_eic_key.pub`) created during the demo
-- `AdministratorAccess` managed policy attached to `pl-prod-ec2-003-to-admin-starting-user`
+- `AdministratorAccess` managed policy attached to `pl-prod-ec2instanceconnect-003-to-admin-starting-user`
 
 #### With plabs non-interactive
 
 ```bash
 plabs demo --list
-plabs demo ec2-003-ec2-instance-connect-sendsshpublickey
+plabs demo ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-admin` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -120,13 +120,13 @@ plabs demo ec2-003-ec2-instance-connect-sendsshpublickey
 
 ```bash
 plabs cleanup --list
-plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
+plabs cleanup ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-admin` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -134,14 +134,14 @@ plabs cleanup ec2-003-ec2-instance-connect-sendsshpublickey
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable ec2-003-to-admin
+plabs disable ec2instanceconnect-003-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-003-to-admin` in the scenarios list
+2. Navigate to `ec2instanceconnect-003-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 

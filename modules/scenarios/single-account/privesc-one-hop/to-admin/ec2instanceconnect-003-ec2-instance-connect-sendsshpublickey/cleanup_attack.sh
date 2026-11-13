@@ -67,7 +67,7 @@ echo ""
 
 # Get starting user name from scenario outputs
 cd ../../../../../..  # Navigate to root again
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey.value // empty')
 STARTING_USER_NAME=$(echo "$MODULE_OUTPUT" | jq -r '.starting_user_name')
 cd - > /dev/null
 

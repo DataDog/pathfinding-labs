@@ -16,7 +16,7 @@ resource and scanning it.
 | Resource | Config | $/mo | Source / basis |
 |---|---|---|---|
 | `aws_instance` | t3.nano | $5 | existing-passrole `ssm-001` (incl. EBS) |
-| `aws_instance` | t3.micro | $8 | existing-passrole `ec2-003`, `ssm-002`, `codedeploy-001` (infracost: 1 costed = $8) |
+| `aws_instance` | t3.micro | $8 | existing-passrole `ec2instanceconnect-003`, `ssm-002`, `codedeploy-001` (infracost: 1 costed = $8) |
 | `aws_instance` | t3.medium | $31 | $0.0416/hr x 730 + EBS |
 | `aws_instance` | m5.large | $70 | $0.096/hr x 730 |
 | `aws_instance` | m5.xlarge | $140 | $0.192/hr x 730 |
