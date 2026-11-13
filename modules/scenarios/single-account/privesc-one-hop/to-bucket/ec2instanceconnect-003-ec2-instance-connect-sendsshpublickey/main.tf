@@ -12,8 +12,8 @@ terraform {
 # This scenario demonstrates how an attacker with ec2-instance-connect:SendSSHPublicKey
 # can SSH into an EC2 instance and extract S3 bucket role credentials via IMDS
 
-# Resource naming convention: pl-prod-ec2-003-to-bucket-{resource-type}
-# ec2-003 = Pathfinding.cloud ID for EC2 Instance Connect
+# Resource naming convention: pl-prod-ec2instanceconnect-003-to-bucket-{resource-type}
+# ec2instanceconnect-003 = Pathfinding.cloud ID for EC2 Instance Connect
 
 # =============================================================================
 # DATA SOURCES
@@ -48,10 +48,10 @@ data "http" "user_public_ip" {
 # Target S3 bucket with sensitive data
 resource "aws_s3_bucket" "target_bucket" {
   provider = aws.prod
-  bucket   = "pl-sensitive-data-ec2-003-${var.account_id}-${var.resource_suffix}"
+  bucket   = "pl-sensitive-data-ec2instanceconnect-003-${var.account_id}-${var.resource_suffix}"
 
   tags = {
-    Name        = "pl-sensitive-data-ec2-003-bucket"
+    Name        = "pl-sensitive-data-ec2instanceconnect-003-bucket"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "target-bucket"
@@ -117,7 +117,7 @@ resource "aws_s3_object" "flag" {
 resource "aws_iam_role" "ec2_bucket_role" {
   force_detach_policies = true
   provider              = aws.prod
-  name                  = "pl-prod-ec2-003-to-bucket-ec2-bucket-role"
+  name                  = "pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -131,7 +131,7 @@ resource "aws_iam_role" "ec2_bucket_role" {
   })
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-bucket-ec2-bucket-role"
+    Name        = "pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "ec2-bucket-access"
@@ -141,7 +141,7 @@ resource "aws_iam_role" "ec2_bucket_role" {
 # Grant full S3 access to the target bucket
 resource "aws_iam_role_policy" "ec2_bucket_access" {
   provider = aws.prod
-  name     = "pl-prod-ec2-003-to-bucket-s3-policy"
+  name     = "pl-prod-ec2instanceconnect-003-to-bucket-s3-policy"
   role     = aws_iam_role.ec2_bucket_role.id
 
   policy = jsonencode({
@@ -167,11 +167,11 @@ resource "aws_iam_role_policy" "ec2_bucket_access" {
 # Create instance profile for the role
 resource "aws_iam_instance_profile" "ec2_bucket_profile" {
   provider = aws.prod
-  name     = "pl-prod-ec2-003-to-bucket-instance-profile"
+  name     = "pl-prod-ec2instanceconnect-003-to-bucket-instance-profile"
   role     = aws_iam_role.ec2_bucket_role.name
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-bucket-instance-profile"
+    Name        = "pl-prod-ec2instanceconnect-003-to-bucket-instance-profile"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "ec2-instance-profile"
@@ -185,7 +185,7 @@ resource "aws_iam_instance_profile" "ec2_bucket_profile" {
 # Security group allowing SSH access
 resource "aws_security_group" "eic_sg" {
   provider    = aws.prod
-  name        = "pl-prod-ec2-003-to-bucket-sg"
+  name        = "pl-prod-ec2instanceconnect-003-to-bucket-sg"
   description = "Allow SSH access for EC2 Instance Connect"
 
   ingress {
@@ -205,7 +205,7 @@ resource "aws_security_group" "eic_sg" {
   }
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-bucket-sg"
+    Name        = "pl-prod-ec2instanceconnect-003-to-bucket-sg"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "security-group"
@@ -236,7 +236,7 @@ resource "aws_instance" "target" {
   }
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-bucket-target-instance"
+    Name        = "pl-prod-ec2instanceconnect-003-to-bucket-target-instance"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "target-instance"
@@ -251,10 +251,10 @@ resource "aws_instance" "target" {
 resource "aws_iam_user" "starting_user" {
   force_destroy = true
   provider      = aws.prod
-  name          = "pl-prod-ec2-003-to-bucket-starting-user"
+  name          = "pl-prod-ec2instanceconnect-003-to-bucket-starting-user"
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-bucket-starting-user"
+    Name        = "pl-prod-ec2instanceconnect-003-to-bucket-starting-user"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "starting-user"
@@ -270,7 +270,7 @@ resource "aws_iam_access_key" "starting_user_key" {
 # Policy for the starting user
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-ec2-003-to-bucket-starting-user-policy"
+  name     = "pl-prod-ec2instanceconnect-003-to-bucket-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   # Ensure the instance exists before creating the policy

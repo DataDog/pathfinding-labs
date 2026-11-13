@@ -20,7 +20,7 @@ echo -e "${GREEN}========================================${NC}\n"
 cd ../../../../../..
 
 # Get the module output using the grouped output pattern
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"
@@ -59,9 +59,19 @@ echo "ACCOUNT_ID=$ACCOUNT_ID"
 echo ""
 
 echo -e "${YELLOW}Target Information:${NC}"
-echo "STARTING_USER=pl-prod-ec2-004-to-admin-starting-user"
-echo "ADMIN_ROLE=pl-prod-ec2-004-to-admin-target-role"
-echo "ADMIN_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ec2-004-to-admin-target-role"
+echo "STARTING_USER=pl-prod-ec2instanceconnect-003-to-admin-starting-user"
+echo "EC2_ADMIN_ROLE=pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
+echo "EC2_ADMIN_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
+
+echo ""
+
+echo -e "${YELLOW}Existing Resources to Exploit:${NC}"
+# Extract EC2 instance ID from terraform output
+EC2_INSTANCE_ID=$(echo "$MODULE_OUTPUT" | jq -r '.ec2_instance_id // "unknown"')
+echo "TARGET_EC2_INSTANCE_ID=$EC2_INSTANCE_ID"
+if [ "$EC2_INSTANCE_ID" != "unknown" ]; then
+  echo "TARGET_EC2_INSTANCE_ARN=arn:aws:ec2:${AWS_REGION}:${ACCOUNT_ID}:instance/${EC2_INSTANCE_ID}"
+fi
 
 echo ""
 

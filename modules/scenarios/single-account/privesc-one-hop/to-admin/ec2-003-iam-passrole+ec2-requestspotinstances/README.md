@@ -9,27 +9,27 @@
 * **Cost Estimate:** $0/mo
 * **Cost Estimate When Demo Executed:** $3/mo
 * **Technique:** EC2 Spot Instance launch with privileged role and user-data backdoor
-* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances`
+* **Terraform Variable:** `enable_single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances`
 * **Schema Version:** 4.9.0
 * **CTF Flag Location:** ssm-parameter
-* **Pathfinding.cloud ID:** ec2-004
+* **Pathfinding.cloud ID:** ec2-003
 * **MITRE Tactics:** TA0004 - Privilege Escalation
 * **MITRE Techniques:** T1098.001 - Account Manipulation: Additional Cloud Credentials, T1578 - Modify Cloud Compute Infrastructure
 
 ## Objective
 
-Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2-004-to-admin-starting-user` IAM user to the `pl-prod-ec2-004-to-admin-target-role` administrative role by requesting an EC2 Spot Instance with the admin instance profile attached and embedding a user-data script that attaches `AdministratorAccess` directly to the starting user.
+Your objective is to learn how to exploit a privilege escalation vulnerability that allows you to move from the `pl-prod-ec2-003-to-admin-starting-user` IAM user to the `pl-prod-ec2-003-to-admin-target-role` administrative role by requesting an EC2 Spot Instance with the admin instance profile attached and embedding a user-data script that attaches `AdministratorAccess` directly to the starting user.
 
-- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user`
-- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role`
+- **Start:** `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user`
+- **Destination resource:** `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-target-role`
 
 ### Starting Permissions
 
-**Required** (`pl-prod-ec2-004-to-admin-starting-user`):
-- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ec2-004-to-admin-target-role` -- allows passing the admin role to an EC2 Spot Instance via instance profile
+**Required** (`pl-prod-ec2-003-to-admin-starting-user`):
+- `iam:PassRole` on `arn:aws:iam::*:role/pl-prod-ec2-003-to-admin-target-role` -- allows passing the admin role to an EC2 Spot Instance via instance profile
 - `ec2:RequestSpotInstances` on `*` -- allows requesting a Spot Instance with the admin instance profile and a user-data backdoor
 
-**Helpful** (`pl-prod-ec2-004-to-admin-starting-user`):
+**Helpful** (`pl-prod-ec2-003-to-admin-starting-user`):
 - `iam:ListRoles` -- discover available privileged roles
 - `ec2:DescribeInstances` -- verify instance launch and get connection details
 - `iam:ListInstanceProfiles` -- find instance profiles with privileged roles
@@ -53,14 +53,14 @@ Your objective is to learn how to exploit a privilege escalation vulnerability t
 ### Deploy with plabs non-interactive
 
 ```bash
-plabs enable ec2-004-to-admin
+plabs enable ec2-003-to-admin
 plabs apply
 ```
 
 ### Deploy with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-004-to-admin` in the scenarios list
+2. Navigate to `ec2-003-to-admin` in the scenarios list
 3. Press `space` to enable it
 4. Press `a` to apply
 
@@ -70,10 +70,10 @@ plabs apply
 
 | ARN | Purpose |
 | -- | -- |
-| `arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user` | Starting user with PassRole and RequestSpotInstances permissions (with access keys) |
-| `arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role` | Admin role that EC2 Spot Instance uses to attach policy (trusts ec2.amazonaws.com) |
-| `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-004-to-admin-instance-profile` | Instance profile wrapping the admin role |
-| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-004-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
+| `arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user` | Starting user with PassRole and RequestSpotInstances permissions (with access keys) |
+| `arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-target-role` | Admin role that EC2 Spot Instance uses to attach policy (trusts ec2.amazonaws.com) |
+| `arn:aws:iam::{account_id}:instance-profile/pl-prod-ec2-003-to-admin-instance-profile` | Instance profile wrapping the admin role |
+| `arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-003-to-admin` | CTF flag stored in SSM Parameter Store; retrievable by any admin-equivalent principal |
 
 ### Solution
 
@@ -101,13 +101,13 @@ The script will:
 
 ```bash
 plabs demo --list
-plabs demo ec2-004-iam-passrole+ec2-requestspotinstances
+plabs demo ec2-003-iam-passrole+ec2-requestspotinstances
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-004-to-admin` in the scenarios list
+2. Navigate to `ec2-003-to-admin` in the scenarios list
 3. Press `r` to run the demo script
 
 ### Cleanup
@@ -116,13 +116,13 @@ plabs demo ec2-004-iam-passrole+ec2-requestspotinstances
 
 ```bash
 plabs cleanup --list
-plabs cleanup ec2-004-iam-passrole+ec2-requestspotinstances
+plabs cleanup ec2-003-iam-passrole+ec2-requestspotinstances
 ```
 
 #### With plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-004-to-admin` in the scenarios list
+2. Navigate to `ec2-003-to-admin` in the scenarios list
 3. Press `c` to run the cleanup script
 
 ## Teardown
@@ -130,14 +130,14 @@ plabs cleanup ec2-004-iam-passrole+ec2-requestspotinstances
 ### Teardown with plabs non-interactive
 
 ```bash
-plabs disable ec2-004-to-admin
+plabs disable ec2-003-to-admin
 plabs apply
 ```
 
 ### Teardown with plabs tui
 
 1. Launch the TUI: `plabs`
-2. Navigate to `ec2-004-to-admin` in the scenarios list
+2. Navigate to `ec2-003-to-admin` in the scenarios list
 3. Press `space` to disable it
 4. Press `D` to destroy
 
@@ -149,7 +149,7 @@ plabs apply
 
 - IAM user has `iam:PassRole` permission targeting a role with administrative privileges
 - IAM user has `ec2:RequestSpotInstances` permission combined with `iam:PassRole` -- this combination enables privilege escalation via Spot Instance user-data
-- Admin role (`pl-prod-ec2-004-to-admin-target-role`) is passable to EC2 Spot Instances and carries `iam:AttachUserPolicy` on all resources
+- Admin role (`pl-prod-ec2-003-to-admin-target-role`) is passable to EC2 Spot Instances and carries `iam:AttachUserPolicy` on all resources
 - Instance profile wrapping an administrative role is accessible to the starting user via `iam:PassRole`
 
 #### Prevention Recommendations

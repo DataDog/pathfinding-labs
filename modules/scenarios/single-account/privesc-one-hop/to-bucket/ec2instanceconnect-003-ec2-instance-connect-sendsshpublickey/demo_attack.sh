@@ -36,9 +36,9 @@ show_attack_cmd() {
 }
 
 # Configuration
-STARTING_USER="pl-prod-ec2-003-to-bucket-starting-user"
-EC2_BUCKET_ROLE="pl-prod-ec2-003-to-bucket-ec2-bucket-role"
-SSH_KEY_FILE="/tmp/pathfinding_ec2_003_key"
+STARTING_USER="pl-prod-ec2instanceconnect-003-to-bucket-starting-user"
+EC2_BUCKET_ROLE="pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
+SSH_KEY_FILE="/tmp/pathfinding_ec2instanceconnect_003_key"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}EC2 Instance Connect to S3 Bucket Privilege Escalation Demo${NC}"
@@ -49,7 +49,7 @@ echo -e "${YELLOW}Step 1: Retrieving scenario configuration from Terraform${NC}"
 cd ../../../../../..  # Navigate to root of terraform project
 
 # Get the module output using the grouped output pattern
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"

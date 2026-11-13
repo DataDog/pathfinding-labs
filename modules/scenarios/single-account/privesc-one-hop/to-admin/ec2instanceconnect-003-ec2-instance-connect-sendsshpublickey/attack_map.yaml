@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user"
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
       description: >
@@ -35,7 +35,7 @@ attackMap:
       type: principal
       subType: iam-role
       isAdmin: true
-      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-ec2-admin-role"
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
       description: >
         This IAM role has AdministratorAccess and is attached to the EC2 instance via
         its instance profile. By extracting its temporary credentials from IMDSv2, you
@@ -47,7 +47,7 @@ attackMap:
       type: resource
       subType: ssm-parameter
       isTarget: true
-      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-003-to-admin"
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2instanceconnect-003-to-admin"
       description: >
         The CTF flag for this scenario, stored as an SSM parameter in the victim account.
         Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
@@ -64,7 +64,7 @@ attackMap:
       hints:
         - "Generate a local SSH key pair with ssh-keygen, then push the public key to the instance using ec2-instance-connect:SendSSHPublicKey. The key is only valid for 60 seconds — have your SSH command ready before pushing. You will need the instance's public IP and the OS username (ec2-user for Amazon Linux)."
         - "Once on the instance, retrieve task role credentials from IMDSv2: first obtain a session token via PUT to http://169.254.169.254/latest/api/token with the TTL header, then query /latest/meta-data/iam/security-credentials/<role-name>. Export all three credential fields (AccessKeyId, SecretAccessKey, Token) on your local machine."
-        - "Browse to https://pathfinding.cloud/paths/ec2-003 for technique details."
+        - "Browse to https://pathfinding.cloud/paths/ec2instanceconnect-003 for technique details."
       commands:
         - description: "List EC2 instances with their instance profiles"
           command: "aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress,IamInstanceProfile.Arn]' --output table"
@@ -104,4 +104,4 @@ attackMap:
         - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"
-          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ec2-003-to-admin --query 'Parameter.Value' --output text"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ec2instanceconnect-003-to-admin --query 'Parameter.Value' --output text"

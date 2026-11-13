@@ -7,7 +7,7 @@ title: "EC2 Instance Connect SSH to Admin"
 description: "User with ec2-instance-connect:SendSSHPublicKey can SSH into EC2 instance and extract admin role credentials via IMDS"
 cost_estimate: "$8/mo"
 cost_estimate_when_demo_executed: "$8/mo"
-pathfinding-cloud-id: "ec2-003"
+pathfinding-cloud-id: "ec2instanceconnect-003"
 
 # =============================================================================
 # CLASSIFICATION
@@ -25,9 +25,9 @@ environments:
 # =============================================================================
 attack_path:
   principals:
-    - "arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user"
+    - "arn:aws:iam::{account_id}:user/pl-prod-ec2instanceconnect-003-to-admin-starting-user"
     - "arn:aws:ec2:{region}:{account_id}:instance/i-xxxxxxxxx"
-    - "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-ec2-admin-role"
+    - "arn:aws:iam::{account_id}:role/pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
 
   summary: "starting_user → (ec2-instance-connect:SendSSHPublicKey) → EC2 instance → (IMDS credential extraction) → admin access"
 
@@ -36,14 +36,14 @@ attack_path:
 # =============================================================================
 permissions:
   required:
-    - principal: "pl-prod-ec2-003-to-admin-starting-user"
+    - principal: "pl-prod-ec2instanceconnect-003-to-admin-starting-user"
       principal_type: "user"
       permissions:
         - permission: "ec2-instance-connect:SendSSHPublicKey"
           resource: "arn:aws:ec2:*:{account_id}:instance/{target_instance_id}"
 
   helpful:
-    - principal: "pl-prod-ec2-003-to-admin-starting-user"
+    - principal: "pl-prod-ec2instanceconnect-003-to-admin-starting-user"
       principal_type: "user"
       permissions:
         - permission: "ec2:DescribeInstances"
@@ -67,5 +67,5 @@ mitre_attack:
 # TERRAFORM
 # =============================================================================
 terraform:
-  variable_name: "enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey"
-  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ec2-003-ec2-instance-connect-sendsshpublickey"
+  variable_name: "enable_single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey"
+  module_path: "modules/scenarios/single-account/privesc-one-hop/to-admin/ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey"

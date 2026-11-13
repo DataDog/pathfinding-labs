@@ -154,9 +154,9 @@ variable "scenario_flag_defaults" {
     "ec2-001-to-admin"                                = "flag{ec2_001_admin_captured}"
     "ec2-002-to-admin"                                = "flag{ec2_002_admin_captured}"
     "ec2-003-to-admin"                                = "flag{ec2_003_admin_captured}"
-    "ec2-003-to-bucket"                               = "flag{ec2_003_bucket_accessed}"
-    "ec2-004-to-admin"                                = "flag{ec2_004_admin_captured}"
     "ec2-005-to-admin"                                = "flag{ec2_005_admin_captured}"
+    "ec2instanceconnect-003-to-admin"                 = "flag{ec2instanceconnect_003_admin_captured}"
+    "ec2instanceconnect-003-to-bucket"                = "flag{ec2instanceconnect_003_bucket_accessed}"
     "ecs-001-to-admin"                                = "flag{ecs_001_admin_captured}"
     "ecs-003-to-admin"                                = "flag{ecs_003_admin_captured}"
     "ecs-004-to-admin"                                = "flag{ecs_004_admin_captured}"
@@ -446,8 +446,8 @@ variable "enable_single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-004-iam-passrole+ec2-requestspotinstances"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-003-iam-passrole+ec2-requestspotinstances"
   type        = bool
   default     = false
 }
@@ -680,8 +680,8 @@ variable "enable_single_account_privesc_one_hop_to_admin_codebuild_003_codebuild
   default     = false
 }
 
-variable "enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey" {
-  description = "Enable: single-account → privesc-one-hop → to-admin → ec2-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-admin → ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }
@@ -909,8 +909,8 @@ variable "enable_single_account_privesc_one_hop_to_bucket_lambda_006_iam_passrol
 # SINGLE-ACCOUNT ONE-HOP TO-BUCKET SCENARIOS NON-FREE
 ##############################################################################
 
-variable "enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
-  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
+variable "enable_single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
+  description = "Enable: single-account → privesc-one-hop → to-bucket → ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey ($5/month for EC2 instance)"
   type        = bool
   default     = false
 }

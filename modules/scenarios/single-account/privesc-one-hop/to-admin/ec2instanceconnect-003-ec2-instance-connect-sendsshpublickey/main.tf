@@ -15,7 +15,7 @@ terraform {
 # and extract the instance's IAM role credentials from the metadata endpoint to
 # gain admin access.
 
-# Resource naming convention: pl-prod-ec2-003-to-admin-{resource-type}
+# Resource naming convention: pl-prod-ec2instanceconnect-003-to-admin-{resource-type}
 
 # ==============================================================================
 # DATA SOURCES
@@ -52,10 +52,10 @@ data "http" "user_public_ip" {
 resource "aws_iam_user" "starting_user" {
   force_destroy = true
   provider      = aws.prod
-  name          = "pl-prod-ec2-003-to-admin-starting-user"
+  name          = "pl-prod-ec2instanceconnect-003-to-admin-starting-user"
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-starting-user"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-starting-user"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "starting-user"
@@ -71,7 +71,7 @@ resource "aws_iam_access_key" "starting_user" {
 # Policy granting EC2 Instance Connect permissions to the starting user
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-ec2-003-to-admin-starting-user-policy"
+  name     = "pl-prod-ec2instanceconnect-003-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   # Ensure the EC2 instance is created before the policy references it
@@ -110,7 +110,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 resource "aws_iam_role" "ec2_admin" {
   force_detach_policies = true
   provider              = aws.prod
-  name                  = "pl-prod-ec2-003-to-admin-ec2-admin-role"
+  name                  = "pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -126,7 +126,7 @@ resource "aws_iam_role" "ec2_admin" {
   })
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-ec2-admin-role"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-ec2-admin-role"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "ec2-admin-role"
@@ -143,11 +143,11 @@ resource "aws_iam_role_policy_attachment" "ec2_admin_access" {
 # Instance profile to link the role to EC2
 resource "aws_iam_instance_profile" "ec2_admin" {
   provider = aws.prod
-  name     = "pl-prod-ec2-003-to-admin-instance-profile"
+  name     = "pl-prod-ec2instanceconnect-003-to-admin-instance-profile"
   role     = aws_iam_role.ec2_admin.name
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-instance-profile"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-instance-profile"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "instance-profile"
@@ -161,7 +161,7 @@ resource "aws_iam_instance_profile" "ec2_admin" {
 # Security group allowing SSH from anywhere (for EC2 Instance Connect)
 resource "aws_security_group" "target_instance" {
   provider    = aws.prod
-  name        = "pl-prod-ec2-003-to-admin-sg"
+  name        = "pl-prod-ec2instanceconnect-003-to-admin-sg"
   description = "Security group for EC2 Instance Connect scenario target instance"
   vpc_id      = var.vpc_id
 
@@ -182,7 +182,7 @@ resource "aws_security_group" "target_instance" {
   }
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-sg"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-sg"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "security-group"
@@ -212,7 +212,7 @@ resource "aws_instance" "target" {
   }
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-target-instance"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-target-instance"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "target-instance"
@@ -226,13 +226,13 @@ resource "aws_instance" "target" {
 # AdministratorAccess grants the required permission implicitly.
 resource "aws_ssm_parameter" "flag" {
   provider    = aws.prod
-  name        = "/pathfinding-labs/flags/ec2-003-to-admin"
-  description = "CTF flag for the ec2-003 to-admin scenario"
+  name        = "/pathfinding-labs/flags/ec2instanceconnect-003-to-admin"
+  description = "CTF flag for the ec2instanceconnect-003 to-admin scenario"
   type        = "String"
   value       = var.flag_value
 
   tags = {
-    Name        = "pl-prod-ec2-003-to-admin-flag"
+    Name        = "pl-prod-ec2instanceconnect-003-to-admin-flag"
     Environment = var.environment
     Scenario    = "ec2-instance-connect-sendsshpublickey"
     Purpose     = "ctf-flag"

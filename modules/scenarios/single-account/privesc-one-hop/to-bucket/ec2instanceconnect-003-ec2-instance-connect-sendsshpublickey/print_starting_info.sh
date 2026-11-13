@@ -20,7 +20,7 @@ echo -e "${GREEN}========================================${NC}\n"
 cd ../../../../../..
 
 # Get the module output using the grouped output pattern
-MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey.value // empty')
+MODULE_OUTPUT=$(terraform output -json 2>/dev/null | jq -r '.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey.value // empty')
 
 if [ -z "$MODULE_OUTPUT" ]; then
     echo -e "${RED}Error: Could not find terraform output${NC}"
@@ -59,9 +59,9 @@ echo "ACCOUNT_ID=$ACCOUNT_ID"
 echo ""
 
 echo -e "${YELLOW}Target Information:${NC}"
-echo "STARTING_USER=pl-prod-ec2-003-to-admin-starting-user"
-echo "EC2_ADMIN_ROLE=pl-prod-ec2-003-to-admin-ec2-admin-role"
-echo "EC2_ADMIN_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ec2-003-to-admin-ec2-admin-role"
+echo "STARTING_USER=pl-prod-ec2instanceconnect-003-to-bucket-starting-user"
+echo "EC2_BUCKET_ROLE=pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
+echo "EC2_BUCKET_ROLE_ARN=arn:aws:iam::${ACCOUNT_ID}:role/pl-prod-ec2instanceconnect-003-to-bucket-ec2-bucket-role"
 
 echo ""
 

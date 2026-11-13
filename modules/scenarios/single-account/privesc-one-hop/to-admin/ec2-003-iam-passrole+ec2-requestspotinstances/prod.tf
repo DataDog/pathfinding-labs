@@ -29,10 +29,10 @@ data "aws_ami" "amazon_linux_2023" {
 resource "aws_iam_user" "starting_user" {
   force_destroy = true
   provider      = aws.prod
-  name          = "pl-prod-ec2-004-to-admin-starting-user"
+  name          = "pl-prod-ec2-003-to-admin-starting-user"
 
   tags = {
-    Name        = "pl-prod-ec2-004-to-admin-starting-user"
+    Name        = "pl-prod-ec2-003-to-admin-starting-user"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-requestspotinstances"
     Purpose     = "starting-user"
@@ -48,7 +48,7 @@ resource "aws_iam_access_key" "starting_user_key" {
 # Policy for the starting user (can PassRole and request spot instances)
 resource "aws_iam_user_policy" "starting_user_policy" {
   provider = aws.prod
-  name     = "pl-prod-ec2-004-to-admin-starting-user-policy"
+  name     = "pl-prod-ec2-003-to-admin-starting-user-policy"
   user     = aws_iam_user.starting_user.name
 
   policy = jsonencode({
@@ -97,7 +97,7 @@ resource "aws_iam_user_policy" "starting_user_policy" {
 resource "aws_iam_role" "admin_role" {
   force_detach_policies = true
   provider              = aws.prod
-  name                  = "pl-prod-ec2-004-to-admin-target-role"
+  name                  = "pl-prod-ec2-003-to-admin-target-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -113,7 +113,7 @@ resource "aws_iam_role" "admin_role" {
   })
 
   tags = {
-    Name        = "pl-prod-ec2-004-to-admin-target-role"
+    Name        = "pl-prod-ec2-003-to-admin-target-role"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-requestspotinstances"
     Purpose     = "admin-target"
@@ -130,11 +130,11 @@ resource "aws_iam_role_policy_attachment" "admin_access" {
 # Instance profile for the admin role
 resource "aws_iam_instance_profile" "admin_instance_profile" {
   provider = aws.prod
-  name     = "pl-prod-ec2-004-to-admin-instance-profile"
+  name     = "pl-prod-ec2-003-to-admin-instance-profile"
   role     = aws_iam_role.admin_role.name
 
   tags = {
-    Name        = "pl-prod-ec2-004-to-admin-instance-profile"
+    Name        = "pl-prod-ec2-003-to-admin-instance-profile"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-requestspotinstances"
     Purpose     = "admin-instance-profile"
@@ -144,7 +144,7 @@ resource "aws_iam_instance_profile" "admin_instance_profile" {
 # Security group for EC2 instances
 resource "aws_security_group" "ec2_sg" {
   provider    = aws.prod
-  name        = "pl-prod-ec2-004-to-admin-sg"
+  name        = "pl-prod-ec2-003-to-admin-sg"
   description = "Security group for PassRole+RequestSpotInstances privilege escalation scenario"
   vpc_id      = var.vpc_id
 
@@ -167,7 +167,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   tags = {
-    Name        = "pl-prod-ec2-004-to-admin-sg"
+    Name        = "pl-prod-ec2-003-to-admin-sg"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-requestspotinstances"
     Purpose     = "ec2-security-group"
@@ -181,13 +181,13 @@ resource "aws_security_group" "ec2_sg" {
 # AdministratorAccess grants the required permission implicitly.
 resource "aws_ssm_parameter" "flag" {
   provider    = aws.prod
-  name        = "/pathfinding-labs/flags/ec2-004-to-admin"
-  description = "CTF flag for the ec2-004 to-admin scenario"
+  name        = "/pathfinding-labs/flags/ec2-003-to-admin"
+  description = "CTF flag for the ec2-003 to-admin scenario"
   type        = "String"
   value       = var.flag_value
 
   tags = {
-    Name        = "pl-prod-ec2-004-to-admin-flag"
+    Name        = "pl-prod-ec2-003-to-admin-flag"
     Environment = var.environment
     Scenario    = "iam-passrole+ec2-requestspotinstances"
     Purpose     = "ctf-flag"
@@ -203,7 +203,7 @@ resource "aws_ssm_parameter" "flag" {
 #
 # Example user-data script:
 # #!/bin/bash
-# STARTING_USER_NAME="pl-prod-ec2-004-to-admin-starting-user"
+# STARTING_USER_NAME="pl-prod-ec2-003-to-admin-starting-user"
 #
 # # Wait for IAM role to be available
 # sleep 10

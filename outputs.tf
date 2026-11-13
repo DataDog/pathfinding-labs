@@ -648,23 +648,23 @@ output "single_account_privesc_one_hop_to_admin_ec2_001_iam_passrole_ec2_runinst
   sensitive = true
 }
 
-output "single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances" {
-  description = "All outputs for ec2-004-iam-passrole+ec2-requestspotinstances one-hop to-admin scenario"
-  value = var.enable_single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].starting_user_secret_access_key
-    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].admin_role_arn
-    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].admin_role_name
-    instance_profile_arn            = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].instance_profile_arn
-    instance_profile_name           = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].instance_profile_name
-    security_group_id               = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].security_group_id
-    default_subnet_id               = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].default_subnet_id
-    ami_id                          = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].ami_id
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].attack_path
-    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_name
-    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ec2_004_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_arn
+output "single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances" {
+  description = "All outputs for ec2-003-iam-passrole+ec2-requestspotinstances one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].starting_user_secret_access_key
+    admin_role_arn                  = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].admin_role_arn
+    admin_role_name                 = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].admin_role_name
+    instance_profile_arn            = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].instance_profile_arn
+    instance_profile_name           = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].instance_profile_name
+    security_group_id               = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].security_group_id
+    default_subnet_id               = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].default_subnet_id
+    ami_id                          = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].ami_id
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].attack_path
+    flag_ssm_parameter_name         = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_name
+    flag_ssm_parameter_arn          = module.single_account_privesc_one_hop_to_admin_ec2_003_iam_passrole_ec2_requestspotinstances[0].flag_ssm_parameter_arn
   } : null
   sensitive = true
 }
@@ -1590,20 +1590,20 @@ output "single_account_privesc_one_hop_to_admin_codebuild_003_codebuild_startbui
   sensitive = true
 }
 
-output "single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey" {
-  description = "All outputs for ec2-003-ec2-instance-connect-sendsshpublickey one-hop to-admin scenario"
-  value = var.enable_single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
-    ec2_instance_id                 = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
-    ec2_instance_arn                = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
-    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
-    ec2_admin_role_name             = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_name
-    ec2_admin_role_arn              = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_arn
-    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
-    attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2_003_ec2_instance_connect_sendsshpublickey[0].attack_path
+output "single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
+  description = "All outputs for ec2instanceconnect-003-ec2-instance-connect-sendsshpublickey one-hop to-admin scenario"
+  value = var.enable_single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
+    ec2_instance_id                 = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
+    ec2_instance_arn                = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
+    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
+    ec2_admin_role_name             = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_name
+    ec2_admin_role_arn              = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_admin_role_arn
+    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
+    attack_path                     = module.single_account_privesc_one_hop_to_admin_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].attack_path
   } : null
   sensitive = true
 }
@@ -1820,22 +1820,22 @@ output "single_account_privesc_one_hop_to_bucket_iam_006_iam_updateloginprofile"
   sensitive = true
 }
 
-output "single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey" {
+output "single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey" {
   description = "All outputs for ec2-instance-connect-sendsshpublickey one-hop to-bucket scenario"
-  value = var.enable_single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey ? {
-    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_name
-    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
-    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
-    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
-    ec2_instance_id                 = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
-    ec2_instance_arn                = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
-    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
-    ec2_bucket_role_name            = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_name
-    ec2_bucket_role_arn             = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_arn
-    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].target_bucket_name
-    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].target_bucket_arn
-    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
-    attack_path                     = module.single_account_privesc_one_hop_to_bucket_ec2_003_ec2_instance_connect_sendsshpublickey[0].attack_path
+  value = var.enable_single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey ? {
+    starting_user_name              = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_name
+    starting_user_arn               = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_arn
+    starting_user_access_key_id     = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_access_key_id
+    starting_user_secret_access_key = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].starting_user_secret_access_key
+    ec2_instance_id                 = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_id
+    ec2_instance_arn                = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_arn
+    ec2_instance_public_ip          = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_instance_public_ip
+    ec2_bucket_role_name            = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_name
+    ec2_bucket_role_arn             = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].ec2_bucket_role_arn
+    target_bucket_name              = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].target_bucket_name
+    target_bucket_arn               = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].target_bucket_arn
+    allowed_ssh_ip                  = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].allowed_ssh_ip
+    attack_path                     = module.single_account_privesc_one_hop_to_bucket_ec2instanceconnect_003_ec2_instance_connect_sendsshpublickey[0].attack_path
   } : null
   sensitive = true
 }

