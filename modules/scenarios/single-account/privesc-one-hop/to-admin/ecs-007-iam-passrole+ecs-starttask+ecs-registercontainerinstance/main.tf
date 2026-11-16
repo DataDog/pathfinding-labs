@@ -32,6 +32,64 @@ terraform {
 # ecs-007 = Pathfinding.cloud ID for this scenario
 
 # =============================================================================
+# STARTING USER (Initial Access Point)
+# =============================================================================
+
+resource "aws_iam_user" "starting_user" {
+  force_destroy = true
+  provider      = aws.prod
+  name          = "pl-prod-ecs-007-to-admin-starting-user"
+
+  tags = {
+    Name        = "pl-prod-ecs-007-to-admin-starting-user"
+    Environment = var.environment
+    Scenario    = "iam-passrole+ecs-starttask+ecs-registercontainerinstance"
+    Purpose     = "starting-user"
+  }
+}
+
+resource "aws_iam_access_key" "starting_user" {
+  provider = aws.prod
+  user     = aws_iam_user.starting_user.name
+}
+
+# Provide SSM access to the instance.
+resource "aws_iam_user_policy" "starting_user_required" {
+  provider = aws.prod
+  name     = "pl-prod-ecs-007-to-admin-required-permissions"
+  user     = aws_iam_user.starting_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "SimulateRCEOnLabInstance"
+        Effect = "Allow"
+        Action = [
+          "ssm:SendCommand"
+        ]
+        Resource = [
+          aws_instance.container_instance.id,
+          "arn:aws:ssm:*:*:document/AWS-RunShellScript"
+        ]
+      },
+      {
+        Sid    = "ReadCommandResults"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetCommandInvocation",
+          "ssm:ListCommands",
+          "ssm:ListCommandInvocations",
+          "ssm:DescribeInstanceInformation",
+          "ssm:DescribeInstanceProperties"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# =============================================================================
 # TARGET ADMIN ROLE (Privilege Escalation Target)
 # =============================================================================
 
