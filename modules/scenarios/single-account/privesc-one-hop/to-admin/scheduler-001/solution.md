@@ -44,14 +44,9 @@ aws iam get-role --role-name pl-prod-scheduler-001-to-admin-scheduler-role \
   --output json
 ```
 
-You'll see a trust policy that allows `scheduler.amazonaws.com` to assume this role. That's the key detail — it means EventBridge Scheduler can act as this role when executing schedule targets. Check the role's attached policies to confirm it has admin-level access:
+You'll see a trust policy that allows `scheduler.amazonaws.com` to assume this role. That's the key detail — it means EventBridge Scheduler can act as this role when executing schedule targets.
 
-```bash
-aws iam list-attached-role-policies \
-  --role-name pl-prod-scheduler-001-to-admin-scheduler-role
-```
-
-`AdministratorAccess` will be listed. Now review any existing schedules to understand the environment:
+Now review any existing schedules to understand the environment:
 
 ```bash
 aws scheduler list-schedules
