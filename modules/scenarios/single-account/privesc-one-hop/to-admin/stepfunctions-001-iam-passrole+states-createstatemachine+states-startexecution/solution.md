@@ -18,17 +18,6 @@ Start by confirming who you are and what region you are operating in:
 aws sts get-caller-identity
 ```
 
-Inspect the inline policy attached to your user to understand the full permission set:
-
-```bash
-aws iam list-user-policies --user-name pl-prod-stepfunctions-001-to-admin-starting-user
-aws iam get-user-policy \
-    --user-name pl-prod-stepfunctions-001-to-admin-starting-user \
-    --policy-name pl-prod-stepfunctions-001-to-admin-starting-user-policy
-```
-
-You will see `iam:PassRole` scoped to the admin role ARN, plus `states:CreateStateMachine` and `states:StartExecution`. You also have helpful permissions — `states:DescribeExecution`, `states:DescribeStateMachine`, `iam:ListAttachedUserPolicies` — for monitoring and verification.
-
 ## Exploitation
 
 ### Step 1: Create a Step Functions state machine with the admin role
