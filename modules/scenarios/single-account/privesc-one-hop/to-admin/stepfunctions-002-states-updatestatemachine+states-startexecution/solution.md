@@ -46,12 +46,7 @@ aws stepfunctions describe-state-machine \
   --state-machine-arn arn:aws:states:{region}:{account_id}:stateMachine/pl-prod-stepfunctions-002-to-admin-statemachine
 ```
 
-The output shows a benign initial definition (a Pass state that does nothing), but more importantly, it shows the `roleArn` field: `arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-002-to-admin-statemachine-role`. That role is what makes this exploitable. If you have access to IAM enumeration tools, you can confirm it holds `AdministratorAccess`:
-
-```bash
-aws iam list-attached-role-policies \
-  --role-name pl-prod-stepfunctions-002-to-admin-statemachine-role
-```
+The output shows a benign initial definition (a Pass state that does nothing), but more importantly, it shows the `roleArn` field: `arn:aws:iam::{account_id}:role/pl-prod-stepfunctions-002-to-admin-statemachine-role`. That role is what makes this exploitable.
 
 The key insight lands here: this state machine has an admin role. And you can replace its definition without touching its role.
 
