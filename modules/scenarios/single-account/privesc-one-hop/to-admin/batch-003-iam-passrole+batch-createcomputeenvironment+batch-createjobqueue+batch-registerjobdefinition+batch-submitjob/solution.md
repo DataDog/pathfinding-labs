@@ -129,7 +129,7 @@ Submit the job to your attacker-created queue:
 aws batch submit-job \
     --job-name pl-batch-003-privesc-job \
     --job-queue pl-batch-003-privesc-job-queue \
-    --job-definition pl-batch-003-privesc-job-def:1
+    --job-definition pl-batch-003-privesc-job-def
 ```
 
 Note the `jobId` in the response.

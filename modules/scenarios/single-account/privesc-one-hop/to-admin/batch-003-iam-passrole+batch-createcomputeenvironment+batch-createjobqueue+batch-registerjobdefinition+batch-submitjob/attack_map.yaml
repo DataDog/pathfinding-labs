@@ -107,7 +107,7 @@ attackMap:
             aws batch submit-job
             --job-name pl-batch-003-privesc-job
             --job-queue pl-batch-003-privesc-job-queue
-            --job-definition pl-batch-003-privesc-job-def:1
+            --job-definition pl-batch-003-privesc-job-def
         - description: "Poll job status until SUCCEEDED"
           command: "aws batch describe-jobs --jobs <job-id> --query 'jobs[0].status' --output text"
 
